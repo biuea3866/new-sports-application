@@ -12,6 +12,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.Table
 import jakarta.persistence.Version
 import org.hibernate.annotations.Type
+import java.time.ZoneOffset
 import java.time.ZonedDateTime
 
 @Entity
@@ -52,7 +53,7 @@ class Notification(
     fun markSent() {
         if (!status.canTransitToSent()) throw InvalidNotificationStateException(status)
         status = NotificationStatus.SENT
-        sentAt = ZonedDateTime.now()
+        sentAt = ZonedDateTime.now(ZoneOffset.UTC)
     }
 
     fun markFailed() {

@@ -8,7 +8,7 @@ class NotificationDomainService(
     private val notificationRepository: NotificationRepository,
     private val channelGateways: List<NotificationChannelGateway>,
 ) {
-    @Transactional
+    @Transactional(noRollbackFor = [Exception::class])
     fun send(
         userId: Long,
         channel: NotificationChannel,
