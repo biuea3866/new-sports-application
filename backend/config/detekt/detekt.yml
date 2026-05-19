@@ -1,0 +1,47 @@
+build:
+  maxIssues: 0
+
+config:
+  validation: true
+  warningsAsErrors: false
+
+# ==========================================
+# Harness rules — 금지 패턴 (severity: error)
+# ==========================================
+# 패턴 기반 검사(no-jpa-query, no-local-datetime 등)는 grep 기반 검증 + ArchUnit으로 보강합니다.
+
+potential-bugs:
+  active: true
+
+style:
+  active: true
+  ForbiddenComment:
+    active: false
+  MagicNumber:
+    active: false
+  MaxLineLength:
+    active: true
+    maxLineLength: 160
+
+complexity:
+  active: true
+  LongMethod:
+    active: true
+    threshold: 30
+  LongParameterList:
+    active: true
+    functionThreshold: 8
+    constructorThreshold: 12
+  CyclomaticComplexMethod:
+    active: true
+    threshold: 15
+
+exceptions:
+  active: true
+  TooGenericExceptionCaught:
+    active: false
+
+naming:
+  active: true
+  VariableNaming:
+    active: true
