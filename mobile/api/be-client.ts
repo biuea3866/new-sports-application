@@ -84,45 +84,45 @@ export function createBeClient(baseURL: string): AxiosInstance {
       originalRequest._retry = true;
 
       try {
-        // 이미 진행 중인 refresh가 있으면 대기
+        // 이미 진행 중인 refresh가 있으면 같은 Promise를 await — 동시 N개 401 처리 안전
+        // refreshPromise 의 finally 안에서 단 한 번만 null 로 초기화 (재진입·동시성 보장)
         if (!refreshPromise) {
           refreshPromise = (async (): Promise<string> => {
-            const storedRefreshToken = await getRefreshToken();
-            if (!storedRefreshToken) {
-              throw new Error('No refresh token available');
+            try {
+              const storedRefreshToken = await getRefreshToken();
+              if (!storedRefreshToken) {
+                throw new Error('No refresh token available');
+              }
+
+              const response = await axios.post<RefreshResponse>(`${baseURL}/auth/refresh`, {
+                refreshToken: storedRefreshToken,
+              });
+
+              const { accessToken, refreshToken: newRefreshToken } = response.data;
+
+              // 새 토큰 저장
+              useAuthStore.getState().setAccessToken(accessToken);
+              await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, newRefreshToken);
+
+              return accessToken;
+            } finally {
+              refreshPromise = null;
             }
-
-            const response = await axios.post<RefreshResponse>(`${baseURL}/auth/refresh`, {
-              refreshToken: storedRefreshToken,
-            });
-
-            const { accessToken, refreshToken: newRefreshToken } = response.data;
-
-            // 새 토큰 저장
-            useAuthStore.getState().setAccessToken(accessToken);
-            await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, newRefreshToken);
-
-            return accessToken;
           })();
         }
 
         const newAccessToken = await refreshPromise;
-        refreshPromise = null;
 
-        // 원 요청 재시도
-        if (originalRequest.headers) {
-          originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
-        } else {
-          originalRequest.headers = {
-            Authorization: `Bearer ${newAccessToken}`,
-          };
-        }
+        // 원 요청 재시도 — 기존 헤더 보존하면서 Authorization 만 갱신
+        originalRequest.headers = {
+          ...(originalRequest.headers ?? {}),
+          Authorization: `Bearer ${newAccessToken}`,
+        };
 
         return instance(originalRequest);
-      } catch {
-        refreshPromise = null;
+      } catch (refreshError) {
         await handleRefreshFailure();
-        return Promise.reject(error);
+        return Promise.reject(refreshError instanceof Error ? refreshError : error);
       }
     }
   );

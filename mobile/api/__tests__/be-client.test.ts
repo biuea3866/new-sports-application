@@ -201,6 +201,70 @@ describe('BeClient', () => {
       const instance = createBeClient('http://localhost:8080');
       expect(instance).toBeDefined();
     });
+
+    it('getBeClient()는 EXPO_PUBLIC_API_URL이 없으면 Error를 던진다', () => {
+      const originalUrl = process.env.EXPO_PUBLIC_API_URL;
+      delete process.env.EXPO_PUBLIC_API_URL;
+
+      jest.isolateModules(() => {
+        // singleton 캐시를 비우기 위해 모듈을 격리 로드
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const mod = require('../be-client') as { getBeClient: () => unknown };
+        expect(() => mod.getBeClient()).toThrow(/EXPO_PUBLIC_API_URL.*설정되지 않았습니다/);
+      });
+
+      if (originalUrl !== undefined) {
+        process.env.EXPO_PUBLIC_API_URL = originalUrl;
+      }
+    });
+  });
+
+  describe('U-04: refresh 동시성 안전성', () => {
+    it('동시 다발 401 요청이 도착해도 refresh 는 1회만 호출된다', async () => {
+      mockedSecureStore.getItemAsync.mockResolvedValue('valid-refresh-token');
+      mockedSecureStore.setItemAsync.mockResolvedValue(undefined);
+      useAuthStore.setState({ accessToken: 'expired-access-token' });
+
+      const instance = createBeClient('http://localhost:8080');
+      const mock = new MockAdapter(instance);
+
+      const requestCounts = new Map<string, number>();
+      mock.onGet(/\/protected-\d+/).reply((config) => {
+        const url = config.url ?? '';
+        const count = (requestCounts.get(url) ?? 0) + 1;
+        requestCounts.set(url, count);
+        if (count === 1) {
+          return [401, { message: 'Unauthorized' }];
+        }
+        return [200, { url, attempt: count }];
+      });
+
+      let refreshCallCount = 0;
+      const axiosMock = new MockAdapter(axios);
+      axiosMock.onPost('http://localhost:8080/auth/refresh').reply(() => {
+        refreshCallCount++;
+        return [
+          200,
+          {
+            accessToken: `new-access-token-${refreshCallCount}`,
+            refreshToken: `new-refresh-token-${refreshCallCount}`,
+          },
+        ];
+      });
+
+      // 동시에 3개의 보호된 엔드포인트 호출 — 모두 401 → refresh → 재시도
+      const results = await Promise.all([
+        instance.get('/protected-1'),
+        instance.get('/protected-2'),
+        instance.get('/protected-3'),
+      ]);
+
+      expect(results.every((r) => r.status === 200)).toBe(true);
+      expect(refreshCallCount).toBe(1);
+
+      mock.restore();
+      axiosMock.restore();
+    });
   });
 
   describe('getBeClient singleton', () => {

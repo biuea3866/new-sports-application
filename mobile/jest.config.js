@@ -12,15 +12,13 @@ module.exports = {
     '^@/lib/(.*)$': '<rootDir>/lib/$1',
     '^@/app/(.*)$': '<rootDir>/app/$1',
   },
-  collectCoverageFrom: [
-    'api/**/*.ts',
-    'lib/**/*.ts',
-    '!**/__tests__/**',
-    '!**/node_modules/**',
-  ],
+  collectCoverageFrom: ['api/**/*.ts', 'lib/**/*.ts', '!**/__tests__/**', '!**/node_modules/**'],
   coverageThreshold: {
     global: {
       lines: 80,
+      branches: 70,
+      functions: 80,
+      statements: 80,
     },
   },
 };
