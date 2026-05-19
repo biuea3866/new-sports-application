@@ -9,15 +9,27 @@ CREATE TABLE products
     image_url   VARCHAR(2048),
     status      VARCHAR(20)    NOT NULL,
     created_at  DATETIME(6)    NOT NULL,
+    created_by  BIGINT         NULL,
     updated_at  DATETIME(6)    NOT NULL,
+    updated_by  BIGINT         NULL,
+    deleted_at  DATETIME(6)    NULL,
+    deleted_by  BIGINT         NULL,
     PRIMARY KEY (id),
-    INDEX idx_products_category_status_price (category, status, price)
+    INDEX idx_products_category_status_price (category, status, price),
+    INDEX idx_products_deleted_at (deleted_at)
 );
 
 CREATE TABLE stocks
 (
     product_id BIGINT  NOT NULL,
     quantity   INT     NOT NULL,
-    version    BIGINT  NOT NULL,
-    PRIMARY KEY (product_id)
+    version    BIGINT      NOT NULL,
+    created_at DATETIME(6) NOT NULL,
+    created_by BIGINT      NULL,
+    updated_at DATETIME(6) NOT NULL,
+    updated_by BIGINT      NULL,
+    deleted_at DATETIME(6) NULL,
+    deleted_by BIGINT      NULL,
+    PRIMARY KEY (product_id),
+    INDEX idx_stocks_deleted_at (deleted_at)
 );

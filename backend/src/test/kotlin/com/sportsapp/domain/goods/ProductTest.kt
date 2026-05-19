@@ -4,21 +4,17 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import java.math.BigDecimal
-import java.time.ZonedDateTime
 
 class ProductTest : BehaviorSpec({
 
-    Given("ACTIVE 상태인 Product") {
+    Given("ACTIVE 상태인 Product (deactivate 경로)") {
         val product = Product(
-            id = 1L,
             name = "테니스 라켓",
             category = ProductCategory.EQUIPMENT,
             price = BigDecimal("50000"),
             description = "고급 테니스 라켓",
             imageUrl = "https://example.com/racket.jpg",
             status = ProductStatus.ACTIVE,
-            createdAt = ZonedDateTime.now(),
-            updatedAt = ZonedDateTime.now(),
         )
 
         When("deactivate를 호출하면") {
@@ -31,15 +27,12 @@ class ProductTest : BehaviorSpec({
 
     Given("INACTIVE 상태인 Product") {
         val product = Product(
-            id = 1L,
             name = "테니스 라켓",
             category = ProductCategory.EQUIPMENT,
             price = BigDecimal("50000"),
             description = "고급 테니스 라켓",
             imageUrl = "https://example.com/racket.jpg",
             status = ProductStatus.INACTIVE,
-            createdAt = ZonedDateTime.now(),
-            updatedAt = ZonedDateTime.now(),
         )
 
         When("activate를 호출하면") {
@@ -50,17 +43,14 @@ class ProductTest : BehaviorSpec({
         }
     }
 
-    Given("ACTIVE 상태인 Product") {
+    Given("ACTIVE 상태인 Product (중복 전이 경로)") {
         val product = Product(
-            id = 1L,
             name = "테니스 라켓",
             category = ProductCategory.EQUIPMENT,
             price = BigDecimal("50000"),
             description = "고급 테니스 라켓",
             imageUrl = "https://example.com/racket.jpg",
             status = ProductStatus.ACTIVE,
-            createdAt = ZonedDateTime.now(),
-            updatedAt = ZonedDateTime.now(),
         )
 
         When("activate를 다시 호출하면") {

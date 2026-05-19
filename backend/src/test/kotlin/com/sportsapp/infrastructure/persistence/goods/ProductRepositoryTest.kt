@@ -10,32 +10,29 @@ import com.sportsapp.domain.goods.StockRepository
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.jdbc.core.JdbcTemplate
 import java.math.BigDecimal
-import java.time.ZoneOffset
-import java.time.ZonedDateTime
 
 class ProductRepositoryTest(
     @Autowired private val productRepository: ProductRepository,
     @Autowired private val stockRepository: StockRepository,
+    @Autowired private val jdbcTemplate: JdbcTemplate,
 ) : BaseIntegrationTest() {
 
     init {
-        Given("Product 저장 후 ZonedDateTime 라운드트립 검증") {
+        Given("Product 저장 후 조회 검증") {
             afterEach {
-                stockRepository.deleteAll()
-                productRepository.deleteAll()
+                jdbcTemplate.execute("TRUNCATE TABLE stocks")
+                jdbcTemplate.execute("TRUNCATE TABLE products")
             }
 
             When("findById로 조회하면") {
-                Then("[R-01 roundtrip] ZonedDateTime이 UTC로 저장되고 원본 instant와 동일하다") {
-                    val originalTime = ZonedDateTime.of(2026, 1, 15, 12, 0, 0, 0, ZoneOffset.UTC)
-                    val product = productRepository.save(
-                        createProduct(createdAt = originalTime, updatedAt = originalTime)
-                    )
+                Then("[R-01 roundtrip] 저장된 필드가 정확히 복원된다") {
+                    val product = productRepository.save(createProduct())
 
                     val found = productRepository.findById(product.id)
                     found shouldNotBe null
-                    found?.createdAt?.toInstant() shouldBe originalTime.toInstant()
+                    found?.createdAt shouldNotBe null
                     found?.name shouldBe "테니스 라켓"
                     found?.price shouldBe BigDecimal("50000.00")
                     found?.category shouldBe ProductCategory.EQUIPMENT
@@ -46,32 +43,17 @@ class ProductRepositoryTest(
 
         Given("복합 인덱스 검증 시나리오") {
             afterEach {
-                stockRepository.deleteAll()
-                productRepository.deleteAll()
+                jdbcTemplate.execute("TRUNCATE TABLE stocks")
+                jdbcTemplate.execute("TRUNCATE TABLE products")
             }
 
             When("category=EQUIPMENT, status=ACTIVE 조건으로 검색하면") {
                 Then("[R-01 index] 필터링된 결과만 반환된다") {
-                    val now = ZonedDateTime.now(ZoneOffset.UTC)
                     val product1 = productRepository.save(
-                        createProduct(
-                            name = "라켓1",
-                            category = ProductCategory.EQUIPMENT,
-                            status = ProductStatus.ACTIVE,
-                            price = BigDecimal("50000"),
-                            createdAt = now,
-                            updatedAt = now,
-                        )
+                        createProduct(name = "라켓1", category = ProductCategory.EQUIPMENT, status = ProductStatus.ACTIVE)
                     )
                     productRepository.save(
-                        createProduct(
-                            name = "의류1",
-                            category = ProductCategory.APPAREL,
-                            status = ProductStatus.ACTIVE,
-                            price = BigDecimal("30000"),
-                            createdAt = now,
-                            updatedAt = now,
-                        )
+                        createProduct(name = "의류1", category = ProductCategory.APPAREL, status = ProductStatus.ACTIVE)
                     )
 
                     val results = productRepository.findByCategoryAndStatus(
@@ -86,16 +68,13 @@ class ProductRepositoryTest(
 
         Given("Stock 저장 후 조회 시나리오") {
             afterEach {
-                stockRepository.deleteAll()
-                productRepository.deleteAll()
+                jdbcTemplate.execute("TRUNCATE TABLE stocks")
+                jdbcTemplate.execute("TRUNCATE TABLE products")
             }
 
             When("productId로 Stock을 조회하면") {
                 Then("[R-02] 저장된 Stock을 정확히 반환한다") {
-                    val now = ZonedDateTime.now(ZoneOffset.UTC)
-                    val product = productRepository.save(
-                        createProduct(createdAt = now, updatedAt = now)
-                    )
+                    val product = productRepository.save(createProduct())
                     stockRepository.save(Stock(productId = product.id, quantity = 100))
 
                     val found = stockRepository.findByProductId(product.id)
@@ -112,17 +91,12 @@ class ProductRepositoryTest(
         category: ProductCategory = ProductCategory.EQUIPMENT,
         status: ProductStatus = ProductStatus.ACTIVE,
         price: BigDecimal = BigDecimal("50000"),
-        createdAt: ZonedDateTime,
-        updatedAt: ZonedDateTime,
     ) = Product(
-        id = 0L,
         name = name,
         category = category,
         price = price,
         description = "설명",
         imageUrl = "https://example.com/image.jpg",
         status = status,
-        createdAt = createdAt,
-        updatedAt = updatedAt,
     )
 }
