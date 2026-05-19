@@ -13,14 +13,11 @@ import org.springframework.data.mongodb.core.convert.MongoCustomConversions
 @Configuration
 class MongoConfig : AbstractMongoClientConfiguration() {
 
-    @Value("\${spring.data.mongodb.uri:mongodb://localhost:27017/sports}")
+    @Value("\${spring.data.mongodb.uri}")
     private lateinit var mongoUri: String
 
-    override fun getDatabaseName(): String {
-        val uriPath = mongoUri.substringAfterLast("/")
-        val dbName = uriPath.substringBefore("?").ifBlank { "sports" }
-        return dbName
-    }
+    override fun getDatabaseName(): String =
+        ConnectionString(mongoUri).database ?: "sports"
 
     override fun configureClientSettings(builder: MongoClientSettings.Builder) {
         builder.applyConnectionString(ConnectionString(mongoUri))

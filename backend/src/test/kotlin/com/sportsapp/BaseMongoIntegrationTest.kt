@@ -38,6 +38,7 @@ abstract class BaseMongoIntegrationTest : BehaviorSpec() {
             .also { it.start() }
 
         val mongoContainer: MongoDBContainer = MongoDBContainer("mongo:7.0")
+            .withReuse(true)
             .also { it.start() }
     }
 }
