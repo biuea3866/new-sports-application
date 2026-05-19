@@ -177,6 +177,20 @@
         "exclude_glob": "**/audit/SecurityAuditorAware*.kt",
         "message": "java.util.Optional import 금지 — Kotlin nullable 로 대체. 예외: SecurityAuditorAware (Spring AuditorAware 강제).",
         "severity": "error"
+      },
+      {
+        "id": "no-persistence-entity-pojo",
+        "pattern": "@Entity\\b|@Document\\b",
+        "file_glob": "*/infrastructure/persistence/**/*.kt",
+        "message": "infrastructure/persistence 에 @Entity/@Document POJO 분리 금지 — JPA Entity 가 곧 도메인 Entity 다. domain/<context>/ 에 단일 모델로 작성하세요 (be-code-convention.md 'JPA Entity = Domain Entity').",
+        "severity": "error"
+      },
+      {
+        "id": "no-domain-persistence-mapper",
+        "pattern": "fun\\s+to(Domain|Entity|Document)\\s*\\(|fun\\s+from(Domain|Entity|Document)\\s*\\(",
+        "file_glob": "*/infrastructure/persistence/**/*.kt",
+        "message": "도메인↔영속화 POJO 매퍼 금지 — 단일 JPA Entity 모델이므로 toDomain/toEntity 변환 불필요. Repository 가 도메인 Entity 를 직접 반환.",
+        "severity": "error"
       }
     ]
   },
