@@ -26,6 +26,58 @@ jest.mock('expo-router', () => ({
   },
 }));
 
+// react-native-mmkv mock (네이티브 모듈 없이 테스트 가능하도록)
+// jest.mock factory 안에서 외부 변수를 참조할 수 없으므로 factory 내부에서 Map을 생성합니다.
+jest.mock('react-native-mmkv', () => {
+  const mockStorage = new Map<string, string | boolean | number | ArrayBuffer>();
+  return {
+    MMKV: jest.fn().mockImplementation(() => ({
+      getString: (key: string) => {
+        const v = mockStorage.get(key);
+        return typeof v === 'string' ? v : undefined;
+      },
+      set: (key: string, value: string | boolean | number | ArrayBuffer) =>
+        mockStorage.set(key, value),
+      delete: (key: string) => mockStorage.delete(key),
+      clearAll: () => mockStorage.clear(),
+      contains: (key: string) => mockStorage.has(key),
+      getAllKeys: () => Array.from(mockStorage.keys()),
+      getBoolean: (key: string) => {
+        const v = mockStorage.get(key);
+        return typeof v === 'boolean' ? v : undefined;
+      },
+      getNumber: (key: string) => {
+        const v = mockStorage.get(key);
+        return typeof v === 'number' ? v : undefined;
+      },
+      getBuffer: (_key: string) => undefined,
+      recrypt: () => undefined,
+      trim: () => undefined,
+      size: 0,
+      isReadOnly: false,
+      addOnValueChangedListener: () => ({ remove: () => undefined }),
+    })),
+  };
+});
+
+// @react-native-community/netinfo mock
+jest.mock('@react-native-community/netinfo', () => ({
+  useNetInfo: jest.fn(() => ({
+    type: 'wifi',
+    isConnected: true,
+    isInternetReachable: true,
+    details: null,
+  })),
+  fetch: jest.fn(() =>
+    Promise.resolve({
+      type: 'wifi',
+      isConnected: true,
+      isInternetReachable: true,
+      details: null,
+    })
+  ),
+}));
+
 // Silence console.error for known React Native warnings in tests
 const originalConsoleError = console.error;
 console.error = (...args: unknown[]) => {
