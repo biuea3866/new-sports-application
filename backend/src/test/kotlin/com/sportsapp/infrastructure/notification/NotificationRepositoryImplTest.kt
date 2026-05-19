@@ -1,0 +1,116 @@
+package com.sportsapp.infrastructure.notification
+
+import com.sportsapp.BaseNotificationIntegrationTest
+import com.sportsapp.domain.notification.Notification
+import com.sportsapp.domain.notification.NotificationChannel
+import com.sportsapp.domain.notification.NotificationPayload
+import com.sportsapp.domain.notification.NotificationRepository
+import com.sportsapp.domain.notification.NotificationStatus
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.orm.ObjectOptimisticLockingFailureException
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
+import java.util.UUID
+
+class NotificationRepositoryImplTest(
+    @Autowired private val notificationRepository: NotificationRepository,
+    @Autowired private val notificationJpaRepository: NotificationJpaRepository,
+) : BaseNotificationIntegrationTest() {
+
+    init {
+        Given("평탄 키-값 구조를 가진 Notification") {
+            val payload = NotificationPayload(
+                mapOf(
+                    "title" to "테스트 알림",
+                    "body" to "내용입니다",
+                    "matchId" to "42",
+                )
+            )
+            val notification = Notification.queue(
+                userId = 100L,
+                channel = NotificationChannel.IN_APP,
+                templateId = "flat-${UUID.randomUUID()}",
+                payload = payload,
+            )
+
+            When("저장 후 조회하면") {
+                val saved = notificationJpaRepository.saveAndFlush(notification)
+                val found = notificationRepository.findById(saved.id)
+
+                Then("[R-01] payload 가 동일한 키-값으로 역직렬화된다") {
+                    found.shouldNotBeNull()
+                    found.payload.data["title"] shouldBe "테스트 알림"
+                    found.payload.data["body"] shouldBe "내용입니다"
+                    found.payload.data["matchId"] shouldBe "42"
+                }
+            }
+        }
+
+        Given("여러 상태의 Notification 이 저장된 경우") {
+            val userId = System.nanoTime()
+            val queuedNotification1 = Notification.queue(
+                userId = userId,
+                channel = NotificationChannel.IN_APP,
+                templateId = "queued-1-${UUID.randomUUID()}",
+                payload = null,
+            )
+            val queuedNotification2 = Notification.queue(
+                userId = userId,
+                channel = NotificationChannel.PUSH,
+                templateId = "queued-2-${UUID.randomUUID()}",
+                payload = null,
+            )
+            val sentNotification = Notification(
+                userId = userId,
+                channel = NotificationChannel.IN_APP,
+                templateId = "sent-1-${UUID.randomUUID()}",
+                payload = NotificationPayload(emptyMap()),
+                status = NotificationStatus.SENT,
+                sentAt = ZonedDateTime.now(ZoneOffset.UTC),
+            )
+
+            When("(userId, QUEUED) 조건으로 조회하면") {
+                notificationJpaRepository.saveAndFlush(queuedNotification1)
+                notificationJpaRepository.saveAndFlush(queuedNotification2)
+                notificationJpaRepository.saveAndFlush(sentNotification)
+                val result = notificationRepository.findByUserIdAndStatus(userId, NotificationStatus.QUEUED)
+
+                Then("[R-02] QUEUED 상태인 2건만 반환된다") {
+                    result shouldHaveSize 2
+                    result.all { it.status == NotificationStatus.QUEUED } shouldBe true
+                    result.all { it.userId == userId } shouldBe true
+                }
+            }
+        }
+
+        Given("저장된 Notification 에 대해 낙관락이 활성화된 경우") {
+            val saved = notificationJpaRepository.saveAndFlush(
+                Notification.queue(
+                    userId = 300L,
+                    channel = NotificationChannel.IN_APP,
+                    templateId = "optimistic-lock-${UUID.randomUUID()}",
+                    payload = null,
+                )
+            )
+
+            When("같은 version 의 entity 를 두 번 save 하면") {
+                val first = requireNotNull(notificationRepository.findById(saved.id))
+                val second = requireNotNull(notificationRepository.findById(saved.id))
+
+                first.markSent()
+                notificationJpaRepository.saveAndFlush(first)
+
+                Then("[R-03] 후행 커밋이 ObjectOptimisticLockingFailureException 을 던진다") {
+                    second.markSent()
+                    shouldThrow<ObjectOptimisticLockingFailureException> {
+                        notificationJpaRepository.saveAndFlush(second)
+                    }
+                }
+            }
+        }
+    }
+}

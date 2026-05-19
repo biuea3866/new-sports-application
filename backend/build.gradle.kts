@@ -54,6 +54,9 @@ dependencies {
     // Redis
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
 
+    // JSON Column
+    implementation("io.hypersistence:hypersistence-utils-hibernate-63:3.9.0")
+
     // Kotlin
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
