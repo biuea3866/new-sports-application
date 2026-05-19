@@ -1,19 +1,25 @@
-# [MESSAGE-01] Room·Message Mongo 컬렉션 + 도메인 (분리 모델)
+# [MESSAGE-01] Room·Message 도메인 (MySQL + JPA 단일 모델)
 
 ## 작업 내용 (설계 의도)
 
 ### 변경 사항
 
-`domain.message` 패키지에 `Room`, `Message`, `RoomRepository`, `MessageRepository`를 정의한다. 레거시는 Room에 messages 임베드였지만 본 PRD에서는 별도 컬렉션 분리 (16MB 한계 및 메시지 폭주 대응).
+> **DB 결정 변경 (2026-05-20)**: 당초 MongoDB 였으나 Room 은 고정 스키마(참여자·이름), Message 는 읽음/전달 상태 일관성이 핵심이라 **MySQL + JPA 로 통합**한다. Mongo 는 Facility 만 사용. `be-code-convention.md` 단일 모델 + `JpaAuditingBase` 상속.
 
-`Room`: `id`, `name`(nullable for 1:1), `participantIds[]`(MySQL User.id 리스트), `createdAt`, `lastMessageAt`(인덱스).
-`Message`: `id`, `roomId`, `senderId`, `content`, `sentAt`(ZonedDateTime).
+`domain.message` 패키지에 `Room`, `Message`, `RoomRepository`, `MessageRepository` 를 **JPA `@Entity`(= 도메인 Entity, 단일 모델)** 로 정의한다.
 
-인덱스:
-- rooms: `participantIds`, `lastMessageAt desc`.
-- messages: `(roomId, sentAt desc)`.
+`Room`: `id`(PK), `name`(nullable for 1:1), `lastMessageAt`, audit 6컬럼.
+`RoomParticipant`: **@ManyToMany 금지 → 매핑 Entity 로 풀어쓰기**. `id`(PK), `roomId`, `userId`(User.id FK 컬럼), audit 6컬럼. `UNIQUE(room_id, user_id, deleted_at)`.
+`Message`: `id`(PK), `roomId`(FK 컬럼), `senderId`, `content`(TEXT), `sentAt`(ZonedDateTime), audit 6컬럼.
 
-`Room.addParticipant`, `Room.removeParticipant`, `Room.lastMessageBumpedTo(sentAt)` Entity 메서드.
+> Room–Message–RoomParticipant 는 FK id 만 보유 (연관객체 금지). 참여자 목록은 `RoomParticipantRepository.findActiveByRoomId(roomId)` 명시 쿼리.
+
+인덱스 (V*__create_rooms_messages.sql, DATETIME(6)/FK·ENUM 금지):
+- rooms: `idx_rooms_last_message_at(last_message_at)`.
+- room_participants: `idx_rp_user_id(user_id)`, `idx_rp_room_id(room_id)`, `UNIQUE(room_id, user_id, deleted_at)`.
+- messages: `idx_messages_room_id_sent_at(room_id, sent_at)`.
+
+`Room.lastMessageBumpedTo(sentAt)`, `RoomParticipant` 추가/soft-delete 는 `RoomDomainService` 가 매핑 Entity 로 처리.
 
 ## 다이어그램
 
