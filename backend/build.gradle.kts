@@ -75,3 +75,58 @@ tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
         txt.required.set(false)
     }
 }
+
+// -------- harness-rules 정적 패턴 검증 --------
+// detekt 의 ForbiddenImport 와 별개로, 행 단위 정규식 패턴을 강제합니다.
+// 위반 시 빌드 실패 (severity: error). 새 위반 패턴은 forbidden 목록에 추가합니다.
+val harnessCheck by tasks.registering {
+    description = "Harness rules: forbid @Query, LocalDateTime, ConsumerRecord<String,String>, !! 연산자"
+    group = "verification"
+
+    val sourceDir = file("src")
+    val reportFile = layout.buildDirectory.file("reports/harness/harness-check.txt").get().asFile
+    val projectDirPath = projectDir
+
+    inputs.dir(sourceDir)
+    outputs.file(reportFile)
+
+    doLast {
+        val forbidden: List<Triple<String, Regex, String>> = listOf(
+            Triple("no-jpa-query", Regex("""@Query\s*\("""), "QueryDSL CustomRepository 패턴을 사용합니다."),
+            Triple("no-local-datetime", Regex("""\bLocalDate(Time)?\b"""), "ZonedDateTime / Instant 를 사용합니다."),
+            Triple("no-consumer-record-raw", Regex("""ConsumerRecord<\s*String\s*,\s*String\s*>"""), "DTO + JsonDeserializer 로 매핑합니다."),
+            Triple("no-non-null-assertion", Regex("""(?<!!)!!(?!=)"""), "requireNotNull / ?: / ?.let 으로 대체합니다."),
+        )
+
+        val violations = mutableListOf<String>()
+        if (sourceDir.exists()) {
+            sourceDir.walkTopDown().forEach { f ->
+                if (!f.isFile || f.extension != "kt") return@forEach
+                if (f.absolutePath.contains("${File.separator}build${File.separator}")) return@forEach
+                f.readLines().forEachIndexed { idx, raw ->
+                    val trimmed = raw.trimStart()
+                    if (trimmed.startsWith("//") || trimmed.startsWith("*") || trimmed.startsWith("/*")) return@forEachIndexed
+                    forbidden.forEach { rule ->
+                        if (rule.second.containsMatchIn(raw)) {
+                            violations += "${f.relativeTo(projectDirPath)}:${idx + 1}  [${rule.first}]  → ${rule.third}\n    ${raw.trim()}"
+                        }
+                    }
+                }
+            }
+        }
+
+        reportFile.parentFile.mkdirs()
+        if (violations.isEmpty()) {
+            reportFile.writeText("PASS — harness-rules 위반 0건\n")
+            logger.lifecycle("harnessCheck: PASS (0 violations)")
+        } else {
+            val message = "Harness rules 위반 ${violations.size}건:\n" + violations.joinToString("\n")
+            reportFile.writeText(message)
+            throw GradleException(message)
+        }
+    }
+}
+
+tasks.named("check") {
+    dependsOn(harnessCheck)
+}

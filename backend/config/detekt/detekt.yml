@@ -8,7 +8,9 @@ config:
 # ==========================================
 # Harness rules — 금지 패턴 (severity: error)
 # ==========================================
-# 패턴 기반 검사(no-jpa-query, no-local-datetime 등)는 grep 기반 검증 + ArchUnit으로 보강합니다.
+# 본 파일은 import / 단순 패턴 차단에 한정합니다.
+# 정규식 기반 행 단위 패턴(@Query, ConsumerRecord<String,String>, !! 등)은
+# build.gradle.kts 의 `harnessCheck` 태스크가 강제합니다.
 
 potential-bugs:
   active: true
@@ -22,6 +24,17 @@ style:
   MaxLineLength:
     active: true
     maxLineLength: 160
+  ForbiddenImport:
+    active: true
+    imports:
+      - value: 'java.time.LocalDateTime'
+        reason: 'LocalDateTime 금지 — ZonedDateTime / Instant 를 사용합니다.'
+      - value: 'java.time.LocalDate'
+        reason: 'LocalDate 도 ZonedDateTime 으로 통일합니다.'
+      - value: 'org.springframework.data.jpa.repository.Query'
+        reason: '@Query 금지 — QueryDSL CustomRepository 패턴을 사용합니다.'
+      - value: 'org.apache.kafka.clients.consumer.ConsumerRecord'
+        reason: 'ConsumerRecord<String,String> 금지 — DTO + JsonDeserializer 를 사용합니다.'
 
 complexity:
   active: true
