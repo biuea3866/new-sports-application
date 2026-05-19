@@ -58,7 +58,7 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
                         status { isNotFound() }
                         content { contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON) }
                         jsonPath("$.status") { value(404) }
-                        jsonPath("$.code") { value("RESOURCE_NOT_FOUND") }
+                        jsonPath("$.properties.code") { value("RESOURCE_NOT_FOUND") }
                         jsonPath("$.detail") { exists() }
                         jsonPath("$.type") { exists() }
                     }
@@ -75,7 +75,7 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
                         status { isUnprocessableEntity() }
                         content { contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON) }
                         jsonPath("$.status") { value(422) }
-                        jsonPath("$.code") { value("BUSINESS_RULE_VIOLATION") }
+                        jsonPath("$.properties.code") { value("BUSINESS_RULE_VIOLATION") }
                     }
                 }
             }
@@ -90,7 +90,7 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
                         status { isInternalServerError() }
                         content { contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON) }
                         jsonPath("$.status") { value(500) }
-                        jsonPath("$.code") { value("INTERNAL_ERROR") }
+                        jsonPath("$.properties.code") { value("INTERNAL_ERROR") }
                     }
                 }
             }
@@ -107,8 +107,8 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
                         status { isUnprocessableEntity() }
                         content { contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON) }
                         jsonPath("$.status") { value(422) }
-                        jsonPath("$.fieldErrors") { exists() }
-                        jsonPath("$.fieldErrors") { isArray() }
+                        jsonPath("$.properties.fieldErrors") { exists() }
+                        jsonPath("$.properties.fieldErrors") { isArray() }
                     }
                 }
             }

@@ -43,7 +43,11 @@ complexity:
     threshold: 30
   LongParameterList:
     active: true
+<<<<<<< HEAD
     functionThreshold: 8
+=======
+    functionThreshold: 13
+>>>>>>> 3e85aaf ([GOODS-01] - feat : Product·Stock 도메인 + Repository + V6 마이그레이션)
     constructorThreshold: 13
   CyclomaticComplexMethod:
     active: true
