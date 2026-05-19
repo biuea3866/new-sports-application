@@ -23,9 +23,10 @@ import java.util.UUID
 class KafkaOffsetPersistenceTest : BehaviorSpec({
 
     val kafkaContainer = KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.6.1"))
+        .withReuse(true)
 
     beforeSpec { kafkaContainer.start() }
-    afterSpec { kafkaContainer.stop() }
+    afterSpec { /* reuse — stop 은 testcontainers Ryuk 에 위임 */ }
 
     val topicName = "offset-persistence.v1"
     val groupId = "offset-test-${UUID.randomUUID()}"

@@ -3,6 +3,7 @@ package com.sportsapp.infrastructure.config
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.StringDeserializer
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -13,7 +14,7 @@ import org.springframework.kafka.support.serializer.JsonDeserializer
 
 @Configuration
 class KafkaConsumerConfig(
-    private val objectMapper: ObjectMapper,
+    @Qualifier("kafkaObjectMapper") private val objectMapper: ObjectMapper,
 ) {
 
     @Value("\${spring.kafka.bootstrap-servers}")
@@ -35,12 +36,12 @@ class KafkaConsumerConfig(
             jsonDeserializer.addTrustedPackages(pkg)
         }
 
+        // VALUE_DESERIALIZER_CLASS_CONFIG 는 생성자 3번째 인자 jsonDeserializer 가 덮어쓰므로 명시하지 않음
         val configProps = mapOf(
             ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG to bootstrapServers,
             ConsumerConfig.GROUP_ID_CONFIG to groupId,
             ConsumerConfig.AUTO_OFFSET_RESET_CONFIG to autoOffsetReset,
             ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG to StringDeserializer::class.java,
-            ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG to JsonDeserializer::class.java,
         )
 
         return DefaultKafkaConsumerFactory(configProps, StringDeserializer(), jsonDeserializer)

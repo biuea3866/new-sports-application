@@ -3,6 +3,7 @@ package com.sportsapp.infrastructure.config
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.StringSerializer
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -13,7 +14,7 @@ import org.springframework.kafka.support.serializer.JsonSerializer
 
 @Configuration
 class KafkaProducerConfig(
-    private val objectMapper: ObjectMapper,
+    @Qualifier("kafkaObjectMapper") private val objectMapper: ObjectMapper,
 ) {
 
     @Value("\${spring.kafka.bootstrap-servers}")
@@ -24,10 +25,10 @@ class KafkaProducerConfig(
 
     @Bean
     fun producerFactory(): ProducerFactory<String, Any> {
+        // VALUE_SERIALIZER_CLASS_CONFIG 는 setValueSerializer(인스턴스) 가 덮어쓰므로 명시하지 않음
         val configProps = mapOf(
             ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to bootstrapServers,
             ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to StringSerializer::class.java,
-            ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG to JsonSerializer::class.java,
             ProducerConfig.ACKS_CONFIG to acks,
             JsonSerializer.ADD_TYPE_INFO_HEADERS to false,
         )
