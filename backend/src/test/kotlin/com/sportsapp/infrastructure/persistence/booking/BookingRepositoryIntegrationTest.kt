@@ -1,7 +1,9 @@
 package com.sportsapp.infrastructure.persistence.booking
 
 import com.sportsapp.BaseIntegrationTest
+import com.sportsapp.domain.booking.Booking
 import com.sportsapp.domain.booking.BookingStatus
+import com.sportsapp.domain.booking.Slot
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
@@ -12,9 +14,8 @@ class BookingRepositoryIntegrationTest(
     @Autowired private val bookingJpaRepository: BookingJpaRepository,
 ) : BaseIntegrationTest() {
 
-    private fun createSlot(): SlotJpaEntity = slotJpaRepository.save(
-        SlotJpaEntity(
-            id = 0L,
+    private fun createSlot(): Slot = slotJpaRepository.save(
+        Slot.create(
             facilityId = "FAC-01",
             date = ZonedDateTime.now(),
             timeRange = "09:00-10:00",
@@ -22,17 +23,20 @@ class BookingRepositoryIntegrationTest(
         )
     )
 
-    private fun createBooking(slotId: Long, userId: Long, status: BookingStatus): BookingJpaEntity =
-        bookingJpaRepository.save(
-            BookingJpaEntity(
-                id = 0L,
-                userId = userId,
-                slotId = slotId,
-                status = status,
-                paymentId = null,
-                createdAt = ZonedDateTime.now(),
-            )
-        )
+    private fun createBooking(slotId: Long, userId: Long, status: BookingStatus): Booking {
+        val booking = Booking.createPending(userId = userId, slotId = slotId)
+        val saved = bookingJpaRepository.save(booking)
+        if (status != BookingStatus.PENDING) {
+            when (status) {
+                BookingStatus.CONFIRMED -> saved.confirm(paymentId = 0L)
+                BookingStatus.CANCELLED -> saved.cancel()
+                BookingStatus.EXPIRED -> saved.expire()
+                else -> Unit
+            }
+            return bookingJpaRepository.save(saved)
+        }
+        return saved
+    }
 
     init {
         afterEach {

@@ -1,17 +1,17 @@
 package com.sportsapp.infrastructure.audit
 
+import org.springframework.data.auditing.DateTimeProvider
+import org.springframework.stereotype.Component
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.temporal.TemporalAccessor
 import java.util.Optional
-import org.springframework.data.auditing.DateTimeProvider
-import org.springframework.stereotype.Component
 
 /**
- * JPA Auditing 에서 @CreatedDate / @LastModifiedDate 가 ZonedDateTime 에 채워지도록
- * UTC ZonedDateTime 을 반환하는 DateTimeProvider.
+ * JPA auditing (@CreatedDate / @LastModifiedDate) 에 ZonedDateTime(UTC) 을 제공한다.
  *
- * @EnableJpaAuditing(dateTimeProviderRef = "zonedDateTimeProvider") 로 등록.
+ * 기본 DateTimeProvider 는 타입 불일치를 유발하므로 ZonedDateTime 을 직접 반환한다.
+ * @EnableJpaAuditing(dateTimeProviderRef = "zonedDateTimeProvider") 에 연결한다.
  */
 @Component("zonedDateTimeProvider")
 class ZonedDateTimeProvider : DateTimeProvider {

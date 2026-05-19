@@ -3,6 +3,7 @@ package com.sportsapp.infrastructure.persistence.booking
 import com.sportsapp.domain.booking.Booking
 import com.sportsapp.domain.booking.BookingRepository
 import com.sportsapp.domain.booking.BookingStatus
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Repository
 import java.time.ZonedDateTime
 
@@ -12,13 +13,13 @@ class BookingRepositoryImpl(
 ) : BookingRepository {
 
     override fun save(booking: Booking): Booking =
-        bookingJpaRepository.save(BookingJpaEntity.fromDomain(booking)).toDomain()
+        bookingJpaRepository.save(booking)
 
     override fun findById(id: Long): Booking? =
-        bookingJpaRepository.findById(id).orElse(null)?.toDomain()
+        bookingJpaRepository.findByIdOrNull(id)
 
     override fun findByUserIdAndStatus(userId: Long, status: BookingStatus): List<Booking> =
-        bookingJpaRepository.findAllByUserIdAndStatus(userId, status).map { it.toDomain() }
+        bookingJpaRepository.findAllByUserIdAndStatus(userId, status)
 
     override fun findByUserIdAndStatusAndDateRange(
         userId: Long,
@@ -27,5 +28,4 @@ class BookingRepositoryImpl(
         to: ZonedDateTime?,
     ): List<Booking> =
         bookingJpaRepository.findByUserIdAndStatusAndDateRange(userId, status, from, to)
-                            .map { it.toDomain() }
 }

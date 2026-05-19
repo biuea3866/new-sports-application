@@ -1,8 +1,9 @@
 package com.sportsapp.infrastructure.persistence.booking
 
 import com.querydsl.jpa.impl.JPAQueryFactory
+import com.sportsapp.domain.booking.Booking
 import com.sportsapp.domain.booking.BookingStatus
-import com.sportsapp.infrastructure.persistence.booking.QBookingJpaEntity.bookingJpaEntity
+import com.sportsapp.domain.booking.QBooking.booking
 import jakarta.persistence.EntityManager
 import jakarta.persistence.PersistenceContext
 import java.time.ZonedDateTime
@@ -20,13 +21,13 @@ class BookingJpaRepositoryImpl : BookingQueryDslRepository {
         status: BookingStatus?,
         from: ZonedDateTime?,
         to: ZonedDateTime?,
-    ): List<BookingJpaEntity> {
-        return queryFactory.selectFrom(bookingJpaEntity)
+    ): List<Booking> {
+        return queryFactory.selectFrom(booking)
                            .where(
-                               bookingJpaEntity.userId.eq(userId),
-                               status?.let { bookingJpaEntity.status.eq(it) },
-                               from?.let { bookingJpaEntity.createdAt.goe(it) },
-                               to?.let { bookingJpaEntity.createdAt.loe(it) },
+                               booking.userId.eq(userId),
+                               status?.let { booking.status.eq(it) },
+                               from?.let { booking.createdAt.goe(it) },
+                               to?.let { booking.createdAt.loe(it) },
                            )
                            .fetch()
     }

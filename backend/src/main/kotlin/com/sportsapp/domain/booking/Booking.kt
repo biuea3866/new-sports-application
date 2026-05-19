@@ -1,15 +1,42 @@
 package com.sportsapp.domain.booking
 
-import java.time.ZonedDateTime
+import com.sportsapp.domain.common.JpaAuditingBase
+import jakarta.persistence.Column
+import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
+import jakarta.persistence.GeneratedValue
+import jakarta.persistence.GenerationType
+import jakarta.persistence.Id
+import jakarta.persistence.Table
 
-class Booking private constructor(
-    val id: Long,
+@Entity
+@Table(name = "bookings")
+class Booking(
+    @Column(name = "user_id", nullable = false)
     val userId: Long,
+
+    @Column(name = "slot_id", nullable = false)
     val slotId: Long,
-    var status: BookingStatus,
-    var paymentId: Long?,
-    val createdAt: ZonedDateTime,
-) {
+
+    initialStatus: BookingStatus,
+    initialPaymentId: Long?,
+) : JpaAuditingBase() {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    val id: Long = 0
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    var status: BookingStatus = initialStatus
+        private set
+
+    @Column(name = "payment_id", nullable = true)
+    var paymentId: Long? = initialPaymentId
+        private set
+
     fun confirm(paymentId: Long) {
         if (status == BookingStatus.CONFIRMED) {
             return
@@ -39,30 +66,11 @@ class Booking private constructor(
         fun createPending(
             userId: Long,
             slotId: Long,
-            createdAt: ZonedDateTime,
         ): Booking = Booking(
-            id = 0L,
             userId = userId,
             slotId = slotId,
-            status = BookingStatus.PENDING,
-            paymentId = null,
-            createdAt = createdAt,
-        )
-
-        fun reconstruct(
-            id: Long,
-            userId: Long,
-            slotId: Long,
-            status: BookingStatus,
-            paymentId: Long?,
-            createdAt: ZonedDateTime,
-        ): Booking = Booking(
-            id = id,
-            userId = userId,
-            slotId = slotId,
-            status = status,
-            paymentId = paymentId,
-            createdAt = createdAt,
+            initialStatus = BookingStatus.PENDING,
+            initialPaymentId = null,
         )
     }
 }

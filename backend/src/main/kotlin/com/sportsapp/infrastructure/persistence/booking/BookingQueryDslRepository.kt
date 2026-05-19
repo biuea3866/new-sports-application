@@ -1,12 +1,14 @@
 package com.sportsapp.infrastructure.persistence.booking
 
+import com.sportsapp.domain.booking.Booking
+import com.sportsapp.domain.booking.BookingStatus
 import java.time.ZonedDateTime
 
 interface BookingQueryDslRepository {
     fun findByUserIdAndStatusAndDateRange(
         userId: Long,
-        status: com.sportsapp.domain.booking.BookingStatus?,
+        status: BookingStatus?,
         from: ZonedDateTime?,
         to: ZonedDateTime?,
-    ): List<BookingJpaEntity>
+    ): List<Booking>
 }

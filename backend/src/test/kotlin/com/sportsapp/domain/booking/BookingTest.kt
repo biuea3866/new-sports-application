@@ -12,7 +12,6 @@ class BookingTest : BehaviorSpec({
         val booking = Booking.createPending(
             userId = 1L,
             slotId = 10L,
-            createdAt = ZonedDateTime.now(),
         )
 
         Then("[U-01] status=PENDING, paymentId=null로 생성된다") {
@@ -31,14 +30,8 @@ class BookingTest : BehaviorSpec({
     }
 
     Given("CANCELLED 상태의 Booking") {
-        val booking = Booking.reconstruct(
-            id = 1L,
-            userId = 1L,
-            slotId = 10L,
-            status = BookingStatus.CANCELLED,
-            paymentId = null,
-            createdAt = ZonedDateTime.now(),
-        )
+        val booking = Booking.createPending(userId = 1L, slotId = 10L)
+        booking.cancel()
 
         When("confirm을 호출하면") {
             Then("[U-03] InvalidBookingStateException을 던진다") {
