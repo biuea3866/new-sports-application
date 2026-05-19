@@ -10,6 +10,7 @@ pluginManagement {
         kotlin("jvm") version kotlinVersion
         kotlin("plugin.spring") version kotlinVersion
         kotlin("plugin.jpa") version kotlinVersion
+        kotlin("kapt") version kotlinVersion
         id("io.gitlab.arturbosch.detekt") version "1.23.6"
     }
 }

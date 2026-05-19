@@ -1,0 +1,2 @@
+-- V1: empty baseline
+-- Domain tables will be added by subsequent tickets (AUTH-01, BOOKING-01, etc.)
