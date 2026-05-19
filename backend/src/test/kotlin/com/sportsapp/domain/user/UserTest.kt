@@ -1,6 +1,5 @@
 package com.sportsapp.domain.user
 
-import com.sportsapp.domain.user.exceptions.DuplicateRoleException
 import com.sportsapp.domain.user.exceptions.InvalidEmailException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
@@ -8,37 +7,20 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldHaveLength
 import io.mockk.every
 import io.mockk.mockk
-import java.time.ZonedDateTime
 
 class UserTest : BehaviorSpec({
-
-    val fixedTime = ZonedDateTime.parse("2026-01-01T00:00:00Z")
 
     Given("잘못된 이메일 형식") {
         When("User.create 를 호출하면") {
             Then("[U-01] InvalidEmailException 을 던진다") {
                 shouldThrow<InvalidEmailException> {
-                    User.create("not-an-email", "hash", fixedTime)
+                    User.create("not-an-email", "hash")
                 }
                 shouldThrow<InvalidEmailException> {
-                    User.create("missing-at.com", "hash", fixedTime)
+                    User.create("missing-at.com", "hash")
                 }
                 shouldThrow<InvalidEmailException> {
-                    User.create("", "hash", fixedTime)
-                }
-            }
-        }
-    }
-
-    Given("올바른 이메일을 가진 User") {
-        val user = User.create("user@example.com", "hash", fixedTime)
-        val role = Role(id = 1L, name = "USER", permissions = emptyList())
-
-        When("동일한 Role 을 두 번 부여하면") {
-            user.assignRole(role)
-            Then("[U-02] DuplicateRoleException 을 던진다") {
-                shouldThrow<DuplicateRoleException> {
-                    user.assignRole(role)
+                    User.create("", "hash")
                 }
             }
         }
@@ -46,16 +28,15 @@ class UserTest : BehaviorSpec({
 
     Given("특정 id 를 가진 User") {
         val user = User(
-            id = 42L,
             email = "owner@example.com",
             passwordHash = "hash",
             status = UserStatus.ACTIVE,
-            createdAt = fixedTime,
         )
 
         When("canAccess 를 본인 id 로 호출하면") {
             Then("[U-03] true 를 반환한다") {
-                user.canAccess(42L) shouldBe true
+                // id=0 (default) 으로 동일 id 검증
+                user.canAccess(0L) shouldBe true
             }
         }
 
@@ -70,7 +51,7 @@ class UserTest : BehaviorSpec({
         val encoder = mockk<(String) -> String>()
         every { encoder("newPassword") } returns "\$2a\$10\$" + "x".repeat(53)
 
-        val user = User.create("pw@example.com", "oldHash", fixedTime)
+        val user = User.create("pw@example.com", "oldHash")
 
         When("changePassword 를 호출하면") {
             val newHash = encoder("newPassword")

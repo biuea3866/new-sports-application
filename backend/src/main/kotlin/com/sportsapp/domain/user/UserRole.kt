@@ -9,10 +9,12 @@ import jakarta.persistence.Id
 import jakarta.persistence.Table
 
 @Entity
-@Table(name = "permissions")
-class Permission(
-    @Column(nullable = false, unique = true, length = 100)
-    val name: String,
+@Table(name = "user_roles")
+class UserRole(
+    @Column(name = "user_id", nullable = false)
+    val userId: Long,
+    @Column(name = "role_id", nullable = false)
+    val roleId: Long,
 ) : JpaAuditingBase() {
 
     @Id

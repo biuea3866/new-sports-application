@@ -1,8 +1,9 @@
 package com.sportsapp.infrastructure.persistence.user
 
+import com.sportsapp.domain.user.Role
 import org.springframework.data.jpa.repository.JpaRepository
-import java.util.Optional
 
-interface RoleJpaRepository : JpaRepository<RoleJpaEntity, Long> {
-    fun findByName(name: String): Optional<RoleJpaEntity>
+interface RoleJpaRepository : JpaRepository<Role, Long> {
+    fun findByNameAndDeletedAtIsNull(name: String): Role?
+    fun findAllByDeletedAtIsNull(): List<Role>
 }

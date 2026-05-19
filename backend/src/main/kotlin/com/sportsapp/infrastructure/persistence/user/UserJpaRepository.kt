@@ -1,8 +1,10 @@
 package com.sportsapp.infrastructure.persistence.user
 
+import com.sportsapp.domain.user.User
 import org.springframework.data.jpa.repository.JpaRepository
-import java.util.Optional
 
-interface UserJpaRepository : JpaRepository<UserJpaEntity, Long> {
-    fun findByEmail(email: String): Optional<UserJpaEntity>
+interface UserJpaRepository : JpaRepository<User, Long> {
+    fun findByEmail(email: String): User?
+    fun findByEmailAndDeletedAtIsNull(email: String): User?
+    fun findByIdAndDeletedAtIsNull(id: Long): User?
 }

@@ -12,11 +12,11 @@ class UserRegisterScenarioTest(
     init {
         Given("신규 가입 요청") {
             When("UserDomainService.register 를 호출하면") {
-                Then("[S-01] 기본 USER Role 이 자동 부여되어 findByIdWithRoles 조회 시 Role 1건이 포함된다") {
+                Then("[S-01] 기본 USER Role 이 자동 부여되어 getRolesForUser 조회 시 Role 1건이 포함된다") {
                     val user = userDomainService.register("scenario@example.com", "hashedPassword")
-                    val loaded = userDomainService.findByIdWithRoles(user.id)
-                    loaded.getRoles().size shouldBe 1
-                    loaded.getRoles().first().name shouldBe "USER"
+                    val roles = userDomainService.getRolesForUser(user.id)
+                    roles.size shouldBe 1
+                    roles.first().name shouldBe "USER"
                 }
             }
         }
