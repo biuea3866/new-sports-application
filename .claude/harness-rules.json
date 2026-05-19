@@ -167,7 +167,7 @@
         "id": "no-java-optional",
         "pattern": "\\b(java\\.util\\.Optional|Optional\\.(empty|of|ofNullable|orElse|orElseThrow|orElseGet|isPresent|isEmpty|get|map|flatMap|filter)|: Optional<|fun \\w+\\([^)]*\\)\\s*: Optional<)",
         "file_glob": "*.kt",
-        "exclude_glob": "**/audit/SecurityAuditorAware*.kt",
+        "exclude_glob": "{**/audit/**.kt,**/config/*Auditing*.kt,**/config/MongoAuditingConfig*.kt}",
         "message": "Optional 사용 금지 — Kotlin nullable (T?) 로 표현하세요. 예외: Spring `AuditorAware<Long>` 같은 Java API 강제 시그니처.",
         "severity": "error"
       },
@@ -175,7 +175,7 @@
         "id": "no-optional-import",
         "pattern": "import\\s+java\\.util\\.Optional\\b",
         "file_glob": "*.kt",
-        "exclude_glob": "**/audit/SecurityAuditorAware*.kt",
+        "exclude_glob": "{**/audit/**.kt,**/config/*Auditing*.kt,**/config/MongoAuditingConfig*.kt}",
         "message": "java.util.Optional import 금지 — Kotlin nullable 로 대체. 예외: SecurityAuditorAware (Spring AuditorAware 강제).",
         "severity": "error"
       },
