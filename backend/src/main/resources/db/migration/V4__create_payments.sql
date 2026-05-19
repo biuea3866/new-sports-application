@@ -1,0 +1,19 @@
+CREATE TABLE payments (
+    id              BIGINT          NOT NULL AUTO_INCREMENT,
+    user_id         BIGINT          NOT NULL,
+    idempotency_key VARCHAR(100)    NOT NULL,
+    order_type      VARCHAR(20)     NOT NULL,
+    order_id        BIGINT          NOT NULL,
+    method          VARCHAR(30)     NOT NULL,
+    amount          DECIMAL(15, 2)  NOT NULL,
+    currency        VARCHAR(3)      NOT NULL,
+    status          VARCHAR(20)     NOT NULL,
+    created_at      DATETIME(6)     NOT NULL,
+    paid_at         DATETIME(6)     NULL,
+    failure_reason  VARCHAR(500)    NULL,
+
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_payments_idempotency_key (idempotency_key),
+    INDEX idx_payments_user_id (user_id),
+    INDEX idx_payments_status (status)
+);
