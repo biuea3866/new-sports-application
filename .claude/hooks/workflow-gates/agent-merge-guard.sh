@@ -19,6 +19,24 @@ if [ -z "$INPUT" ]; then
   exit 0
 fi
 
+SUBAGENT=$(printf '%s' "$INPUT" | python3 -c "
+import json, sys
+try:
+    d = json.load(sys.stdin)
+    print(d.get('tool_input', {}).get('subagent_type', ''))
+except Exception:
+    pass
+" 2>/dev/null || echo "")
+
+# 머지 권한은 구현 서브에이전트에만 차단한다.
+# reviewer/research 류는 prompt 에 'gh pr merge' 가 설명 목적으로 들어갈 수 있으므로 제외.
+case "$SUBAGENT" in
+  *implementer*|*tdd-implement*|kotlin-spring-impl*|be-implementer*|fe-implementer*)
+    : ;;  # 검사 대상
+  *)
+    exit 0 ;;  # reviewer/explore/general 등 — 통과
+esac
+
 PROMPT=$(printf '%s' "$INPUT" | python3 -c "
 import json, sys
 try:
@@ -33,7 +51,8 @@ if [ -z "$PROMPT" ]; then
   exit 0
 fi
 
-# 금지 패턴
+# 금지 패턴 — 구현 서브에이전트는 prompt 에 머지 명령이 어떤 형태로든 포함되면 차단.
+# (reviewer/explore 류는 위 case 에서 이미 제외됐으므로 설명용 문자열 오검출 없음)
 BLOCK_PATTERN='gh[[:space:]]+pr[[:space:]]+merge|gh[[:space:]]+api[[:space:]]+.+/merge|git[[:space:]]+merge[[:space:]]+--ff-only[[:space:]]+(dev|main|master)'
 
 if echo "$PROMPT" | grep -qE "$BLOCK_PATTERN"; then
