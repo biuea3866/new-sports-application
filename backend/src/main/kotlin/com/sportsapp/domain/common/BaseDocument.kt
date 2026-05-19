@@ -18,7 +18,7 @@ import org.springframework.data.annotation.LastModifiedDate
 abstract class BaseDocument {
 
     @CreatedDate
-    var createdAt: ZonedDateTime = ZonedDateTime.now()
+    lateinit var createdAt: ZonedDateTime
         protected set
 
     @CreatedBy
@@ -26,7 +26,7 @@ abstract class BaseDocument {
         protected set
 
     @LastModifiedDate
-    var updatedAt: ZonedDateTime = ZonedDateTime.now()
+    lateinit var updatedAt: ZonedDateTime
         protected set
 
     @LastModifiedBy

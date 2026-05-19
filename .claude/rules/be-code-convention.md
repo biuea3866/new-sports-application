@@ -209,7 +209,7 @@ class Product(...) {
 
 ### JpaAuditingBase (JPA, @MappedSuperclass)
 
-> 클래스 이름이 `*Entity*` 패턴이 아닌 `JpaAuditingBase` 인 이유: `no-default-constructor-values` 룰(`*Entity*.kt` glob)이 `lateinit var` 와 audit 인프라의 placeholder 와 충돌하기 때문. 도메인 Entity 들은 `class UserEntity : JpaAuditingBase()` 형태로 상속.
+> 베이스 클래스 이름이 `*Entity*` 패턴이 아닌 `JpaAuditingBase` 인 이유: `no-default-constructor-values` 룰(`*Entity*.kt` glob)이 `lateinit var` 와 audit 인프라 placeholder 와 충돌하기 때문. 도메인 Entity 는 **`Entity` 접미사 없이** 도메인명 그대로 작성하고 베이스를 상속한다 — `class User : JpaAuditingBase()`, `class Product : JpaAuditingBase()` (네이밍 컨벤션 테이블과 일치).
 
 ```kotlin
 @MappedSuperclass

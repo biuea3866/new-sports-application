@@ -131,18 +131,19 @@
       },
       {
         "id": "no-hard-delete-repository",
-        "pattern": "\\b(Repository|JpaRepository|MongoRepository)\\b.*\\.(delete|deleteById|deleteAll|deleteAllById)\\b",
+        "pattern": "(?:Repository|JpaRepository|MongoRepository)\\b\\s*\\.(delete|deleteById|deleteAll|deleteAllById)\\b",
         "file_glob": "*.kt",
         "exclude_glob": "*Admin*",
         "message": "Repository hard delete 금지 — Entity.softDelete(userId) 호출 후 save 하세요. 법무/감사 사유의 영구 삭제는 *Admin* 패턴 이름의 UseCase 에서만 허용.",
-        "severity": "error"
+        "severity": "error",
+        "note": "선행 \\b 제거 — camelCase 변수(rentalRepository.deleteById) 도 검출. suffix Repository\\b 로 식별자 경계 확보."
       },
       {
         "id": "no-sql-delete",
         "pattern": "(?i)\\bDELETE\\s+FROM\\b",
         "file_glob": "*.sql",
-        "exclude_glob": "**/migration/**Vremove**.sql",
-        "message": "SQL DELETE FROM 금지 — soft delete (UPDATE ... SET deleted_at = NOW(6)) 를 사용하세요. 데이터 마이그레이션의 cleanup 은 Vremove_* 마이그레이션 이름으로만 허용.",
+        "exclude_glob": "**/migration/**/V*__*remove*.sql",
+        "message": "SQL DELETE FROM 금지 — soft delete (UPDATE ... SET deleted_at = NOW(6)) 를 사용하세요. 데이터 cleanup 은 Flyway V{version}__..remove..sql 마이그레이션에서만 허용.",
         "severity": "error"
       },
       {
