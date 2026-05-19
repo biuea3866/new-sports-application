@@ -28,8 +28,10 @@ except Exception:
     pass
 " 2>/dev/null || echo "")
 
-# `gh pr merge` 패턴 추출 — PR 번호 옵션 또는 위치 인수
-if ! echo "$CMD" | grep -qE 'gh[[:space:]]+pr[[:space:]]+merge\b'; then
+# `gh pr merge` 가 실제 실행 명령으로 쓰인 경우만 검사.
+# 명령 시작 / 파이프·세미콜론·&& 뒤에 올 때만 인정 — 문자열 리터럴(python3 -c "... gh pr merge ...")
+# 이나 cat/grep 으로 hook 내용 출력 시의 임베드 문자열은 통과시켜 false-positive 차단.
+if ! echo "$CMD" | grep -qE '(^|[;&|]|&&[[:space:]]*|\|\|[[:space:]]*)[[:space:]]*gh[[:space:]]+pr[[:space:]]+merge\b'; then
   exit 0
 fi
 

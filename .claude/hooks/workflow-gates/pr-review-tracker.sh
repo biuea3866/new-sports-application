@@ -21,13 +21,12 @@ REVIEW_LOG="${CACHE_DIR}/pr-reviews.json"
 
 mkdir -p "$CACHE_DIR"
 
-python3 <<PYEOF
+REVIEW_LOG="$REVIEW_LOG" HOOK_INPUT="$INPUT" python3 <<'PYEOF'
 import json, re, sys, os, datetime
 
-input_raw = '''$(printf '%s' "$INPUT" | python3 -c "import sys; print(sys.stdin.read().replace(chr(39), chr(39)+chr(92)+chr(39)+chr(39)))")'''
-
+# stdin/heredoc 이스케이프 취약성 회피 — 환경변수로 원본 JSON 전달
 try:
-    data = json.loads(input_raw)
+    data = json.loads(os.environ.get('HOOK_INPUT', '') or '{}')
 except Exception:
     sys.exit(0)
 
@@ -52,7 +51,7 @@ for m in re.finditer(r'\bPR\s+(\d+)\b', prompt, re.IGNORECASE):
 if not pr_nums:
     sys.exit(0)
 
-review_log = '${REVIEW_LOG}'
+review_log = os.environ['REVIEW_LOG']
 log_data = {}
 if os.path.exists(review_log):
     try:
