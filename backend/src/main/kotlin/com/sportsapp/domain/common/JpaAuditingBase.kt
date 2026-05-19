@@ -25,8 +25,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener
  * 본 클래스는 도메인 layer 가 JPA 어노테이션을 import 하는 유일한 예외다 — audit 인프라는
  * 전사 공통이므로 domain.common 에 둔다.
  *
- * 클래스 이름은 컨벤션상 `*Entity*` 패턴이 hard-default-value 룰에 걸리므로 의도적으로 회피.
- * 도메인 Entity 들은 `class XEntity : JpaAuditingBase()` 형태로 상속한다.
+ * 베이스 클래스 이름이 `*Entity*` 가 아닌 이유: no-default-constructor-values 룰(`*Entity*.kt` glob) 회피.
+ * 도메인 Entity 는 Entity 접미사 없이 `class User : JpaAuditingBase()`, `class Product : JpaAuditingBase()` 형태로 상속한다.
  */
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener::class)

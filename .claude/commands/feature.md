@@ -298,6 +298,19 @@ TPM 산출물의 **의존 그래프(DAG)**를 wave 스케줄러로 처리하여 
 - ready 셋 크기 상한 없음.
 - wave 안에 병목(후행 의존 카운트 ≥ 2인 티켓)이 있어도 wave를 쪼개지 않는다.
   병목은 wave 안에서 다른 티켓과 같이 스폰되며, 후행은 자동으로 다음 wave로 밀린다 (DAG가 보장).
+
+#### TPM 분해 실패 기준 (Wave 진입 전 검증)
+
+wave 진입 직전 `ready` 셋의 티켓들이 동일 파일을 수정할 예정이면 **TPM 분해 실패** 다.
+다음 wave 로 미루지 말고 **TPM 재분석**으로 돌아간다.
+
+| 신호 | 처리 |
+|------|------|
+| ready 안의 2개 이상 티켓이 `build.gradle.kts` / `application.yml` / 공통 설정 파일을 동시 수정 | 공통 변경을 별도 통합 티켓 (예: `INFRA-NN: 공통 인프라 의존성 일괄 추가`) 으로 추출 후 선행 wave에 단독 배치 |
+| ready 안의 2개 이상 티켓이 동일 Controller / Facade / SharedComponent 파일 수정 | 공통 와이어업 티켓을 후행 단독 wave 로 분리 (rules/ticket-guide.md "Single Writer per File" 참조) |
+| 충돌이 머지 단계에서 발견되면 | wave 안에서 즉시 해소. 재발 시 TPM 재분해 — 다음 wave 로 미루지 않음. |
+
+> 본 세션 사례: INFRA-02/03/04/05 가 모두 `backend/build.gradle.kts` + `application.yml` 수정 → wave 동시 진입 시 동일 build dir 공유 → 사실상 직렬화. 분해 단계에서 `INFRA-02b: 공통 인프라 deps 일괄 등록` 으로 추출했어야 함. (`docs/feedback-loop/sessions/2026-05-19-feature-pipeline-deviations.md` 참조)
 - **typealias 호환 layer 사용 금지** — 패키지 이전 티켓이라도 호출부 import를 같은 티켓 범위에서 모두 갱신한다. "다음 wave에서 typealias 제거" 약속 패턴 금지. 한 티켓의 작업 종료 시 구 패키지 디렉토리는 완전 제거되어야 한다.
 - **단순 디렉토리 이동만 하는 티켓 금지** — 패키지 이전 시 반드시 다음을 함께 수행:
   - Port 인터페이스 발견 시 제거 + Repository 직접 주입으로 전환
@@ -340,6 +353,41 @@ Wave 3: e               (단독, 1개 tool_use)
 8. ./gradlew detekt 통과
 9. git push (훅이 자동으로 테스트 + 셀프리뷰 수행)
    - 훅이 deny하면 → 지적된 Must Fix 항목 수정 후 재시도 (최대 3회)
+```
+
+### 서브에이전트 워크트리 격리 강제 (필수)
+
+isolation 실패는 wave 병렬성을 0으로 만든다. 모든 서브에이전트 prompt에 아래 4줄을 반드시 포함한다:
+
+```
+## Worktree 격리 (위반 시 hook 차단)
+- 당신은 isolated worktree (현재 $PWD) 안에서만 작업합니다.
+- DO NOT use `cd /Users/biuea/sports-application/...` 절대 경로 — main worktree 진입 금지.
+- DO NOT use `git -C /Users/biuea/sports-application/...` — 자기 worktree 외 경로에서 git 작업 금지.
+- 모든 명령은 $PWD 또는 상대 경로 기준 (cd backend, ./gradlew test). 절대 경로는 $PWD prefix.
+```
+
+→ `.claude/hooks/workflow-gates/worktree-isolation-guard.sh` 가 이 규약을 hook 으로 강제한다.
+
+### 모델 분기 (속도)
+
+| 역할 | 모델 |
+|------|------|
+| 메인 오케스트레이터 (이 세션) | opus 4.7 |
+| 서브에이전트 — implementer (be-implementer / fe-implementer) | sonnet 4.6 — Agent({ model: "sonnet", ... }) |
+| 서브에이전트 — reviewer (pr-reviewer) | sonnet 4.6 (또는 opus 시 cost-aware 판단) |
+
+opus 4.7 implementer 는 sonnet 4.6 대비 평균 3–4배 느림. 동시 wave 5건 이상이면 1 시간 vs 15 분 격차.
+
+### Testcontainers reuse (필수)
+
+`~/.testcontainers.properties` 에 `testcontainers.reuse.enable=true` 설정 + 각 컨테이너 선언에 `.withReuse(true)` 호출. 컨테이너 부팅 시간 80% 감소.
+
+```kotlin
+companion object {
+    @Container
+    val mongoContainer = MongoDBContainer("mongo:7").withReuse(true)
+}
 ```
 
 ---

@@ -261,10 +261,10 @@ abstract class JpaAuditingBase {
 ### BaseDocument (MongoDB)
 
 ```kotlin
-@EnableMongoAuditing  // 설정 한 번
+// 활성화: @SpringBootApplication 클래스에 @EnableMongoAuditing 명시 (추상 베이스에 붙이지 않는다)
 abstract class BaseDocument {
     @CreatedDate
-    var createdAt: ZonedDateTime = ZonedDateTime.now()
+    lateinit var createdAt: ZonedDateTime
         protected set
 
     @CreatedBy
@@ -272,7 +272,7 @@ abstract class BaseDocument {
         protected set
 
     @LastModifiedDate
-    var updatedAt: ZonedDateTime = ZonedDateTime.now()
+    lateinit var updatedAt: ZonedDateTime
         protected set
 
     @LastModifiedBy

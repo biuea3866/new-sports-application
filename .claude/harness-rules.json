@@ -131,7 +131,7 @@
       },
       {
         "id": "no-hard-delete-repository",
-        "pattern": "(?:Repository|JpaRepository|MongoRepository)\\b\\s*\\.(delete|deleteById|deleteAll|deleteAllById)\\b",
+        "pattern": "(?:Repository|JpaRepository|MongoRepository)\\b\\s*\\.(delete\\w*)\\b",
         "file_glob": "*.kt",
         "exclude_glob": "*Admin*",
         "message": "Repository hard delete 금지 — Entity.softDelete(userId) 호출 후 save 하세요. 법무/감사 사유의 영구 삭제는 *Admin* 패턴 이름의 UseCase 에서만 허용.",
@@ -537,5 +537,93 @@
         "message": "BLOCKED: HEAD:보호브랜치 형태 push 금지."
       }
     ]
+  },
+
+  "feature_pipeline": {
+    "_doc": "/feature 파이프라인 (.claude/commands/feature.md) 의 강제 조항을 hook 으로 실체화한 규약 정의. 본 섹션은 문서화 + 검증 룰의 SSOT.",
+
+    "wave_fanout": {
+      "rule": "한 wave 안의 모든 ready 티켓은 반드시 하나의 어시스턴트 메시지에 병렬 Agent tool_use 로 스폰한다.",
+      "rationale": "여러 메시지에 나눠 스폰하면 직렬화 — wave 스케줄러의 fan-out 면적이 0이 되고 wall-clock 시간이 ticket 수만큼 늘어난다.",
+      "enforced_by": ".claude/hooks/workflow-gates/wave-fanout-guard.sh (advisory warning)",
+      "violation_signal": ".feature-pipeline-state.json 에서 ready ≥ 2, inFlight = 0 인 상태에서 Agent tool_use 1개만 호출."
+    },
+
+    "wave_internal_conflict_resolution": {
+      "rule": "같은 wave 안의 두 PR 이 동일 파일을 수정해 머지 충돌이 발생하면 본 wave 안에서 해소한다. 다음 wave 로 미루지 않는다.",
+      "rationale": "충돌이 자주 발생하면 TPM 분해가 잘못된 것 — rules/ticket-guide.md '\"Single Writer per File\"' 원칙을 재검토.",
+      "violation_signal": "wave-completed 시점에 머지 안 된 PR 이 남아있고 사유가 '공유 파일 충돌' 이면 다음 세션으로 미룬 케이스.",
+      "remediation": "wave 안에서 충돌 해소 → rebase 또는 분해 재검토."
+    },
+
+    "pr_reviewer_mandatory": {
+      "rule": "각 PR 마다 pr-reviewer 서브에이전트 호출은 의무다. PR 생성 직후 즉시 호출하고 verdict 를 transcript 에 명시한 뒤에만 머지한다.",
+      "rationale": "리뷰 없는 머지는 harness-rules / 아키텍처 / 보안 위반을 dev 에 직접 흘려보낸다.",
+      "enforced_by": [
+        ".claude/hooks/workflow-gates/pr-review-tracker.sh (PostToolUse Agent — pr-reviewer 호출 기록)",
+        ".claude/hooks/workflow-gates/pr-review-gate.sh (PreToolUse Bash — 미기록 PR 의 gh pr merge 차단)"
+      ],
+      "violation_signal": ".claude/cache/pr-reviews.json#reviewedPrs 에 PR 번호가 없는데 gh pr merge <N> 호출."
+    },
+
+    "subagent_no_self_merge": {
+      "rule": "서브에이전트는 push + gh pr create 까지만 수행. gh pr merge / git merge --ff-only dev 는 메인 오케스트레이터의 책임.",
+      "rationale": "서브에이전트가 자체 머지하면 (a) pr-reviewer 게이트를 우회하고 (b) wave 통합 머지 순서가 깨지며 (c) 충돌 발생 시 메인이 개입할 기회가 사라진다.",
+      "enforced_by": ".claude/hooks/workflow-gates/agent-merge-guard.sh (PreToolUse Agent — prompt 본문에 gh pr merge 포함 시 deny)",
+      "violation_signal": "Agent prompt 에 gh pr merge / gh api .../merge / git merge --ff-only (dev|main|master) 패턴 포함."
+    },
+
+    "wave_state_invariant": {
+      "rule": ".feature-pipeline-state.json 의 ready/inFlight/completed 셋은 매 wave 진입·종료 시점에 갱신.",
+      "transitions": {
+        "wave_enter": "step:IMPLEMENTING, inFlight ← ready, ready ← [], currentWave++",
+        "wave_complete": "completed ← completed ∪ inFlight, inFlight ← [], DAG 로 새 ready 도출"
+      },
+      "violation_signal": "Agent tool_use 호출 직후에도 ready 가 비어있지 않거나, 모든 wave PR 머지 후에도 inFlight 가 비지 않은 채 다음 Agent 호출 발생."
+    },
+
+    "completion_audit": {
+      "rule": "모든 wave 완료 후 반드시 claude-framework:harness-auditor 호출. 5개 항목 0건 검증.",
+      "audit_items": [
+        "임시 패키지 (dev.*) 잔재",
+        "typealias 호환 layer (*TypeAliases.kt, *Compat.kt, *Aliases.kt)",
+        "Port 인터페이스 잔재 (*Port.kt / interface *Port)",
+        "UseCase 의 Repository/Gateway/DomainEventPublisher 직접 주입",
+        "Anemic Domain Model (getter/setter 만 있는 Entity)"
+      ],
+      "violation_signal": "5개 항목 중 1건이라도 검출되면 완료 보고 금지 — fix 티켓 추가 wave 처리 후 재감사."
+    },
+
+    "worktree_isolation": {
+      "rule": "서브에이전트는 자기 isolated worktree (.claude/worktrees/agent-<id>/) 안에서만 작업한다. main worktree (/Users/biuea/sports-application) 절대 경로 cd / git -C / gradlew 직접 호출 금지.",
+      "rationale": "main worktree 진입 시 동일 build 디렉토리 + Gradle daemon 공유 → 같은 wave 의 다른 agent 와 직렬화 + race condition. wave fan-out 의 병렬 효과가 0이 된다.",
+      "enforced_by": ".claude/hooks/workflow-gates/worktree-isolation-guard.sh (PreToolUse Bash — CLAUDE_PROJECT_DIR 이 격리 worktree 일 때 main worktree 절대 경로 진입 차단)",
+      "violation_signal": "agent 컨텍스트에서 `cd /Users/biuea/sports-application` 또는 `git -C /Users/biuea/sports-application` 패턴 발생."
+    },
+
+    "tpm_decomposition_failure": {
+      "rule": "Wave 진입 전 ready 셋의 티켓들이 동일 파일을 수정할 예정이면 TPM 분해 실패 — 다음 wave 로 미루지 말고 TPM 재분해.",
+      "common_shared_files": [
+        "build.gradle.kts / pom.xml / Cargo.toml — 의존성 + plugin",
+        "application.yml / settings.toml — 외부 시스템 설정",
+        "Controller / Facade / Router — 공통 와이어업",
+        "schema.sql / migration 파일 — DB 스키마"
+      ],
+      "remediation": "공통 변경은 별도 통합 티켓 (예: 'INFRA-NN: 공통 인프라 의존성 일괄 추가') 으로 추출 → 선행 wave 에 단독 배치. 후행 도메인 티켓들은 자기 도메인 코드만 추가.",
+      "violation_signal": "같은 wave 머지 시 동일 파일 충돌이 반복 발생."
+    },
+
+    "subagent_model_split": {
+      "rule": "구현 서브에이전트(be-implementer / fe-implementer)는 sonnet 모델로 호출한다. opus 는 메인 오케스트레이터 한정.",
+      "rationale": "opus 4.7 implementer 는 sonnet 4.6 대비 평균 3–4 배 느림. wave 5건 이상이면 wall-clock 이 1 시간 vs 15 분 격차.",
+      "invocation_example": "Agent({ subagent_type: 'be-implementer', model: 'sonnet', isolation: 'worktree', prompt: '...' })",
+      "exception": "최고난도 디버깅 / 도메인 모델링이 필요한 단일 티켓은 opus 허용 — 결정은 사례별."
+    },
+
+    "testcontainers_reuse": {
+      "rule": "Testcontainers 사용 시 ~/.testcontainers.properties 에 testcontainers.reuse.enable=true 설정 + 각 컨테이너 선언에 .withReuse(true) 호출.",
+      "rationale": "MongoDB/Kafka/Redis 컨테이너 부팅이 30~60 초. reuse 활성 시 첫 실행 후 동일 컨테이너 재사용 → 부팅 80% 감소.",
+      "example": "@Container val mongo = MongoDBContainer(\"mongo:7\").withReuse(true)"
+    }
   }
 }
