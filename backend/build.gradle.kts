@@ -37,6 +37,11 @@ dependencies {
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-mysql")
 
+    // Kafka
+    implementation("org.springframework.kafka:spring-kafka")
+    testImplementation("org.springframework.kafka:spring-kafka-test")
+    testImplementation("org.testcontainers:kafka")
+
     // QueryDSL
     implementation("com.querydsl:querydsl-jpa:5.1.0:jakarta")
     kapt("com.querydsl:querydsl-apt:5.1.0:jakarta")
