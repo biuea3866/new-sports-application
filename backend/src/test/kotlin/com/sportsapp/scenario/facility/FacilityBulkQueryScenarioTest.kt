@@ -4,7 +4,6 @@ import com.sportsapp.BaseMongoIntegrationTest
 import com.sportsapp.domain.facility.Facility
 import com.sportsapp.domain.facility.FacilityAttributes
 import com.sportsapp.domain.facility.FacilityRepository
-import com.sportsapp.infrastructure.persistence.facility.FacilityMongoRepository
 import io.kotest.matchers.longs.shouldBeLessThan
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
@@ -13,7 +12,6 @@ import kotlin.system.measureTimeMillis
 
 class FacilityBulkQueryScenarioTest(
     @Autowired private val facilityRepository: FacilityRepository,
-    @Autowired private val facilityMongoRepository: FacilityMongoRepository,
     @Autowired private val mongoTemplate: MongoTemplate,
 ) : BaseMongoIntegrationTest() {
 
@@ -62,7 +60,7 @@ class FacilityBulkQueryScenarioTest(
             When("gu + type 복합 필터로 강남구 수영장을 조회하면") {
                 var resultSize: Int
                 val elapsedMs = measureTimeMillis {
-                    val result = facilityMongoRepository.findAllByGuAndTypeAndDeletedAtIsNull(targetGu, targetType)
+                    val result = facilityRepository.findAllByGuAndType(targetGu, targetType)
                     resultSize = result.size
                 }
                 Then("[S-01] 강남구 수영장 2000건이 반환되고 Testcontainers 환경 기준 1000ms 이하 기준이 충족된다") {
