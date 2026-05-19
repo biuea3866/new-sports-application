@@ -3,6 +3,9 @@ spring:
     mongodb:
       uri: ${MONGODB_URI:mongodb://localhost:27017/sports}
       auto-index-creation: true
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/sports?serverTimezone=UTC}
     username: ${DB_USERNAME:root}
@@ -24,6 +27,8 @@ spring:
 management:
   health:
     mongo:
+      enabled: false
+    redis:
       enabled: false
   endpoints:
     web:

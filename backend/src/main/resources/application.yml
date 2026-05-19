@@ -40,9 +40,6 @@ spring:
       acks: all
 
 management:
-  health:
-    redis:
-      enabled: false
   endpoints:
     web:
       exposure:
