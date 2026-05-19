@@ -191,6 +191,13 @@
         "file_glob": "*/infrastructure/persistence/**/*.kt",
         "message": "도메인↔영속화 POJO 매퍼 금지 — 단일 JPA Entity 모델이므로 toDomain/toEntity 변환 불필요. Repository 가 도메인 Entity 를 직접 반환.",
         "severity": "error"
+      },
+      {
+        "id": "no-many-to-many",
+        "pattern": "@ManyToMany\\b|@JoinTable\\b",
+        "file_glob": "*.kt",
+        "message": "@ManyToMany / @JoinTable 금지 — 매핑 테이블을 독립 Entity 로 풀어쓰세요 (자체 PK·audit·부여 컬럼). be-code-convention.md '@ManyToMany 금지 — 매핑 Entity 로 풀어쓰기' 참조.",
+        "severity": "error"
       }
     ]
   },
