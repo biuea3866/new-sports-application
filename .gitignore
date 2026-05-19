@@ -1,0 +1,62 @@
+# ===== 공통 =====
+.DS_Store
+*.log
+.idea/
+.vscode/
+*.swp
+*.bak
+
+# ===== 환경 변수 =====
+.env
+.env.local
+.env.*.local
+!.env.example
+!.env.local.example
+backend/.env*
+web/.env.local
+mobile/.env
+
+# ===== backend/ Kotlin/Gradle =====
+backend/.gradle/
+backend/build/
+backend/!gradle-wrapper.jar
+backend/out/
+backend/.kotlin/
+backend/bin/
+
+# ===== web/ Next.js =====
+web/node_modules/
+web/.next/
+web/out/
+web/build/
+web/dist/
+web/coverage/
+web/test-results/
+web/playwright-report/
+web/.turbo/
+web/.swc/
+web/next-env.d.ts
+
+# ===== mobile/ React Native + Expo =====
+mobile/node_modules/
+mobile/.expo/
+mobile/.expo-shared/
+mobile/dist/
+mobile/web-build/
+mobile/ios/build/
+mobile/ios/Pods/
+mobile/android/build/
+mobile/android/app/build/
+mobile/android/.gradle/
+mobile/coverage/
+
+# ===== Claude Code 런타임 =====
+.feature-pipeline-state.json
+
+# ===== Misc =====
+*.tsbuildinfo
+.npm/
+.yarn/
+.pnp.*
+yarn-error.log
+npm-debug.log*
