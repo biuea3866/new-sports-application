@@ -1,12 +1,14 @@
 package com.sportsapp.domain.notification
 
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class NotificationDomainService(
     private val notificationRepository: NotificationRepository,
     private val channelGateways: List<NotificationChannelGateway>,
 ) {
+    @Transactional
     fun send(
         userId: Long,
         channel: NotificationChannel,

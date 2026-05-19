@@ -18,6 +18,7 @@ abstract class BaseNotificationIntegrationTest : BehaviorSpec() {
             .withDatabaseName("sports")
             .withUsername("test")
             .withPassword("test")
+            .withReuse(true)
             .also { it.start() }
     }
 }

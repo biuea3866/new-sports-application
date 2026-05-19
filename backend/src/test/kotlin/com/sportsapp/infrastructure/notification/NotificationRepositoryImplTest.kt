@@ -6,15 +6,19 @@ import com.sportsapp.domain.notification.NotificationChannel
 import com.sportsapp.domain.notification.NotificationPayload
 import com.sportsapp.domain.notification.NotificationRepository
 import com.sportsapp.domain.notification.NotificationStatus
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.orm.ObjectOptimisticLockingFailureException
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
+import java.util.UUID
 
 class NotificationRepositoryImplTest(
     @Autowired private val notificationRepository: NotificationRepository,
+    @Autowired private val notificationJpaRepository: NotificationJpaRepository,
 ) : BaseNotificationIntegrationTest() {
 
     init {
@@ -29,12 +33,12 @@ class NotificationRepositoryImplTest(
             val notification = Notification.queue(
                 userId = 100L,
                 channel = NotificationChannel.IN_APP,
-                templateId = "flat-payload",
+                templateId = "flat-${UUID.randomUUID()}",
                 payload = payload,
             )
 
             When("저장 후 조회하면") {
-                val saved = notificationRepository.save(notification)
+                val saved = notificationJpaRepository.saveAndFlush(notification)
                 val found = notificationRepository.findById(saved.id)
 
                 Then("[R-01] payload 가 동일한 키-값으로 역직렬화된다") {
@@ -47,34 +51,32 @@ class NotificationRepositoryImplTest(
         }
 
         Given("여러 상태의 Notification 이 저장된 경우") {
-            val userId = 200L
+            val userId = System.nanoTime()
             val queuedNotification1 = Notification.queue(
                 userId = userId,
                 channel = NotificationChannel.IN_APP,
-                templateId = "queued-1",
+                templateId = "queued-1-${UUID.randomUUID()}",
                 payload = null,
             )
             val queuedNotification2 = Notification.queue(
                 userId = userId,
                 channel = NotificationChannel.PUSH,
-                templateId = "queued-2",
+                templateId = "queued-2-${UUID.randomUUID()}",
                 payload = null,
             )
             val sentNotification = Notification(
-                id = 0L,
                 userId = userId,
                 channel = NotificationChannel.IN_APP,
-                templateId = "sent-1",
+                templateId = "sent-1-${UUID.randomUUID()}",
                 payload = NotificationPayload(emptyMap()),
                 status = NotificationStatus.SENT,
                 sentAt = ZonedDateTime.now(ZoneOffset.UTC),
-                createdAt = ZonedDateTime.now(ZoneOffset.UTC),
             )
 
             When("(userId, QUEUED) 조건으로 조회하면") {
-                notificationRepository.save(queuedNotification1)
-                notificationRepository.save(queuedNotification2)
-                notificationRepository.save(sentNotification)
+                notificationJpaRepository.saveAndFlush(queuedNotification1)
+                notificationJpaRepository.saveAndFlush(queuedNotification2)
+                notificationJpaRepository.saveAndFlush(sentNotification)
                 val result = notificationRepository.findByUserIdAndStatus(userId, NotificationStatus.QUEUED)
 
                 Then("[R-02] QUEUED 상태인 2건만 반환된다") {
@@ -85,38 +87,28 @@ class NotificationRepositoryImplTest(
             }
         }
 
-        Given("동일 Notification 에 대해 markSent 가 동시에 호출되는 경우") {
-            val notification = notificationRepository.save(
+        Given("저장된 Notification 에 대해 낙관락이 활성화된 경우") {
+            val saved = notificationJpaRepository.saveAndFlush(
                 Notification.queue(
                     userId = 300L,
                     channel = NotificationChannel.IN_APP,
-                    templateId = "concurrent-test",
+                    templateId = "optimistic-lock-${UUID.randomUUID()}",
                     payload = null,
                 )
             )
 
-            When("두 스레드가 동시에 markSent 를 시도하면") {
-                var successCount = 0
-                var failCount = 0
+            When("같은 version 의 entity 를 두 번 save 하면") {
+                val first = requireNotNull(notificationRepository.findById(saved.id))
+                val second = requireNotNull(notificationRepository.findById(saved.id))
 
-                val threads = (1..2).map {
-                    Thread {
-                        try {
-                            val fresh = notificationRepository.findById(notification.id)
-                            fresh?.markSent()
-                            fresh?.let { notificationRepository.save(it) }
-                            successCount++
-                        } catch (expected: Exception) {
-                            failCount++
-                        }
+                first.markSent()
+                notificationJpaRepository.saveAndFlush(first)
+
+                Then("[R-03] 후행 커밋이 ObjectOptimisticLockingFailureException 을 던진다") {
+                    second.markSent()
+                    shouldThrow<ObjectOptimisticLockingFailureException> {
+                        notificationJpaRepository.saveAndFlush(second)
                     }
-                }
-                threads.forEach { it.start() }
-                threads.forEach { it.join() }
-
-                Then("[R-03] 최종 상태는 SENT 이다") {
-                    val finalNotification = notificationRepository.findById(notification.id)
-                    finalNotification?.status shouldBe NotificationStatus.SENT
                 }
             }
         }

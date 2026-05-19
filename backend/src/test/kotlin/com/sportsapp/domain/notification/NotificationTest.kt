@@ -4,20 +4,15 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import java.time.ZonedDateTime
 
 class NotificationTest : BehaviorSpec({
 
     Given("QUEUED 상태의 Notification") {
-        val notification = Notification(
-            id = 0L,
+        val notification = Notification.queue(
             userId = 1L,
             channel = NotificationChannel.IN_APP,
             templateId = "welcome",
             payload = NotificationPayload(mapOf("title" to "안녕하세요")),
-            status = NotificationStatus.QUEUED,
-            sentAt = null,
-            createdAt = ZonedDateTime.now(),
         )
 
         When("markSent 를 호출하면") {
@@ -32,18 +27,16 @@ class NotificationTest : BehaviorSpec({
 
     Given("SENT 상태의 Notification") {
         val notification = Notification(
-            id = 0L,
             userId = 1L,
             channel = NotificationChannel.IN_APP,
             templateId = "welcome",
             payload = NotificationPayload(mapOf("title" to "안녕하세요")),
             status = NotificationStatus.SENT,
-            sentAt = ZonedDateTime.now(),
-            createdAt = ZonedDateTime.now(),
+            sentAt = java.time.ZonedDateTime.now(),
         )
 
         When("markSent 를 호출하면") {
-            Then("[U-01] InvalidNotificationStateException 이 발생한다") {
+            Then("[U-02] InvalidNotificationStateException 이 발생한다") {
                 shouldThrow<InvalidNotificationStateException> {
                     notification.markSent()
                 }
@@ -53,18 +46,16 @@ class NotificationTest : BehaviorSpec({
 
     Given("FAILED 상태의 Notification") {
         val notification = Notification(
-            id = 0L,
             userId = 1L,
             channel = NotificationChannel.IN_APP,
             templateId = "welcome",
             payload = NotificationPayload(mapOf()),
             status = NotificationStatus.FAILED,
             sentAt = null,
-            createdAt = ZonedDateTime.now(),
         )
 
         When("markSent 를 호출하면") {
-            Then("[U-01] InvalidNotificationStateException 이 발생한다") {
+            Then("[U-03] InvalidNotificationStateException 이 발생한다") {
                 shouldThrow<InvalidNotificationStateException> {
                     notification.markSent()
                 }
@@ -81,7 +72,7 @@ class NotificationTest : BehaviorSpec({
                 payload = null,
             )
 
-            Then("[U-02] payload 가 빈 NotificationPayload 로 초기화된다") {
+            Then("[U-04] payload 가 빈 NotificationPayload 로 초기화된다") {
                 notification.payload shouldBe NotificationPayload(emptyMap())
             }
         }
@@ -97,7 +88,7 @@ class NotificationTest : BehaviorSpec({
                 payload = payload,
             )
 
-            Then("[U-02] 전달된 payload 가 그대로 유지된다") {
+            Then("[U-05] 전달된 payload 가 그대로 유지된다") {
                 notification.payload shouldBe payload
             }
         }

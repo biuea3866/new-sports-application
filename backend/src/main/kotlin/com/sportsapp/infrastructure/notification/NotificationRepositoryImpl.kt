@@ -3,6 +3,7 @@ package com.sportsapp.infrastructure.notification
 import com.sportsapp.domain.notification.Notification
 import com.sportsapp.domain.notification.NotificationRepository
 import com.sportsapp.domain.notification.NotificationStatus
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 
 @Component
@@ -11,11 +12,11 @@ class NotificationRepositoryImpl(
 ) : NotificationRepository {
 
     override fun save(notification: Notification): Notification =
-        notificationJpaRepository.save(NotificationEntity.fromDomain(notification)).toDomain()
+        notificationJpaRepository.save(notification)
 
     override fun findById(id: Long): Notification? =
-        notificationJpaRepository.findById(id).orElse(null)?.toDomain()
+        notificationJpaRepository.findByIdOrNull(id)
 
     override fun findByUserIdAndStatus(userId: Long, status: NotificationStatus): List<Notification> =
-        notificationJpaRepository.findByUserIdAndStatus(userId, status).map { it.toDomain() }
+        notificationJpaRepository.findByUserIdAndStatusAndDeletedAtIsNull(userId, status)
 }
