@@ -5,6 +5,7 @@ import com.sportsapp.domain.facility.FacilityRepository
 import org.springframework.data.geo.Distance
 import org.springframework.data.geo.Metrics
 import org.springframework.data.geo.Point
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Repository
 
 @Repository
@@ -13,24 +14,27 @@ class FacilityRepositoryImpl(
 ) : FacilityRepository {
 
     override fun save(facility: Facility): Facility =
-        facilityMongoRepository.save(FacilityDocument.fromDomain(facility)).toDomain()
+        facilityMongoRepository.save(facility)
+
+    override fun saveAll(facilities: List<Facility>): List<Facility> =
+        facilityMongoRepository.saveAll(facilities)
 
     override fun findById(id: String): Facility? =
-        facilityMongoRepository.findById(id).orElse(null)?.toDomain()
+        facilityMongoRepository.findByIdOrNull(id)?.takeIf { !it.isDeleted }
 
     override fun findAllByGu(gu: String): List<Facility> =
-        facilityMongoRepository.findAllByGu(gu).map { it.toDomain() }
+        facilityMongoRepository.findAllByGuAndDeletedAtIsNull(gu)
 
     override fun findAllByGuAndType(gu: String, type: String): List<Facility> =
-        facilityMongoRepository.findAllByGuAndType(gu, type).map { it.toDomain() }
+        facilityMongoRepository.findAllByGuAndTypeAndDeletedAtIsNull(gu, type)
 
     override fun findNear(lat: Double, lng: Double, maxDistanceMeters: Double): List<Facility> {
         val point = Point(lng, lat)
         val distanceKm = maxDistanceMeters / METERS_PER_KM
         val distance = Distance(distanceKm, Metrics.KILOMETERS)
-        return facilityMongoRepository.findByLocationNear(point, distance)
+        return facilityMongoRepository.findByLocationNearAndDeletedAtIsNull(point, distance)
             .content
-            .map { it.content.toDomain() }
+            .map { it.content }
     }
 
     companion object {

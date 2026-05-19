@@ -8,10 +8,12 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.data.mongodb.core.MongoTemplate
+import org.springframework.data.mongodb.core.query.Query
 
 class FacilityRepositoryImplTest(
     @Autowired private val facilityRepository: FacilityRepository,
-    @Autowired private val facilityMongoRepository: FacilityMongoRepository,
+    @Autowired private val mongoTemplate: MongoTemplate,
 ) : BaseMongoIntegrationTest() {
 
     private fun buildAttributes(
@@ -38,7 +40,7 @@ class FacilityRepositoryImplTest(
 
     init {
         Given("강남구 시설 3개, 서초구 시설 2개가 저장된 상태") {
-            facilityMongoRepository.deleteAll()
+            mongoTemplate.remove(Query(), Facility::class.java)
             (1..3).forEach { index ->
                 facilityRepository.save(
                     Facility.create(buildAttributes("GN-00$index", "강남구", "수영장", 37.5 + index * 0.001, 127.0 + index * 0.001))
@@ -67,7 +69,7 @@ class FacilityRepositoryImplTest(
         }
 
         Given("특정 좌표 주변에 가까운 시설과 먼 시설이 저장된 상태") {
-            facilityMongoRepository.deleteAll()
+            mongoTemplate.remove(Query(), Facility::class.java)
             val centerLat = 37.5665
             val centerLng = 126.9780
             facilityRepository.save(
@@ -87,7 +89,7 @@ class FacilityRepositoryImplTest(
         }
 
         Given("임의 키-값 meta를 가진 시설") {
-            facilityMongoRepository.deleteAll()
+            mongoTemplate.remove(Query(), Facility::class.java)
             val meta = mapOf(
                 "capacity" to "50",
                 "lane" to "8",

@@ -1,20 +1,52 @@
 package com.sportsapp.domain.facility
 
+import com.sportsapp.domain.common.BaseDocument
+import org.springframework.data.annotation.Id
+import org.springframework.data.geo.Point
+import org.springframework.data.mongodb.core.index.CompoundIndex
+import org.springframework.data.mongodb.core.index.CompoundIndexes
+import org.springframework.data.mongodb.core.index.GeoSpatialIndexType
+import org.springframework.data.mongodb.core.index.GeoSpatialIndexed
+import org.springframework.data.mongodb.core.index.Indexed
+import org.springframework.data.mongodb.core.mapping.Document
+import org.springframework.data.mongodb.core.mapping.Field
+
+@Document(collection = "facilities")
+@CompoundIndexes(
+    CompoundIndex(name = "idx_gu_type", def = "{'gu': 1, 'type': 1}")
+)
 class Facility(
+    @Id
     val id: String?,
+    @Indexed
+    @Field("code")
     val code: String,
+    @Field("name")
     val name: String,
+    @Indexed
+    @Field("gu")
     val gu: String,
+    @Field("type")
     val type: String,
+    @Field("address")
     val address: String,
-    val lat: Double,
-    val lng: Double,
+    @GeoSpatialIndexed(type = GeoSpatialIndexType.GEO_2DSPHERE)
+    @Field("location")
+    val location: Point,
+    @Field("parking")
     val parking: Boolean,
+    @Field("tel")
     val tel: String,
+    @Field("home_page")
     val homePage: String,
+    @Field("edu_yn")
     val eduYn: Boolean,
+    @Field("meta")
     val meta: Map<String, String>,
-) {
+) : BaseDocument() {
+
+    val lat: Double get() = location.y
+    val lng: Double get() = location.x
 
     fun updateMeta(patch: Map<String, String>): Facility =
         Facility(
@@ -24,8 +56,7 @@ class Facility(
             gu = gu,
             type = type,
             address = address,
-            lat = lat,
-            lng = lng,
+            location = location,
             parking = parking,
             tel = tel,
             homePage = homePage,
@@ -43,8 +74,7 @@ class Facility(
                 gu = attributes.gu,
                 type = attributes.type,
                 address = attributes.address,
-                lat = attributes.lat,
-                lng = attributes.lng,
+                location = Point(attributes.lng, attributes.lat),
                 parking = attributes.parking,
                 tel = attributes.tel,
                 homePage = attributes.homePage,
