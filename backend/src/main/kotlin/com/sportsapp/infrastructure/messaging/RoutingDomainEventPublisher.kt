@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component
  *
  * - topic non-null → [KafkaDomainEventPublisher] (외부 도메인 통신)
  * - topic null → [SpringDomainEventPublisher] (모놀리스 내부 트랜잭션 이벤트)
+ * - 라우팅 대상을 판별할 수 없는 이벤트 → [UnknownEventRoutingException]
  *
  * [@Primary] 를 선언하여 DomainService 가 [DomainEventPublisher] 를 주입받을 때
  * 이 구현체가 자동 선택된다.
@@ -23,10 +24,10 @@ class RoutingDomainEventPublisher(
 ) : DomainEventPublisher {
 
     override fun publish(event: DomainEvent) {
-        if (event.topic != null) {
-            kafkaDomainEventPublisher.publish(event)
-        } else {
-            springDomainEventPublisher.publish(event)
+        when {
+            event.topic != null -> kafkaDomainEventPublisher.publish(event)
+            event.topic == null -> springDomainEventPublisher.publish(event)
+            else -> throw UnknownEventRoutingException(event::class.simpleName ?: "UnknownType")
         }
     }
 
