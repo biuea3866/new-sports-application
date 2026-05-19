@@ -3,6 +3,8 @@ package com.sportsapp.domain.payment
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import java.math.BigDecimal
+import java.time.ZonedDateTime
 
 class PaymentStatusTransitionTest : BehaviorSpec({
 
@@ -46,12 +48,12 @@ class PaymentStatusTransitionTest : BehaviorSpec({
             orderType = OrderType.BOOKING,
             orderId = 10L,
             method = PaymentMethod.CREDIT_CARD,
-            amount = java.math.BigDecimal("10000"),
+            amount = BigDecimal("10000"),
             currency = "KRW",
         )
 
         When("markCompleted 를 호출하면") {
-            val paidAt = java.time.ZonedDateTime.now()
+            val paidAt = ZonedDateTime.now()
             payment.markCompleted(paidAt)
             Then("[U-01] status 가 COMPLETED 로 바뀌고 paidAt 이 채워진다") {
                 payment.status shouldBe PaymentStatus.COMPLETED
@@ -67,14 +69,14 @@ class PaymentStatusTransitionTest : BehaviorSpec({
             orderType = OrderType.TICKETING,
             orderId = 20L,
             method = PaymentMethod.CREDIT_CARD,
-            amount = java.math.BigDecimal("20000"),
+            amount = BigDecimal("20000"),
             currency = "KRW",
-        ).also { it.markCompleted(java.time.ZonedDateTime.now()) }
+        ).also { it.markCompleted(ZonedDateTime.now()) }
 
         When("markCompleted 를 다시 호출하면") {
             Then("[U-02] InvalidPaymentStateException 을 던진다") {
                 shouldThrow<InvalidPaymentStateException> {
-                    payment.markCompleted(java.time.ZonedDateTime.now())
+                    payment.markCompleted(ZonedDateTime.now())
                 }
             }
         }
@@ -87,7 +89,7 @@ class PaymentStatusTransitionTest : BehaviorSpec({
             orderType = OrderType.GOODS,
             orderId = 30L,
             method = PaymentMethod.BANK_TRANSFER,
-            amount = java.math.BigDecimal("5000"),
+            amount = BigDecimal("5000"),
             currency = "KRW",
         )
 

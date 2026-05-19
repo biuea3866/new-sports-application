@@ -4,7 +4,7 @@ import java.math.BigDecimal
 
 class PaymentDomainService(
     private val paymentRepository: PaymentRepository,
-    val paymentGateway: PaymentGateway,
+    internal val paymentGateway: PaymentGateway,
 ) {
     fun initiatePayment(
         userId: Long,

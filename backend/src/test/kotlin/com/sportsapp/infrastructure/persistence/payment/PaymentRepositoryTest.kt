@@ -10,14 +10,20 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.jdbc.core.JdbcTemplate
 import java.math.BigDecimal
 import java.time.ZonedDateTime
 
 class PaymentRepositoryTest(
     @Autowired private val paymentRepository: PaymentRepository,
+    @Autowired private val jdbcTemplate: JdbcTemplate,
 ) : BaseJpaIntegrationTest() {
 
     init {
+        beforeEach {
+            jdbcTemplate.execute("DELETE FROM payments")
+        }
+
         Given("동일 idempotencyKey 로 두 건을 저장하면") {
             val key = "idem-dup-01"
             val first = Payment.create(

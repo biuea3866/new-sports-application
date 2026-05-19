@@ -1,8 +1,8 @@
 package com.sportsapp.infrastructure.persistence.payment
 
+import com.sportsapp.domain.payment.Payment
 import org.springframework.data.jpa.repository.JpaRepository
-import java.util.Optional
 
-interface PaymentJpaRepository : JpaRepository<PaymentEntity, Long> {
-    fun findByIdempotencyKey(idempotencyKey: String): Optional<PaymentEntity>
+interface PaymentJpaRepository : JpaRepository<Payment, Long> {
+    fun findByIdempotencyKey(idempotencyKey: String): Payment?
 }

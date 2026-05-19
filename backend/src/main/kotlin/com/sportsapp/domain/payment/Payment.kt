@@ -1,22 +1,58 @@
 package com.sportsapp.domain.payment
 
+import com.sportsapp.domain.common.JpaAuditingBase
+import jakarta.persistence.Column
+import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
+import jakarta.persistence.GeneratedValue
+import jakarta.persistence.GenerationType
+import jakarta.persistence.Id
+import jakarta.persistence.Table
 import java.math.BigDecimal
 import java.time.ZonedDateTime
 
+@Entity
+@Table(name = "payments")
 class Payment private constructor(
-    val id: Long,
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    val id: Long = 0L,
+
+    @Column(name = "user_id", nullable = false)
     val userId: Long,
+
+    @Column(name = "idempotency_key", nullable = false, unique = true, length = 100)
     val idempotencyKey: String,
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "order_type", nullable = false, length = 20)
     val orderType: OrderType,
+
+    @Column(name = "order_id", nullable = false)
     val orderId: Long,
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "method", nullable = false, length = 30)
     val method: PaymentMethod,
+
+    @Column(name = "amount", nullable = false, precision = 15, scale = 2)
     val amount: BigDecimal,
+
+    @Column(name = "currency", nullable = false, length = 3)
     val currency: String,
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
     var status: PaymentStatus,
-    val createdAt: ZonedDateTime,
+
+    @Column(name = "paid_at", nullable = true)
     var paidAt: ZonedDateTime?,
+
+    @Column(name = "failure_reason", nullable = true, length = 500)
     var failureReason: String?,
-) {
+) : JpaAuditingBase() {
+
     fun markCompleted(paidAt: ZonedDateTime) {
         if (!status.canTransitTo(PaymentStatus.COMPLETED)) {
             throw InvalidPaymentStateException(status, PaymentStatus.COMPLETED)
@@ -51,7 +87,6 @@ class Payment private constructor(
             amount: BigDecimal,
             currency: String,
         ): Payment = Payment(
-            id = 0L,
             userId = userId,
             idempotencyKey = idempotencyKey,
             orderType = orderType,
@@ -60,24 +95,8 @@ class Payment private constructor(
             amount = amount,
             currency = currency,
             status = PaymentStatus.PENDING,
-            createdAt = ZonedDateTime.now(),
             paidAt = null,
             failureReason = null,
-        )
-
-        fun reconstruct(snapshot: PaymentSnapshot): Payment = Payment(
-            id = snapshot.id,
-            userId = snapshot.userId,
-            idempotencyKey = snapshot.idempotencyKey,
-            orderType = snapshot.orderType,
-            orderId = snapshot.orderId,
-            method = snapshot.method,
-            amount = snapshot.amount,
-            currency = snapshot.currency,
-            status = snapshot.status,
-            createdAt = snapshot.createdAt,
-            paidAt = snapshot.paidAt,
-            failureReason = snapshot.failureReason,
         )
     }
 }

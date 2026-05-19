@@ -9,11 +9,17 @@ CREATE TABLE payments (
     currency        VARCHAR(3)      NOT NULL,
     status          VARCHAR(20)     NOT NULL,
     created_at      DATETIME(6)     NOT NULL,
+    created_by      BIGINT          NULL,
+    updated_at      DATETIME(6)     NOT NULL,
+    updated_by      BIGINT          NULL,
+    deleted_at      DATETIME(6)     NULL,
+    deleted_by      BIGINT          NULL,
     paid_at         DATETIME(6)     NULL,
     failure_reason  VARCHAR(500)    NULL,
 
     PRIMARY KEY (id),
     UNIQUE KEY uq_payments_idempotency_key (idempotency_key),
     INDEX idx_payments_user_id (user_id),
-    INDEX idx_payments_status (status)
+    INDEX idx_payments_status (status),
+    INDEX idx_payments_deleted_at (deleted_at)
 );
