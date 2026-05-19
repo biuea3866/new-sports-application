@@ -13,7 +13,8 @@ interface HealthResponse {
 /**
  * GET /api/health
  * Web 자체 상태 + BE /actuator/health 상태를 합산해 반환한다.
- * BE가 응답 불능이면 be: "unavailable"로 처리하고 web 상태는 정상 반환한다.
+ * BE 호출은 반드시 lib/server/be-client.ts 의 beClient 를 경유한다 (BFF 단일 진입점).
+ * BE 가 응답 불능이면 be: "unavailable" 로 처리하고 web 상태는 정상 반환한다.
  */
 export async function GET(): Promise<NextResponse<HealthResponse>> {
   const backendUrl = process.env["BACKEND_URL"];
@@ -26,17 +27,15 @@ export async function GET(): Promise<NextResponse<HealthResponse>> {
     );
   }
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+  // BACKEND_URL 이 존재할 때만 be-client 모듈 평가 — 모듈 로드 throw 회피
+  const { beClient } = await import("@/lib/server/be-client");
 
-    const beResponse = await fetch(`${backendUrl}/actuator/health`, {
+  try {
+    const beResponse = await beClient("/actuator/health", {
       method: "GET",
-      headers: { "Content-Type": "application/json" },
-      signal: controller.signal,
       cache: "no-store",
+      timeoutMs: 5000,
     });
-    clearTimeout(timeoutId);
 
     if (!beResponse.ok) {
       return NextResponse.json({ web: "ok", be: "error", timestamp }, { status: 200 });

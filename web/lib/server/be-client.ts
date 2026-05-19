@@ -1,8 +1,9 @@
 /**
  * BFF 전용 BE API 클라이언트.
  * 반드시 서버 사이드(Server Component, Route Handler)에서만 사용한다.
- * Client Component에서 직접 import 금지 — BFF 패턴 강제.
+ * `server-only` import 로 Client Component 에서 import 시 빌드 실패시켜 BFF 패턴을 강제한다.
  */
+import "server-only";
 import { cookies } from "next/headers";
 
 const BACKEND_URL = process.env["BACKEND_URL"];
@@ -21,11 +22,15 @@ function extractAccessToken(): string | undefined {
 
 interface BeRequestInit extends Omit<RequestInit, "headers"> {
   headers?: Record<string, string>;
+  timeoutMs?: number;
 }
 
+const DEFAULT_TIMEOUT_MS = 5000;
+
 /**
- * BE API를 호출하는 단일 fetch 인스턴스.
+ * BE API 를 호출하는 단일 fetch 인스턴스.
  * JWT 쿠키가 존재하면 Authorization: Bearer <token> 헤더를 자동 부착한다.
+ * timeoutMs(기본 5초) 초과 시 AbortError 를 throw 한다.
  */
 export async function beClient(path: string, init: BeRequestInit = {}): Promise<Response> {
   const baseUrl = BACKEND_URL as string;
@@ -41,10 +46,29 @@ export async function beClient(path: string, init: BeRequestInit = {}): Promise<
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  return fetch(url, {
-    ...init,
-    headers,
-  });
+  const { timeoutMs, ...rest } = init;
+  const effectiveTimeout = timeoutMs ?? DEFAULT_TIMEOUT_MS;
+
+  // 호출자가 signal 을 명시하지 않았으면 자체 timeout AbortController 부착
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  let signal = rest.signal;
+  if (signal === undefined) {
+    const controller = new AbortController();
+    signal = controller.signal;
+    timeoutId = setTimeout(() => controller.abort(), effectiveTimeout);
+  }
+
+  try {
+    return await fetch(url, {
+      ...rest,
+      headers,
+      signal,
+    });
+  } finally {
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId);
+    }
+  }
 }
 
 /** JSON 응답을 파싱해 반환하는 편의 래퍼. */
@@ -56,7 +80,7 @@ export async function beGet<T>(path: string, init?: BeRequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-/** JSON body를 POST하고 응답을 파싱해 반환하는 편의 래퍼. */
+/** JSON body 를 POST 하고 응답을 파싱해 반환하는 편의 래퍼. */
 export async function bePost<T>(path: string, body: unknown, init?: BeRequestInit): Promise<T> {
   const response = await beClient(path, {
     ...init,
