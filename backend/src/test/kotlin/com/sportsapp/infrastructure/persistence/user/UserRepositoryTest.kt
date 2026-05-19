@@ -57,8 +57,8 @@ class UserRepositoryTest(
         }
 
         Given("user_roles 중복 검증") {
-            When("동일 (user_id, role_id) 로 두 번 insert 하면") {
-                Then("[R-03] DB 레벨에서 중복을 차단한다") {
+            When("동일 (user_id, role_id) 로 활성 row 가 이미 존재하면") {
+                Then("[R-03] existsByUserIdAndRoleIdAndDeletedAtIsNull 이 true 를 반환해 application 레벨에서 중복을 차단한다") {
                     val userEntity = userJpaRepository.save(
                         User(
                             email = "roledup@example.com",
@@ -71,11 +71,10 @@ class UserRepositoryTest(
 
                     userRoleJpaRepository.save(UserRole(userId = userEntity.id, roleId = roleEntity.id))
 
-                    shouldThrow<Exception> {
-                        userRoleJpaRepository.saveAndFlush(
-                            UserRole(userId = userEntity.id, roleId = roleEntity.id)
-                        )
-                    }
+                    userRoleJpaRepository.existsByUserIdAndRoleIdAndDeletedAtIsNull(
+                        userEntity.id,
+                        roleEntity.id,
+                    ) shouldBe true
                 }
             }
         }

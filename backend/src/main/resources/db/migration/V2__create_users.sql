@@ -56,7 +56,7 @@ CREATE TABLE user_roles (
     deleted_at DATETIME(6) NULL,
     deleted_by BIGINT      NULL,
     PRIMARY KEY (id),
-    UNIQUE KEY uq_user_roles_user_role (user_id, role_id),
+    UNIQUE KEY uq_user_roles_user_role (user_id, role_id, deleted_at),
     INDEX idx_user_roles_user_id (user_id),
     INDEX idx_user_roles_deleted_at (deleted_at)
 );
@@ -72,7 +72,7 @@ CREATE TABLE role_permissions (
     deleted_at    DATETIME(6) NULL,
     deleted_by    BIGINT      NULL,
     PRIMARY KEY (id),
-    UNIQUE KEY uq_role_permissions_role_perm (role_id, permission_id),
+    UNIQUE KEY uq_role_permissions_role_perm (role_id, permission_id, deleted_at),
     INDEX idx_role_permissions_role_id (role_id),
     INDEX idx_role_permissions_deleted_at (deleted_at)
 );
