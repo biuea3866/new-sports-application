@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing
 import org.springframework.data.mongodb.config.EnableMongoAuditing
 
 @SpringBootApplication
-@EnableJpaAuditing
+@EnableJpaAuditing(dateTimeProviderRef = "zonedDateTimeProvider")
 @EnableMongoAuditing
 class SportsApplication
 

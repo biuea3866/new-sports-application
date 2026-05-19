@@ -9,9 +9,14 @@ import com.sportsapp.domain.common.ErrorStatus
  */
 class RedisLockException(
     message: String,
+    cause: Throwable? = null,
 ) : BusinessException(
     errorCode = "REDIS_LOCK_FAILURE",
     message = message,
 ) {
     override val status: ErrorStatus = ErrorStatus.INTERNAL
+
+    init {
+        cause?.let { initCause(it) }
+    }
 }
