@@ -128,6 +128,55 @@
         "file_glob": "*.kt",
         "message": "!! 사용 금지 — requireNotNull(), ?:, ?.let {} 중 적절한 방식으로 교체하세요.",
         "severity": "error"
+      },
+      {
+        "id": "no-hard-delete-repository",
+        "pattern": "\\b(Repository|JpaRepository|MongoRepository)\\b.*\\.(delete|deleteById|deleteAll|deleteAllById)\\b",
+        "file_glob": "*.kt",
+        "exclude_glob": "*Admin*",
+        "message": "Repository hard delete 금지 — Entity.softDelete(userId) 호출 후 save 하세요. 법무/감사 사유의 영구 삭제는 *Admin* 패턴 이름의 UseCase 에서만 허용.",
+        "severity": "error"
+      },
+      {
+        "id": "no-sql-delete",
+        "pattern": "(?i)\\bDELETE\\s+FROM\\b",
+        "file_glob": "*.sql",
+        "exclude_glob": "**/migration/**Vremove**.sql",
+        "message": "SQL DELETE FROM 금지 — soft delete (UPDATE ... SET deleted_at = NOW(6)) 를 사용하세요. 데이터 마이그레이션의 cleanup 은 Vremove_* 마이그레이션 이름으로만 허용.",
+        "severity": "error"
+      },
+      {
+        "id": "audit-columns-required",
+        "pattern": "(?i)CREATE\\s+TABLE\\s+\\w+\\s*\\(",
+        "file_glob": "*.sql",
+        "must_also_contain": ["created_at", "updated_at", "deleted_at"],
+        "message": "CREATE TABLE 은 audit + soft-delete 컬럼 6종(created_at/created_by/updated_at/updated_by/deleted_at/deleted_by)을 포함해야 합니다. be-code-convention.md 'Audit 컬럼 + Soft Delete' 섹션 참조.",
+        "severity": "error",
+        "note": "harness-check.py 가 CREATE TABLE 발견 시 같은 파일 내에 must_also_contain 의 모든 토큰이 있는지 확인. 누락 시 차단."
+      },
+      {
+        "id": "audit-index-required",
+        "pattern": "(?i)CREATE\\s+TABLE\\s+\\w+\\s*\\(",
+        "file_glob": "*.sql",
+        "must_also_contain": ["INDEX idx_", "deleted_at"],
+        "message": "audit 컬럼 추가 시 deleted_at 인덱스(단독 또는 복합)도 함께 선언하세요. 모든 조회가 WHERE deleted_at IS NULL 필터를 거칩니다.",
+        "severity": "warning"
+      },
+      {
+        "id": "no-java-optional",
+        "pattern": "\\b(java\\.util\\.Optional|Optional\\.(empty|of|ofNullable|orElse|orElseThrow|orElseGet|isPresent|isEmpty|get|map|flatMap|filter)|: Optional<|fun \\w+\\([^)]*\\)\\s*: Optional<)",
+        "file_glob": "*.kt",
+        "exclude_glob": "**/audit/SecurityAuditorAware*.kt",
+        "message": "Optional 사용 금지 — Kotlin nullable (T?) 로 표현하세요. 예외: Spring `AuditorAware<Long>` 같은 Java API 강제 시그니처.",
+        "severity": "error"
+      },
+      {
+        "id": "no-optional-import",
+        "pattern": "import\\s+java\\.util\\.Optional\\b",
+        "file_glob": "*.kt",
+        "exclude_glob": "**/audit/SecurityAuditorAware*.kt",
+        "message": "java.util.Optional import 금지 — Kotlin nullable 로 대체. 예외: SecurityAuditorAware (Spring AuditorAware 강제).",
+        "severity": "error"
       }
     ]
   },

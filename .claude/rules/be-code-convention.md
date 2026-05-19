@@ -95,6 +95,142 @@ class Product(...) {
 - Domain Event는 Entity 내부 `@Transient domainEvents` 리스트에 적재 → DomainService가 `DomainEventPublisher.publishAll()`로 발행
 - 다른 도메인 데이터는 **ID(Long)만 보유** — Entity 객체 직접 참조 금지
 
+## Audit 컬럼 + Soft Delete (모든 Entity 필수)
+
+### 정책
+
+모든 비즈니스 Entity (도메인 모델) 는 다음 6개 컬럼을 가진다. 예외는 audit/security 로그 같은 immutable append-only 테이블에 한정한다.
+
+| 컬럼 | 타입 | NULL | 의미 |
+|------|------|------|------|
+| `created_at` | DATETIME(6) | NOT NULL | 생성 시각 (UTC). JPA `@CreatedDate` 가 자동 채움 |
+| `created_by` | BIGINT | NULL 허용 | 생성자 user id. JPA `@CreatedBy` 가 `AuditorAware` 빈 (SecurityContext) 에서 자동 채움. 시스템 이벤트는 NULL |
+| `updated_at` | DATETIME(6) | NOT NULL | 마지막 수정 시각. JPA `@LastModifiedDate` 가 매 save 시 갱신 |
+| `updated_by` | BIGINT | NULL 허용 | 마지막 수정자 user id. JPA `@LastModifiedBy` 가 자동 채움 |
+| `deleted_at` | DATETIME(6) | NULL | 소프트 삭제 시각. NULL 이면 활성. NOT NULL 이면 논리적 삭제 |
+| `deleted_by` | BIGINT | NULL 허용 | 삭제자 user id. soft-delete 호출 시 같이 기록 |
+
+### Soft Delete 규칙
+
+- **Hard delete 금지**: `repository.delete(entity)` / `repository.deleteById(id)` / SQL `DELETE FROM` 등 직접 삭제 금지.
+  - 예외: 법무 요구(GDPR right-to-erasure), 회계 마감 후 audit-trail 청산 같은 명시 사유 — admin 전용 UseCase 에서만 허용.
+- **Soft delete 진입점**: Entity 의 `softDelete(userId: Long?)` 메서드 한 곳만.
+- **기본 조회 필터**: Repository 의 `findById` / `findByX` 는 기본으로 `deletedAt IS NULL` 필터. 삭제 포함 조회는 별도 `findAllIncludingDeleted` 같은 명시 메서드.
+- **상태 전이**: 이미 삭제된 entity 에 비즈니스 동작 호출 시 `IllegalStateException` 또는 도메인 예외.
+
+### JpaAuditingBase (JPA, @MappedSuperclass)
+
+> 클래스 이름이 `*Entity*` 패턴이 아닌 `JpaAuditingBase` 인 이유: `no-default-constructor-values` 룰(`*Entity*.kt` glob)이 `lateinit var` 와 audit 인프라의 placeholder 와 충돌하기 때문. 도메인 Entity 들은 `class UserEntity : JpaAuditingBase()` 형태로 상속.
+
+```kotlin
+@MappedSuperclass
+@EntityListeners(AuditingEntityListener::class)
+abstract class JpaAuditingBase {
+    @CreatedDate
+    @Column(name = "created_at", nullable = false, updatable = false)
+    lateinit var createdAt: ZonedDateTime
+        protected set
+
+    @CreatedBy
+    @Column(name = "created_by", updatable = false)
+    var createdBy: Long? = null
+        protected set
+
+    @LastModifiedDate
+    @Column(name = "updated_at", nullable = false)
+    lateinit var updatedAt: ZonedDateTime
+        protected set
+
+    @LastModifiedBy
+    @Column(name = "updated_by")
+    var updatedBy: Long? = null
+        protected set
+
+    @Column(name = "deleted_at")
+    var deletedAt: ZonedDateTime? = null
+        protected set
+
+    @Column(name = "deleted_by")
+    var deletedBy: Long? = null
+        protected set
+
+    fun softDelete(userId: Long?) {
+        check(deletedAt == null) { "Entity is already soft-deleted" }
+        deletedAt = ZonedDateTime.now()
+        deletedBy = userId
+    }
+
+    val isDeleted: Boolean get() = deletedAt != null
+}
+```
+
+**활성화 조건**:
+- `@SpringBootApplication` 클래스에 `@EnableJpaAuditing` 명시
+- `AuditorAware<Long>` 빈 — SecurityContext 에서 user id 추출, 미인증 요청은 `Optional.empty()` 반환
+- `BaseEntity` 는 `domain.common` 패키지 — 도메인 layer 가 JPA 어노테이션을 import 하는 유일한 예외
+
+### BaseDocument (MongoDB)
+
+```kotlin
+@EnableMongoAuditing  // 설정 한 번
+abstract class BaseDocument {
+    @CreatedDate
+    var createdAt: ZonedDateTime = ZonedDateTime.now()
+        protected set
+
+    @CreatedBy
+    var createdBy: Long? = null
+        protected set
+
+    @LastModifiedDate
+    var updatedAt: ZonedDateTime = ZonedDateTime.now()
+        protected set
+
+    @LastModifiedBy
+    var updatedBy: Long? = null
+        protected set
+
+    var deletedAt: ZonedDateTime? = null
+        protected set
+
+    var deletedBy: Long? = null
+        protected set
+
+    fun softDelete(userId: Long?) {
+        check(deletedAt == null) { "Document is already soft-deleted" }
+        deletedAt = ZonedDateTime.now()
+        deletedBy = userId
+    }
+
+    val isDeleted: Boolean get() = deletedAt != null
+}
+```
+
+### Migration SQL 패턴
+
+모든 신규 테이블 CREATE 문에 audit 6 컬럼 포함 (Flyway):
+
+```sql
+CREATE TABLE bookings (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    -- 도메인 컬럼...
+    facility_id BIGINT NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    -- audit + soft delete
+    created_at DATETIME(6) NOT NULL,
+    created_by BIGINT NULL,
+    updated_at DATETIME(6) NOT NULL,
+    updated_by BIGINT NULL,
+    deleted_at DATETIME(6) NULL,
+    deleted_by BIGINT NULL,
+    PRIMARY KEY (id),
+    INDEX idx_bookings_deleted_at (deleted_at),
+    INDEX idx_bookings_status_deleted_at (status, deleted_at)
+);
+```
+
+**필수 인덱스**: `deleted_at` 단독 + `status` (또는 자주 조회되는 도메인 컬럼) + `deleted_at` 복합. 모든 조회가 `WHERE deleted_at IS NULL` 필터를 거치므로 인덱스 없으면 풀스캔.
+
 ## 레이어 의존 방향
 
 ```
@@ -200,6 +336,12 @@ fun process(id: Long): Result {
 - `!!` 절대 금지 (하네스 차단)
 - 대체: `requireNotNull`, `?:`, `?.let`
 - nullable이 필요 없으면 `non-null`로 선언
+- **`Optional` 사용 금지** — Kotlin nullable (`T?`) 로 표현. `Optional` 은 Java 호환 API 경계(예: Spring Data `AuditorAware<Long>`) 가 강제하는 경우만 허용한다.
+  - ❌ `fun findByEmail(email: String): Optional<User>`
+  - ✅ `fun findByEmail(email: String): User?`
+  - ❌ `Optional.empty()` / `Optional.of(x)` / `optional.orElseThrow()`
+  - ✅ `null` / `x` / `value ?: throw ...`
+  - 예외: `AuditorAware<Long>` 는 Spring API 시그니처 — `Optional<Long>` 반환 필수
 
 ## 생성자/함수 호출 포맷
 
