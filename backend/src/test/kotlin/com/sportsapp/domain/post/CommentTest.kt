@@ -1,5 +1,6 @@
 package com.sportsapp.domain.post
 
+import com.sportsapp.domain.post.NotCommentOwnerException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -54,6 +55,30 @@ class CommentTest : BehaviorSpec({
                 comment.isDeleted shouldBe true
                 comment.deletedAt shouldNotBe null
                 comment.deletedBy shouldBe 2L
+            }
+        }
+    }
+
+    Given("본인 댓글에 delete 를 호출하면") {
+        val comment = Comment.create(postId = 1L, userId = 2L, content = "댓글")
+
+        When("본인 userId 를 전달하면") {
+            comment.delete(2L)
+            Then("[U-02] 소프트 삭제되고 isDeleted 가 true 가 된다") {
+                comment.isDeleted shouldBe true
+                comment.deletedBy shouldBe 2L
+            }
+        }
+    }
+
+    Given("타인 댓글에 delete 를 호출하면") {
+        val comment = Comment.create(postId = 1L, userId = 2L, content = "댓글")
+
+        When("다른 userId 를 전달하면") {
+            Then("[U-02] NotCommentOwnerException 을 던진다") {
+                shouldThrow<NotCommentOwnerException> {
+                    comment.delete(99L)
+                }
             }
         }
     }
