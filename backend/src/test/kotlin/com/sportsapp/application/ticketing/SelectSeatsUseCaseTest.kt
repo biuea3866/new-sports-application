@@ -1,8 +1,8 @@
 package com.sportsapp.application.ticketing
 
 import com.sportsapp.domain.ticketing.TicketingDomainService
-import com.sportsapp.domain.ticketing.exception.EmptySeatSelectionException
 import com.sportsapp.domain.ticketing.exception.SeatAlreadyLockedException
+import com.sportsapp.domain.ticketing.exception.SeatNotLockOwnerException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -48,15 +48,18 @@ class SelectSeatsUseCaseTest : BehaviorSpec({
     }
 
     Given("좌석 ID 목록이 비어 있을 때") {
-        val command = SelectSeatsCommand(eventId = 1L, seatIds = emptyList(), userId = 7L)
-        every {
-            ticketingDomainService.tryLockSeats(1L, emptyList(), 7L)
-        } throws EmptySeatSelectionException()
+        When("[U-03] 빈 seatIds로 SelectSeatsCommand 생성 시") {
+            Then("IllegalArgumentException이 발생한다") {
+                shouldThrow<IllegalArgumentException> {
+                    SelectSeatsCommand(eventId = 1L, seatIds = emptyList(), userId = 7L)
+                }
+            }
+        }
 
-        When("[U-03] 빈 seatIds로 execute 호출 시") {
-            Then("EmptySeatSelectionException이 발생한다") {
-                shouldThrow<EmptySeatSelectionException> {
-                    selectSeatsUseCase.execute(command)
+        When("[U-03b] 빈 seatIds로 ReleaseSeatsCommand 생성 시") {
+            Then("IllegalArgumentException이 발생한다") {
+                shouldThrow<IllegalArgumentException> {
+                    ReleaseSeatsCommand(eventId = 1L, seatIds = emptyList(), userId = 7L)
                 }
             }
         }
@@ -71,6 +74,21 @@ class SelectSeatsUseCaseTest : BehaviorSpec({
 
             Then("DomainService.releaseSeats가 호출된다") {
                 verify(exactly = 1) { ticketingDomainService.releaseSeats(1L, listOf(10L, 20L), 7L) }
+            }
+        }
+    }
+
+    Given("좌석 10이 다른 사용자(userId=99)가 소유한 락인 상태에서") {
+        val releaseCommand = ReleaseSeatsCommand(eventId = 1L, seatIds = listOf(10L), userId = 7L)
+        every {
+            ticketingDomainService.releaseSeats(1L, listOf(10L), 7L)
+        } throws SeatNotLockOwnerException(1L, 10L)
+
+        When("[U-04] 다른 사용자가 release 호출 시") {
+            Then("SeatNotLockOwnerException(FORBIDDEN)이 전파된다") {
+                shouldThrow<SeatNotLockOwnerException> {
+                    releaseSeatsUseCase.execute(releaseCommand)
+                }
             }
         }
     }

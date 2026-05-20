@@ -1,8 +1,8 @@
 package com.sportsapp.domain.ticketing
 
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
-import com.sportsapp.domain.ticketing.exception.EmptySeatSelectionException
 import com.sportsapp.domain.ticketing.exception.SeatAlreadyLockedException
+import com.sportsapp.domain.ticketing.exception.SeatNotLockOwnerException
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
@@ -50,7 +50,6 @@ class TicketingDomainService(
         customEventRepository.findByCriteria(criteria, pageable)
 
     fun tryLockSeats(eventId: Long, seatIds: List<Long>, userId: Long): String {
-        if (seatIds.isEmpty()) throw EmptySeatSelectionException()
         val lockedSeatIds = mutableListOf<Long>()
         for (seatId in seatIds) {
             val acquired = seatLockStore.tryLock(eventId, seatId, userId, SEAT_LOCK_TTL)
@@ -66,8 +65,10 @@ class TicketingDomainService(
     }
 
     fun releaseSeats(eventId: Long, seatIds: List<Long>, userId: Long) {
-        if (seatIds.isEmpty()) throw EmptySeatSelectionException()
-        seatIds.forEach { seatId -> seatLockStore.unlock(eventId, seatId, userId) }
+        for (seatId in seatIds) {
+            val released = seatLockStore.unlock(eventId, seatId, userId)
+            if (!released) throw SeatNotLockOwnerException(eventId, seatId)
+        }
     }
 }
 

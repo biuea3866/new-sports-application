@@ -162,5 +162,30 @@ class SeatLockConcurrencyScenarioTest(
                 }
             }
         }
+
+        Given("[S-04] 다른 사용자가 소유한 락을 release 요청 시") {
+            val event = eventJpaRepository.save(
+                Event(0L, "Owner Mismatch Concert", "Gwangju", baseTime.plusDays(4), EventStatus.OPEN)
+            )
+            val seat = seatJpaRepository.save(Seat(0L, event.id, "E", "1", "1", BigDecimal("55000")))
+
+            // userId=99가 seat 락 소유
+            redisTemplate.opsForValue().set("seat:lock:${event.id}:${seat.id}", "99")
+
+            When("userId=7이 타인 소유 락에 POST /events/{id}/seats/release 호출 시") {
+                val requestBody = """{"seatIds":[${seat.id}]}"""
+                val result = mockMvc.post("/events/${event.id}/seats/release") {
+                    contentType = MediaType.APPLICATION_JSON
+                    header("X-User-Id", "7")
+                    content = requestBody
+                }.andReturn()
+
+                Then("[S-04] 403 응답이 반환되고 Redis 키는 그대로 남아 있다") {
+                    result.response.status shouldBe 403
+                    val lockValue = redisTemplate.opsForValue().get("seat:lock:${event.id}:${seat.id}")
+                    lockValue shouldBe "99"
+                }
+            }
+        }
     }
 }
