@@ -73,6 +73,27 @@ class MessageDomainService(
         val room = roomRepository.findById(roomId)
             ?: throw ResourceNotFoundException("Room", roomId)
         room.validateNotDeleted()
-        return messageRepository.save(Message.create(roomId, userId, content))
+        if (!roomParticipantRepository.existsByRoomIdAndUserId(roomId, userId)) {
+            throw NotRoomParticipantException(userId, roomId)
+        }
+        val message = messageRepository.save(Message.create(roomId, userId, content))
+        room.lastMessageBumpedTo(message.createdAt)
+        roomRepository.save(room)
+        return message
+    }
+
+    fun listMessages(roomId: Long, userId: Long, cursor: String?): List<Message> {
+        val room = roomRepository.findById(roomId)
+            ?: throw ResourceNotFoundException("Room", roomId)
+        room.validateNotDeleted()
+        if (!roomParticipantRepository.existsByRoomIdAndUserId(roomId, userId)) {
+            throw NotRoomParticipantException(userId, roomId)
+        }
+        val before = cursor?.let { java.time.ZonedDateTime.parse(it) }
+        return messageRepository.findByCursor(roomId, before, PAGE_SIZE)
+    }
+
+    companion object {
+        private const val PAGE_SIZE = 30
     }
 }

@@ -1,12 +1,15 @@
 package com.sportsapp.infrastructure.persistence.message
 
+import com.sportsapp.domain.message.CustomMessageRepository
 import com.sportsapp.domain.message.Message
 import com.sportsapp.domain.message.MessageRepository
 import org.springframework.stereotype.Component
+import java.time.ZonedDateTime
 
 @Component
 class MessageRepositoryImpl(
     private val messageJpaRepository: MessageJpaRepository,
+    private val customMessageRepository: CustomMessageRepository,
 ) : MessageRepository {
 
     override fun save(message: Message): Message = messageJpaRepository.save(message)
@@ -15,6 +18,9 @@ class MessageRepositoryImpl(
 
     override fun findByRoomId(roomId: Long): List<Message> =
         messageJpaRepository.findByRoomIdAndDeletedAtIsNull(roomId)
+
+    override fun findByCursor(roomId: Long, before: ZonedDateTime?, pageSize: Int): List<Message> =
+        customMessageRepository.findByCursor(roomId, before, pageSize)
 
     override fun softDeleteAllByRoomId(roomId: Long, userId: Long?) {
         val messages = messageJpaRepository.findByRoomIdAndDeletedAtIsNull(roomId)

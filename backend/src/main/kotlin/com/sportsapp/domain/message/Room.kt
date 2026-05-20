@@ -9,6 +9,7 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import java.time.ZonedDateTime
 
 @Entity
 @Table(name = "rooms")
@@ -25,8 +26,16 @@ class Room(
     @Column(name = "id")
     val id: Long = 0
 
+    @Column(name = "last_message_at")
+    var lastMessageAt: ZonedDateTime? = null
+        private set
+
     fun validateNotDeleted() {
         check(!isDeleted) { "Room is already deleted" }
+    }
+
+    fun lastMessageBumpedTo(sentAt: ZonedDateTime) {
+        lastMessageAt = sentAt
     }
 
     companion object {
