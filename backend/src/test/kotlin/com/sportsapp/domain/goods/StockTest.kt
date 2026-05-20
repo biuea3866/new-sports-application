@@ -33,6 +33,22 @@ class StockTest : BehaviorSpec({
                 stock.quantity shouldBe 0
             }
         }
+
+        When("0을 차감하면") {
+            Then("[U-01 boundary] InvalidQuantityException을 던지고 quantity는 변하지 않는다") {
+                val stock = Stock(productId = 1L, quantity = 5)
+                shouldThrow<InvalidQuantityException> { stock.deduct(0) }
+                stock.quantity shouldBe 5
+            }
+        }
+
+        When("음수를 차감하면") {
+            Then("[U-01] InvalidQuantityException을 던지고 quantity는 변하지 않는다") {
+                val stock = Stock(productId = 1L, quantity = 5)
+                shouldThrow<InvalidQuantityException> { stock.deduct(-3) }
+                stock.quantity shouldBe 5
+            }
+        }
     }
 
     Given("재고가 5개인 Stock에 restore를 호출할 때") {

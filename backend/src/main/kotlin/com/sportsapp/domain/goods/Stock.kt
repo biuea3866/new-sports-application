@@ -22,6 +22,7 @@ class Stock(
     val version: Long = 0L,
 ) : JpaAuditingBase() {
     fun deduct(amount: Int) {
+        if (amount <= 0) throw InvalidQuantityException(amount)
         if (quantity < amount) throw OutOfStockException(productId, amount, quantity)
         quantity -= amount
     }
