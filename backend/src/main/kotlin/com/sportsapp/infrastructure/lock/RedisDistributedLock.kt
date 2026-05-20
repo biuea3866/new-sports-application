@@ -30,8 +30,8 @@ class RedisDistributedLock(
     override fun tryLock(key: String, value: String, ttl: Duration): Boolean {
         return try {
             redisTemplate.opsForValue().setIfAbsent(key, value, ttl) == true
-        } catch (e: DataAccessException) {
-            throw RedisLockException("Redis 접근 실패 (tryLock key=$key)", e)
+        } catch (cause: DataAccessException) {
+            throw RedisLockException("Redis 접근 실패 (tryLock key=$key)", cause)
         }
     }
 
@@ -39,8 +39,8 @@ class RedisDistributedLock(
         return try {
             val result = redisTemplate.execute(unlockScript, listOf(key), value)
             result == 1L
-        } catch (e: DataAccessException) {
-            throw RedisLockException("Redis 접근 실패 (unlock key=$key)", e)
+        } catch (cause: DataAccessException) {
+            throw RedisLockException("Redis 접근 실패 (unlock key=$key)", cause)
         }
     }
 

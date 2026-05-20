@@ -1,8 +1,8 @@
 package com.sportsapp.infrastructure.audit
 
-import java.util.Optional
 import org.springframework.data.domain.AuditorAware
 import org.springframework.stereotype.Component
+import java.util.Optional
 
 /**
  * BaseEntity / BaseDocument 의 `@CreatedBy` · `@LastModifiedBy` 가 호출하는 빈.
