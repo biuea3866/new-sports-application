@@ -27,10 +27,11 @@ class GoodsOrderApiController(
     @PostMapping
     fun createOrder(
         @RequestHeader("X-User-Id") userId: Long,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @RequestBody request: CreateGoodsOrderRequest,
-    ): ResponseEntity<Map<String, Long>> {
-        val orderId = createGoodsOrderUseCase.execute(request.toCommand(userId))
-        return ResponseEntity.accepted().body(mapOf("orderId" to orderId))
+    ): ResponseEntity<GoodsOrderResponse> {
+        val response = createGoodsOrderUseCase.execute(request.toCommand(userId, idempotencyKey))
+        return ResponseEntity.accepted().body(response)
     }
 
     @GetMapping("/{orderId}")

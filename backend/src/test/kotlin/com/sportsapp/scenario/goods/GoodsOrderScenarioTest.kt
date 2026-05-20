@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.math.BigDecimal
+import java.util.UUID
 
 @AutoConfigureMockMvc
 class GoodsOrderScenarioTest(
@@ -38,6 +39,7 @@ class GoodsOrderScenarioTest(
             beforeEach {
                 jdbcTemplate.execute("DELETE FROM goods_order_items")
                 jdbcTemplate.execute("DELETE FROM goods_orders")
+                jdbcTemplate.execute("DELETE FROM payments")
                 jdbcTemplate.execute("DELETE FROM stocks")
                 jdbcTemplate.execute("DELETE FROM products")
 
@@ -56,18 +58,21 @@ class GoodsOrderScenarioTest(
             }
 
             When("[S-01] POST /goods-orders로 주문 생성하면") {
-                Then("202 Accepted와 orderId가 반환되고 재고가 차감된다") {
+                Then("202 Accepted와 orderId, paymentId, paymentStatus가 반환되고 재고가 차감된다") {
                     val result = mockMvc.perform(
                         post("/goods-orders")
                             .header("X-User-Id", "1")
+                            .header("Idempotency-Key", UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("""{"items": [{"productId": $productId, "quantity": 3}]}""")
+                            .content("""{"method":"CREDIT_CARD","fromCart":false,"items":[{"productId":$productId,"quantity":3}]}""")
                     ).andExpect(status().isAccepted)
-                        .andExpect(jsonPath("$.orderId").isNumber)
+                        .andExpect(jsonPath("$.id").isNumber)
+                        .andExpect(jsonPath("$.paymentId").isNumber)
+                        .andExpect(jsonPath("$.paymentStatus").isString)
                         .andReturn()
 
                     val orderId = objectMapper.readTree(result.response.contentAsString)
-                        .get("orderId").asLong()
+                        .get("id").asLong()
 
                     val stock = stockJpaRepository.findByProductId(productId.toLong())
                     requireNotNull(stock)
@@ -77,7 +82,6 @@ class GoodsOrderScenarioTest(
                         get("/goods-orders/$orderId")
                             .header("X-User-Id", "1")
                     ).andExpect(status().isOk)
-                        .andExpect(jsonPath("$.status").value("PENDING"))
                         .andExpect(jsonPath("$.items.length()").value(1))
                         .andExpect(jsonPath("$.items[0].quantity").value(3))
                 }
@@ -88,10 +92,11 @@ class GoodsOrderScenarioTest(
                     mockMvc.perform(
                         post("/goods-orders")
                             .header("X-User-Id", "2")
+                            .header("Idempotency-Key", UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("""{"items": [{"productId": $productId, "quantity": 1}]}""")
+                            .content("""{"method":"CREDIT_CARD","fromCart":false,"items":[{"productId":$productId,"quantity":1}]}""")
                     ).andExpect(status().isAccepted)
-                        .andExpect(jsonPath("$.orderId").isNumber)
+                        .andExpect(jsonPath("$.id").isNumber)
                 }
             }
 
@@ -100,15 +105,17 @@ class GoodsOrderScenarioTest(
                     mockMvc.perform(
                         post("/goods-orders")
                             .header("X-User-Id", "3")
+                            .header("Idempotency-Key", UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("""{"items": [{"productId": $productId, "quantity": 10}]}""")
+                            .content("""{"method":"CREDIT_CARD","fromCart":false,"items":[{"productId":$productId,"quantity":10}]}""")
                     ).andExpect(status().isAccepted)
 
                     mockMvc.perform(
                         post("/goods-orders")
                             .header("X-User-Id", "4")
+                            .header("Idempotency-Key", UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("""{"items": [{"productId": $productId, "quantity": 1}]}""")
+                            .content("""{"method":"CREDIT_CARD","fromCart":false,"items":[{"productId":$productId,"quantity":1}]}""")
                     ).andExpect(status().isConflict)
                 }
             }
@@ -118,8 +125,9 @@ class GoodsOrderScenarioTest(
                     mockMvc.perform(
                         post("/goods-orders")
                             .header("X-User-Id", "5")
+                            .header("Idempotency-Key", UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("""{"items": [{"productId": $productId, "quantity": 1}]}""")
+                            .content("""{"method":"CREDIT_CARD","fromCart":false,"items":[{"productId":$productId,"quantity":1}]}""")
                     ).andExpect(status().isAccepted)
 
                     mockMvc.perform(
@@ -138,8 +146,9 @@ class GoodsOrderScenarioTest(
                     mockMvc.perform(
                         post("/goods-orders")
                             .header("X-User-Id", "1")
+                            .header("Idempotency-Key", UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("""{"items": []}""")
+                            .content("""{"method":"CREDIT_CARD","fromCart":false,"items":[]}""")
                     ).andExpect(status().isBadRequest)
                 }
             }

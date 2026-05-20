@@ -1,11 +1,22 @@
 package com.sportsapp.domain.goods
 
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
+import com.sportsapp.domain.payment.OrderType
+import com.sportsapp.domain.payment.PaymentDomainService
+import com.sportsapp.domain.payment.PaymentMethod
+import com.sportsapp.domain.payment.PaymentStatus
 import java.math.BigDecimal
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+
+data class OrderWithPayment(
+    val orderId: Long,
+    val paymentId: Long,
+    val paymentStatus: PaymentStatus,
+    val totalAmount: BigDecimal,
+)
 
 @Service
 class GoodsDomainService(
@@ -15,6 +26,8 @@ class GoodsDomainService(
     private val popularProductsCache: PopularProductsCache,
     private val goodsOrderRepository: GoodsOrderRepository,
     private val goodsOrderItemRepository: GoodsOrderItemRepository,
+    private val paymentDomainService: PaymentDomainService,
+    private val cartDomainService: CartDomainService,
 ) {
     @Transactional(readOnly = true)
     fun search(
@@ -89,6 +102,32 @@ class GoodsDomainService(
         stock.deduct(item.quantity)
         stockRepository.save(stock)
         return product
+    }
+
+    fun createOrderWithPayment(
+        userId: Long,
+        idempotencyKey: String,
+        method: PaymentMethod,
+        fromCart: Boolean,
+        items: List<OrderItemInput>,
+    ): OrderWithPayment {
+        val order = createPendingOrder(userId, items)
+        val payment = paymentDomainService.create(
+            userId = userId,
+            idempotencyKey = idempotencyKey,
+            orderType = OrderType.GOODS,
+            orderId = order.id,
+            method = method,
+            amount = order.totalAmount,
+            currency = "KRW",
+        )
+        if (fromCart) cartDomainService.clearCart(userId)
+        return OrderWithPayment(
+            orderId = order.id,
+            paymentId = payment.id,
+            paymentStatus = payment.status,
+            totalAmount = order.totalAmount,
+        )
     }
 
     fun getOrder(userId: Long, orderId: Long): Pair<GoodsOrder, List<GoodsOrderItem>> {

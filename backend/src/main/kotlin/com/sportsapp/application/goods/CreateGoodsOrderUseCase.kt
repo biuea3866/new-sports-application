@@ -9,8 +9,14 @@ class CreateGoodsOrderUseCase(
     private val goodsDomainService: GoodsDomainService,
 ) {
     @Transactional
-    fun execute(command: CreateGoodsOrderCommand): Long {
-        val order = goodsDomainService.createPendingOrder(command.userId, command.items)
-        return order.id
+    fun execute(command: CreateGoodsOrderCommand): GoodsOrderResponse {
+        val result = goodsDomainService.createOrderWithPayment(
+            userId = command.userId,
+            idempotencyKey = command.idempotencyKey,
+            method = command.method,
+            fromCart = command.fromCart,
+            items = command.items,
+        )
+        return GoodsOrderResponse.ofCreated(result)
     }
 }
