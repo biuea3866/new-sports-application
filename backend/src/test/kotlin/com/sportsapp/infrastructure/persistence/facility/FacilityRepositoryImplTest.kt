@@ -116,6 +116,55 @@ class FacilityRepositoryImplTest(
             }
         }
 
+        Given("userId=1 시설 2건, userId=2 시설 1건이 저장된 상태") {
+            mongoTemplate.remove(Query(), Facility::class.java)
+            val facilityForUser1a = Facility.create(buildAttributes("OWN-001", "강남구", "수영장")).also { it.assignOwner(1L) }
+            val facilityForUser1b = Facility.create(buildAttributes("OWN-002", "서초구", "헬스장")).also { it.assignOwner(1L) }
+            val facilityForUser2 = Facility.create(buildAttributes("OWN-003", "마포구", "풋살장")).also { it.assignOwner(2L) }
+            facilityRepository.save(facilityForUser1a)
+            facilityRepository.save(facilityForUser1b)
+            facilityRepository.save(facilityForUser2)
+
+            When("userId=1로 findByOwnerUserId 조회하면") {
+                val pageable = PageRequest.of(0, 50)
+                val result = facilityRepository.findByOwnerUserId(1L, pageable)
+                Then("[R-01] userId=1 시설 2건만 반환되고 userId=2 시설은 제외된다") {
+                    result.content shouldHaveSize 2
+                    result.content.all { it.ownerUserId == 1L } shouldBe true
+                }
+            }
+
+            When("userId=1의 시설 id로 findByIdAndOwnerUserId를 호출하면") {
+                val savedId = requireNotNull(facilityRepository.save(facilityForUser1a).id)
+                val result = facilityRepository.findByIdAndOwnerUserId(savedId, 1L)
+                Then("[R-02] 해당 시설을 반환한다") {
+                    result shouldNotBe null
+                }
+            }
+
+            When("userId=1의 시설 id로 userId=2를 넘겨 findByIdAndOwnerUserId를 호출하면") {
+                val savedId = requireNotNull(facilityRepository.save(facilityForUser1a).id)
+                val result = facilityRepository.findByIdAndOwnerUserId(savedId, 2L)
+                Then("[R-02] ownerUserId 불일치로 null이 반환된다") {
+                    result shouldBe null
+                }
+            }
+        }
+
+        Given("ownerUserId가 NULL인 시설이 저장된 상태") {
+            mongoTemplate.remove(Query(), Facility::class.java)
+            val saved = facilityRepository.save(Facility.create(buildAttributes("NULL-OWN-001", "강남구", "수영장")))
+
+            When("findById로 조회하면") {
+                val foundId = requireNotNull(saved.id)
+                val result = facilityRepository.findById(foundId)
+                Then("[R-03] ownerUserId NULL 시설도 정상 조회된다") {
+                    result shouldNotBe null
+                    result?.ownerUserId shouldBe null
+                }
+            }
+        }
+
         Given("강남구 풋살장 2건, 강남구 수영장 1건, 서초구 풋살장 1건이 저장된 상태") {
             mongoTemplate.remove(Query(), Facility::class.java)
             facilityRepository.save(Facility.create(buildAttributes("GN-FS-001", "강남구", "풋살장")))

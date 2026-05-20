@@ -50,6 +50,30 @@ class FacilityTest : BehaviorSpec({
         }
     }
 
+    Given("ownerUserId가 없는 Facility") {
+        val facility = Facility.create(buildAttributes())
+
+        When("assignOwner를 호출하면") {
+            facility.assignOwner(42L)
+            Then("[U-01] ownerUserId가 해당 값으로 설정된다") {
+                facility.ownerUserId shouldBe 42L
+            }
+        }
+    }
+
+    Given("이미 ownerUserId가 설정된 Facility") {
+        val facility = Facility.create(buildAttributes())
+        facility.assignOwner(42L)
+
+        When("assignOwner를 재호출하면") {
+            Then("[U-02] IllegalStateException이 발생한다") {
+                shouldThrow<IllegalStateException> {
+                    facility.assignOwner(99L)
+                }
+            }
+        }
+    }
+
     Given("기존 meta에 키가 있는 Facility") {
         val facility = Facility.create(
             buildAttributes(meta = mapOf("capacity" to "50", "lane" to "8"))

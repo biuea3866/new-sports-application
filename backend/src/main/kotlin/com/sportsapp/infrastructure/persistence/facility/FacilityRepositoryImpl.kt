@@ -76,6 +76,12 @@ class FacilityRepositoryImpl(
         else -> facilityMongoRepository.findAllByDeletedAtIsNull(pageable)
     }
 
+    override fun findByOwnerUserId(ownerUserId: Long, pageable: Pageable): Page<Facility> =
+        facilityMongoRepository.findAllByOwnerUserIdAndDeletedAtIsNull(ownerUserId, pageable)
+
+    override fun findByIdAndOwnerUserId(id: String, ownerUserId: Long): Facility? =
+        facilityMongoRepository.findByIdAndOwnerUserIdAndDeletedAtIsNull(id, ownerUserId)
+
     override fun aggregateGuType(): List<GuTypeCount> {
         val aggregation = Aggregation.newAggregation(
             Aggregation.match(Criteria.where("deletedAt").isNull),

@@ -43,10 +43,17 @@ class Facility(
     val eduYn: Boolean,
     @Field("meta")
     val meta: Map<String, String>,
+    @Field("owner_user_id")
+    var ownerUserId: Long? = null,
 ) : BaseDocument() {
 
     val lat: Double get() = location.y
     val lng: Double get() = location.x
+
+    fun assignOwner(userId: Long) {
+        check(ownerUserId == null) { "Facility already has an owner" }
+        ownerUserId = userId
+    }
 
     fun updateMeta(patch: Map<String, String>): Facility =
         Facility(
@@ -62,6 +69,7 @@ class Facility(
             homePage = homePage,
             eduYn = eduYn,
             meta = meta + patch,
+            ownerUserId = ownerUserId,
         )
 
     companion object {
