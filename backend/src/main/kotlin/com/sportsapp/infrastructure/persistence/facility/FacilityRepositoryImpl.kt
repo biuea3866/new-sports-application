@@ -55,7 +55,7 @@ class FacilityRepositoryImpl(
 
     override fun aggregateGuType(): List<GuTypeCount> {
         val aggregation = Aggregation.newAggregation(
-            Aggregation.match(Criteria.where("deleted_at").isNull),
+            Aggregation.match(Criteria.where("deletedAt").isNull),
             Aggregation.group("gu", "type").count().`as`("count"),
             Aggregation.project("count")
                 .and("_id.gu").`as`("gu")
