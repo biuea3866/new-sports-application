@@ -15,4 +15,10 @@ class MessageRepositoryImpl(
 
     override fun findByRoomId(roomId: Long): List<Message> =
         messageJpaRepository.findByRoomIdAndDeletedAtIsNull(roomId)
+
+    override fun softDeleteAllByRoomId(roomId: Long, userId: Long?) {
+        val messages = messageJpaRepository.findByRoomIdAndDeletedAtIsNull(roomId)
+        messages.forEach { it.softDelete(userId) }
+        messageJpaRepository.saveAll(messages)
+    }
 }

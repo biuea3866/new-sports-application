@@ -18,7 +18,7 @@ class MessageDomainServiceScenarioTest(
     init {
         Given("createRoom + joinRoom + sendMessage 전체 플로우") {
             When("그룹 룸 생성 → 2명 참여 → 메시지 전송") {
-                val room = messageDomainService.createGroupRoom("축구 모임")
+                val room = messageDomainService.createGroupRoom("축구 모임", emptyList())
                 messageDomainService.joinRoom(room.id, userId = 10L)
                 messageDomainService.joinRoom(room.id, userId = 20L)
                 val message = messageDomainService.sendMessage(
