@@ -53,6 +53,8 @@ exceptions:
   active: true
   TooGenericExceptionCaught:
     active: false
+  SwallowedException:
+    active: false
 
 naming:
   active: true
