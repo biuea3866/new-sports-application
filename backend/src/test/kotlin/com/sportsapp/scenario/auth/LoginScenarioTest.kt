@@ -115,7 +115,7 @@ class LoginScenarioTest(
             When("[S-04] POST /auth/refresh 에 존재하지 않는 refreshToken 을 보내면") {
                 val headers = HttpHeaders().apply { set("Content-Type", "application/json") }
                 val body = objectMapper.writeValueAsString(
-                    mapOf("userId" to 9999, "refreshToken" to "expired-or-nonexistent-token"),
+                    mapOf("refreshToken" to "expired-or-nonexistent-token"),
                 )
                 val response = restTemplate.exchange(
                     "${baseUrl()}/auth/refresh",
@@ -126,6 +126,43 @@ class LoginScenarioTest(
 
                 Then("401 응답이 반환된다") {
                     response.statusCode shouldBe HttpStatus.UNAUTHORIZED
+                }
+            }
+        }
+
+        Given("로그인 후 발급된 refreshToken 이 있을 때") {
+            val hashedPassword = passwordEncoder.encode("RefreshPass789")
+            userDomainService.register("refresh-scenario@example.com", hashedPassword)
+
+            val loginHeaders = HttpHeaders().apply { set("Content-Type", "application/json") }
+            val loginBody = objectMapper.writeValueAsString(
+                mapOf("email" to "refresh-scenario@example.com", "password" to "RefreshPass789"),
+            )
+            val loginResponse = restTemplate.exchange(
+                "${baseUrl()}/auth/login",
+                HttpMethod.POST,
+                HttpEntity(loginBody, loginHeaders),
+                String::class.java,
+            )
+            val loginResult = objectMapper.readValue(loginResponse.body, LoginResponse::class.java)
+
+            When("[S-05] POST /auth/refresh 에 유효한 refreshToken 만 보내면") {
+                val headers = HttpHeaders().apply { set("Content-Type", "application/json") }
+                val body = objectMapper.writeValueAsString(
+                    mapOf("refreshToken" to loginResult.refreshToken),
+                )
+                val response = restTemplate.exchange(
+                    "${baseUrl()}/auth/refresh",
+                    HttpMethod.POST,
+                    HttpEntity(body, headers),
+                    String::class.java,
+                )
+
+                Then("200 응답과 새로운 accessToken/refreshToken 이 반환된다") {
+                    response.statusCode shouldBe HttpStatus.OK
+                    val refreshedResponse = objectMapper.readValue(response.body, LoginResponse::class.java)
+                    refreshedResponse.accessToken.shouldNotBeBlank()
+                    refreshedResponse.refreshToken.shouldNotBeBlank()
                 }
             }
         }

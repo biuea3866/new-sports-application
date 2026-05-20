@@ -9,8 +9,7 @@ import org.springframework.stereotype.Service
 @Service
 class AuthDomainService(
     private val userRepository: UserRepository,
-    private val userRoleRepository: UserRoleRepository,
-    private val roleRepository: RoleRepository,
+    private val userDomainService: UserDomainService,
     private val jwtIssuer: JwtIssuer,
     private val refreshTokenRepository: RefreshTokenRepository,
     private val passwordEncoder: PasswordEncoder,
@@ -18,21 +17,17 @@ class AuthDomainService(
     fun authenticate(email: String, rawPassword: String): TokenPair {
         val user = userRepository.findByEmail(email) ?: throw InvalidCredentialsException()
         if (!passwordEncoder.matches(rawPassword, user.passwordHash)) throw InvalidCredentialsException()
-        val roles = resolveRoleNames(user.id)
+        val roles = userDomainService.getRolesForUser(user.id).map { it.name }
         return issueTokenPair(user.id, user.email, roles)
     }
 
-    fun refresh(userId: Long, incomingRefreshToken: String): TokenPair {
-        validateRefreshToken(userId, incomingRefreshToken)
+    fun refresh(incomingRefreshToken: String): TokenPair {
+        val userId = refreshTokenRepository.findUserIdByToken(incomingRefreshToken)
+            ?: throw InvalidRefreshTokenException()
         val user = userRepository.findById(userId) ?: throw ResourceNotFoundException("User", userId)
-        val roles = resolveRoleNames(userId)
-        refreshTokenRepository.remove(userId)
+        val roles = userDomainService.getRolesForUser(userId).map { it.name }
+        refreshTokenRepository.invalidate(incomingRefreshToken)
         return issueTokenPair(user.id, user.email, roles)
-    }
-
-    private fun validateRefreshToken(userId: Long, incomingRefreshToken: String) {
-        val storedToken = refreshTokenRepository.find(userId) ?: throw InvalidRefreshTokenException()
-        if (storedToken != incomingRefreshToken) throw InvalidRefreshTokenException()
     }
 
     private fun issueTokenPair(userId: Long, email: String, roles: List<String>): TokenPair {
@@ -44,10 +39,5 @@ class AuthDomainService(
             refreshToken = refreshToken,
             accessTokenExpiresIn = jwtIssuer.accessTokenExpiresInSeconds(),
         )
-    }
-
-    private fun resolveRoleNames(userId: Long): List<String> {
-        val userRoles = userRoleRepository.findActiveByUserId(userId)
-        return userRoles.mapNotNull { userRole -> roleRepository.findById(userRole.roleId)?.name }
     }
 }

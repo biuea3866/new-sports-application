@@ -52,11 +52,11 @@ class JwtTokenProvider(
         parseClaims(token).subject.toLong()
 
     override fun extractEmail(token: String): String =
-        parseClaims(token)["email"] as? String ?: ""
+        requireNotNull(parseClaims(token)["email"] as? String) { "missing email claim in JWT" }
 
     @Suppress("UNCHECKED_CAST")
     override fun extractRoles(token: String): List<String> =
-        (parseClaims(token)["roles"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+        requireNotNull((parseClaims(token)["roles"] as? List<*>)?.filterIsInstance<String>()) { "missing roles claim in JWT" }
 
     override fun accessTokenExpiresInSeconds(): Long = accessTokenExpirySeconds
 

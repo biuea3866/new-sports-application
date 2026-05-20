@@ -12,16 +12,16 @@ class RedisRefreshTokenRepository(
 
     private val refreshTokenTtl: Duration = Duration.ofDays(14)
 
-    private fun redisKey(userId: Long): String = "refresh:$userId"
+    private fun redisKey(refreshToken: String): String = "refreshtoken:$refreshToken"
 
     override fun save(userId: Long, refreshToken: String) {
-        stringRedisTemplate.opsForValue().set(redisKey(userId), refreshToken, refreshTokenTtl)
+        stringRedisTemplate.opsForValue().set(redisKey(refreshToken), userId.toString(), refreshTokenTtl)
     }
 
-    override fun find(userId: Long): String? =
-        stringRedisTemplate.opsForValue().get(redisKey(userId))
+    override fun findUserIdByToken(refreshToken: String): Long? =
+        stringRedisTemplate.opsForValue().get(redisKey(refreshToken))?.toLong()
 
-    override fun remove(userId: Long) {
-        stringRedisTemplate.unlink(redisKey(userId))
+    override fun invalidate(refreshToken: String) {
+        stringRedisTemplate.unlink(redisKey(refreshToken))
     }
 }

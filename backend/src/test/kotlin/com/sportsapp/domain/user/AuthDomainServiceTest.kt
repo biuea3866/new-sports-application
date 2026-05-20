@@ -14,16 +14,14 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 class AuthDomainServiceTest : BehaviorSpec({
 
     val userRepository = mockk<UserRepository>()
-    val userRoleRepository = mockk<UserRoleRepository>()
-    val roleRepository = mockk<RoleRepository>()
+    val userDomainService = mockk<UserDomainService>()
     val jwtIssuer = mockk<JwtIssuer>()
     val refreshTokenRepository = mockk<RefreshTokenRepository>()
     val passwordEncoder = BCryptPasswordEncoder()
 
     val authDomainService = AuthDomainService(
         userRepository = userRepository,
-        userRoleRepository = userRoleRepository,
-        roleRepository = roleRepository,
+        userDomainService = userDomainService,
         jwtIssuer = jwtIssuer,
         refreshTokenRepository = refreshTokenRepository,
         passwordEncoder = passwordEncoder,
@@ -40,7 +38,7 @@ class AuthDomainServiceTest : BehaviorSpec({
 
     Given("올바른 이메일과 비밀번호로 로그인 시도 시") {
         every { userRepository.findByEmail("test@example.com") } returns testUser
-        every { userRoleRepository.findActiveByUserId(any()) } returns emptyList()
+        every { userDomainService.getRolesForUser(any()) } returns emptyList()
         every { jwtIssuer.generateAccessToken(any(), any(), any()) } returns "access-token"
         every { jwtIssuer.generateRefreshToken() } returns "refresh-token"
         every { jwtIssuer.accessTokenExpiresInSeconds() } returns 1800L
@@ -82,48 +80,35 @@ class AuthDomainServiceTest : BehaviorSpec({
     }
 
     Given("유효한 Refresh Token 으로 재발급 시도 시") {
+        every { refreshTokenRepository.findUserIdByToken("valid-refresh-token") } returns 1L
         every { userRepository.findById(1L) } returns testUser
-        every { refreshTokenRepository.find(1L) } returns "valid-refresh-token"
-        every { userRoleRepository.findActiveByUserId(any()) } returns emptyList()
+        every { userDomainService.getRolesForUser(1L) } returns emptyList()
         every { jwtIssuer.generateAccessToken(any(), any(), any()) } returns "new-access-token"
         every { jwtIssuer.generateRefreshToken() } returns "new-refresh-token"
         every { jwtIssuer.accessTokenExpiresInSeconds() } returns 1800L
-        every { refreshTokenRepository.remove(1L) } returns Unit
+        every { refreshTokenRepository.invalidate("valid-refresh-token") } returns Unit
         every { refreshTokenRepository.save(any(), any()) } returns Unit
 
         When("refresh 를 호출하면") {
-            val tokenPair = authDomainService.refresh(1L, "valid-refresh-token")
+            val tokenPair = authDomainService.refresh("valid-refresh-token")
 
             Then("[U-03] 기존 Refresh Token 이 삭제되고 새 TokenPair 가 반환된다") {
                 tokenPair.accessToken shouldBe "new-access-token"
                 tokenPair.refreshToken shouldBe "new-refresh-token"
                 tokenPair shouldNotBe null
-                verify(exactly = 1) { refreshTokenRepository.remove(1L) }
-                // testUser.id == 0 (JPA 자동생성 미적용 상태), 임의 호출 검증
+                verify(exactly = 1) { refreshTokenRepository.invalidate("valid-refresh-token") }
                 verify(exactly = 1) { refreshTokenRepository.save(any(), "new-refresh-token") }
             }
         }
     }
 
-    Given("불일치하는 Refresh Token 으로 재발급 시도 시") {
-        every { refreshTokenRepository.find(1L) } returns "correct-refresh-token"
+    Given("Redis 에 존재하지 않는 Refresh Token 으로 재발급 시도 시") {
+        every { refreshTokenRepository.findUserIdByToken("nonexistent-token") } returns null
 
         When("refresh 를 호출하면") {
             Then("[U-03] InvalidRefreshTokenException 이 발생한다") {
                 shouldThrow<InvalidRefreshTokenException> {
-                    authDomainService.refresh(1L, "wrong-refresh-token")
-                }
-            }
-        }
-    }
-
-    Given("Redis 에 Refresh Token 이 없는 경우") {
-        every { refreshTokenRepository.find(1L) } returns null
-
-        When("refresh 를 호출하면") {
-            Then("[U-03] InvalidRefreshTokenException 이 발생한다") {
-                shouldThrow<InvalidRefreshTokenException> {
-                    authDomainService.refresh(1L, "any-token")
+                    authDomainService.refresh("nonexistent-token")
                 }
             }
         }
