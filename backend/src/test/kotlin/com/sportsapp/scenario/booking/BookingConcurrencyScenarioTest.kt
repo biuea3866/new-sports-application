@@ -36,6 +36,7 @@ class BookingConcurrencyScenarioTest(
                     date = ZonedDateTime.now().plusDays(1),
                     timeRange = "09:00-10:00",
                     capacity = 1,
+                    ownerId = 1L,
                 )
             )
 
@@ -75,6 +76,7 @@ class BookingConcurrencyScenarioTest(
                     date = ZonedDateTime.now().plusDays(1),
                     timeRange = "10:00-11:00",
                     capacity = 2,
+                    ownerId = 1L,
                 )
             )
 
@@ -116,6 +118,7 @@ class BookingConcurrencyScenarioTest(
                     date = ZonedDateTime.now().plusDays(2),
                     timeRange = "14:00-15:00",
                     capacity = 10,
+                    ownerId = 1L,
                 )
             )
 
