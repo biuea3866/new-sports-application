@@ -27,8 +27,9 @@ class TicketingDomainService(
         venue: String,
         startsAt: ZonedDateTime,
         seats: List<SeatSpec>,
+        ownerUserId: Long,
     ): Event {
-        val event = eventRepository.save(Event.create(title, venue, startsAt))
+        val event = eventRepository.save(Event.create(title, venue, startsAt, ownerUserId))
         val seatList = seats.map { spec ->
             Seat(
                 id = 0L,

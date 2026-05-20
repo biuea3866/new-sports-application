@@ -26,6 +26,7 @@ class ListEventsUseCaseTest : BehaviorSpec({
         venue = "Seoul Arena",
         startsAt = startsAt,
         status = status,
+        ownerId = 1L,
     )
 
     Given("OPEN 상태 이벤트 2건이 존재할 때") {

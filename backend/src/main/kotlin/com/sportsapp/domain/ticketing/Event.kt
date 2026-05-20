@@ -30,6 +30,9 @@ class Event(
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     var status: EventStatus,
+
+    @Column(name = "owner_id", nullable = false)
+    val ownerId: Long,
 ) : JpaAuditingBase() {
 
     companion object {
@@ -37,12 +40,14 @@ class Event(
             title: String,
             venue: String,
             startsAt: ZonedDateTime,
+            ownerId: Long,
         ): Event = Event(
             id = 0L,
             title = title,
             venue = venue,
             startsAt = startsAt,
             status = EventStatus.SCHEDULED,
+            ownerId = ownerId,
         )
     }
 

@@ -44,6 +44,7 @@ class TicketingScenarioTest(
                     venue = "Test Arena",
                     startsAt = startsAt,
                     seats = seatSpecs,
+                    ownerUserId = 1L,
                 )
                 val elapsedMs = System.currentTimeMillis() - startMs
 
@@ -65,6 +66,7 @@ class TicketingScenarioTest(
                     venue = "Test Venue",
                     startsAt = startsAt,
                     status = EventStatus.SCHEDULED,
+                    ownerId = 1L,
                 )
             )
             seatJpaRepository.save(

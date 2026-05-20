@@ -27,6 +27,7 @@ class GetEventUseCaseTest : BehaviorSpec({
         venue = "Seoul Arena",
         startsAt = startsAt,
         status = EventStatus.OPEN,
+        ownerId = 1L,
     )
 
     fun buildSeat(eventId: Long, section: String, seatNo: String) = Seat(

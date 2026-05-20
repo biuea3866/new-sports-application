@@ -33,6 +33,7 @@ class EventRepositoryImplTest(
                     venue = "Seoul Arena",
                     startsAt = startsAt,
                     status = EventStatus.SCHEDULED,
+                    ownerId = 1L,
                 )
             )
 
@@ -59,6 +60,7 @@ class EventRepositoryImplTest(
                     venue = "Test Venue",
                     startsAt = startsAt,
                     status = EventStatus.SCHEDULED,
+                    ownerId = 1L,
                 )
             )
 
@@ -97,6 +99,7 @@ class EventRepositoryImplTest(
                     venue = "Test Venue",
                     startsAt = startsAt,
                     status = EventStatus.SCHEDULED,
+                    ownerId = 1L,
                 )
             )
             seatJpaRepository.save(
@@ -130,6 +133,7 @@ class EventRepositoryImplTest(
                     venue = "Test Venue",
                     startsAt = startsAt,
                     status = EventStatus.SCHEDULED,
+                    ownerId = 1L,
                 )
             )
             seatJpaRepository.saveAll(
@@ -149,6 +153,76 @@ class EventRepositoryImplTest(
                     seats[0].seatNo shouldBe "1"
                     seats[1].seatNo shouldBe "2"
                     seats[2].section shouldBe "B"
+                }
+            }
+        }
+
+        Given("[R-01-owner] ownerId를 포함한 Event를 저장한 뒤") {
+            val ownerUserId = 100L
+            val saved = eventRepositoryImpl.save(
+                Event(
+                    id = 0L,
+                    title = "Owner Persist Test",
+                    venue = "Owner Venue",
+                    startsAt = startsAt,
+                    status = EventStatus.SCHEDULED,
+                    ownerId = ownerUserId,
+                )
+            )
+
+            When("findById로 조회하면") {
+                val found = eventRepositoryImpl.findById(saved.id)
+
+                Then("[R-01] owner_id 컬럼이 영속화된다") {
+                    requireNotNull(found).ownerId shouldBe ownerUserId
+                }
+            }
+        }
+
+        Given("[R-02] ownerId가 다른 두 Event가 존재할 때") {
+            val owner1Id = 201L
+            val owner2Id = 202L
+            eventRepositoryImpl.save(
+                Event(0L, "Owner1 Event A", "Venue A", startsAt, EventStatus.SCHEDULED, owner1Id)
+            )
+            eventRepositoryImpl.save(
+                Event(0L, "Owner1 Event B", "Venue B", startsAt.plusHours(1), EventStatus.SCHEDULED, owner1Id)
+            )
+            eventRepositoryImpl.save(
+                Event(0L, "Owner2 Event", "Venue C", startsAt.plusHours(2), EventStatus.SCHEDULED, owner2Id)
+            )
+
+            When("owner1Id로 findByOwnerId를 호출하면") {
+                val pageable = org.springframework.data.domain.PageRequest.of(0, 10)
+                val result = eventRepositoryImpl.findByOwnerId(owner1Id, pageable)
+
+                Then("[R-02] owner1의 Event 2건만 반환된다") {
+                    result.totalElements shouldBe 2L
+                    result.content.all { it.ownerId == owner1Id } shouldBe true
+                }
+            }
+        }
+
+        Given("[R-03] ownerId가 다른 Event가 존재할 때") {
+            val ownerAId = 301L
+            val ownerBId = 302L
+            val eventOfOwnerA = eventRepositoryImpl.save(
+                Event(0L, "OwnerA Event", "Venue A", startsAt.plusHours(3), EventStatus.SCHEDULED, ownerAId)
+            )
+
+            When("ownerBId로 findByIdAndOwnerId를 호출하면") {
+                val result = eventRepositoryImpl.findByIdAndOwnerId(eventOfOwnerA.id, ownerBId)
+
+                Then("[R-03] ownerId 불일치 시 null이 반환된다") {
+                    result shouldBe null
+                }
+            }
+
+            When("ownerAId로 findByIdAndOwnerId를 호출하면") {
+                val result = eventRepositoryImpl.findByIdAndOwnerId(eventOfOwnerA.id, ownerAId)
+
+                Then("[R-03b] ownerId 일치 시 Event가 반환된다") {
+                    requireNotNull(result).id shouldBe eventOfOwnerA.id
                 }
             }
         }

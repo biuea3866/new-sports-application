@@ -2,6 +2,8 @@ package com.sportsapp.infrastructure.persistence.ticketing
 
 import com.sportsapp.domain.ticketing.Event
 import com.sportsapp.domain.ticketing.EventRepository
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 
@@ -21,4 +23,10 @@ class EventRepositoryImpl(
         event.softDelete(deletedBy)
         eventJpaRepository.save(event)
     }
+
+    override fun findByOwnerId(ownerId: Long, pageable: Pageable): Page<Event> =
+        eventJpaRepository.findByOwnerIdAndDeletedAtIsNull(ownerId, pageable)
+
+    override fun findByIdAndOwnerId(id: Long, ownerId: Long): Event? =
+        eventJpaRepository.findByIdAndOwnerIdAndDeletedAtIsNull(id, ownerId)
 }

@@ -14,7 +14,23 @@ class EventTest : BehaviorSpec({
         venue = "Olympic Stadium",
         startsAt = ZonedDateTime.now().plusDays(7),
         status = status,
+        ownerId = 1L,
     )
+
+    Given("Event.create 팩토리를 호출할 때") {
+        When("모든 인자를 전달하면") {
+            val event = Event.create(
+                title = "B2B Event",
+                venue = "Test Stadium",
+                startsAt = ZonedDateTime.now().plusDays(30),
+                ownerId = 42L,
+            )
+            Then("[U-01] ownerId가 설정된다") {
+                event.ownerId shouldBe 42L
+                event.status shouldBe EventStatus.SCHEDULED
+            }
+        }
+    }
 
     Given("SCHEDULED 상태의 Event") {
         val event = buildEvent(EventStatus.SCHEDULED)
