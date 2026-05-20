@@ -32,6 +32,32 @@ from datetime import date
 from fnmatch import fnmatch
 from pathlib import Path
 
+
+def _expand_brace_globs(pattern: str) -> list[str]:
+    """Expand a single-level brace pattern `{a,b,c}` into a list of patterns.
+
+    Python `fnmatch.fnmatch` does not understand brace expansion, so a glob
+    like `{**/audit/**.kt,**/config/*.kt}` matches zero files. This helper
+    returns the comma-separated alternatives so each can be tested individually.
+    Non-brace patterns are returned as a single-element list.
+    """
+    if not pattern or "{" not in pattern or "}" not in pattern:
+        return [pattern] if pattern else []
+    start = pattern.index("{")
+    end = pattern.index("}", start)
+    prefix = pattern[:start]
+    suffix = pattern[end + 1:]
+    alts = [a.strip() for a in pattern[start + 1:end].split(",") if a.strip()]
+    return [prefix + alt + suffix for alt in alts]
+
+
+def _matches_any_glob(file_path: str, pattern: str) -> bool:
+    """Test `file_path` against `pattern` with brace expansion support."""
+    for expanded in _expand_brace_globs(pattern):
+        if fnmatch(file_path, expanded):
+            return True
+    return False
+
 # Script lives at .claude/hooks/code-rules/ — go up 4 to reach project root.
 WORKSPACE_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 VIOLATION_LOG = WORKSPACE_ROOT / ".analysis" / "findings" / "auto" / "violation-counters.json"
@@ -262,7 +288,7 @@ def check_code_patterns(rules, tool_input):
             continue
 
         exclude_glob = rule.get("exclude_glob")
-        if exclude_glob and fnmatch(file_path, exclude_glob):
+        if exclude_glob and _matches_any_glob(file_path, exclude_glob):
             continue
 
         pattern = rule["pattern"]
