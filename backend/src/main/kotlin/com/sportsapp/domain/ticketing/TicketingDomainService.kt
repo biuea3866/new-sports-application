@@ -2,6 +2,7 @@ package com.sportsapp.domain.ticketing
 
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import com.sportsapp.domain.ticketing.exception.LockExpiredException
+import com.sportsapp.domain.ticketing.exception.MalformedLockIdException
 import com.sportsapp.domain.ticketing.exception.SeatAlreadyLockedException
 import com.sportsapp.domain.ticketing.exception.SeatNotLockOwnerException
 import org.springframework.data.domain.Page
@@ -104,7 +105,10 @@ class TicketingDomainService(
     private fun parseLockId(lockId: String): List<Pair<Long, Long>> =
         lockId.split(",").map { token ->
             val parts = token.split(":")
-            parts[0].toLong() to parts[1].toLong()
+            if (parts.size != 2) throw MalformedLockIdException(lockId)
+            val eventId = parts[0].toLongOrNull() ?: throw MalformedLockIdException(lockId)
+            val seatId = parts[1].toLongOrNull() ?: throw MalformedLockIdException(lockId)
+            eventId to seatId
         }
 }
 
