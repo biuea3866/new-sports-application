@@ -9,7 +9,7 @@ class DeleteSlotUseCase(
     private val slotDomainService: SlotDomainService,
 ) {
     @Transactional
-    fun execute(requesterId: Long, slotId: Long) {
-        slotDomainService.deleteSlot(requesterId, slotId)
+    fun execute(command: DeleteSlotCommand) {
+        slotDomainService.deleteSlot(command.requesterId, command.slotId)
     }
 }

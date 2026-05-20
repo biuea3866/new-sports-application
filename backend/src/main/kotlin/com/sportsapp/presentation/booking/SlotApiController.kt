@@ -1,10 +1,12 @@
 package com.sportsapp.presentation.booking
 
 import com.sportsapp.application.booking.CreateSlotUseCase
+import com.sportsapp.application.booking.DeleteSlotCommand
 import com.sportsapp.application.booking.DeleteSlotUseCase
 import com.sportsapp.application.booking.ListSlotsUseCase
 import com.sportsapp.application.booking.SlotResponse
 import com.sportsapp.application.booking.UpdateSlotUseCase
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -30,8 +32,9 @@ class SlotApiController(
         @PathVariable facilityId: String,
         @RequestBody request: CreateSlotRequest,
     ): ResponseEntity<SlotResponse> {
+        if (userId == 0L) return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
         val response = createSlotUseCase.execute(request.toCommand(userId, facilityId))
-        return ResponseEntity.status(201).body(response)
+        return ResponseEntity.status(HttpStatus.CREATED).body(response)
     }
 
     @GetMapping
@@ -46,6 +49,7 @@ class SlotApiController(
         @PathVariable slotId: Long,
         @RequestBody request: UpdateSlotRequest,
     ): ResponseEntity<SlotResponse> {
+        if (userId == 0L) return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
         val response = updateSlotUseCase.execute(request.toCommand(userId, slotId))
         return ResponseEntity.ok(response)
     }
@@ -55,7 +59,8 @@ class SlotApiController(
         @RequestHeader("X-User-Id") userId: Long,
         @PathVariable slotId: Long,
     ): ResponseEntity<Void> {
-        deleteSlotUseCase.execute(userId, slotId)
+        if (userId == 0L) return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
+        deleteSlotUseCase.execute(DeleteSlotCommand(requesterId = userId, slotId = slotId))
         return ResponseEntity.noContent().build()
     }
 }

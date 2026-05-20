@@ -87,5 +87,12 @@ class SlotTest : BehaviorSpec({
                 }
             }
         }
+
+        When("applyUpdate로 timeRange를 변경하면") {
+            slot.applyUpdate(newTimeRange = "11:00-12:00", newCapacity = null)
+            Then("[U-04] timeRange가 실제로 변경된다") {
+                slot.timeRange shouldBe "11:00-12:00"
+            }
+        }
     }
 })

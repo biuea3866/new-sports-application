@@ -19,10 +19,9 @@ class Slot private constructor(
     val date: ZonedDateTime,
 
     @Column(nullable = false)
-    val timeRange: String,
+    var timeRange: String,
 
-    @Column(nullable = false)
-    var capacity: Int,
+    capacity: Int,
 
     @Column(nullable = false)
     val ownerId: Long,
@@ -33,6 +32,10 @@ class Slot private constructor(
     @Column(name = "id")
     val id: Long = 0
 
+    @Column(nullable = false)
+    var capacity: Int = capacity
+        private set
+
     fun requireOwnedBy(userId: Long) {
         if (ownerId != userId) throw UnauthorizedSlotAccessException(id)
     }
@@ -42,6 +45,7 @@ class Slot private constructor(
             if (!TIME_RANGE_REGEX.matches(it)) {
                 throw InvalidSlotException("timeRange must be HH:mm-HH:mm format, got: $it")
             }
+            timeRange = it
         }
         newCapacity?.let {
             if (it <= 0) throw InvalidSlotException("capacity must be positive, got: $it")
