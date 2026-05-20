@@ -18,10 +18,6 @@ class RedisLockException(
     override val status: ErrorStatus = ErrorStatus.INTERNAL
 
     init {
-<<<<<<< HEAD
         cause?.let { initCause(it) }
-=======
-        if (cause != null) initCause(cause)
->>>>>>> 3e85aaf ([GOODS-01] - feat : Product·Stock 도메인 + Repository + V6 마이그레이션)
     }
 }

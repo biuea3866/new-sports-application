@@ -1,10 +1,7 @@
 package com.sportsapp.infrastructure.audit
 
-import org.springframework.data.auditing.DateTimeProvider
 import org.springframework.data.domain.AuditorAware
 import org.springframework.stereotype.Component
-import java.time.ZonedDateTime
-import java.time.temporal.TemporalAccessor
 import java.util.Optional
 
 /**
@@ -23,14 +20,4 @@ class SecurityAuditorAware : AuditorAware<Long> {
         // TODO(AUTH-03): SecurityContextHolder 에서 user id 추출
         return Optional.empty()
     }
-}
-
-/**
- * `@EnableJpaAuditing(dateTimeProviderRef = "zonedDateTimeProvider")` 에서 참조.
- * `@CreatedDate` / `@LastModifiedDate` 필드가 ZonedDateTime 일 때 Auditing 이
- * ZonedDateTime.now() 를 주입하도록 한다.
- */
-@Component("zonedDateTimeProvider")
-class ZonedDateTimeProvider : DateTimeProvider {
-    override fun getNow(): Optional<TemporalAccessor> = Optional.of(ZonedDateTime.now())
 }
