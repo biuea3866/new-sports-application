@@ -3,6 +3,8 @@ package com.sportsapp.domain.post
 import com.sportsapp.domain.common.JpaAuditingBase
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
@@ -24,6 +26,10 @@ class Post private constructor(
 
     @Column(name = "content", nullable = false, length = 10000)
     var content: String,
+
+    @Column(name = "type", nullable = false, length = 32)
+    @Enumerated(EnumType.STRING)
+    val type: PostType,
 ) : JpaAuditingBase() {
 
     fun changePost(title: String, content: String) {
@@ -36,7 +42,7 @@ class Post private constructor(
     }
 
     companion object {
-        fun create(userId: Long, title: String, content: String): Post {
+        fun create(userId: Long, title: String, content: String, type: PostType = PostType.FREE): Post {
             require(title.isNotBlank()) { "title must not be blank" }
             require(title.length <= 200) { "title must not exceed 200 characters" }
             require(content.isNotBlank()) { "content must not be blank" }
@@ -45,6 +51,7 @@ class Post private constructor(
                 userId = userId,
                 title = title,
                 content = content,
+                type = type,
             )
         }
     }
