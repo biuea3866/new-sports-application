@@ -20,4 +20,7 @@ class RoomParticipantRepositoryImpl(
 
     override fun existsByRoomIdAndUserId(roomId: Long, userId: Long): Boolean =
         roomParticipantJpaRepository.existsByRoomIdAndUserIdAndDeletedAtIsNull(roomId, userId)
+
+    override fun findActiveByRoomIdAndUserId(roomId: Long, userId: Long): RoomParticipant? =
+        roomParticipantJpaRepository.findByRoomIdAndUserIdAndDeletedAtIsNull(roomId, userId)
 }
