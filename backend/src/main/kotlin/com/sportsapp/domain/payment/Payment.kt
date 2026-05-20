@@ -1,6 +1,9 @@
 package com.sportsapp.domain.payment
 
+import com.sportsapp.domain.common.DomainEvent
 import com.sportsapp.domain.common.JpaAuditingBase
+import com.sportsapp.domain.payment.events.PaymentCompletedEvent
+import com.sportsapp.domain.payment.events.PaymentFailedEvent
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -9,6 +12,7 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Transient
 import java.math.BigDecimal
 import java.time.ZonedDateTime
 
@@ -53,12 +57,34 @@ class Payment private constructor(
     var failureReason: String?,
 ) : JpaAuditingBase() {
 
+    @Transient
+    private val domainEvents: MutableList<DomainEvent> = mutableListOf()
+
+    fun pullDomainEvents(): List<DomainEvent> {
+        val events = domainEvents.toList()
+        domainEvents.clear()
+        return events
+    }
+
+    private fun registerEvent(event: DomainEvent) {
+        domainEvents.add(event)
+    }
+
     fun markCompleted(paidAt: ZonedDateTime) {
         if (!status.canTransitTo(PaymentStatus.COMPLETED)) {
             throw InvalidPaymentStateException(status, PaymentStatus.COMPLETED)
         }
         this.status = PaymentStatus.COMPLETED
         this.paidAt = paidAt
+        registerEvent(
+            PaymentCompletedEvent(
+                paymentId = id,
+                orderType = orderType.name,
+                orderId = orderId,
+                amount = amount,
+                paidAt = paidAt,
+            )
+        )
     }
 
     fun markFailed(reason: String) {
@@ -68,6 +94,7 @@ class Payment private constructor(
         }
         this.status = PaymentStatus.FAILED
         this.failureReason = reason
+        registerEvent(PaymentFailedEvent(paymentId = id, reason = reason))
     }
 
     fun markRefunded() {

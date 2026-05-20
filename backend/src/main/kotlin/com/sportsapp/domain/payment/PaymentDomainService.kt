@@ -1,5 +1,6 @@
 package com.sportsapp.domain.payment
 
+import com.sportsapp.domain.common.DomainEventPublisher
 import java.math.BigDecimal
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -10,6 +11,7 @@ import java.time.ZonedDateTime
 class PaymentDomainService(
     private val paymentRepository: PaymentRepository,
     private val paymentGateway: PaymentGateway,
+    private val domainEventPublisher: DomainEventPublisher,
 ) {
     fun create(
         userId: Long,
@@ -56,11 +58,15 @@ class PaymentDomainService(
             .fold(
                 onSuccess = { result ->
                     payment.markCompleted(result.approvedAt)
-                    paymentRepository.save(payment)
+                    paymentRepository.save(payment).also {
+                        domainEventPublisher.publishAll(payment.pullDomainEvents())
+                    }
                 },
                 onFailure = { error ->
                     payment.markFailed(error.message ?: "PG 오류")
-                    paymentRepository.save(payment)
+                    paymentRepository.save(payment).also {
+                        domainEventPublisher.publishAll(payment.pullDomainEvents())
+                    }
                 },
             )
     }

@@ -13,7 +13,8 @@ class PaymentDomainServiceTest : BehaviorSpec({
     Given("create — PG 성공 케이스") {
         val paymentRepository = mockk<PaymentRepository>()
         val paymentGateway = mockk<PaymentGateway>()
-        val service = PaymentDomainService(paymentRepository, paymentGateway)
+        val domainEventPublisher = mockk<com.sportsapp.domain.common.DomainEventPublisher>(relaxed = true)
+        val service = PaymentDomainService(paymentRepository, paymentGateway, domainEventPublisher)
 
         val key = "create-success-01"
         every { paymentRepository.findByIdempotencyKey(key) } returns null
@@ -44,7 +45,8 @@ class PaymentDomainServiceTest : BehaviorSpec({
     Given("create — PG 실패 케이스") {
         val paymentRepository = mockk<PaymentRepository>()
         val paymentGateway = mockk<PaymentGateway>()
-        val service = PaymentDomainService(paymentRepository, paymentGateway)
+        val domainEventPublisher = mockk<com.sportsapp.domain.common.DomainEventPublisher>(relaxed = true)
+        val service = PaymentDomainService(paymentRepository, paymentGateway, domainEventPublisher)
 
         val key = "create-fail-01"
         every { paymentRepository.findByIdempotencyKey(key) } returns null
@@ -72,7 +74,8 @@ class PaymentDomainServiceTest : BehaviorSpec({
     Given("create — 멱등 hit 케이스") {
         val paymentRepository = mockk<PaymentRepository>()
         val paymentGateway = mockk<PaymentGateway>()
-        val service = PaymentDomainService(paymentRepository, paymentGateway)
+        val domainEventPublisher = mockk<com.sportsapp.domain.common.DomainEventPublisher>(relaxed = true)
+        val service = PaymentDomainService(paymentRepository, paymentGateway, domainEventPublisher)
 
         val key = "create-idem-hit-01"
         val existing = Payment.create(
