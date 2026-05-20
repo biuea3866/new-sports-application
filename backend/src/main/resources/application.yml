@@ -43,6 +43,8 @@ app:
   payment:
     mock:
       success-rate: 1.0
+  jwt:
+    secret: ${APP_JWT_SECRET}
 
 management:
   endpoints:

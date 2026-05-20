@@ -7,6 +7,7 @@ import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.support.TestPropertySourceUtils
+import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.MongoDBContainer
 import org.testcontainers.containers.MySQLContainer
 import org.testcontainers.junit.jupiter.Container
@@ -35,6 +36,12 @@ abstract class BaseIntegrationTest : BehaviorSpec() {
 
         val mongoContainer: MongoDBContainer = MongoDBContainer("mongo:7.0")
             .withReuse(true)
+            .also { it.start() }
+
+        @Container
+        @ServiceConnection
+        val redisContainer: GenericContainer<*> = GenericContainer("redis:7-alpine")
+            .withExposedPorts(6379)
             .also { it.start() }
     }
 }
