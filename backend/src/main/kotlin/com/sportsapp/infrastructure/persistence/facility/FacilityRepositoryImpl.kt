@@ -2,12 +2,16 @@ package com.sportsapp.infrastructure.persistence.facility
 
 import com.sportsapp.domain.facility.Facility
 import com.sportsapp.domain.facility.FacilityRepository
+import com.sportsapp.domain.facility.GuTypeCount
 import org.springframework.context.annotation.Profile
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.geo.Distance
 import org.springframework.data.geo.Metrics
 import org.springframework.data.geo.Point
+import org.springframework.data.mongodb.core.MongoTemplate
+import org.springframework.data.mongodb.core.aggregation.Aggregation
+import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Repository
 
@@ -15,6 +19,7 @@ import org.springframework.stereotype.Repository
 @Profile("!test-jpa")
 class FacilityRepositoryImpl(
     private val facilityMongoRepository: FacilityMongoRepository,
+    private val mongoTemplate: MongoTemplate,
 ) : FacilityRepository {
 
     override fun save(facility: Facility): Facility =
@@ -46,6 +51,17 @@ class FacilityRepositoryImpl(
         gu != null -> facilityMongoRepository.findAllByGuAndDeletedAtIsNull(gu, pageable)
         type != null -> facilityMongoRepository.findAllByTypeAndDeletedAtIsNull(type, pageable)
         else -> facilityMongoRepository.findAllByDeletedAtIsNull(pageable)
+    }
+
+    override fun aggregateGuType(): List<GuTypeCount> {
+        val aggregation = Aggregation.newAggregation(
+            Aggregation.match(Criteria.where("deleted_at").isNull),
+            Aggregation.group("gu", "type").count().`as`("count"),
+            Aggregation.project("count")
+                .and("_id.gu").`as`("gu")
+                .and("_id.type").`as`("type"),
+        )
+        return mongoTemplate.aggregate(aggregation, "facilities", GuTypeCount::class.java).mappedResults
     }
 
     companion object {

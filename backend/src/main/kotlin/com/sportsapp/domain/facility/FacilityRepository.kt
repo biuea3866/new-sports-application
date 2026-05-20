@@ -11,4 +11,5 @@ interface FacilityRepository {
     fun findAllByGuAndType(gu: String, type: String): List<Facility>
     fun findNear(lat: Double, lng: Double, maxDistanceMeters: Double): List<Facility>
     fun findAll(gu: String?, type: String?, pageable: Pageable): Page<Facility>
+    fun aggregateGuType(): List<GuTypeCount>
 }
