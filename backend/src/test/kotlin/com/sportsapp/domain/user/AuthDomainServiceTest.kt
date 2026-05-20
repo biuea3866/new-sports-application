@@ -17,6 +17,7 @@ class AuthDomainServiceTest : BehaviorSpec({
     val userDomainService = mockk<UserDomainService>()
     val jwtIssuer = mockk<JwtIssuer>()
     val refreshTokenRepository = mockk<RefreshTokenRepository>()
+    val jwtBlacklistStore = mockk<JwtBlacklistStore>()
     val passwordEncoder = BCryptPasswordEncoder()
 
     val authDomainService = AuthDomainService(
@@ -25,6 +26,7 @@ class AuthDomainServiceTest : BehaviorSpec({
         jwtIssuer = jwtIssuer,
         refreshTokenRepository = refreshTokenRepository,
         passwordEncoder = passwordEncoder,
+        jwtBlacklistStore = jwtBlacklistStore,
     )
 
     val rawPassword = "password1234"

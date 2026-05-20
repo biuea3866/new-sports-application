@@ -5,6 +5,8 @@ import com.sportsapp.domain.user.exceptions.InvalidCredentialsException
 import com.sportsapp.domain.user.exceptions.InvalidRefreshTokenException
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
+import java.time.Duration
+import java.time.Instant
 
 @Service
 class AuthDomainService(
@@ -13,6 +15,7 @@ class AuthDomainService(
     private val jwtIssuer: JwtIssuer,
     private val refreshTokenRepository: RefreshTokenRepository,
     private val passwordEncoder: PasswordEncoder,
+    private val jwtBlacklistStore: JwtBlacklistStore,
 ) {
     fun authenticate(email: String, rawPassword: String): TokenPair {
         val user = userRepository.findByEmail(email) ?: throw InvalidCredentialsException()
@@ -28,6 +31,14 @@ class AuthDomainService(
         val roles = userDomainService.getRolesForUser(userId).map { it.name }
         refreshTokenRepository.invalidate(incomingRefreshToken)
         return issueTokenPair(user.id, user.email, roles)
+    }
+
+    fun logout(accessToken: String, userId: Long) {
+        val jti = jwtIssuer.extractJti(accessToken)
+        val expiration = jwtIssuer.extractExpiration(accessToken)
+        val ttl = Duration.between(Instant.now(), expiration).coerceAtLeast(Duration.ZERO)
+        jwtBlacklistStore.add(jti, ttl)
+        refreshTokenRepository.invalidateByUserId(userId)
     }
 
     private fun issueTokenPair(userId: Long, email: String, roles: List<String>): TokenPair {

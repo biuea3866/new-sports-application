@@ -1,5 +1,6 @@
 package com.sportsapp.infrastructure.security
 
+import com.sportsapp.domain.user.JwtBlacklistStore
 import com.sportsapp.domain.user.JwtIssuer
 import com.sportsapp.domain.user.UserPrincipal
 import jakarta.servlet.FilterChain
@@ -14,6 +15,7 @@ import org.springframework.web.filter.OncePerRequestFilter
 @Component
 class JwtAuthenticationFilter(
     private val jwtIssuer: JwtIssuer,
+    private val jwtBlacklistStore: JwtBlacklistStore,
 ) : OncePerRequestFilter() {
 
     override fun doFilterInternal(
@@ -22,7 +24,7 @@ class JwtAuthenticationFilter(
         filterChain: FilterChain,
     ) {
         val token = resolveToken(request)
-        if (token != null && jwtIssuer.validateToken(token)) {
+        if (token != null && jwtIssuer.validateToken(token) && !isBlacklisted(token)) {
             val principal = UserPrincipal(
                 id = jwtIssuer.extractUserId(token),
                 email = jwtIssuer.extractEmail(token),
@@ -37,6 +39,9 @@ class JwtAuthenticationFilter(
         }
         filterChain.doFilter(request, response)
     }
+
+    private fun isBlacklisted(token: String): Boolean =
+        jwtBlacklistStore.isBlacklisted(jwtIssuer.extractJti(token))
 
     private fun resolveToken(request: HttpServletRequest): String? {
         val bearerToken = request.getHeader("Authorization") ?: return null
