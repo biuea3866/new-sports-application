@@ -38,6 +38,7 @@ class StockConcurrencyTest(
                     description = "동시성 테스트용",
                     imageUrl = "https://example.com/test.jpg",
                     status = ProductStatus.ACTIVE,
+                    ownerId = 1L,
                 )
             )
             stockRepository.save(Stock(productId = product.id, quantity = 1000))

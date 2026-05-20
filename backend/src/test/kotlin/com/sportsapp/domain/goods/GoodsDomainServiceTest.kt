@@ -38,6 +38,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
             description = "설명",
             imageUrl = "https://example.com/image.jpg",
             status = ProductStatus.ACTIVE,
+            ownerId = 1L,
         )
         val stock = Stock(productId = 1L, quantity = 10)
 
@@ -63,6 +64,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
             description = "설명",
             imageUrl = "https://example.com/badminton.jpg",
             status = ProductStatus.ACTIVE,
+            ownerId = 1L,
         )
         val stock = Stock(productId = 2L, quantity = 2)
 
@@ -108,6 +110,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
             description = "단종",
             imageUrl = "https://example.com/old.jpg",
             status = ProductStatus.INACTIVE,
+            ownerId = 1L,
         )
         every { productRepository.findById(50L) } returns inactiveProduct
 
@@ -131,6 +134,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
             description = "가죽 글러브",
             imageUrl = "https://example.com/glove.jpg",
             status = ProductStatus.ACTIVE,
+            ownerId = 1L,
         )
         val stock = Stock(productId = 10L, quantity = 5)
         val savedOrder = GoodsOrder.create(userId = 1L, totalAmount = BigDecimal("160000"))

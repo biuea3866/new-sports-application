@@ -83,6 +83,35 @@ class CustomProductRepositoryImpl : CustomProductRepository {
         }
     }
 
+    override fun findByOwnerId(ownerId: Long, pageable: Pageable): Page<ProductWithStock> {
+        val condition = BooleanBuilder()
+            .and(product.ownerId.eq(ownerId))
+            .and(product.deletedAt.isNull)
+
+        val content = queryFactory.select(product, stock)
+                                  .from(product)
+                                  .leftJoin(stock).on(stock.productId.eq(product.id))
+                                  .where(condition)
+                                  .offset(pageable.offset)
+                                  .limit(pageable.pageSize.toLong())
+                                  .orderBy(product.createdAt.desc())
+                                  .fetch()
+                                  .map { tuple ->
+                                      val fetchedProduct = requireNotNull(tuple.get(product)) { "product tuple must not be null" }
+                                      ProductWithStock(
+                                          product = fetchedProduct,
+                                          stockQuantity = tuple.get(stock)?.quantity ?: 0,
+                                      )
+                                  }
+
+        val total = queryFactory.select(product.count())
+                                .from(product)
+                                .where(condition)
+                                .fetchOne() ?: 0L
+
+        return PageImpl(content, pageable, total)
+    }
+
     private fun fetchCount(condition: BooleanBuilder): Long =
         queryFactory.select(product.count())
                     .from(product)

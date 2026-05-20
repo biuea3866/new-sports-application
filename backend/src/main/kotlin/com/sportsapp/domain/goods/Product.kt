@@ -33,6 +33,9 @@ class Product(
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     var status: ProductStatus,
+
+    @Column(name = "owner_id", nullable = false)
+    val ownerId: Long,
 ) : JpaAuditingBase() {
 
     @Id
@@ -52,5 +55,24 @@ class Product(
 
     fun requireActive() {
         if (status != ProductStatus.ACTIVE) throw ProductInactiveException(id)
+    }
+
+    companion object {
+        fun create(
+            name: String,
+            category: ProductCategory,
+            price: BigDecimal,
+            description: String,
+            imageUrl: String,
+            ownerUserId: Long,
+        ): Product = Product(
+            name = name,
+            category = category,
+            price = price,
+            description = description,
+            imageUrl = imageUrl,
+            status = ProductStatus.INACTIVE,
+            ownerId = ownerUserId,
+        )
     }
 }
