@@ -3,7 +3,6 @@ package com.sportsapp.infrastructure.lock
 import com.sportsapp.domain.common.DistributedLock
 import com.sportsapp.domain.common.exceptions.RedisLockException
 import java.time.Duration
-import org.slf4j.LoggerFactory
 import org.springframework.dao.DataAccessException
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.data.redis.core.script.DefaultRedisScript
@@ -23,8 +22,6 @@ class RedisDistributedLock(
     private val redisTemplate: StringRedisTemplate,
 ) : DistributedLock {
 
-    private val logger = LoggerFactory.getLogger(javaClass)
-
     private val unlockScript: DefaultRedisScript<Long> = DefaultRedisScript(
         UNLOCK_LUA,
         Long::class.java,
@@ -34,8 +31,7 @@ class RedisDistributedLock(
         return try {
             redisTemplate.opsForValue().setIfAbsent(key, value, ttl) == true
         } catch (e: DataAccessException) {
-            logger.error("Redis tryLock 실패: key={}", key, e)
-            throw RedisLockException("Redis 접근 실패 (tryLock key=$key)")
+            throw RedisLockException("Redis 접근 실패 (tryLock key=$key)", e)
         }
     }
 
@@ -44,8 +40,7 @@ class RedisDistributedLock(
             val result = redisTemplate.execute(unlockScript, listOf(key), value)
             result == 1L
         } catch (e: DataAccessException) {
-            logger.error("Redis unlock 실패: key={}", key, e)
-            throw RedisLockException("Redis 접근 실패 (unlock key=$key)")
+            throw RedisLockException("Redis 접근 실패 (unlock key=$key)", e)
         }
     }
 

@@ -24,7 +24,7 @@ class FlywayMigrationTest(
                             rs.getInt(1)
                         }
                     }
-                    (count >= 1) shouldBe true
+                    count shouldBe 2
                 }
             }
         }

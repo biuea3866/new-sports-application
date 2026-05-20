@@ -2,8 +2,9 @@ package com.sportsapp.domain.common
 
 abstract class BusinessException(
     val errorCode: String,
-    override val message: String
-) : RuntimeException(message) {
+    override val message: String,
+    cause: Throwable? = null,
+) : RuntimeException(message, cause) {
     abstract val status: ErrorStatus
 }
 

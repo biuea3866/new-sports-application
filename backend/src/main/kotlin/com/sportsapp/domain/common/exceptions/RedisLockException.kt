@@ -13,6 +13,7 @@ class RedisLockException(
 ) : BusinessException(
     errorCode = "REDIS_LOCK_FAILURE",
     message = message,
+    cause = cause,
 ) {
     override val status: ErrorStatus = ErrorStatus.INTERNAL
 
