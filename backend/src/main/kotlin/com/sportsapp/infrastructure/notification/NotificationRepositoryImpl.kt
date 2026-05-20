@@ -17,6 +17,9 @@ class NotificationRepositoryImpl(
     override fun findById(id: Long): Notification? =
         notificationJpaRepository.findByIdOrNull(id)
 
+    override fun findByEventId(eventId: String): Notification? =
+        notificationJpaRepository.findByEventId(eventId)
+
     override fun findByUserIdAndStatus(userId: Long, status: NotificationStatus): List<Notification> =
         notificationJpaRepository.findByUserIdAndStatusAndDeletedAtIsNull(userId, status)
 

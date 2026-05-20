@@ -34,6 +34,7 @@ class NotificationTest : BehaviorSpec({
             status = NotificationStatus.SENT,
             sentAt = java.time.ZonedDateTime.now(),
             readAt = null,
+            eventId = null,
         )
 
         When("markSent 를 호출하면") {
@@ -54,6 +55,7 @@ class NotificationTest : BehaviorSpec({
             status = NotificationStatus.FAILED,
             sentAt = null,
             readAt = null,
+            eventId = null,
         )
 
         When("markSent 를 호출하면") {

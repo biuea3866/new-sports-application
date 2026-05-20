@@ -134,6 +134,7 @@ class CustomNotificationRepositoryImplTest(
                     status = NotificationStatus.SENT,
                     sentAt = ZonedDateTime.now(ZoneOffset.UTC),
                     readAt = null,
+                    eventId = null,
                 )
             )
 

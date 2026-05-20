@@ -18,12 +18,32 @@ class NotificationDomainService(
         channel: NotificationChannel,
         templateId: String,
         payload: NotificationPayload?,
-    ): Notification {
-        val notification = notificationRepository.save(
-            Notification.queue(userId, channel, templateId, payload)
+    ): Notification = dispatchNotification(Notification.queue(userId, channel, templateId, payload))
+
+    @Transactional(noRollbackFor = [Exception::class])
+    fun enqueueOrSkip(
+        eventId: String,
+        userId: Long,
+        channel: NotificationChannel,
+        templateId: String,
+        payload: NotificationPayload?,
+    ): Notification? {
+        if (notificationRepository.findByEventId(eventId) != null) return null
+        return dispatchNotification(
+            Notification.queue(
+                userId = userId,
+                channel = channel,
+                templateId = templateId,
+                payload = payload,
+                eventId = eventId,
+            )
         )
-        val gateway = channelGateways.find { it.supportedChannel == channel }
-            ?: return saveAsFailed(notification, UnsupportedChannelException(channel))
+    }
+
+    private fun dispatchNotification(queued: Notification): Notification {
+        val notification = notificationRepository.save(queued)
+        val gateway = channelGateways.find { it.supportedChannel == notification.channel }
+            ?: return saveAsFailed(notification, UnsupportedChannelException(notification.channel))
 
         val result = gateway.send(notification)
         return if (result.success) {

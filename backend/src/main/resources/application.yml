@@ -34,6 +34,8 @@ spring:
     consumer:
       group-id: ${KAFKA_GROUP_ID:sports-app}
       auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
         spring.json.trusted.packages: "com.sportsapp.*"
     producer:
@@ -45,6 +47,17 @@ app:
       success-rate: 1.0
   jwt:
     secret: ${APP_JWT_SECRET}
+  notifications:
+    templates:
+      payment-completed:
+        title: "결제 완료"
+        body: "결제 {amount}원이 완료되었습니다"
+      booking-confirmed:
+        title: "예약 확정"
+        body: "{facility} 예약이 확정되었습니다"
+      ticket-issued:
+        title: "발권 완료"
+        body: "{eventTitle} 티켓 발권이 완료되었습니다"
 
 management:
   endpoints:
