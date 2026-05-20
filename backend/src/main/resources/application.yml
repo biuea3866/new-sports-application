@@ -39,6 +39,11 @@ spring:
     producer:
       acks: all
 
+app:
+  payment:
+    mock:
+      success-rate: 1.0
+
 management:
   endpoints:
     web:

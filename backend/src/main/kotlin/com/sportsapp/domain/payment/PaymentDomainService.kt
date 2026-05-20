@@ -1,10 +1,12 @@
 package com.sportsapp.domain.payment
 
 import java.math.BigDecimal
+import org.springframework.stereotype.Service
 
+@Service
 class PaymentDomainService(
     private val paymentRepository: PaymentRepository,
-    internal val paymentGateway: PaymentGateway,
+    private val paymentGateway: PaymentGateway,
 ) {
     fun initiatePayment(
         userId: Long,
