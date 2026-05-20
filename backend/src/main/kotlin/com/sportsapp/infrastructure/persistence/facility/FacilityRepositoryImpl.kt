@@ -2,6 +2,7 @@ package com.sportsapp.infrastructure.persistence.facility
 
 import com.sportsapp.domain.facility.Facility
 import com.sportsapp.domain.facility.FacilityRepository
+import org.springframework.context.annotation.Profile
 import org.springframework.data.geo.Distance
 import org.springframework.data.geo.Metrics
 import org.springframework.data.geo.Point
@@ -9,6 +10,7 @@ import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Repository
 
 @Repository
+@Profile("!test-jpa")
 class FacilityRepositoryImpl(
     private val facilityMongoRepository: FacilityMongoRepository,
 ) : FacilityRepository {
