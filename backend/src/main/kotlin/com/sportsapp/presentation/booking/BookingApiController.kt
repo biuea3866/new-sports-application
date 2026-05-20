@@ -1,6 +1,8 @@
 package com.sportsapp.presentation.booking
 
 import com.sportsapp.application.booking.BookingResponse
+import com.sportsapp.application.booking.CreateBookingResult
+import com.sportsapp.application.booking.CreateBookingUseCase
 import com.sportsapp.application.booking.GetBookingUseCase
 import com.sportsapp.application.booking.ListBookingsCommand
 import com.sportsapp.application.booking.ListBookingsResponse
@@ -10,6 +12,8 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -20,7 +24,17 @@ import org.springframework.web.bind.annotation.RestController
 class BookingApiController(
     private val listMyBookingsUseCase: ListMyBookingsUseCase,
     private val getBookingUseCase: GetBookingUseCase,
+    private val createBookingUseCase: CreateBookingUseCase,
 ) {
+    @PostMapping
+    fun createBooking(
+        @RequestHeader("X-User-Id") userId: Long,
+        @RequestBody request: CreateBookingRequest,
+    ): ResponseEntity<CreateBookingResult> {
+        val result = createBookingUseCase.execute(request.toCommand(userId))
+        return ResponseEntity.accepted().body(result)
+    }
+
     @GetMapping("/me")
     fun listMyBookings(
         @RequestHeader("X-User-Id") userId: Long,

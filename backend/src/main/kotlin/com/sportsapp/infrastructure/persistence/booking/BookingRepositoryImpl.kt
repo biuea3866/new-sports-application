@@ -37,4 +37,7 @@ class BookingRepositoryImpl(
         pageable: Pageable,
     ): Page<Booking> =
         bookingJpaRepository.findPageByUserId(userId, status, pageable)
+
+    override fun countBySlotIdAndStatusIn(slotId: Long, statuses: List<BookingStatus>): Long =
+        bookingJpaRepository.countBySlotIdAndStatusIn(slotId, statuses)
 }
