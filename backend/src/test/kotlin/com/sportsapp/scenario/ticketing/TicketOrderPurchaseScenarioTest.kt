@@ -43,7 +43,7 @@ class TicketOrderPurchaseScenarioTest(
 
         Given("[S-01] 좌석 락을 보유한 사용자가 구매 요청") {
             val event = eventJpaRepository.save(
-                Event(0L, "Purchase Test Concert", "Seoul Arena", baseTime, EventStatus.OPEN)
+                Event(0L, "Purchase Test Concert", "Seoul Arena", baseTime, EventStatus.OPEN, 1L)
             )
             val seat1 = seatJpaRepository.save(Seat(0L, event.id, "A", "1", "1", BigDecimal("30000")))
             val seat2 = seatJpaRepository.save(Seat(0L, event.id, "A", "1", "2", BigDecimal("30000")))
@@ -78,7 +78,7 @@ class TicketOrderPurchaseScenarioTest(
 
         Given("[S-02] 락이 만료된 상태에서 구매 요청") {
             val event = eventJpaRepository.save(
-                Event(0L, "Expired Lock Concert", "Busan Arena", baseTime.plusDays(1), EventStatus.OPEN)
+                Event(0L, "Expired Lock Concert", "Busan Arena", baseTime.plusDays(1), EventStatus.OPEN, 1L)
             )
             val seat = seatJpaRepository.save(Seat(0L, event.id, "B", "1", "1", BigDecimal("50000")))
 
@@ -108,7 +108,7 @@ class TicketOrderPurchaseScenarioTest(
 
         Given("[S-03] 다른 사용자의 lockId로 구매 시도") {
             val event = eventJpaRepository.save(
-                Event(0L, "Other User Lock Concert", "Incheon", baseTime.plusDays(2), EventStatus.OPEN)
+                Event(0L, "Other User Lock Concert", "Incheon", baseTime.plusDays(2), EventStatus.OPEN, 1L)
             )
             val seat = seatJpaRepository.save(Seat(0L, event.id, "C", "1", "1", BigDecimal("40000")))
 

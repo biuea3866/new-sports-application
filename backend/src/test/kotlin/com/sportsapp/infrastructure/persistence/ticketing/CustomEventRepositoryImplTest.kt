@@ -21,13 +21,13 @@ class CustomEventRepositoryImplTest(
     init {
         Given("날짜 범위 + 상태 필터 페이징 테스트를 위한 Event 픽스처") {
             val event1 = eventJpaRepository.save(
-                Event(0L, "Concert Dec", "Seoul Arena", baseTime, EventStatus.OPEN)
+                Event(0L, "Concert Dec", "Seoul Arena", baseTime, EventStatus.OPEN, 1L)
             )
             eventJpaRepository.save(
-                Event(0L, "Concert Jan", "Busan Arena", baseTime.plusMonths(1), EventStatus.SCHEDULED)
+                Event(0L, "Concert Jan", "Busan Arena", baseTime.plusMonths(1), EventStatus.SCHEDULED, 1L)
             )
             eventJpaRepository.save(
-                Event(0L, "Concert Feb", "Daegu Arena", baseTime.plusMonths(2), EventStatus.OPEN)
+                Event(0L, "Concert Feb", "Daegu Arena", baseTime.plusMonths(2), EventStatus.OPEN, 2L)
             )
 
             When("[R-01] status=OPEN 필터만 적용하면") {

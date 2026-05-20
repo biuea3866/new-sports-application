@@ -25,8 +25,8 @@ class EventQueryScenarioTest(
 
     init {
         Given("Event 목록 조회 시나리오") {
-            val event1 = eventJpaRepository.save(Event(0L, "Open Event", "Seoul", baseTime, EventStatus.OPEN))
-            eventJpaRepository.save(Event(0L, "Scheduled Event", "Busan", baseTime.plusMonths(1), EventStatus.SCHEDULED))
+            val event1 = eventJpaRepository.save(Event(0L, "Open Event", "Seoul", baseTime, EventStatus.OPEN, 1L))
+            eventJpaRepository.save(Event(0L, "Scheduled Event", "Busan", baseTime.plusMonths(1), EventStatus.SCHEDULED, 1L))
 
             When("[S-01] GET /events?status=OPEN 요청 시") {
                 val response = restTemplate.getForEntity(

@@ -38,7 +38,7 @@ class SeatLockConcurrencyScenarioTest(
 
         Given("[S-01] 동일 좌석에 두 사용자가 동시에 선택 요청") {
             val event = eventJpaRepository.save(
-                Event(0L, "Concurrency Test Concert", "Seoul Arena", baseTime, EventStatus.OPEN)
+                Event(0L, "Concurrency Test Concert", "Seoul Arena", baseTime, EventStatus.OPEN, 1L)
             )
             val seat = seatJpaRepository.save(
                 Seat(0L, event.id, "A", "1", "1", BigDecimal("50000"))
@@ -76,7 +76,7 @@ class SeatLockConcurrencyScenarioTest(
 
         Given("[S-01-100] 동일 좌석에 100명이 동시에 선택 요청") {
             val event = eventJpaRepository.save(
-                Event(0L, "100 Concurrency Concert", "Busan Arena", baseTime.plusDays(1), EventStatus.OPEN)
+                Event(0L, "100 Concurrency Concert", "Busan Arena", baseTime.plusDays(1), EventStatus.OPEN, 1L)
             )
             val seat = seatJpaRepository.save(
                 Seat(0L, event.id, "B", "1", "1", BigDecimal("70000"))
@@ -114,7 +114,7 @@ class SeatLockConcurrencyScenarioTest(
 
         Given("[S-02] 다중 좌석 선택 중 일부 실패 시 롤백") {
             val event = eventJpaRepository.save(
-                Event(0L, "Partial Rollback Concert", "Incheon", baseTime.plusDays(2), EventStatus.OPEN)
+                Event(0L, "Partial Rollback Concert", "Incheon", baseTime.plusDays(2), EventStatus.OPEN, 1L)
             )
             val seat1 = seatJpaRepository.save(Seat(0L, event.id, "C", "1", "1", BigDecimal("40000")))
             val seat2 = seatJpaRepository.save(Seat(0L, event.id, "C", "1", "2", BigDecimal("40000")))
@@ -140,7 +140,7 @@ class SeatLockConcurrencyScenarioTest(
 
         Given("[S-03] 락 해제 API 호출 시") {
             val event = eventJpaRepository.save(
-                Event(0L, "Release Test Concert", "Daegu", baseTime.plusDays(3), EventStatus.OPEN)
+                Event(0L, "Release Test Concert", "Daegu", baseTime.plusDays(3), EventStatus.OPEN, 1L)
             )
             val seat = seatJpaRepository.save(Seat(0L, event.id, "D", "1", "1", BigDecimal("60000")))
 
@@ -165,7 +165,7 @@ class SeatLockConcurrencyScenarioTest(
 
         Given("[S-04] 다른 사용자가 소유한 락을 release 요청 시") {
             val event = eventJpaRepository.save(
-                Event(0L, "Owner Mismatch Concert", "Gwangju", baseTime.plusDays(4), EventStatus.OPEN)
+                Event(0L, "Owner Mismatch Concert", "Gwangju", baseTime.plusDays(4), EventStatus.OPEN, 1L)
             )
             val seat = seatJpaRepository.save(Seat(0L, event.id, "E", "1", "1", BigDecimal("55000")))
 
