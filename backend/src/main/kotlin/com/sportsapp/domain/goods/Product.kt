@@ -65,14 +65,17 @@ class Product(
             description: String,
             imageUrl: String,
             ownerUserId: Long,
-        ): Product = Product(
-            name = name,
-            category = category,
-            price = price,
-            description = description,
-            imageUrl = imageUrl,
-            status = ProductStatus.INACTIVE,
-            ownerId = ownerUserId,
-        )
+        ): Product {
+            require(ownerUserId > 0) { "ownerUserId must be positive" }
+            return Product(
+                name = name,
+                category = category,
+                price = price,
+                description = description,
+                imageUrl = imageUrl,
+                status = ProductStatus.INACTIVE,
+                ownerId = ownerUserId,
+            )
+        }
     }
 }
