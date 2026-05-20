@@ -12,6 +12,8 @@ import org.springframework.data.geo.Point
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.aggregation.Aggregation
 import org.springframework.data.mongodb.core.query.Criteria
+import org.springframework.data.mongodb.core.query.Query
+import org.springframework.data.mongodb.core.query.Update
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Repository
 
@@ -30,6 +32,27 @@ class FacilityRepositoryImpl(
 
     override fun findById(id: String): Facility? =
         facilityMongoRepository.findByIdOrNull(id)?.takeIf { !it.isDeleted }
+
+    override fun findByCode(code: String): Facility? =
+        facilityMongoRepository.findByCodeAndDeletedAtIsNull(code)
+
+    override fun upsertByCode(facility: Facility): Facility {
+        val query = Query(Criteria.where("code").`is`(facility.code).and("deletedAt").isNull)
+        val update = Update()
+            .set("name", facility.name)
+            .set("gu", facility.gu)
+            .set("type", facility.type)
+            .set("address", facility.address)
+            .set("location", facility.location)
+            .set("parking", facility.parking)
+            .set("tel", facility.tel)
+            .set("home_page", facility.homePage)
+            .set("edu_yn", facility.eduYn)
+            .set("meta", facility.meta)
+        mongoTemplate.upsert(query, update, Facility::class.java)
+        return facilityMongoRepository.findByCodeAndDeletedAtIsNull(facility.code)
+            ?: error("upsert 후 code=${facility.code} 조회 실패")
+    }
 
     override fun findAllByGu(gu: String): List<Facility> =
         facilityMongoRepository.findAllByGuAndDeletedAtIsNull(gu)
