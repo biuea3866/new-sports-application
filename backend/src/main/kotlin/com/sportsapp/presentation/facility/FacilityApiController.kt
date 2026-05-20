@@ -3,6 +3,7 @@ package com.sportsapp.presentation.facility
 import com.sportsapp.application.facility.FacilityCriteria
 import com.sportsapp.application.facility.FacilityResponse
 import com.sportsapp.application.facility.ListFacilitiesUseCase
+import org.springframework.context.annotation.Profile
 import org.springframework.data.domain.Page
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/facilities")
+@Profile("!test-jpa")
 class FacilityApiController(
     private val listFacilitiesUseCase: ListFacilitiesUseCase,
 ) {
