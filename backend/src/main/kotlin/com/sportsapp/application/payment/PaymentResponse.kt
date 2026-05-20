@@ -1,28 +1,32 @@
 package com.sportsapp.application.payment
 
+import com.sportsapp.domain.payment.OrderType
 import com.sportsapp.domain.payment.Payment
+import com.sportsapp.domain.payment.PaymentMethod
 import com.sportsapp.domain.payment.PaymentStatus
 import java.math.BigDecimal
 import java.time.ZonedDateTime
 
 data class PaymentResponse(
     val id: Long,
-    val idempotencyKey: String,
-    val status: PaymentStatus,
+    val orderType: OrderType,
+    val orderId: Long,
+    val method: PaymentMethod,
     val amount: BigDecimal,
-    val currency: String,
+    val status: PaymentStatus,
+    val createdAt: ZonedDateTime,
     val paidAt: ZonedDateTime?,
-    val failureReason: String?,
 ) {
     companion object {
         fun of(payment: Payment): PaymentResponse = PaymentResponse(
             id = payment.id,
-            idempotencyKey = payment.idempotencyKey,
-            status = payment.status,
+            orderType = payment.orderType,
+            orderId = payment.orderId,
+            method = payment.method,
             amount = payment.amount,
-            currency = payment.currency,
+            status = payment.status,
+            createdAt = payment.createdAt,
             paidAt = payment.paidAt,
-            failureReason = payment.failureReason,
         )
     }
 }

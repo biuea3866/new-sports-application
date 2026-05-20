@@ -1,7 +1,10 @@
 package com.sportsapp.domain.payment
 
 import java.math.BigDecimal
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
+import java.time.ZonedDateTime
 
 @Service
 class PaymentDomainService(
@@ -67,4 +70,25 @@ class PaymentDomainService(
         return paymentRepository.findAllByIdIn(paymentIds)
             .associate { it.id to it.status }
     }
+
+    fun getPayment(userId: Long, paymentId: Long): Payment {
+        val payment = paymentRepository.findById(paymentId)
+            ?: throw PaymentNotFoundException(paymentId)
+        if (payment.userId != userId) throw NotPaymentOwnerException(paymentId)
+        return payment
+    }
+
+    fun findMyPayments(
+        userId: Long,
+        status: PaymentStatus?,
+        paidAtFrom: ZonedDateTime?,
+        paidAtTo: ZonedDateTime?,
+        pageable: Pageable,
+    ): Page<Payment> = paymentRepository.findByUserIdAndConditions(
+        userId = userId,
+        status = status,
+        paidAtFrom = paidAtFrom,
+        paidAtTo = paidAtTo,
+        pageable = pageable,
+    )
 }
