@@ -5,11 +5,9 @@ import com.sportsapp.domain.goods.Cart
 import com.sportsapp.domain.goods.CartItem
 import com.sportsapp.domain.goods.CartRepository
 import com.sportsapp.domain.goods.CartItemRepository
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.jdbc.core.JdbcTemplate
 
 class CartRepositoryTest(
@@ -37,12 +35,14 @@ class CartRepositoryTest(
                 }
             }
 
-            When("[R-01] 동일 userId로 Cart를 두 번 저장하면") {
-                Then("unique 제약 위반이 발생한다") {
-                    cartRepository.save(Cart(userId = 2L))
-                    shouldThrow<DataIntegrityViolationException> {
-                        cartRepository.save(Cart(userId = 2L))
-                    }
+            When("[R-01] soft-delete된 Cart와 동일 userId로 새 Cart를 저장하면") {
+                Then("unique 제약 위반 없이 저장된다") {
+                    val cart = cartRepository.save(Cart(userId = 2L))
+                    cart.softDelete(userId = 2L)
+                    cartRepository.save(cart)
+
+                    val newCart = cartRepository.save(Cart(userId = 2L))
+                    newCart.id shouldNotBe cart.id
                 }
             }
 
@@ -64,14 +64,15 @@ class CartRepositoryTest(
                 }
             }
 
-            When("동일 (cartId, productId)로 CartItem을 두 번 insert하면") {
-                Then("[R-01 unique] unique 제약 위반이 발생한다") {
+            When("soft-delete된 CartItem과 동일 (cartId, productId)로 새 CartItem을 insert하면") {
+                Then("[R-01 unique] unique 제약 위반 없이 저장된다") {
                     val cart = cartRepository.save(Cart(userId = 999L))
-                    cartItemRepository.save(CartItem(cartId = cart.id, productId = 200L, quantity = 1))
+                    val item = cartItemRepository.save(CartItem(cartId = cart.id, productId = 200L, quantity = 1))
+                    item.softDelete(userId = 999L)
+                    cartItemRepository.save(item)
 
-                    shouldThrow<DataIntegrityViolationException> {
-                        cartItemRepository.save(CartItem(cartId = cart.id, productId = 200L, quantity = 1))
-                    }
+                    val newItem = cartItemRepository.save(CartItem(cartId = cart.id, productId = 200L, quantity = 2))
+                    newItem.id shouldNotBe item.id
                 }
             }
         }

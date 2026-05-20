@@ -9,7 +9,7 @@ CREATE TABLE carts (
     deleted_at DATETIME(6) NULL,
     deleted_by BIGINT NULL,
     PRIMARY KEY (id),
-    UNIQUE KEY uq_carts_user_id (user_id),
+    UNIQUE KEY uq_carts_user_id (user_id, deleted_at),
     INDEX idx_carts_deleted_at (deleted_at)
 );
 
@@ -25,7 +25,7 @@ CREATE TABLE cart_items (
     deleted_at DATETIME(6) NULL,
     deleted_by BIGINT NULL,
     PRIMARY KEY (id),
-    UNIQUE KEY uq_cart_items_cart_product (cart_id, product_id),
+    UNIQUE KEY uq_cart_items_cart_product (cart_id, product_id, deleted_at),
     INDEX idx_cart_items_cart_id_deleted_at (cart_id, deleted_at),
     INDEX idx_cart_items_deleted_at (deleted_at)
 );

@@ -11,7 +11,7 @@ import jakarta.persistence.Table
 @Entity
 @Table(name = "carts")
 class Cart(
-    @Column(name = "user_id", nullable = false, unique = true)
+    @Column(name = "user_id", nullable = false)
     val userId: Long,
 ) : JpaAuditingBase() {
 
