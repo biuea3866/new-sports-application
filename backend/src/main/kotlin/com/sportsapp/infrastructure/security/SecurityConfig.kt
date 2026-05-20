@@ -30,7 +30,7 @@ class SecurityConfig(
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .exceptionHandling { it.authenticationEntryPoint(jsonAuthenticationEntryPoint()) }
             .authorizeHttpRequests { auth ->
-                auth.requestMatchers(HttpMethod.POST, "/auth/login", "/auth/refresh").permitAll()
+                auth.requestMatchers(HttpMethod.POST, "/auth/login", "/auth/refresh", "/users/register").permitAll()
                 auth.requestMatchers("/actuator/health", "/actuator/info").permitAll()
                 // TODO(AUTH-04): SecurityContext 통합 전까지 도메인 API는 X-User-Id 헤더 기반으로 임시 permitAll
                 auth.requestMatchers(
