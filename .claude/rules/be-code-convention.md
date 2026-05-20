@@ -184,6 +184,94 @@ class Product(...) {
 - Domain Event는 Entity 내부 `@Transient domainEvents` 리스트에 적재 → DomainService가 `DomainEventPublisher.publishAll()`로 발행
 - 다른 도메인 데이터는 **ID(Long)만 보유** — Entity 객체 직접 참조 금지
 
+### Self-Validation 캡슐화 (DomainService에 검증 메서드 금지)
+
+**Entity의 자기 상태로 답할 수 있는 검증은 Entity의 public 메서드여야 한다.** DomainService에 `private fun validateXxx(entity)` / `private fun requireXxxPositive(amount)` 같은 helper를 두는 것은 **Anemic 도메인의 변종**이다. DomainService가 Entity의 내부 상태를 알고 직접 검사하면, 같은 검증 규칙이 다른 UseCase에서 호출될 때 다시 복사된다.
+
+| 패턴 | 위치 | 예시 |
+|---|---|---|
+| 인자값 형식·범위 검증 (음수/0/빈 문자열) | **Entity 팩토리 또는 도메인 동작 메서드 내부** `require(amount > 0)` | `CartItem.create(quantity)` 가 직접 require / `deduct(amount)` 가 `if (amount <= 0) throw InvalidQuantityException(amount)` |
+| 자기 상태 검증 (`status != ACTIVE`, `isDeleted`, `isLocked`) | **Entity 메서드** `product.requireActive()` / `product.validateAvailableForRental()` | `if (status != ACTIVE) throw ProductInactiveException(id)` 가 Product 안에 |
+| 자기 데이터 비교 (`stock.quantity < required`) | **Entity 메서드** `stock.requireSufficient(required)` | `if (quantity < required) throw OutOfStockException(productId, required, quantity)` 가 Stock 안에 |
+| 다른 Aggregate 데이터 비교 (`booking.userId != requesterId`) | **Entity 메서드** `booking.requireOwnedBy(userId)` | "본인 확인" 같이 Entity가 자기 필드와 인자만 비교 |
+
+### 안티 패턴 (DomainService에서 캡슐화 가능한 검증 helper)
+
+```kotlin
+// ❌ BAD — DomainService 가 private helper 로 Entity 상태를 직접 검사
+class CartDomainService(...) {
+    fun addItem(cartId: Long, productId: Long, quantity: Int) {
+        requirePositiveQuantity(quantity)             // ← Entity 책임
+        validateProductActive(productId)              // ← Entity 책임
+        validateStockSufficient(productId, quantity)  // ← Entity 책임
+        // ...
+    }
+
+    private fun requirePositiveQuantity(quantity: Int) {
+        if (quantity <= 0) throw InvalidQuantityException(quantity)
+    }
+    private fun validateProductActive(productId: Long) {
+        val product = productRepository.findById(productId) ?: throw ResourceNotFoundException("Product", productId)
+        if (product.status != ProductStatus.ACTIVE) throw ProductInactiveException(productId)
+    }
+    private fun validateStockSufficient(productId: Long, required: Int) {
+        val stock = stockRepository.findByProductId(productId) ?: throw ResourceNotFoundException("Stock", productId)
+        if (stock.quantity < required) throw OutOfStockException(productId, required, stock.quantity)
+    }
+}
+```
+
+### 올바른 패턴 (Entity 자체가 검증)
+
+```kotlin
+// ✅ GOOD — Entity 가 자기 상태로 답한다
+class Product(...) {
+    fun requireActive() {
+        if (status != ProductStatus.ACTIVE) throw ProductInactiveException(id)
+    }
+}
+
+class Stock(...) {
+    fun requireSufficient(required: Int) {
+        if (quantity < required) throw OutOfStockException(productId, required, quantity)
+    }
+}
+
+class CartItem(...) {
+    companion object {
+        fun create(cartId: Long, productId: Long, quantity: Int): CartItem {
+            require(quantity > 0) { "quantity must be positive" }  // 또는 InvalidQuantityException
+            return CartItem(...)
+        }
+    }
+    fun addQuantity(amount: Int) {
+        require(amount > 0) { "amount must be positive" }
+        quantity += amount
+    }
+}
+
+// DomainService 는 조회·연결·persist 만
+class CartDomainService(...) {
+    fun addItem(cartId: Long, productId: Long, quantity: Int) {
+        val product = productDomainService.getById(productId)
+        product.requireActive()                                  // Entity 가 답
+        val stock = stockDomainService.getByProductId(productId)
+        stock.requireSufficient(quantity)                        // Entity 가 답
+        val item = CartItem.create(cartId, productId, quantity)  // 팩토리 내부 require
+        cartItemRepository.save(item)
+    }
+}
+```
+
+### 판단 기준
+
+**"이 검증을 위해 필요한 데이터를 모두 Entity 자기 자신이 들고 있는가?"**
+
+- ✅ Yes → Entity 메서드 (`requireXxx`, `validateXxx`, `canXxx`)
+- ❌ No (Repository 조회·외부 Gateway 호출 필요) → DomainService
+
+`requirePositiveQuantity(quantity: Int)` 같이 **인자값 단독 검증**은 Entity 팩토리 또는 동작 메서드의 `require` 한 줄로 흡수. DomainService에 별도 helper 두지 않는다.
+
 ## Audit 컬럼 + Soft Delete (모든 Entity 필수)
 
 ### 정책
