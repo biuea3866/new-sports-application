@@ -59,6 +59,7 @@ class GoodsOrderFromCartScenarioTest(
                         description = "실외용",
                         imageUrl = "https://example.com/soccer.jpg",
                         status = ProductStatus.ACTIVE,
+                        ownerId = 1L,
                     )
                 )
                 val product2 = productJpaRepository.save(
@@ -69,6 +70,7 @@ class GoodsOrderFromCartScenarioTest(
                         description = "실내용",
                         imageUrl = "https://example.com/basket.jpg",
                         status = ProductStatus.ACTIVE,
+                        ownerId = 1L,
                     )
                 )
                 stockJpaRepository.save(Stock(productId = product1.id, quantity = 10))

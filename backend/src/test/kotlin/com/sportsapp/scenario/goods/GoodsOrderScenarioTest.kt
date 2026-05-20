@@ -51,6 +51,7 @@ class GoodsOrderScenarioTest(
                         description = "프리미엄 라켓",
                         imageUrl = "https://example.com/racket.jpg",
                         status = ProductStatus.ACTIVE,
+                        ownerId = 1L,
                     )
                 )
                 stockJpaRepository.save(Stock(productId = product.id, quantity = 10))

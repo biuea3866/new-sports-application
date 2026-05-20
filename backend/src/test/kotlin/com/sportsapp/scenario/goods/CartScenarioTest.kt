@@ -46,6 +46,7 @@ class CartScenarioTest(
                         description = "실내용",
                         imageUrl = "https://example.com/ball.jpg",
                         status = ProductStatus.ACTIVE,
+                        ownerId = 1L,
                     )
                 )
                 stockJpaRepository.save(Stock(productId = product.id, quantity = 5))

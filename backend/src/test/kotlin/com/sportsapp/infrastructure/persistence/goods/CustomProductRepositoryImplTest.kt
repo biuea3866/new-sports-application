@@ -26,7 +26,7 @@ class CustomProductRepositoryImplTest(
         jdbcTemplate.execute("TRUNCATE TABLE products")
     }
 
-    private fun saveShoeWithStock(name: String, price: BigDecimal, quantity: Int): Product {
+    private fun saveShoeWithStock(name: String, price: BigDecimal, quantity: Int, ownerId: Long = 1L): Product {
         val product = productJpaRepository.save(
             Product(
                 name = name,
@@ -35,6 +35,7 @@ class CustomProductRepositoryImplTest(
                 description = "설명",
                 imageUrl = "https://example.com/img.jpg",
                 status = ProductStatus.ACTIVE,
+                ownerId = ownerId,
             )
         )
         stockJpaRepository.save(Stock(productId = product.id, quantity = quantity))
@@ -56,6 +57,7 @@ class CustomProductRepositoryImplTest(
                     description = "쿨링",
                     imageUrl = "https://example.com/img.jpg",
                     status = ProductStatus.ACTIVE,
+                    ownerId = 1L,
                 )
             )
 
@@ -149,6 +151,45 @@ class CustomProductRepositoryImplTest(
                         keyword = null,
                         priceMin = null,
                         priceMax = null,
+                        pageable = PageRequest.of(0, 1),
+                    )
+                    result.totalElements shouldBe 2
+                    result.content.size shouldBe 1
+                    result.totalPages shouldBe 2
+                }
+            }
+        }
+
+        Given("[R-03] findByOwnerId 소유자 필터링 + Stock join 검증") {
+            resetData()
+            saveShoeWithStock("내 러닝화", BigDecimal("89000"), 5, ownerId = 10L)
+            saveShoeWithStock("내 트레일화", BigDecimal("150000"), 3, ownerId = 10L)
+            saveShoeWithStock("타인 러닝화", BigDecimal("99000"), 7, ownerId = 20L)
+
+            When("ownerId=10으로 findByOwnerId를 호출하면") {
+                Then("[R-03] ownerId=10의 상품 2건만 Stock join과 함께 반환된다") {
+                    val result = customProductRepository.findByOwnerId(
+                        ownerId = 10L,
+                        pageable = PageRequest.of(0, 20),
+                    )
+                    result.totalElements shouldBe 2
+                    result.content.all { it.product.ownerId == 10L } shouldBe true
+                    result.content.find { it.product.name == "내 러닝화" }?.stockQuantity shouldBe 5
+                    result.content.find { it.product.name == "내 트레일화" }?.stockQuantity shouldBe 3
+                }
+            }
+        }
+
+        Given("[R-03] findByOwnerId 페이지네이션 검증") {
+            resetData()
+            saveShoeWithStock("내 러닝화", BigDecimal("89000"), 5, ownerId = 10L)
+            saveShoeWithStock("내 트레일화", BigDecimal("150000"), 3, ownerId = 10L)
+            saveShoeWithStock("타인 러닝화", BigDecimal("99000"), 7, ownerId = 20L)
+
+            When("ownerId=10으로 size=1 페이지네이션을 호출하면") {
+                Then("[R-03] totalElements=2, content 1건, totalPages=2가 반환된다") {
+                    val result = customProductRepository.findByOwnerId(
+                        ownerId = 10L,
                         pageable = PageRequest.of(0, 1),
                     )
                     result.totalElements shouldBe 2

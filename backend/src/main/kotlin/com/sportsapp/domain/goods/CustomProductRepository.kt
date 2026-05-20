@@ -12,4 +12,6 @@ interface CustomProductRepository {
         priceMax: BigDecimal?,
         pageable: Pageable,
     ): Page<ProductWithStock>
+
+    fun findByOwnerId(ownerId: Long, pageable: Pageable): Page<ProductWithStock>
 }

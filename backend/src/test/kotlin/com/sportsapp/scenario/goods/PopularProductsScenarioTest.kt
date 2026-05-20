@@ -45,6 +45,7 @@ class PopularProductsScenarioTest(
                         description = "desc",
                         imageUrl = "https://example.com/${index}.jpg",
                         status = ProductStatus.ACTIVE,
+                        ownerId = 1L,
                     )
                 )
             }
@@ -99,6 +100,7 @@ class PopularProductsScenarioTest(
                     description = "desc",
                     imageUrl = "https://example.com/apparel.jpg",
                     status = ProductStatus.ACTIVE,
+                    ownerId = 1L,
                 )
             )
 

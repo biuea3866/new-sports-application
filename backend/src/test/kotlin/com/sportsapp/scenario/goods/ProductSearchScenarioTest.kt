@@ -38,6 +38,7 @@ class ProductSearchScenarioTest(
                     description = "러닝 전용",
                     imageUrl = "https://example.com/1.jpg",
                     status = ProductStatus.ACTIVE,
+                    ownerId = 1L,
                 )
             )
             val runningShoe2 = productJpaRepository.save(
@@ -48,6 +49,7 @@ class ProductSearchScenarioTest(
                     description = "마라톤 전용",
                     imageUrl = "https://example.com/2.jpg",
                     status = ProductStatus.ACTIVE,
+                    ownerId = 1L,
                 )
             )
             val tshirt = productJpaRepository.save(
@@ -58,6 +60,7 @@ class ProductSearchScenarioTest(
                     description = "쿨링 소재",
                     imageUrl = "https://example.com/3.jpg",
                     status = ProductStatus.ACTIVE,
+                    ownerId = 1L,
                 )
             )
             stockJpaRepository.save(Stock(productId = runningShoe1.id, quantity = 10))

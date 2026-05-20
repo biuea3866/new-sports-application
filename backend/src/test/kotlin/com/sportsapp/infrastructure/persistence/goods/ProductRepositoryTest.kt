@@ -39,6 +39,16 @@ class ProductRepositoryTest(
                     found?.status shouldBe ProductStatus.ACTIVE
                 }
             }
+
+            When("save 후 findById로 조회하면") {
+                Then("[R-01] owner_id 컬럼이 영속화되어 복원된다") {
+                    val product = productRepository.save(createProduct(ownerId = 99L))
+
+                    val found = productRepository.findById(product.id)
+                    found shouldNotBe null
+                    found?.ownerId shouldBe 99L
+                }
+            }
         }
 
         Given("복합 인덱스 검증 시나리오") {
@@ -62,6 +72,24 @@ class ProductRepositoryTest(
                     )
                     results.size shouldBe 1
                     results[0].id shouldBe product1.id
+                }
+            }
+        }
+
+        Given("findByOwnerId 필터링 검증") {
+            afterEach {
+                jdbcTemplate.execute("TRUNCATE TABLE stocks")
+                jdbcTemplate.execute("TRUNCATE TABLE products")
+            }
+
+            When("ownerId=10으로 조회하면") {
+                Then("[R-03] 다른 owner의 Product를 제외하고 자기 Product만 반환된다") {
+                    val ownerProduct = productRepository.save(createProduct(name = "내 상품", ownerId = 10L))
+                    productRepository.save(createProduct(name = "타인 상품", ownerId = 20L))
+
+                    val results = productRepository.findByOwnerId(10L)
+                    results.size shouldBe 1
+                    results[0].id shouldBe ownerProduct.id
                 }
             }
         }
@@ -91,6 +119,7 @@ class ProductRepositoryTest(
         category: ProductCategory = ProductCategory.EQUIPMENT,
         status: ProductStatus = ProductStatus.ACTIVE,
         price: BigDecimal = BigDecimal("50000"),
+        ownerId: Long = 1L,
     ) = Product(
         name = name,
         category = category,
@@ -98,5 +127,6 @@ class ProductRepositoryTest(
         description = "설명",
         imageUrl = "https://example.com/image.jpg",
         status = status,
+        ownerId = ownerId,
     )
 }

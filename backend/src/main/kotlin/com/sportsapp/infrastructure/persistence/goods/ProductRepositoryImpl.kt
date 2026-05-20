@@ -18,4 +18,7 @@ class ProductRepositoryImpl(
 
     override fun findByCategoryAndStatus(category: ProductCategory, status: ProductStatus): List<Product> =
         productJpaRepository.findAllByCategoryAndStatus(category, status)
+
+    override fun findByOwnerId(ownerId: Long): List<Product> =
+        productJpaRepository.findAllByOwnerIdAndDeletedAtIsNull(ownerId)
 }
