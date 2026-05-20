@@ -1,10 +1,13 @@
 package com.sportsapp.domain.notification
 
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+
+private val SUPPORTED_ENQUEUE_CHANNELS = setOf(NotificationChannel.IN_APP)
 
 @Service
 class NotificationDomainService(
@@ -28,16 +31,21 @@ class NotificationDomainService(
         templateId: String,
         payload: NotificationPayload?,
     ): Notification? {
+        if (channel !in SUPPORTED_ENQUEUE_CHANNELS) throw UnsupportedChannelException(channel)
         if (notificationRepository.findByEventId(eventId) != null) return null
-        return dispatchNotification(
-            Notification.queue(
-                userId = userId,
-                channel = channel,
-                templateId = templateId,
-                payload = payload,
-                eventId = eventId,
+        return try {
+            dispatchNotification(
+                Notification.queue(
+                    userId = userId,
+                    channel = channel,
+                    templateId = templateId,
+                    payload = payload,
+                    eventId = eventId,
+                )
             )
-        )
+        } catch (e: DataIntegrityViolationException) {
+            notificationRepository.findByEventId(eventId)
+        }
     }
 
     private fun dispatchNotification(queued: Notification): Notification {

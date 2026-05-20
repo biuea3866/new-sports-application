@@ -23,13 +23,15 @@ class EnqueueNotificationUseCaseTest : BehaviorSpec({
             recipientUserId = 1L,
             eventId = "payment-123",
         )
+        every {
+            notificationDomainService.enqueueOrSkip(any(), any(), any(), any(), any())
+        } throws UnsupportedChannelException(NotificationChannel.PUSH)
 
         When("execute 를 호출하면") {
             Then("[U-01] UnsupportedChannelException 을 던진다") {
                 shouldThrow<UnsupportedChannelException> {
                     useCase.execute(command)
                 }
-                verify(exactly = 0) { notificationDomainService.enqueueOrSkip(any(), any(), any(), any(), any()) }
             }
         }
     }
