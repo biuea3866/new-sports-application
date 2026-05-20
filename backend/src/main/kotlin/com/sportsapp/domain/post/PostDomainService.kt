@@ -47,9 +47,8 @@ class PostDomainService(
     }
 
     fun addComment(postId: Long, userId: Long, content: String): Comment {
-        val post = postRepository.findById(postId)
+        postRepository.findById(postId)
             ?: throw ResourceNotFoundException("Post", postId)
-        if (post.isDeleted) throw PostDeletedException(postId)
         val comment = Comment.create(postId = postId, userId = userId, content = content)
         return commentRepository.save(comment)
     }
