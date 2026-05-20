@@ -1,7 +1,6 @@
 package com.sportsapp.scenario
 
 import com.sportsapp.BaseJpaIntegrationTest
-import io.kotest.matchers.comparables.shouldBeGreaterThanOrEqualTo
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import javax.sql.DataSource
@@ -31,7 +30,7 @@ class B2bMigrationIdempotencyScenarioTest(
             }
 
             When("permissions 테이블에서 B2B 퍼미션을 조회하면") {
-                Then("[S-01] B2B 관련 퍼미션이 7건 이상 존재한다") {
+                Then("[S-01] B2B 관련 퍼미션이 정확히 7건이다 (idempotent 시드 — 중복 삽입 0건)") {
                     val count = dataSource.connection.use { connection ->
                         connection.prepareStatement(
                             """SELECT COUNT(*) FROM permissions
@@ -43,7 +42,7 @@ class B2bMigrationIdempotencyScenarioTest(
                             resultSet.getInt(1)
                         }
                     }
-                    count shouldBeGreaterThanOrEqualTo 7
+                    count shouldBe 7
                 }
             }
         }

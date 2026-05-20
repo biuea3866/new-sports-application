@@ -40,11 +40,41 @@ class B2bSeedRepositoryTest(
 
                     val rolePermissions = rolePermissionJpaRepository.findByRoleIdAndDeletedAtIsNull(eventHostRole.id)
 
-                    val permissionNames = rolePermissions.map { rolePermission ->
-                        permissionJpaRepository.findById(rolePermission.permissionId).orElse(null)?.name
-                    }.filterNotNull()
+                    val permissionNames = rolePermissions.mapNotNull { rolePermission ->
+                        permissionJpaRepository.findByIdAndDeletedAtIsNull(rolePermission.permissionId)?.name
+                    }
 
                     permissionNames shouldContainAll listOf("event:write", "event:read", "b2b:dashboard:read")
+                }
+            }
+
+            When("FACILITY_OWNER 롤의 role_permissions 를 조회하면") {
+                Then("[R-05] facility:write, facility:read, b2b:dashboard:read 퍼미션이 모두 포함된다") {
+                    val facilityOwnerRole = roleJpaRepository.findByNameAndDeletedAtIsNull("FACILITY_OWNER")
+                    facilityOwnerRole.shouldNotBeNull()
+
+                    val rolePermissions = rolePermissionJpaRepository.findByRoleIdAndDeletedAtIsNull(facilityOwnerRole.id)
+
+                    val permissionNames = rolePermissions.mapNotNull { rolePermission ->
+                        permissionJpaRepository.findByIdAndDeletedAtIsNull(rolePermission.permissionId)?.name
+                    }
+
+                    permissionNames shouldContainAll listOf("facility:write", "facility:read", "b2b:dashboard:read")
+                }
+            }
+
+            When("GOODS_SELLER 롤의 role_permissions 를 조회하면") {
+                Then("[R-06] product:write, product:read, b2b:dashboard:read 퍼미션이 모두 포함된다") {
+                    val goodsSellerRole = roleJpaRepository.findByNameAndDeletedAtIsNull("GOODS_SELLER")
+                    goodsSellerRole.shouldNotBeNull()
+
+                    val rolePermissions = rolePermissionJpaRepository.findByRoleIdAndDeletedAtIsNull(goodsSellerRole.id)
+
+                    val permissionNames = rolePermissions.mapNotNull { rolePermission ->
+                        permissionJpaRepository.findByIdAndDeletedAtIsNull(rolePermission.permissionId)?.name
+                    }
+
+                    permissionNames shouldContainAll listOf("product:write", "product:read", "b2b:dashboard:read")
                 }
             }
         }
