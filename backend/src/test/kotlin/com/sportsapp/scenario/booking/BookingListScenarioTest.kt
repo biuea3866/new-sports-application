@@ -40,6 +40,7 @@ class BookingListScenarioTest(
                     date = ZonedDateTime.now(),
                     timeRange = "09:00-10:00",
                     capacity = 10,
+                    ownerId = 1L,
                 )
             )
             val pending = bookingDomainService.createPendingBooking(userId = 1L, slotId = slot.id)
@@ -68,6 +69,7 @@ class BookingListScenarioTest(
                     date = ZonedDateTime.now(),
                     timeRange = "10:00-11:00",
                     capacity = 5,
+                    ownerId = 1L,
                 )
             )
             val booking = bookingDomainService.createPendingBooking(userId = 1L, slotId = slot.id)
@@ -94,6 +96,7 @@ class BookingListScenarioTest(
                     date = ZonedDateTime.now(),
                     timeRange = "11:00-12:00",
                     capacity = 5,
+                    ownerId = 1L,
                 )
             )
             val booking = bookingDomainService.createPendingBooking(userId = 1L, slotId = slot.id)

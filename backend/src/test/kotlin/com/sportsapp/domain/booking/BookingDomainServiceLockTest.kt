@@ -44,6 +44,7 @@ class BookingDomainServiceLockTest : BehaviorSpec({
             date = java.time.ZonedDateTime.now(),
             timeRange = "09:00-10:00",
             capacity = 1,
+            ownerId = 1L,
         )
         every { distributedLock.tryLock(any(), any(), any<Duration>()) } returns true
         every { distributedLock.unlock(any(), any()) } returns true
@@ -80,6 +81,7 @@ class BookingDomainServiceLockTest : BehaviorSpec({
             date = java.time.ZonedDateTime.now(),
             timeRange = "10:00-11:00",
             capacity = 5,
+            ownerId = 1L,
         )
         val booking = Booking.createPending(userId = 1L, slotId = 42L)
         every { distributedLock.tryLock(any(), any(), any<Duration>()) } returns true

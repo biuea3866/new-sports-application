@@ -29,6 +29,7 @@ class BookingConfirmScenarioTest(
                     date = ZonedDateTime.now(),
                     timeRange = "09:00-10:00",
                     capacity = 10,
+                    ownerId = 1L,
                 )
             )
             val confirmed = bookingDomainService.createPendingBooking(
