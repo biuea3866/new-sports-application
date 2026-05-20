@@ -62,27 +62,9 @@ class PaymentDomainService(
             )
     }
 
-    fun initiatePayment(
-        userId: Long,
-        idempotencyKey: String,
-        orderType: OrderType,
-        orderId: Long,
-        method: PaymentMethod,
-        amount: BigDecimal,
-        currency: String,
-    ): Payment {
-        val existing = paymentRepository.findByIdempotencyKey(idempotencyKey)
-        if (existing != null) return existing
-
-        val payment = Payment.create(
-            userId = userId,
-            idempotencyKey = idempotencyKey,
-            orderType = orderType,
-            orderId = orderId,
-            method = method,
-            amount = amount,
-            currency = currency,
-        )
-        return paymentRepository.save(payment)
+    fun findStatuses(paymentIds: List<Long>): Map<Long, PaymentStatus> {
+        if (paymentIds.isEmpty()) return emptyMap()
+        return paymentRepository.findAllByIdIn(paymentIds)
+            .associate { it.id to it.status }
     }
 }

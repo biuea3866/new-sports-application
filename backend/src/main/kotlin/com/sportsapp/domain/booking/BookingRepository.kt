@@ -1,5 +1,7 @@
 package com.sportsapp.domain.booking
 
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import java.time.ZonedDateTime
 
 interface BookingRepository {
@@ -12,4 +14,9 @@ interface BookingRepository {
         from: ZonedDateTime?,
         to: ZonedDateTime?,
     ): List<Booking>
+    fun findPageByUserId(
+        userId: Long,
+        status: BookingStatus?,
+        pageable: Pageable,
+    ): Page<Booking>
 }
