@@ -33,4 +33,33 @@ class FacilityDomainService(
 
     fun aggregateGuType(): List<GuTypeCount> =
         facilityRepository.aggregateGuType()
+
+    fun bulkImport(rows: List<LegacyRow>): BulkImportResult {
+        var insertedCount = 0
+        var updatedCount = 0
+        var skippedCount = 0
+
+        rows.forEach { row ->
+            val attributes = LegacyToFacilityMapper.map(row)
+            if (attributes == null) {
+                skippedCount++
+                return@forEach
+            }
+            val facility = Facility.create(attributes)
+            val existing = facilityRepository.findByCode(attributes.code)
+            if (existing == null) {
+                facilityRepository.save(facility)
+                insertedCount++
+            } else {
+                facilityRepository.upsertByCode(facility)
+                updatedCount++
+            }
+        }
+
+        return BulkImportResult(
+            insertedCount = insertedCount,
+            updatedCount = updatedCount,
+            skippedCount = skippedCount,
+        )
+    }
 }
