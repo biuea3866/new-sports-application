@@ -19,6 +19,7 @@ import org.springframework.stereotype.Repository
 
 @Repository
 @Profile("!test-jpa")
+@Suppress("TooManyFunctions")
 class FacilityRepositoryImpl(
     private val facilityMongoRepository: FacilityMongoRepository,
     private val mongoTemplate: MongoTemplate,

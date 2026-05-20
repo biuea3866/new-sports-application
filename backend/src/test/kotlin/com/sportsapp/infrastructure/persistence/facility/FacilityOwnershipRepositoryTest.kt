@@ -59,7 +59,7 @@ class FacilityOwnershipRepositoryTest(
             When("userId=20으로 findByOwnerUserId를 호출하면") {
                 val pageable = PageRequest.of(0, 50)
                 val result = facilityRepository.findByOwnerUserId(20L, pageable)
-                Then("[R-01] userId=20 시설 1건만 반환된다") {
+                Then("[R-01b] userId=20 시설 1건만 반환된다 (다른 owner 격리)") {
                     result.content shouldHaveSize 1
                     result.content[0].ownerUserId shouldBe 20L
                 }
@@ -82,7 +82,7 @@ class FacilityOwnershipRepositoryTest(
             When("facilityId와 ownerUserId가 일치하는 조건으로 조회하면") {
                 val facilityId = requireNotNull(ownerFacility.id) { "saved facility must have id" }
                 val result = facilityRepository.findByIdAndOwnerUserId(facilityId, 10L)
-                Then("[R-02] 해당 시설이 반환된다") {
+                Then("[R-02b] 해당 시설이 반환된다") {
                     result shouldNotBe null
                     result?.ownerUserId shouldBe 10L
                 }

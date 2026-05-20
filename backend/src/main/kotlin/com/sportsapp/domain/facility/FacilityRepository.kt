@@ -3,6 +3,7 @@ package com.sportsapp.domain.facility
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 
+@Suppress("TooManyFunctions")
 interface FacilityRepository {
     fun save(facility: Facility): Facility
     fun saveAll(facilities: List<Facility>): List<Facility>

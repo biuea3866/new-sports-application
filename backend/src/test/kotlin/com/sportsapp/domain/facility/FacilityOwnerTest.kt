@@ -44,4 +44,16 @@ class FacilityOwnerTest : BehaviorSpec({
             }
         }
     }
+
+    Given("owner가 있는 Facility") {
+        val facility = Facility.create(buildAttributes())
+        facility.assignOwner(42L)
+
+        When("updateMeta(patch)를 호출하면") {
+            val updated = facility.updateMeta(mapOf("note" to "renovated"))
+            Then("[U-03] 새 Facility에도 ownerUserId가 보존된다") {
+                updated.ownerUserId shouldBe 42L
+            }
+        }
+    }
 })

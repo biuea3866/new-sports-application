@@ -57,8 +57,8 @@ class Facility(
         ownerUserId = userId
     }
 
-    fun updateMeta(patch: Map<String, String>): Facility =
-        Facility(
+    fun updateMeta(patch: Map<String, String>): Facility {
+        val updated = Facility(
             id = id,
             code = code,
             name = name,
@@ -72,6 +72,9 @@ class Facility(
             eduYn = eduYn,
             meta = meta + patch,
         )
+        updated.ownerUserId = this.ownerUserId
+        return updated
+    }
 
     companion object {
         fun create(attributes: FacilityAttributes): Facility {
