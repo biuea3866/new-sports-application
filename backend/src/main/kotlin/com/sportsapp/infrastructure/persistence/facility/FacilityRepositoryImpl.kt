@@ -3,6 +3,8 @@ package com.sportsapp.infrastructure.persistence.facility
 import com.sportsapp.domain.facility.Facility
 import com.sportsapp.domain.facility.FacilityRepository
 import org.springframework.context.annotation.Profile
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.data.geo.Distance
 import org.springframework.data.geo.Metrics
 import org.springframework.data.geo.Point
@@ -37,6 +39,13 @@ class FacilityRepositoryImpl(
         return facilityMongoRepository.findByLocationNearAndDeletedAtIsNull(point, distance)
             .content
             .map { it.content }
+    }
+
+    override fun findAll(gu: String?, type: String?, pageable: Pageable): Page<Facility> = when {
+        gu != null && type != null -> facilityMongoRepository.findAllByGuAndTypeAndDeletedAtIsNull(gu, type, pageable)
+        gu != null -> facilityMongoRepository.findAllByGuAndDeletedAtIsNull(gu, pageable)
+        type != null -> facilityMongoRepository.findAllByTypeAndDeletedAtIsNull(type, pageable)
+        else -> facilityMongoRepository.findAllByDeletedAtIsNull(pageable)
     }
 
     companion object {

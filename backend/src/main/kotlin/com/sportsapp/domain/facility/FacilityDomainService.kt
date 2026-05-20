@@ -1,6 +1,8 @@
 package com.sportsapp.domain.facility
 
 import org.springframework.context.annotation.Profile
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 
 @Service
@@ -22,4 +24,7 @@ class FacilityDomainService(
 
     fun findNear(lat: Double, lng: Double, maxDistanceMeters: Double): List<Facility> =
         facilityRepository.findNear(lat, lng, maxDistanceMeters)
+
+    fun list(gu: String?, type: String?, pageable: Pageable): Page<Facility> =
+        facilityRepository.findAll(gu, type, pageable)
 }

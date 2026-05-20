@@ -8,6 +8,8 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Query
 
@@ -110,6 +112,41 @@ class FacilityRepositoryImplTest(
                     found?.meta?.get("lane") shouldBe "8"
                     found?.meta?.get("open_time") shouldBe "06:00"
                     found?.meta?.get("close_time") shouldBe "22:00"
+                }
+            }
+        }
+
+        Given("강남구 풋살장 2건, 강남구 수영장 1건, 서초구 풋살장 1건이 저장된 상태") {
+            mongoTemplate.remove(Query(), Facility::class.java)
+            facilityRepository.save(Facility.create(buildAttributes("GN-FS-001", "강남구", "풋살장")))
+            facilityRepository.save(Facility.create(buildAttributes("GN-FS-002", "강남구", "풋살장")))
+            facilityRepository.save(Facility.create(buildAttributes("GN-SW-001", "강남구", "수영장")))
+            facilityRepository.save(Facility.create(buildAttributes("SC-FS-001", "서초구", "풋살장")))
+
+            When("gu=강남구, type=풋살장으로 페이징 조회하면") {
+                val pageable = PageRequest.of(0, 50, Sort.by(Sort.Direction.ASC, "name"))
+                val result = facilityRepository.findAll("강남구", "풋살장", pageable)
+                Then("[R-01] gu와 type 두 필터를 모두 만족하는 2건만 반환된다") {
+                    result.content shouldHaveSize 2
+                    result.content.all { it.gu == "강남구" && it.type == "풋살장" } shouldBe true
+                    result.totalElements shouldBe 2
+                }
+            }
+
+            When("필터 없이 페이징 조회하면") {
+                val pageable = PageRequest.of(0, 50, Sort.by(Sort.Direction.ASC, "name"))
+                val result = facilityRepository.findAll(null, null, pageable)
+                Then("[R-03] 전체 4건이 페이지네이션 카운트로 반환된다") {
+                    result.totalElements shouldBe 4
+                }
+            }
+
+            When("name asc 정렬 페이징 조회하면") {
+                val pageable = PageRequest.of(0, 50, Sort.by(Sort.Direction.ASC, "name"))
+                val result = facilityRepository.findAll(null, null, pageable)
+                Then("[R-02] 결과가 name asc 안정 정렬로 반환된다") {
+                    val names = result.content.map { it.name }
+                    names shouldBe names.sorted()
                 }
             }
         }
