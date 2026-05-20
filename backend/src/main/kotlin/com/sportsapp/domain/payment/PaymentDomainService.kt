@@ -83,6 +83,17 @@ class PaymentDomainService(
             amount = amount,
             currency = currency,
         )
+        val gatewayResult = paymentGateway.requestPayment(
+            PaymentRequest(
+                idempotencyKey = idempotencyKey,
+                method = method,
+                amount = amount,
+                currency = currency,
+                orderType = orderType,
+                orderId = orderId,
+            )
+        )
+        payment.markCompleted(gatewayResult.approvedAt)
         return paymentRepository.save(payment)
     }
 }

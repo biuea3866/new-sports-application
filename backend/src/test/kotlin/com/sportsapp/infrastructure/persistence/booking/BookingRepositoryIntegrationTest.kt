@@ -7,6 +7,7 @@ import com.sportsapp.domain.booking.Slot
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.data.domain.PageRequest
 import org.springframework.jdbc.core.JdbcTemplate
 import java.time.ZonedDateTime
 
@@ -90,6 +91,66 @@ class BookingRepositoryIntegrationTest(
 
                 Then("[R-03] 카운트 0건이 반환된다") {
                     results shouldHaveSize 0
+                }
+            }
+        }
+
+        Given("[R-01a] 여러 상태의 Booking이 존재할 때 status=null로 페이징 조회") {
+            val slot = createSlot()
+            createBooking(slot.id, 55L, BookingStatus.CONFIRMED)
+            createBooking(slot.id, 55L, BookingStatus.PENDING)
+            createBooking(slot.id, 55L, BookingStatus.CANCELLED)
+
+            When("status=null로 페이징 조회하면") {
+                val page = bookingJpaRepository.findPageByUserId(
+                    userId = 55L,
+                    status = null,
+                    pageable = PageRequest.of(0, 20),
+                )
+
+                Then("[R-01] 전체 3건이 createdAt desc 정렬로 반환된다") {
+                    page.totalElements shouldBe 3L
+                    page.content shouldHaveSize 3
+                }
+            }
+        }
+
+        Given("[R-01b] CONFIRMED Booking만 존재할 때 status 필터 조회") {
+            val slot = createSlot()
+            createBooking(slot.id, 56L, BookingStatus.CONFIRMED)
+            createBooking(slot.id, 56L, BookingStatus.PENDING)
+
+            When("status=CONFIRMED 필터로 페이징 조회하면") {
+                val page = bookingJpaRepository.findPageByUserId(
+                    userId = 56L,
+                    status = BookingStatus.CONFIRMED,
+                    pageable = PageRequest.of(0, 20),
+                )
+
+                Then("[R-01] CONFIRMED 1건만 반환된다") {
+                    page.totalElements shouldBe 1L
+                    page.content[0].status shouldBe BookingStatus.CONFIRMED
+                }
+            }
+        }
+
+        Given("[R-02] 페이지 크기=2, 전체 3건 데이터") {
+            val slot = createSlot()
+            createBooking(slot.id, 77L, BookingStatus.PENDING)
+            createBooking(slot.id, 77L, BookingStatus.PENDING)
+            createBooking(slot.id, 77L, BookingStatus.PENDING)
+
+            When("page=0, size=2로 조회하면") {
+                val page = bookingJpaRepository.findPageByUserId(
+                    userId = 77L,
+                    status = null,
+                    pageable = PageRequest.of(0, 2),
+                )
+
+                Then("[R-02] 2건이 반환되고 totalElements=3, totalPages=2이다") {
+                    page.content shouldHaveSize 2
+                    page.totalElements shouldBe 3L
+                    page.totalPages shouldBe 2
                 }
             }
         }

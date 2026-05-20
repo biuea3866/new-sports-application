@@ -3,6 +3,8 @@ package com.sportsapp.infrastructure.persistence.booking
 import com.sportsapp.domain.booking.Booking
 import com.sportsapp.domain.booking.BookingRepository
 import com.sportsapp.domain.booking.BookingStatus
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Repository
 import java.time.ZonedDateTime
@@ -28,4 +30,11 @@ class BookingRepositoryImpl(
         to: ZonedDateTime?,
     ): List<Booking> =
         bookingJpaRepository.findByUserIdAndStatusAndDateRange(userId, status, from, to)
+
+    override fun findPageByUserId(
+        userId: Long,
+        status: BookingStatus?,
+        pageable: Pageable,
+    ): Page<Booking> =
+        bookingJpaRepository.findPageByUserId(userId, status, pageable)
 }
