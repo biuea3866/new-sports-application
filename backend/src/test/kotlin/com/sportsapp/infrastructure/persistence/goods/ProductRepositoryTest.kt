@@ -83,7 +83,7 @@ class ProductRepositoryTest(
             }
 
             When("ownerId=10으로 조회하면") {
-                Then("[R-02] 다른 owner의 Product를 제외하고 자기 Product만 반환된다") {
+                Then("[R-03] 다른 owner의 Product를 제외하고 자기 Product만 반환된다") {
                     val ownerProduct = productRepository.save(createProduct(name = "내 상품", ownerId = 10L))
                     productRepository.save(createProduct(name = "타인 상품", ownerId = 20L))
 
