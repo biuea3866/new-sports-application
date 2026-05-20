@@ -1,10 +1,13 @@
 package com.sportsapp.domain.notification
 
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+
+private val SUPPORTED_ENQUEUE_CHANNELS = setOf(NotificationChannel.IN_APP)
 
 @Service
 class NotificationDomainService(
@@ -19,12 +22,37 @@ class NotificationDomainService(
         channel: NotificationChannel,
         templateId: String,
         payload: NotificationPayload?,
-    ): Notification {
-        val notification = notificationRepository.save(
-            Notification.queue(userId, channel, templateId, payload)
-        )
-        val gateway = channelGateways.find { it.supportedChannel == channel }
-            ?: return saveAsFailed(notification, UnsupportedChannelException(channel))
+    ): Notification = dispatchNotification(Notification.queue(userId, channel, templateId, payload))
+
+    @Transactional(noRollbackFor = [Exception::class])
+    fun enqueueOrSkip(
+        eventId: String,
+        userId: Long,
+        channel: NotificationChannel,
+        templateId: String,
+        payload: NotificationPayload?,
+    ): Notification? {
+        if (channel !in SUPPORTED_ENQUEUE_CHANNELS) throw UnsupportedChannelException(channel)
+        if (notificationRepository.findByEventId(eventId) != null) return null
+        return try {
+            dispatchNotification(
+                Notification.queue(
+                    userId = userId,
+                    channel = channel,
+                    templateId = templateId,
+                    payload = payload,
+                    eventId = eventId,
+                )
+            )
+        } catch (e: DataIntegrityViolationException) {
+            notificationRepository.findByEventId(eventId)
+        }
+    }
+
+    private fun dispatchNotification(queued: Notification): Notification {
+        val notification = notificationRepository.save(queued)
+        val gateway = channelGateways.find { it.supportedChannel == notification.channel }
+            ?: return saveAsFailed(notification, UnsupportedChannelException(notification.channel))
 
         val result = gateway.send(notification)
         return if (result.success) {

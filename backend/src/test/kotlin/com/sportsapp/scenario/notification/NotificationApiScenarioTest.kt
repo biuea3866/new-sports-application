@@ -138,6 +138,7 @@ class NotificationApiScenarioTest(
                     status = NotificationStatus.SENT,
                     sentAt = ZonedDateTime.now(ZoneOffset.UTC),
                     readAt = ZonedDateTime.now(ZoneOffset.UTC).minusHours(1),
+                    eventId = null,
                 )
             )
 

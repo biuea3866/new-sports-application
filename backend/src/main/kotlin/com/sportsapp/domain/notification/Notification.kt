@@ -41,6 +41,9 @@ class Notification(
 
     @Column(name = "read_at")
     var readAt: ZonedDateTime?,
+
+    @Column(name = "event_id", length = 128)
+    val eventId: String?,
 ) : JpaAuditingBase() {
 
     @Id
@@ -78,6 +81,7 @@ class Notification(
             channel: NotificationChannel,
             templateId: String,
             payload: NotificationPayload?,
+            eventId: String? = null,
         ): Notification = Notification(
             userId = userId,
             channel = channel,
@@ -86,6 +90,7 @@ class Notification(
             status = NotificationStatus.QUEUED,
             sentAt = null,
             readAt = null,
+            eventId = eventId,
         )
     }
 }

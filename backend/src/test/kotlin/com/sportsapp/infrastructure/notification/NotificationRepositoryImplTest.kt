@@ -72,6 +72,7 @@ class NotificationRepositoryImplTest(
                 status = NotificationStatus.SENT,
                 sentAt = ZonedDateTime.now(ZoneOffset.UTC),
                 readAt = null,
+                eventId = null,
             )
 
             When("(userId, QUEUED) 조건으로 조회하면") {

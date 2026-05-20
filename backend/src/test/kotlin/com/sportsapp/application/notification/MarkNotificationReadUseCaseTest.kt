@@ -40,6 +40,7 @@ class MarkNotificationReadUseCaseTest : BehaviorSpec({
             status = NotificationStatus.SENT,
             sentAt = null,
             readAt = null,
+            eventId = null,
         )
         every { notificationRepository.findById(1L) } returns notification
 
@@ -62,6 +63,7 @@ class MarkNotificationReadUseCaseTest : BehaviorSpec({
             status = NotificationStatus.SENT,
             sentAt = null,
             readAt = originalReadAt,
+            eventId = null,
         )
         every { notificationRepository.findById(2L) } returns notification
         every { notificationRepository.save(any()) } answers { firstArg() }
