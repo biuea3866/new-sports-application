@@ -58,6 +58,12 @@ class JwtTokenProvider(
     override fun extractRoles(token: String): List<String> =
         requireNotNull((parseClaims(token)["roles"] as? List<*>)?.filterIsInstance<String>()) { "missing roles claim in JWT" }
 
+    override fun extractJti(token: String): String =
+        requireNotNull(parseClaims(token).id) { "missing jti claim in JWT" }
+
+    override fun extractExpiration(token: String): Instant =
+        requireNotNull(parseClaims(token).expiration) { "missing expiration in JWT" }.toInstant()
+
     override fun accessTokenExpiresInSeconds(): Long = accessTokenExpirySeconds
 
     private fun parseClaims(token: String) =
