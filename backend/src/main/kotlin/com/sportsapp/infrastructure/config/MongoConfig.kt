@@ -6,11 +6,13 @@ import com.sportsapp.infrastructure.persistence.mongo.DateToZonedDateTimeConvert
 import com.sportsapp.infrastructure.persistence.mongo.ZonedDateTimeToDateConverter
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Profile
 import org.springframework.context.annotation.Configuration
 import org.springframework.data.mongodb.config.AbstractMongoClientConfiguration
 import org.springframework.data.mongodb.core.convert.MongoCustomConversions
 
 @Configuration
+@Profile("!test-jpa")
 class MongoConfig : AbstractMongoClientConfiguration() {
 
     @Value("\${spring.data.mongodb.uri}")

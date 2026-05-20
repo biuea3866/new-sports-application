@@ -1,8 +1,10 @@
 package com.sportsapp.domain.facility
 
+import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Service
 
 @Service
+@Profile("!test-jpa")
 class FacilityDomainService(
     private val facilityRepository: FacilityRepository,
 ) {
