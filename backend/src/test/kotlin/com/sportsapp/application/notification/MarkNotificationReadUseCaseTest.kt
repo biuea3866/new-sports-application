@@ -9,6 +9,7 @@ import com.sportsapp.domain.notification.NotificationNotFoundException
 import com.sportsapp.domain.notification.NotificationPayload
 import com.sportsapp.domain.notification.NotificationRepository
 import com.sportsapp.domain.notification.NotificationStatus
+import com.sportsapp.domain.notification.TemplateRenderer
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -22,10 +23,12 @@ class MarkNotificationReadUseCaseTest : BehaviorSpec({
 
     val notificationRepository = mockk<NotificationRepository>()
     val customNotificationRepository = mockk<CustomNotificationRepository>()
+    val templateRenderer = mockk<TemplateRenderer>()
     val notificationDomainService = NotificationDomainService(
         notificationRepository = notificationRepository,
         customNotificationRepository = customNotificationRepository,
         channelGateways = emptyList(),
+        templateRenderer = templateRenderer,
     )
 
     Given("다른 사용자(userId=999)가 소유한 알림") {

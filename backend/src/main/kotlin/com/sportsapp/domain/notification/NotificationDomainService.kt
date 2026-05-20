@@ -11,6 +11,7 @@ class NotificationDomainService(
     private val notificationRepository: NotificationRepository,
     private val customNotificationRepository: CustomNotificationRepository,
     private val channelGateways: List<NotificationChannelGateway>,
+    private val templateRenderer: TemplateRenderer,
 ) {
     @Transactional(noRollbackFor = [Exception::class])
     fun send(
@@ -46,6 +47,20 @@ class NotificationDomainService(
         notification.requireOwnedBy(userId)
         notification.markRead()
         return notificationRepository.save(notification)
+    }
+
+    @Transactional(noRollbackFor = [Exception::class])
+    fun sendWithTemplate(
+        userId: Long,
+        channel: NotificationChannel,
+        templateId: String,
+        payload: Map<String, Any>,
+    ): Notification {
+        val rendered = templateRenderer.render(templateId, payload)
+        val enrichedPayload = NotificationPayload(
+            payload + mapOf("_title" to rendered.title, "_body" to rendered.body)
+        )
+        return send(userId, channel, templateId, enrichedPayload)
     }
 
     fun countUnread(userId: Long): Long =

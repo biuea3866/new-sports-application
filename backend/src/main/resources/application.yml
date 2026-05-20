@@ -39,6 +39,18 @@ spring:
     producer:
       acks: all
 
+notification:
+  templates:
+    payment-completed:
+      title: "결제 완료"
+      body: "{amount}원 결제가 완료되었습니다."
+    booking-confirmed:
+      title: "예약 확정"
+      body: "{facilityName} 예약이 확정되었습니다."
+    welcome:
+      title: "가입 완료"
+      body: "{userName}님, 스포츠 앱에 오신 것을 환영합니다."
+
 app:
   payment:
     mock:
