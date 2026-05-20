@@ -1,6 +1,7 @@
 package com.sportsapp.infrastructure.security
 
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
+import com.sportsapp.domain.common.exceptions.UnauthorizedException
 import com.sportsapp.domain.user.UserPrincipal
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
@@ -10,9 +11,9 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.context.SecurityContextHolder
 
-class OwnershipGuardTest : BehaviorSpec({
+class OwnershipGuardImplTest : BehaviorSpec({
 
-    val ownershipGuard = OwnershipGuard()
+    val ownershipGuard = OwnershipGuardImpl()
 
     afterEach {
         SecurityContextHolder.clearContext()
@@ -36,7 +37,7 @@ class OwnershipGuardTest : BehaviorSpec({
 
     Given("ownerUserId 와 authUserId 가 다른 경우") {
         When("[U-02] requireOwned 호출 시") {
-            Then("ResourceNotFoundException 이 발생한다") {
+            Then("ResourceNotFoundException(404) 이 발생한다") {
                 shouldThrow<ResourceNotFoundException> {
                     ownershipGuard.requireOwned(ownerUserId = 1L, authUserId = 2L)
                 }
@@ -57,7 +58,7 @@ class OwnershipGuardTest : BehaviorSpec({
     Given("SecurityContext 에 인증된 사용자 id=10L 이 있는 경우") {
         When("authUserId() 호출 시") {
             setAuthentication(10L)
-            Then("SecurityContext 에서 10L 을 반환한다") {
+            Then("[U-04] SecurityContext 에서 10L 을 반환한다") {
                 ownershipGuard.authUserId() shouldBe 10L
             }
         }
@@ -66,8 +67,8 @@ class OwnershipGuardTest : BehaviorSpec({
     Given("SecurityContext 에 인증 정보가 없는 경우") {
         When("authUserId() 호출 시") {
             SecurityContextHolder.clearContext()
-            Then("SecurityException 이 발생한다") {
-                shouldThrow<SecurityException> {
+            Then("[U-05] UnauthorizedException(401) 이 발생한다") {
+                shouldThrow<UnauthorizedException> {
                     ownershipGuard.authUserId()
                 }
             }
