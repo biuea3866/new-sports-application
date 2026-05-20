@@ -3,6 +3,7 @@ package com.sportsapp.domain.message
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import java.time.ZonedDateTime
 
 class RoomTest : BehaviorSpec({
 
@@ -30,6 +31,18 @@ class RoomTest : BehaviorSpec({
             Then("[U-01] type 이 GROUP 이고 name 이 설정된다") {
                 room.type shouldBe RoomType.GROUP
                 room.name shouldBe "스포츠 모임"
+            }
+        }
+    }
+
+    Given("활성 Room 에 메시지가 전송되면") {
+        val room = Room.createDirect()
+        val sentAt = ZonedDateTime.now()
+
+        When("lastMessageBumpedTo 를 호출하면") {
+            room.lastMessageBumpedTo(sentAt)
+            Then("[U-02] lastMessageAt 이 sentAt 으로 갱신된다") {
+                room.lastMessageAt shouldBe sentAt
             }
         }
     }
