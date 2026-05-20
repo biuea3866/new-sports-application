@@ -1,6 +1,6 @@
 package com.sportsapp.scenario
 
-import com.sportsapp.BaseNotificationIntegrationTest
+import com.sportsapp.BaseJpaIntegrationTest
 import com.sportsapp.domain.notification.NotificationChannel
 import com.sportsapp.domain.notification.NotificationDomainService
 import com.sportsapp.domain.notification.NotificationPayload
@@ -15,7 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired
 class NotificationSendScenarioTest(
     @Autowired private val notificationDomainService: NotificationDomainService,
     @Autowired private val notificationRepository: NotificationRepository,
-) : BaseNotificationIntegrationTest() {
+) : BaseJpaIntegrationTest() {
 
     init {
         Given("유효한 IN_APP 채널 알림 요청") {

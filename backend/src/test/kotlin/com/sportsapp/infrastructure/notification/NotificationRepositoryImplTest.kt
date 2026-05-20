@@ -1,6 +1,6 @@
 package com.sportsapp.infrastructure.notification
 
-import com.sportsapp.BaseNotificationIntegrationTest
+import com.sportsapp.BaseJpaIntegrationTest
 import com.sportsapp.domain.notification.Notification
 import com.sportsapp.domain.notification.NotificationChannel
 import com.sportsapp.domain.notification.NotificationPayload
@@ -19,7 +19,7 @@ import java.util.UUID
 class NotificationRepositoryImplTest(
     @Autowired private val notificationRepository: NotificationRepository,
     @Autowired private val notificationJpaRepository: NotificationJpaRepository,
-) : BaseNotificationIntegrationTest() {
+) : BaseJpaIntegrationTest() {
 
     init {
         Given("평탄 키-값 구조를 가진 Notification") {
@@ -71,6 +71,7 @@ class NotificationRepositoryImplTest(
                 payload = NotificationPayload(emptyMap()),
                 status = NotificationStatus.SENT,
                 sentAt = ZonedDateTime.now(ZoneOffset.UTC),
+                readAt = null,
             )
 
             When("(userId, QUEUED) 조건으로 조회하면") {

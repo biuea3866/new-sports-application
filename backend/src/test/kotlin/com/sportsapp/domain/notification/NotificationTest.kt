@@ -33,6 +33,7 @@ class NotificationTest : BehaviorSpec({
             payload = NotificationPayload(mapOf("title" to "안녕하세요")),
             status = NotificationStatus.SENT,
             sentAt = java.time.ZonedDateTime.now(),
+            readAt = null,
         )
 
         When("markSent 를 호출하면") {
@@ -52,6 +53,7 @@ class NotificationTest : BehaviorSpec({
             payload = NotificationPayload(mapOf()),
             status = NotificationStatus.FAILED,
             sentAt = null,
+            readAt = null,
         )
 
         When("markSent 를 호출하면") {

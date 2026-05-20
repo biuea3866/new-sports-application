@@ -1,11 +1,15 @@
 package com.sportsapp.domain.notification
 
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
 class NotificationDomainService(
     private val notificationRepository: NotificationRepository,
+    private val customNotificationRepository: CustomNotificationRepository,
     private val channelGateways: List<NotificationChannelGateway>,
 ) {
     @Transactional(noRollbackFor = [Exception::class])
@@ -29,6 +33,23 @@ class NotificationDomainService(
             saveAsFailed(notification, RuntimeException(result.errorMessage))
         }
     }
+
+    fun listMyNotifications(userId: Long, onlyUnread: Boolean, page: Int, size: Int): Page<Notification> {
+        val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
+        return customNotificationRepository.findByUserIdPaged(userId, onlyUnread, pageable)
+    }
+
+    @Transactional
+    fun markRead(notificationId: Long, userId: Long): Notification {
+        val notification = notificationRepository.findById(notificationId)
+            ?: throw NotificationNotFoundException(notificationId)
+        notification.requireOwnedBy(userId)
+        notification.markRead()
+        return notificationRepository.save(notification)
+    }
+
+    fun countUnread(userId: Long): Long =
+        notificationRepository.countUnreadByUserId(userId)
 
     private fun saveAsFailed(notification: Notification, cause: Exception): Notification {
         notification.markFailed()
