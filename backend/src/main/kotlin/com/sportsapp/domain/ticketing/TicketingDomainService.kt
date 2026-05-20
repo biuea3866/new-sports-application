@@ -1,6 +1,8 @@
 package com.sportsapp.domain.ticketing
 
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.time.ZonedDateTime
@@ -9,6 +11,7 @@ import java.time.ZonedDateTime
 class TicketingDomainService(
     private val eventRepository: EventRepository,
     private val seatRepository: SeatRepository,
+    private val customEventRepository: CustomEventRepository,
 ) {
     fun createEvent(
         title: String,
@@ -36,6 +39,9 @@ class TicketingDomainService(
             ?: throw ResourceNotFoundException("Event", eventId)
 
     fun getSeats(eventId: Long): List<Seat> = seatRepository.findByEventId(eventId)
+
+    fun listEvents(criteria: EventCriteria, pageable: Pageable): Page<Event> =
+        customEventRepository.findByCriteria(criteria, pageable)
 }
 
 data class SeatSpec(
