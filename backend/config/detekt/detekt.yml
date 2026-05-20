@@ -50,6 +50,13 @@ complexity:
   CyclomaticComplexMethod:
     active: true
     threshold: 15
+  TooManyFunctions:
+    active: true
+    thresholdInFiles: 20
+    thresholdInClasses: 20
+    thresholdInInterfaces: 20
+    thresholdInObjects: 20
+    thresholdInEnums: 20
 
 exceptions:
   active: true
