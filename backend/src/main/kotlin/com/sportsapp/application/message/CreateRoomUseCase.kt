@@ -14,11 +14,15 @@ class CreateRoomUseCase(
     @Transactional
     fun execute(command: CreateRoomCommand): RoomResponse {
         val room = when {
-            command.participantIds.size == 2 && command.name == null ->
+            command.participantIds.size == 2 && command.name == null -> {
+                require(command.requestUserId in command.participantIds) {
+                    "본인이 참여자에 포함되어야 합니다"
+                }
                 messageDomainService.createOrFindOneToOne(
                     command.participantIds[0],
                     command.participantIds[1],
                 )
+            }
             command.name != null -> {
                 val allParticipantIds = if (command.requestUserId in command.participantIds) {
                     command.participantIds

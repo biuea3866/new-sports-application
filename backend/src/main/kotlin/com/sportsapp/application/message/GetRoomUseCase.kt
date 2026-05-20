@@ -9,8 +9,8 @@ class GetRoomUseCase(
     private val messageDomainService: MessageDomainService,
 ) {
     @Transactional(readOnly = true)
-    fun execute(roomId: Long): RoomResponse {
-        val room = messageDomainService.getRoom(roomId)
+    fun execute(roomId: Long, userId: Long): RoomResponse {
+        val room = messageDomainService.getRoom(roomId, userId)
         return RoomResponse.of(room)
     }
 }

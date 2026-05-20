@@ -3,6 +3,7 @@ package com.sportsapp.application.message
 import com.sportsapp.domain.message.MessageDomainService
 import com.sportsapp.domain.message.Room
 import com.sportsapp.domain.message.RoomType
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -73,6 +74,18 @@ class CreateRoomUseCaseTest : BehaviorSpec({
             Then("[U-03] 호출자가 자동 추가되어 참여자 3명으로 그룹 룸이 생성된다") {
                 result.type shouldBe RoomType.GROUP
                 verify { messageDomainService.createGroupRoom("농구 모임", listOf(1L, 2L, 3L)) }
+            }
+        }
+    }
+
+    Given("1:1 룸 생성 요청 — 본인이 참여자에 미포함된 경우") {
+        When("requestUserId=99, participantIds=[1,2], name=null 로 execute 를 호출하면") {
+            val command = CreateRoomCommand(requestUserId = 99L, participantIds = listOf(1L, 2L), name = null)
+
+            Then("[U-04] 본인이 참여자에 포함되지 않으면 IllegalArgumentException 이 발생한다") {
+                shouldThrow<IllegalArgumentException> {
+                    createRoomUseCase.execute(command)
+                }
             }
         }
     }

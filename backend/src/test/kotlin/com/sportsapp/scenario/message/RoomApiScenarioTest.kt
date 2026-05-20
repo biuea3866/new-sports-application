@@ -1,15 +1,14 @@
 package com.sportsapp.scenario.message
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
 import com.sportsapp.application.message.CreateRoomCommand
 import com.sportsapp.application.message.CreateRoomUseCase
 import com.sportsapp.application.message.DeleteRoomUseCase
 import com.sportsapp.application.message.GetRoomUseCase
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
+import com.sportsapp.domain.message.NotRoomParticipantException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
 import org.springframework.beans.factory.annotation.Autowired
 
 class RoomApiScenarioTest(
@@ -39,7 +38,7 @@ class RoomApiScenarioTest(
                 deleteRoomUseCase.execute(roomId = room.id, userId = 10L)
 
                 Then("사용자 B(userId=11) 에게는 룸이 여전히 보인다") {
-                    val stillExists = getRoomUseCase.execute(room.id)
+                    val stillExists = getRoomUseCase.execute(room.id, 11L)
                     stillExists.id shouldBe room.id
                 }
             }
@@ -55,7 +54,20 @@ class RoomApiScenarioTest(
 
                 Then("GET /rooms/{id} 는 404 를 던진다") {
                     shouldThrow<ResourceNotFoundException> {
-                        getRoomUseCase.execute(room.id)
+                        getRoomUseCase.execute(room.id, 21L)
+                    }
+                }
+            }
+        }
+
+        Given("1:1 룸에 참여하지 않은 사용자") {
+            val commandCD = CreateRoomCommand(requestUserId = 30L, participantIds = listOf(30L, 31L), name = null)
+            val room = createRoomUseCase.execute(commandCD)
+
+            When("[S-04] 비참여자(userId=99) 가 GET /rooms/{id} 를 호출하면") {
+                Then("NotRoomParticipantException 이 발생한다") {
+                    shouldThrow<NotRoomParticipantException> {
+                        getRoomUseCase.execute(room.id, 99L)
                     }
                 }
             }

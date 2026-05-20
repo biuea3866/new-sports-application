@@ -36,8 +36,11 @@ class RoomApiController(
     }
 
     @GetMapping("/{id}")
-    fun getRoom(@PathVariable id: Long): ResponseEntity<RoomResponse> {
-        return ResponseEntity.ok(getRoomUseCase.execute(id))
+    fun getRoom(
+        @RequestHeader("X-User-Id") userId: Long, // TODO(AUTH-03): SecurityContext로 교체
+        @PathVariable id: Long,
+    ): ResponseEntity<RoomResponse> {
+        return ResponseEntity.ok(getRoomUseCase.execute(id, userId))
     }
 
     @GetMapping("/me")

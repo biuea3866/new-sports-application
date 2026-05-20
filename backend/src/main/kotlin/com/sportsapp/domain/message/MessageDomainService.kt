@@ -32,8 +32,13 @@ class MessageDomainService(
         return room
     }
 
-    fun getRoom(roomId: Long): Room =
-        roomRepository.findById(roomId) ?: throw ResourceNotFoundException("Room", roomId)
+    fun getRoom(roomId: Long, userId: Long): Room {
+        val room = roomRepository.findById(roomId) ?: throw ResourceNotFoundException("Room", roomId)
+        if (!roomParticipantRepository.existsByRoomIdAndUserId(roomId, userId)) {
+            throw NotRoomParticipantException(userId, roomId)
+        }
+        return room
+    }
 
     fun findMyRooms(userId: Long, keyword: String?): List<Room> =
         roomRepository.findMyRoomsByKeyword(userId, keyword)
