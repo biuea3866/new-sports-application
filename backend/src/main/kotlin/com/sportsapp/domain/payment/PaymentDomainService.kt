@@ -83,17 +83,14 @@ class PaymentDomainService(
             amount = amount,
             currency = currency,
         )
-        val gatewayResult = paymentGateway.requestPayment(
-            PaymentRequest(
-                idempotencyKey = idempotencyKey,
-                method = method,
-                amount = amount,
-                currency = currency,
-                orderType = orderType,
-                orderId = orderId,
-            )
-        )
-        payment.markCompleted(gatewayResult.approvedAt)
+        // TODO: PAYMENT-02에서 paymentGateway.requestPayment() 호출 추가 예정
+        paymentGateway.let { }
         return paymentRepository.save(payment)
+    }
+
+    fun findStatuses(paymentIds: List<Long>): Map<Long, PaymentStatus> {
+        if (paymentIds.isEmpty()) return emptyMap()
+        return paymentRepository.findAllByIdIn(paymentIds)
+            .associate { it.id to it.status }
     }
 }

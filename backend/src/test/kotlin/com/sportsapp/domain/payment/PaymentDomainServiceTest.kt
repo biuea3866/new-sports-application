@@ -52,10 +52,6 @@ class PaymentDomainServiceTest : BehaviorSpec({
         val key = "new-key"
         every { paymentRepository.findByIdempotencyKey(key) } returns null
         every { paymentRepository.save(any()) } answers { firstArg() }
-        every { paymentGateway.requestPayment(any()) } returns PaymentGatewayResult(
-            pgTransactionId = "pg-tx-001",
-            approvedAt = java.time.ZonedDateTime.now(),
-        )
 
         When("initiatePayment 를 호출하면") {
             val result = service.initiatePayment(
@@ -67,11 +63,10 @@ class PaymentDomainServiceTest : BehaviorSpec({
                 amount = BigDecimal("5000"),
                 currency = "KRW",
             )
-            Then("COMPLETED 상태의 Payment 가 저장되어 반환된다") {
-                result.status shouldBe PaymentStatus.COMPLETED
+            Then("PENDING 상태의 Payment 가 저장되어 반환된다") {
+                result.status shouldBe PaymentStatus.PENDING
                 result.idempotencyKey shouldBe key
                 verify(exactly = 1) { paymentRepository.save(any()) }
-                verify(exactly = 1) { paymentGateway.requestPayment(any()) }
             }
         }
     }

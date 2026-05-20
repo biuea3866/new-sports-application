@@ -3,6 +3,8 @@ package com.sportsapp.application.booking
 import com.sportsapp.domain.booking.Booking
 import com.sportsapp.domain.booking.BookingDomainService
 import com.sportsapp.domain.booking.BookingStatus
+import com.sportsapp.domain.payment.PaymentDomainService
+import com.sportsapp.domain.payment.PaymentStatus
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -13,9 +15,10 @@ import org.springframework.data.domain.PageRequest
 class ListMyBookingsUseCaseTest : BehaviorSpec({
 
     val bookingDomainService = mockk<BookingDomainService>()
-    val listMyBookingsUseCase = ListMyBookingsUseCase(bookingDomainService)
+    val paymentDomainService = mockk<PaymentDomainService>()
+    val listMyBookingsUseCase = ListMyBookingsUseCase(bookingDomainService, paymentDomainService)
 
-    Given("userId=1, status=null 조건") {
+    Given("userId=1, status=null 조건 — booking1은 paymentId=100, booking2는 paymentId=null") {
         val pageable = PageRequest.of(0, 20)
         val booking1 = mockk<Booking>(relaxed = true) {
             every { id } returns 1L
@@ -38,16 +41,19 @@ class ListMyBookingsUseCaseTest : BehaviorSpec({
         every {
             bookingDomainService.findMyBookings(userId = 1L, status = null, pageable = pageable)
         } returns PageImpl(listOf(booking1, booking2), pageable, 2L)
+        every { paymentDomainService.findStatuses(listOf(100L)) } returns mapOf(100L to PaymentStatus.COMPLETED)
 
         When("status 미지정으로 execute를 호출하면") {
             val command = ListBookingsCommand(userId = 1L, status = null, pageable = pageable)
             val response = listMyBookingsUseCase.execute(command)
 
-            Then("[U-01] 전체 상태가 포함된 2건이 반환된다") {
+            Then("[U-01] 2건이 반환되며 paymentStatus가 올바르게 매핑된다") {
                 response.bookings.size shouldBe 2
                 response.totalElements shouldBe 2L
                 response.bookings[0].status shouldBe BookingStatus.CONFIRMED
+                response.bookings[0].paymentStatus shouldBe PaymentStatus.COMPLETED
                 response.bookings[1].status shouldBe BookingStatus.PENDING
+                response.bookings[1].paymentStatus shouldBe null
             }
         }
     }
