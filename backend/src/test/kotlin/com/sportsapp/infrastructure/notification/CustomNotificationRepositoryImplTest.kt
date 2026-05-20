@@ -45,7 +45,7 @@ class CustomNotificationRepositoryImplTest(
                     result.content.size shouldBe 5
                     val dates = result.content.map { it.createdAt }
                     for (i in 0 until dates.size - 1) {
-                        dates[i].isAfter(dates[i + 1]) || dates[i] == dates[i + 1] shouldBe true
+                        (dates[i].isAfter(dates[i + 1]) || dates[i] == dates[i + 1]) shouldBe true
                     }
                 }
             }

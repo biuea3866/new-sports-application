@@ -12,6 +12,7 @@ import com.sportsapp.domain.notification.NotificationStatus
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -67,7 +68,7 @@ class MarkNotificationReadUseCaseTest : BehaviorSpec({
 
             Then("[U-02] readAt 은 변경되지 않고 멱등하게 처리된다") {
                 result.readAt.shouldNotBeNull()
-                result.readAt == originalReadAt
+                result.readAt shouldBe originalReadAt
                 verify(exactly = 1) { notificationRepository.save(any()) }
             }
         }
