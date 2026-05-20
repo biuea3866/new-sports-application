@@ -56,8 +56,11 @@ class NotificationDomainService(
         templateId: String,
         payload: Map<String, Any>,
     ): Notification {
-        templateRenderer.render(templateId, payload)
-        return send(userId, channel, templateId, NotificationPayload(payload))
+        val rendered = templateRenderer.render(templateId, payload)
+        val enrichedPayload = NotificationPayload(
+            payload + mapOf("_title" to rendered.title, "_body" to rendered.body)
+        )
+        return send(userId, channel, templateId, enrichedPayload)
     }
 
     fun countUnread(userId: Long): Long =

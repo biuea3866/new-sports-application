@@ -62,13 +62,42 @@ class AdminNotificationApiScenarioTest(
             )
 
             When("관리자 권한으로 API 를 호출하면") {
-                Then("[S-02] 5xx 에러 응답이 반환된다") {
+                Then("[S-02] 404 응답이 반환된다") {
                     mockMvc.perform(
                         post("/admin/notifications/send")
                             .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user("admin").roles("ADMIN"))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(requestBody))
-                    ).andExpect(status().is5xxServerError)
+                    ).andExpect(status().isNotFound)
+                }
+            }
+        }
+
+        Given("[S-03] placeholder 가 없는 templateId 에 빈 payload 로 POST /admin/notifications/send 요청") {
+            val userId = 9004L
+            val requestBody = mapOf(
+                "userId" to userId,
+                "channel" to "IN_APP",
+                "templateId" to "payment-completed",
+                "payload" to emptyMap<String, Any>(),
+            )
+
+            When("관리자 권한으로 API 를 호출하면") {
+                Then("[S-03] 200 응답이 반환되고 DB 에 SENT 상태 알림이 저장된다") {
+                    mockMvc.perform(
+                        post("/admin/notifications/send")
+                            .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user("admin").roles("ADMIN"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(requestBody))
+                    )
+                        .andExpect(status().isOk)
+                        .andExpect(jsonPath("$.userId").value(userId))
+                        .andExpect(jsonPath("$.status").value("SENT"))
+
+                    val stored = notificationJpaRepository.findAll()
+                        .filter { it.userId == userId }
+                    stored.size shouldBe 1
+                    stored.first().status shouldBe NotificationStatus.SENT
                 }
             }
         }
