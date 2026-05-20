@@ -19,4 +19,10 @@ class NotificationRepositoryImpl(
 
     override fun findByUserIdAndStatus(userId: Long, status: NotificationStatus): List<Notification> =
         notificationJpaRepository.findByUserIdAndStatusAndDeletedAtIsNull(userId, status)
+
+    override fun saveAll(notifications: List<Notification>): List<Notification> =
+        notificationJpaRepository.saveAll(notifications)
+
+    override fun countUnreadByUserId(userId: Long): Long =
+        notificationJpaRepository.countByUserIdAndReadAtIsNullAndDeletedAtIsNull(userId)
 }

@@ -6,4 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface NotificationJpaRepository : JpaRepository<Notification, Long> {
     fun findByUserIdAndStatusAndDeletedAtIsNull(userId: Long, status: NotificationStatus): List<Notification>
+    fun countByUserIdAndReadAtIsNullAndDeletedAtIsNull(userId: Long): Long
 }

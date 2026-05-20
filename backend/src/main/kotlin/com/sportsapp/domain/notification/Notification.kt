@@ -38,6 +38,9 @@ class Notification(
 
     @Column(name = "sent_at")
     var sentAt: ZonedDateTime?,
+
+    @Column(name = "read_at")
+    var readAt: ZonedDateTime?,
 ) : JpaAuditingBase() {
 
     @Id
@@ -60,6 +63,15 @@ class Notification(
         status = NotificationStatus.FAILED
     }
 
+    fun markRead() {
+        if (readAt != null) return
+        readAt = ZonedDateTime.now(ZoneOffset.UTC)
+    }
+
+    fun requireOwnedBy(requestUserId: Long) {
+        if (userId != requestUserId) throw NotificationNotOwnedException(id, requestUserId)
+    }
+
     companion object {
         fun queue(
             userId: Long,
@@ -73,6 +85,7 @@ class Notification(
             payload = payload ?: NotificationPayload(emptyMap()),
             status = NotificationStatus.QUEUED,
             sentAt = null,
+            readAt = null,
         )
     }
 }
