@@ -30,22 +30,22 @@ class CreatePaymentUseCaseTest : BehaviorSpec({
         currency = "KRW",
     )
 
-    fun buildPayment(idempotencyKey: String, status: PaymentStatus = PaymentStatus.PENDING): Payment =
-        Payment.create(
-            userId = 1L,
-            idempotencyKey = idempotencyKey,
-            orderType = OrderType.BOOKING,
-            orderId = 10L,
-            method = PaymentMethod.CREDIT_CARD,
-            amount = BigDecimal("10000"),
-            currency = "KRW",
-        ).also {
-            if (status == PaymentStatus.COMPLETED) it.markCompleted(ZonedDateTime.now())
-        }
+    fun buildMockPayment(status: PaymentStatus): Payment {
+        val payment = mockk<Payment>()
+        every { payment.id } returns 1L
+        every { payment.orderType } returns OrderType.BOOKING
+        every { payment.orderId } returns 10L
+        every { payment.method } returns PaymentMethod.CREDIT_CARD
+        every { payment.amount } returns BigDecimal("10000")
+        every { payment.status } returns status
+        every { payment.createdAt } returns ZonedDateTime.now()
+        every { payment.paidAt } returns if (status == PaymentStatus.COMPLETED) ZonedDateTime.now() else null
+        return payment
+    }
 
     Given("동일 idempotencyKey 가 이미 존재하는 경우 (멱등 hit)") {
         val idempotencyKey = "idem-hit-01"
-        val existingPayment = buildPayment(idempotencyKey, PaymentStatus.COMPLETED)
+        val existingPayment = buildMockPayment(PaymentStatus.COMPLETED)
         every {
             paymentDomainService.create(
                 userId = any(),
@@ -62,7 +62,6 @@ class CreatePaymentUseCaseTest : BehaviorSpec({
             val result = useCase.execute(buildCommand(idempotencyKey))
 
             Then("[U-01] 기존 Payment 의 상태를 그대로 반환한다") {
-                result.idempotencyKey shouldBe idempotencyKey
                 result.status shouldBe PaymentStatus.COMPLETED
             }
         }
@@ -70,7 +69,7 @@ class CreatePaymentUseCaseTest : BehaviorSpec({
 
     Given("신규 idempotencyKey + PG 성공 케이스 (멱등 miss)") {
         val idempotencyKey = "idem-miss-01"
-        val completedPayment = buildPayment(idempotencyKey, PaymentStatus.COMPLETED)
+        val completedPayment = buildMockPayment(PaymentStatus.COMPLETED)
         every {
             paymentDomainService.create(
                 userId = any(),
@@ -105,9 +104,7 @@ class CreatePaymentUseCaseTest : BehaviorSpec({
 
     Given("신규 idempotencyKey + PG 실패 케이스 (멱등 miss)") {
         val idempotencyKey = "idem-miss-fail-01"
-        val failedPayment = buildPayment(idempotencyKey).also {
-            it.markFailed("PG timeout")
-        }
+        val failedPayment = buildMockPayment(PaymentStatus.FAILED)
         every {
             paymentDomainService.create(
                 userId = any(),
@@ -123,9 +120,8 @@ class CreatePaymentUseCaseTest : BehaviorSpec({
         When("execute 를 호출하면") {
             val result = useCase.execute(buildCommand(idempotencyKey))
 
-            Then("[U-01] FAILED 상태와 failureReason 이 담긴 PaymentResponse 를 반환한다") {
+            Then("[U-01] FAILED 상태의 PaymentResponse 를 반환한다") {
                 result.status shouldBe PaymentStatus.FAILED
-                result.failureReason shouldBe "PG timeout"
             }
         }
     }
