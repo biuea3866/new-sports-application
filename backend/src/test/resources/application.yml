@@ -33,6 +33,10 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
+app:
+  jwt:
+    secret: test-secret-key-for-integration-tests-that-is-at-least-32-chars-long
+
 management:
   health:
     mongo:

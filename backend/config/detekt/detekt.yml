@@ -17,6 +17,8 @@ potential-bugs:
 
 style:
   active: true
+  UnusedPrivateProperty:
+    active: false
   ForbiddenComment:
     active: false
   MagicNumber:
