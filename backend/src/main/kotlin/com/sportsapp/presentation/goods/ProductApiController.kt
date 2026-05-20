@@ -1,7 +1,6 @@
 package com.sportsapp.presentation.goods
 
 import com.sportsapp.application.goods.GetPopularProductsUseCase
-import com.sportsapp.application.goods.InvalidateCacheUseCase
 import com.sportsapp.application.goods.PopularProductResponse
 import com.sportsapp.application.goods.ProductCriteria
 import com.sportsapp.application.goods.ProductWithStockResponse
@@ -10,7 +9,6 @@ import com.sportsapp.domain.goods.ProductCategory
 import org.springframework.context.annotation.Profile
 import org.springframework.data.domain.Page
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -23,7 +21,6 @@ import java.math.BigDecimal
 class ProductApiController(
     private val searchProductsUseCase: SearchProductsUseCase,
     private val getPopularProductsUseCase: GetPopularProductsUseCase,
-    private val invalidateCacheUseCase: InvalidateCacheUseCase,
 ) {
     @GetMapping
     fun searchProducts(
@@ -52,12 +49,4 @@ class ProductApiController(
         @RequestParam category: ProductCategory,
     ): ResponseEntity<List<PopularProductResponse>> =
         ResponseEntity.ok(getPopularProductsUseCase.execute(category))
-
-    @DeleteMapping("/popular/cache")
-    fun invalidatePopularCache(
-        @RequestParam category: ProductCategory,
-    ): ResponseEntity<Unit> {
-        invalidateCacheUseCase.execute(category)
-        return ResponseEntity.noContent().build()
-    }
 }

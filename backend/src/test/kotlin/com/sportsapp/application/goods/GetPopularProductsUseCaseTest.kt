@@ -1,7 +1,7 @@
 package com.sportsapp.application.goods
 
 import com.sportsapp.domain.goods.GoodsDomainService
-import com.sportsapp.domain.goods.Product
+import com.sportsapp.domain.goods.PopularProductSnapshot
 import com.sportsapp.domain.goods.ProductCategory
 import com.sportsapp.domain.goods.ProductStatus
 import io.kotest.core.spec.style.BehaviorSpec
@@ -16,7 +16,8 @@ class GetPopularProductsUseCaseTest : BehaviorSpec({
     val goodsDomainService = mockk<GoodsDomainService>()
     val useCase = GetPopularProductsUseCase(goodsDomainService)
 
-    fun makeProduct(name: String, category: ProductCategory) = Product(
+    fun makeSnapshot(id: Long, name: String, category: ProductCategory) = PopularProductSnapshot(
+        id = id,
         name = name,
         category = category,
         price = BigDecimal("50000"),
@@ -27,16 +28,18 @@ class GetPopularProductsUseCaseTest : BehaviorSpec({
 
     Given("[U-01] FOOTWEAR 카테고리 인기 상품 조회") {
         val category = ProductCategory.FOOTWEAR
-        val products = listOf(makeProduct("나이키", category), makeProduct("아디다스", category))
-        every { goodsDomainService.getPopular(category) } returns products
+        val snapshots = listOf(makeSnapshot(1L, "나이키", category), makeSnapshot(2L, "아디다스", category))
+        every { goodsDomainService.getPopular(category) } returns snapshots
 
         When("execute를 호출하면") {
             val result = useCase.execute(category)
 
-            Then("GoodsDomainService.getPopular가 1회 호출되고 PopularProductResponse로 매핑된다") {
+            Then("GoodsDomainService.getPopular가 1회 호출되고 PopularProductResponse로 매핑된다 (id 포함)") {
                 verify(exactly = 1) { goodsDomainService.getPopular(category) }
                 result.size shouldBe 2
+                result[0].id shouldBe 1L
                 result[0].name shouldBe "나이키"
+                result[1].id shouldBe 2L
                 result[1].name shouldBe "아디다스"
             }
         }

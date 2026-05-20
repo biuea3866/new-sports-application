@@ -12,8 +12,4 @@ class GetPopularProductsUseCase(
     @Transactional(readOnly = true)
     fun execute(category: ProductCategory): List<PopularProductResponse> =
         goodsDomainService.getPopular(category).map(PopularProductResponse::of)
-
-    companion object {
-        const val POPULAR_LIMIT = 20
-    }
 }

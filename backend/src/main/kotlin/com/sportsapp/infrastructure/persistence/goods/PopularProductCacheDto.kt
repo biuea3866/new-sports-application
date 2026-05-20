@@ -1,6 +1,6 @@
 package com.sportsapp.infrastructure.persistence.goods
 
-import com.sportsapp.domain.goods.Product
+import com.sportsapp.domain.goods.PopularProductSnapshot
 import com.sportsapp.domain.goods.ProductCategory
 import com.sportsapp.domain.goods.ProductStatus
 import java.math.BigDecimal
@@ -14,7 +14,8 @@ data class PopularProductCacheDto(
     val imageUrl: String,
     val status: ProductStatus,
 ) {
-    fun toProduct(): Product = Product(
+    fun toSnapshot(): PopularProductSnapshot = PopularProductSnapshot(
+        id = id,
         name = name,
         category = category,
         price = price,
@@ -24,14 +25,14 @@ data class PopularProductCacheDto(
     )
 
     companion object {
-        fun of(product: Product): PopularProductCacheDto = PopularProductCacheDto(
-            id = product.id,
-            name = product.name,
-            category = product.category,
-            price = product.price,
-            description = product.description,
-            imageUrl = product.imageUrl,
-            status = product.status,
+        fun of(snapshot: PopularProductSnapshot): PopularProductCacheDto = PopularProductCacheDto(
+            id = snapshot.id,
+            name = snapshot.name,
+            category = snapshot.category,
+            price = snapshot.price,
+            description = snapshot.description,
+            imageUrl = snapshot.imageUrl,
+            status = snapshot.status,
         )
     }
 }

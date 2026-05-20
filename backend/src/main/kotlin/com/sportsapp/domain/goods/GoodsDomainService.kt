@@ -43,12 +43,15 @@ class GoodsDomainService(
     }
 
     @Transactional(readOnly = true)
-    fun getPopular(category: ProductCategory): List<Product> {
+    fun getPopular(category: ProductCategory): List<PopularProductSnapshot> {
         popularProductsCache.get(category)?.let { return it }
-        val products = productRepository.findByCategoryAndStatus(category, ProductStatus.ACTIVE)
+        // TODO(GOODS-05): 판매 수 집계 기반 정렬로 교체
+        val snapshots = productRepository.findByCategoryAndStatus(category, ProductStatus.ACTIVE)
+            .sortedByDescending { it.createdAt }
             .take(POPULAR_LIMIT)
-        popularProductsCache.put(category, products)
-        return products
+            .map { PopularProductSnapshot.of(it) }
+        popularProductsCache.put(category, snapshots)
+        return snapshots
     }
 
     fun invalidatePopularCache(category: ProductCategory) {
