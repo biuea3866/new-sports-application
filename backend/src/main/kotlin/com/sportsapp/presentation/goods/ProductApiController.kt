@@ -1,5 +1,7 @@
 package com.sportsapp.presentation.goods
 
+import com.sportsapp.application.goods.GetPopularProductsUseCase
+import com.sportsapp.application.goods.PopularProductResponse
 import com.sportsapp.application.goods.ProductCriteria
 import com.sportsapp.application.goods.ProductWithStockResponse
 import com.sportsapp.application.goods.SearchProductsUseCase
@@ -18,6 +20,7 @@ import java.math.BigDecimal
 @Profile("!test-jpa")
 class ProductApiController(
     private val searchProductsUseCase: SearchProductsUseCase,
+    private val getPopularProductsUseCase: GetPopularProductsUseCase,
 ) {
     @GetMapping
     fun searchProducts(
@@ -40,4 +43,10 @@ class ProductApiController(
         )
         return ResponseEntity.ok(searchProductsUseCase.execute(criteria))
     }
+
+    @GetMapping("/popular")
+    fun getPopularProducts(
+        @RequestParam category: ProductCategory,
+    ): ResponseEntity<List<PopularProductResponse>> =
+        ResponseEntity.ok(getPopularProductsUseCase.execute(category))
 }

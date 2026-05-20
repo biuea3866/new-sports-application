@@ -12,6 +12,7 @@ class GoodsDomainService(
     private val productRepository: ProductRepository,
     private val stockRepository: StockRepository,
     private val customProductRepository: CustomProductRepository,
+    private val popularProductsCache: PopularProductsCache,
 ) {
     @Transactional(readOnly = true)
     fun search(
@@ -39,5 +40,25 @@ class GoodsDomainService(
             ?: throw ResourceNotFoundException("Stock", productId)
         stock.restore(quantity)
         stockRepository.save(stock)
+    }
+
+    @Transactional(readOnly = true)
+    fun getPopular(category: ProductCategory): List<PopularProductSnapshot> {
+        popularProductsCache.get(category)?.let { return it }
+        // TODO(GOODS-05): 판매 수 집계 기반 정렬로 교체
+        val snapshots = productRepository.findByCategoryAndStatus(category, ProductStatus.ACTIVE)
+            .sortedByDescending { it.createdAt }
+            .take(POPULAR_LIMIT)
+            .map { PopularProductSnapshot.of(it) }
+        popularProductsCache.put(category, snapshots)
+        return snapshots
+    }
+
+    fun invalidatePopularCache(category: ProductCategory) {
+        popularProductsCache.invalidate(category)
+    }
+
+    companion object {
+        private const val POPULAR_LIMIT = 20
     }
 }
