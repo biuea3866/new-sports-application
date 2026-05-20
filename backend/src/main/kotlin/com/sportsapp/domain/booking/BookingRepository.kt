@@ -19,4 +19,5 @@ interface BookingRepository {
         status: BookingStatus?,
         pageable: Pageable,
     ): Page<Booking>
+    fun countBySlotIdAndStatusIn(slotId: Long, statuses: List<BookingStatus>): Long
 }

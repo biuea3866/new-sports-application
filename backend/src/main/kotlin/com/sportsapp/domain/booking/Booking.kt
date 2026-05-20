@@ -1,5 +1,6 @@
 package com.sportsapp.domain.booking
 
+import com.sportsapp.domain.common.DomainEvent
 import com.sportsapp.domain.common.JpaAuditingBase
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -9,6 +10,7 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Transient
 
 @Entity
 @Table(name = "bookings")
@@ -22,6 +24,19 @@ class Booking(
     initialStatus: BookingStatus,
     initialPaymentId: Long?,
 ) : JpaAuditingBase() {
+
+    @Transient
+    private val domainEvents: MutableList<DomainEvent> = mutableListOf()
+
+    fun pullDomainEvents(): List<DomainEvent> {
+        val events = domainEvents.toList()
+        domainEvents.clear()
+        return events
+    }
+
+    internal fun registerEvent(event: DomainEvent) {
+        domainEvents.add(event)
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
