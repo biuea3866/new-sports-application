@@ -2,6 +2,8 @@ package com.sportsapp.infrastructure.persistence.post
 
 import com.sportsapp.domain.post.Comment
 import com.sportsapp.domain.post.CommentRepository
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Repository
 
 @Repository
@@ -18,4 +20,7 @@ class CommentRepositoryImpl(
 
     override fun findTop50ByPostId(postId: Long): List<Comment> =
         commentJpaRepository.findTop50ByPostIdAndDeletedAtIsNullOrderByCreatedAtAsc(postId)
+
+    override fun findPageByPostId(postId: Long, pageable: Pageable): Page<Comment> =
+        commentJpaRepository.findByPostIdAndDeletedAtIsNull(postId, pageable)
 }

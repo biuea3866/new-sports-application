@@ -32,6 +32,11 @@ class Comment private constructor(
         this.content = content
     }
 
+    fun delete(requestUserId: Long) {
+        if (userId != requestUserId) throw NotCommentOwnerException(id)
+        softDelete(requestUserId)
+    }
+
     companion object {
         fun create(postId: Long, userId: Long, content: String): Comment {
             require(content.isNotBlank()) { "content must not be blank" }
