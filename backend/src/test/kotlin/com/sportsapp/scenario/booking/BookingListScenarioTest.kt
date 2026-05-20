@@ -112,32 +112,6 @@ class BookingListScenarioTest(
             }
         }
 
-        // TODO: AUTH-05 머지 후 실제 FACILITY_OWNER 권한 데이터 기반으로 교체
-        // 현재는 facilityId="FAC-01" 소유자 == userId=1 placeholder
-        Given("[S-03] facility owner(userId=1)가 userId=2의 Booking 단건 조회") {
-            val slot = slotRepository.save(
-                Slot.create(
-                    facilityId = "FAC-01",
-                    date = ZonedDateTime.now(),
-                    timeRange = "14:00-15:00",
-                    capacity = 5,
-                )
-            )
-            val booking = bookingDomainService.createPendingBooking(userId = 2L, slotId = slot.id)
-
-            When("facility owner(userId=1)가 GET /bookings/{id} 호출 시") {
-                val response = restTemplate.exchange(
-                    "/bookings/${booking.id}",
-                    HttpMethod.GET,
-                    HttpEntity<Void>(headers(1L)),
-                    String::class.java,
-                )
-
-                Then("[S-03] 200 응답과 Booking 정보가 반환된다") {
-                    response.statusCode shouldBe HttpStatus.OK
-                    response.body shouldContain "PENDING"
-                }
-            }
-        }
+        // S-03 (FACILITY_OWNER 권한 분기) — AUTH-05 머지 후 Facility.ownerId 조회 기반으로 추가
     }
 }

@@ -41,14 +41,7 @@ class BookingDomainService(
         val booking = bookingRepository.findById(bookingId)
             ?: throw ResourceNotFoundException("Booking", bookingId)
         if (booking.userId == requesterId) return booking
-        if (isFacilityOwner(requesterId, booking.slotId)) return booking
+        // TODO(AUTH-05): Facility.ownerId 조회로 FACILITY_OWNER 권한 분기 추가
         throw UnauthorizedBookingAccessException(bookingId)
-    }
-
-    // TODO: AUTH-05 머지 후 실제 Facility ownerId 조회로 교체
-    // 현재는 facilityId 1L 소유자 == userId 1L 로 placeholder 처리
-    private fun isFacilityOwner(requesterId: Long, slotId: Long): Boolean {
-        val slot = slotRepository.findById(slotId) ?: return false
-        return slot.facilityId == "FAC-01" && requesterId == 1L
     }
 }
