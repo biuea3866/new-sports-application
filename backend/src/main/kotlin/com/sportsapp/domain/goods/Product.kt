@@ -49,4 +49,8 @@ class Product(
         check(status == ProductStatus.ACTIVE) { "이미 비활성화된 상품입니다." }
         status = ProductStatus.INACTIVE
     }
+
+    fun requireActive() {
+        if (status != ProductStatus.ACTIVE) throw ProductInactiveException(id)
+    }
 }
