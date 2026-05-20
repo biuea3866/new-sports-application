@@ -1,7 +1,9 @@
 package com.sportsapp.domain.user
 
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
+import org.springframework.stereotype.Service
 
+@Service
 class UserDomainService(
     private val userRepository: UserRepository,
     private val roleRepository: RoleRepository,

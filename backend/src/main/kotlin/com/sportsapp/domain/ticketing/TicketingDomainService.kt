@@ -1,9 +1,11 @@
 package com.sportsapp.domain.ticketing
 
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
+import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.time.ZonedDateTime
 
+@Service
 class TicketingDomainService(
     private val eventRepository: EventRepository,
     private val seatRepository: SeatRepository,
