@@ -12,6 +12,7 @@ class GoodsDomainService(
     private val productRepository: ProductRepository,
     private val stockRepository: StockRepository,
     private val customProductRepository: CustomProductRepository,
+    private val popularProductsCache: PopularProductsCache,
 ) {
     @Transactional(readOnly = true)
     fun search(
@@ -39,5 +40,22 @@ class GoodsDomainService(
             ?: throw ResourceNotFoundException("Stock", productId)
         stock.restore(quantity)
         stockRepository.save(stock)
+    }
+
+    @Transactional(readOnly = true)
+    fun getPopular(category: ProductCategory): List<Product> {
+        popularProductsCache.get(category)?.let { return it }
+        val products = productRepository.findByCategoryAndStatus(category, ProductStatus.ACTIVE)
+            .take(POPULAR_LIMIT)
+        popularProductsCache.put(category, products)
+        return products
+    }
+
+    fun invalidatePopularCache(category: ProductCategory) {
+        popularProductsCache.invalidate(category)
+    }
+
+    companion object {
+        private const val POPULAR_LIMIT = 20
     }
 }
