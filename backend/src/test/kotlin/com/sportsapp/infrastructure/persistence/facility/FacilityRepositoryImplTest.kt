@@ -145,8 +145,18 @@ class FacilityRepositoryImplTest(
             When("userId=1의 시설 id로 userId=2를 넘겨 findByIdAndOwnerUserId를 호출하면") {
                 val savedId = requireNotNull(facilityRepository.save(facilityForUser1a).id)
                 val result = facilityRepository.findByIdAndOwnerUserId(savedId, 2L)
-                Then("[R-02] ownerUserId 불일치로 null이 반환된다") {
+                Then("[R-04] ownerUserId 불일치로 null이 반환된다") {
                     result shouldBe null
+                }
+            }
+
+            When("userId=1 시설을 softDelete 후 findByOwnerUserId 조회하면") {
+                val deleted = facilityRepository.save(facilityForUser1a).also { it.softDelete(1L) }
+                facilityRepository.save(deleted)
+                val pageable = PageRequest.of(0, 50)
+                val result = facilityRepository.findByOwnerUserId(1L, pageable)
+                Then("[R-05] soft-delete 된 시설은 제외된다") {
+                    result.content.all { it.id != deleted.id } shouldBe true
                 }
             }
         }
