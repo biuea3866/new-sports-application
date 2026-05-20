@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -26,8 +27,11 @@ class RoomApiController(
 ) {
 
     @PostMapping
-    fun createRoom(@RequestBody request: CreateRoomRequest): ResponseEntity<RoomResponse> {
-        val response = createRoomUseCase.execute(request.toCommand())
+    fun createRoom(
+        @RequestHeader("X-User-Id") userId: Long, // TODO(AUTH-03): SecurityContext로 교체
+        @RequestBody request: CreateRoomRequest,
+    ): ResponseEntity<RoomResponse> {
+        val response = createRoomUseCase.execute(request.toCommand(userId))
         return ResponseEntity.status(HttpStatus.CREATED).body(response)
     }
 
@@ -38,17 +42,17 @@ class RoomApiController(
 
     @GetMapping("/me")
     fun listMyRooms(
+        @RequestHeader("X-User-Id") userId: Long, // TODO(AUTH-03): SecurityContext로 교체
         @RequestParam(required = false) keyword: String?,
     ): ResponseEntity<List<RoomResponse>> {
-        // TODO: SecurityContext 완성 시 실제 userId로 교체
-        val userId = 1L
         return ResponseEntity.ok(listMyRoomsUseCase.execute(userId, keyword))
     }
 
     @DeleteMapping("/{id}")
-    fun deleteRoom(@PathVariable id: Long): ResponseEntity<Void> {
-        // TODO: SecurityContext 완성 시 실제 userId로 교체
-        val userId = 1L
+    fun deleteRoom(
+        @RequestHeader("X-User-Id") userId: Long, // TODO(AUTH-03): SecurityContext로 교체
+        @PathVariable id: Long,
+    ): ResponseEntity<Void> {
         deleteRoomUseCase.execute(id, userId)
         return ResponseEntity.noContent().build()
     }

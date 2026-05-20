@@ -19,8 +19,14 @@ class CreateRoomUseCase(
                     command.participantIds[0],
                     command.participantIds[1],
                 )
-            command.name != null ->
-                messageDomainService.createGroupRoom(command.name)
+            command.name != null -> {
+                val allParticipantIds = if (command.requestUserId in command.participantIds) {
+                    command.participantIds
+                } else {
+                    listOf(command.requestUserId) + command.participantIds
+                }
+                messageDomainService.createGroupRoom(command.name, allParticipantIds)
+            }
             else ->
                 throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Group room requires a name")
         }

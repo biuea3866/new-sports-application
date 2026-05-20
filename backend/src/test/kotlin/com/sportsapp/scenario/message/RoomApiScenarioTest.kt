@@ -21,7 +21,7 @@ class RoomApiScenarioTest(
     init {
         Given("1:1 룸 생성 요청") {
             When("[S-01] 동일 두 사용자가 1:1 룸을 두 번 생성 요청하면") {
-                val commandA = CreateRoomCommand(participantIds = listOf(1L, 2L), name = null)
+                val commandA = CreateRoomCommand(requestUserId = 1L, participantIds = listOf(1L, 2L), name = null)
                 val firstResponse = createRoomUseCase.execute(commandA)
                 val secondResponse = createRoomUseCase.execute(commandA)
 
@@ -32,7 +32,7 @@ class RoomApiScenarioTest(
         }
 
         Given("사용자 A, B 가 참여한 룸") {
-            val commandAB = CreateRoomCommand(participantIds = listOf(10L, 11L), name = null)
+            val commandAB = CreateRoomCommand(requestUserId = 10L, participantIds = listOf(10L, 11L), name = null)
             val room = createRoomUseCase.execute(commandAB)
 
             When("[S-02] 사용자 A(userId=10) 가 탈퇴하면") {
@@ -46,7 +46,7 @@ class RoomApiScenarioTest(
         }
 
         Given("마지막 참가자가 한 명 남은 룸") {
-            val commandSingle = CreateRoomCommand(participantIds = listOf(20L, 21L), name = null)
+            val commandSingle = CreateRoomCommand(requestUserId = 20L, participantIds = listOf(20L, 21L), name = null)
             val room = createRoomUseCase.execute(commandSingle)
             deleteRoomUseCase.execute(roomId = room.id, userId = 20L)
 

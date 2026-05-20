@@ -6,7 +6,8 @@ data class CreateRoomRequest(
     val participantIds: List<Long>,
     val name: String?,
 ) {
-    fun toCommand(): CreateRoomCommand = CreateRoomCommand(
+    fun toCommand(requestUserId: Long): CreateRoomCommand = CreateRoomCommand(
+        requestUserId = requestUserId,
         participantIds = participantIds,
         name = name,
     )

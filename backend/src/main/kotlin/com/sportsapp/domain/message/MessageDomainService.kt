@@ -13,7 +13,13 @@ class MessageDomainService(
 
     fun createDirectRoom(): Room = roomRepository.save(Room.createDirect())
 
-    fun createGroupRoom(name: String): Room = roomRepository.save(Room.createGroup(name))
+    fun createGroupRoom(name: String, participantIds: List<Long>): Room {
+        val room = roomRepository.save(Room.createGroup(name))
+        participantIds.forEach { userId ->
+            roomParticipantRepository.save(RoomParticipant.create(room.id, userId))
+        }
+        return room
+    }
 
     fun createOrFindOneToOne(userIdA: Long, userIdB: Long): Room {
         val sortedIdA = minOf(userIdA, userIdB)

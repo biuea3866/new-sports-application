@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service
 @Service
 class PaymentDomainService(
     private val paymentRepository: PaymentRepository,
+    private val paymentGateway: PaymentGateway,
 ) {
     fun create(
         userId: Long,
