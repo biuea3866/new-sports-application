@@ -7,8 +7,8 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
 import org.springframework.security.access.AccessDeniedException
-import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
+import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.core.AuthenticationException
@@ -40,6 +40,7 @@ class SecurityConfig(
                 auth.requestMatchers(HttpMethod.POST, "/auth/login", "/auth/refresh", "/users/register").permitAll()
                 auth.requestMatchers("/actuator/health", "/actuator/info").permitAll()
                 auth.requestMatchers("/admin/**").hasRole("ADMIN")
+                auth.requestMatchers("/api/b2b/**").authenticated()
                 // TODO(AUTH-04): SecurityContext 통합 전까지 도메인 API는 X-User-Id 헤더 기반으로 임시 permitAll
                 auth.requestMatchers(
                     "/bookings/**", "/payments/**", "/facilities/**",
