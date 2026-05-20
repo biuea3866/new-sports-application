@@ -1,6 +1,8 @@
 package com.sportsapp.domain.ticketing
 
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
+import com.sportsapp.domain.ticketing.exception.LockExpiredException
+import com.sportsapp.domain.ticketing.exception.MalformedLockIdException
 import com.sportsapp.domain.ticketing.exception.SeatAlreadyLockedException
 import com.sportsapp.domain.ticketing.exception.SeatNotLockOwnerException
 import org.springframework.data.domain.Page
@@ -18,6 +20,7 @@ class TicketingDomainService(
     private val seatRepository: SeatRepository,
     private val customEventRepository: CustomEventRepository,
     private val seatLockStore: SeatLockStore,
+    private val ticketOrderRepository: TicketOrderRepository,
 ) {
     fun createEvent(
         title: String,
@@ -70,6 +73,43 @@ class TicketingDomainService(
             if (!released) throw SeatNotLockOwnerException(eventId, seatId)
         }
     }
+
+    fun verifyLockOwner(lockId: String, userId: Long) {
+        parseLockId(lockId).forEach { (eventId, seatId) ->
+            val owner = seatLockStore.getOwner(eventId, seatId)
+                ?: throw LockExpiredException(eventId, seatId)
+            if (owner != userId) throw SeatNotLockOwnerException(eventId, seatId)
+        }
+    }
+
+    fun createPendingOrder(lockId: String, userId: Long): TicketOrder {
+        val pairs = parseLockId(lockId)
+        val eventId = pairs.first().first
+        val seatIds = pairs.map { it.second }
+        val order = TicketOrder.create(
+            userId = userId,
+            lockedEventId = eventId,
+            lockedSeatIds = seatIds,
+        )
+        return ticketOrderRepository.save(order)
+    }
+
+    fun calculateAmount(lockId: String): BigDecimal {
+        val pairs = parseLockId(lockId)
+        val eventId = pairs.first().first
+        val seatIds = pairs.map { it.second }
+        val seats = seatRepository.findByEventId(eventId)
+        return seats.filter { it.id in seatIds }.sumOf { it.price }
+    }
+
+    private fun parseLockId(lockId: String): List<Pair<Long, Long>> =
+        lockId.split(",").map { token ->
+            val parts = token.split(":")
+            if (parts.size != 2) throw MalformedLockIdException(lockId)
+            val eventId = parts[0].toLongOrNull() ?: throw MalformedLockIdException(lockId)
+            val seatId = parts[1].toLongOrNull() ?: throw MalformedLockIdException(lockId)
+            eventId to seatId
+        }
 }
 
 data class SeatSpec(
