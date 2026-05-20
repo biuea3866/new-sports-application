@@ -15,4 +15,7 @@ class CommentRepositoryImpl(
 
     override fun findByPostId(postId: Long): List<Comment> =
         commentJpaRepository.findByPostIdAndDeletedAtIsNull(postId)
+
+    override fun findTop50ByPostId(postId: Long): List<Comment> =
+        commentJpaRepository.findTop50ByPostIdAndDeletedAtIsNullOrderByCreatedAtAsc(postId)
 }
