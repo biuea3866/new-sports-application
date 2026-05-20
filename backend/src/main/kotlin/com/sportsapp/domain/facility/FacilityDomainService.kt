@@ -27,4 +27,10 @@ class FacilityDomainService(
 
     fun list(gu: String?, type: String?, pageable: Pageable): Page<Facility> =
         facilityRepository.findAll(gu, type, pageable)
+
+    fun getById(id: String): Facility =
+        facilityRepository.findById(id) ?: throw FacilityNotFoundException(id)
+
+    fun aggregateGuType(): List<GuTypeCount> =
+        facilityRepository.aggregateGuType()
 }
