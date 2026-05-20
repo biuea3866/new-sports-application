@@ -19,7 +19,7 @@ class UserDomainService(
         val defaultRole = roleRepository.findByName("USER")
             ?: throw ResourceNotFoundException("Role", "USER")
         if (!userRoleRepository.existsByUserIdAndRoleId(savedUser.id, defaultRole.id)) {
-            userRoleRepository.save(UserRole(userId = savedUser.id, roleId = defaultRole.id))
+            userRoleRepository.save(UserRole(userId = savedUser.id, roleId = defaultRole.id, grantedBy = null))
         }
         return savedUser
     }
@@ -36,4 +36,33 @@ class UserDomainService(
             roleRepository.findById(userRole.roleId)
         }
     }
+
+    fun assignRole(adminId: Long, userId: Long, roleName: String) {
+        val user = getUser(userId)
+        val role = getRole(roleName)
+        val activeRoles = userRoleRepository.findActiveByUserId(userId)
+        user.validateNoDuplicateRole(role.id, activeRoles.map { it.roleId }.toSet())
+        userRoleRepository.save(UserRole(userId = userId, roleId = role.id, grantedBy = adminId))
+    }
+
+    fun revokeRole(adminId: Long, userId: Long, roleName: String) {
+        val user = getUser(userId)
+        val role = getRole(roleName)
+        user.validateCanRevokeAdminRole(
+            adminRoleName = "ADMIN",
+            targetRoleName = roleName,
+            requesterId = adminId,
+        )
+        val activeRoles = userRoleRepository.findActiveByUserId(userId)
+        user.validateHasMinimumOneRole(activeRoles.size)
+        userRoleRepository.findActiveByUserIdAndRoleId(userId, role.id)
+            ?: throw ResourceNotFoundException("UserRole", "$userId/$roleName")
+        userRoleRepository.softDeleteByUserIdAndRoleId(userId, role.id, adminId)
+    }
+
+    private fun getUser(userId: Long): User =
+        userRepository.findById(userId) ?: throw ResourceNotFoundException("User", userId)
+
+    private fun getRole(roleName: String): Role =
+        roleRepository.findByName(roleName) ?: throw ResourceNotFoundException("Role", roleName)
 }

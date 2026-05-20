@@ -1,7 +1,9 @@
 package com.sportsapp.domain.user
 
 import com.sportsapp.domain.common.JpaAuditingBase
+import com.sportsapp.domain.user.exceptions.DuplicateRoleException
 import com.sportsapp.domain.user.exceptions.InvalidEmailException
+import com.sportsapp.domain.user.exceptions.SelfRevocationException
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -45,5 +47,17 @@ class User(
 
     fun changePassword(newPasswordHash: String) {
         passwordHash = newPasswordHash
+    }
+
+    fun validateNoDuplicateRole(roleId: Long, existingRoleIds: Set<Long>) {
+        if (roleId in existingRoleIds) throw DuplicateRoleException(roleId)
+    }
+
+    fun validateCanRevokeAdminRole(adminRoleName: String, targetRoleName: String, requesterId: Long) {
+        if (targetRoleName == adminRoleName && id == requesterId) throw SelfRevocationException()
+    }
+
+    fun validateHasMinimumOneRole(activeRoleCount: Int) {
+        require(activeRoleCount > 1) { "User must retain at least one role" }
     }
 }

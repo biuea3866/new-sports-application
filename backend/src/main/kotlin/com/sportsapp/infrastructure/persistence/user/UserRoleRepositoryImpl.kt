@@ -17,4 +17,13 @@ class UserRoleRepositoryImpl(
 
     override fun existsByUserIdAndRoleId(userId: Long, roleId: Long): Boolean =
         userRoleJpaRepository.existsByUserIdAndRoleIdAndDeletedAtIsNull(userId, roleId)
+
+    override fun findActiveByUserIdAndRoleId(userId: Long, roleId: Long): UserRole? =
+        userRoleJpaRepository.findByUserIdAndRoleIdAndDeletedAtIsNull(userId, roleId)
+
+    override fun softDeleteByUserIdAndRoleId(userId: Long, roleId: Long, deletedBy: Long?) {
+        val userRole = userRoleJpaRepository.findByUserIdAndRoleIdAndDeletedAtIsNull(userId, roleId) ?: return
+        userRole.softDelete(deletedBy)
+        userRoleJpaRepository.save(userRole)
+    }
 }
