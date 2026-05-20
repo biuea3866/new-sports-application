@@ -15,6 +15,8 @@ class UserRole(
     val userId: Long,
     @Column(name = "role_id", nullable = false)
     val roleId: Long,
+    @Column(name = "granted_by")
+    val grantedBy: Long?,
 ) : JpaAuditingBase() {
 
     @Id

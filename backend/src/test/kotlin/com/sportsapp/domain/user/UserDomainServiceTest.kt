@@ -36,7 +36,7 @@ class UserDomainServiceTest : BehaviorSpec({
         every { userRepository.save(any()) } returns testUser
         every { roleRepository.findByName("USER") } returns defaultRole
         every { userRoleRepository.existsByUserIdAndRoleId(any(), any()) } returns false
-        every { userRoleRepository.save(any()) } returns UserRole(userId = 0L, roleId = 0L)
+        every { userRoleRepository.save(any()) } returns UserRole(userId = 0L, roleId = 0L, grantedBy = null)
 
         When("register 를 호출하면") {
             val user = userDomainService.register("new@example.com", "password1234")

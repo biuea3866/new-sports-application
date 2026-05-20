@@ -15,13 +15,11 @@ import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.http.client.ClientHttpResponse
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory
-import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.web.client.ResponseErrorHandler
 import org.springframework.web.client.RestTemplate
 
 class LoginScenarioTest(
     @Autowired private val userDomainService: UserDomainService,
-    @Autowired private val passwordEncoder: PasswordEncoder,
     @Autowired private val objectMapper: ObjectMapper,
     @LocalServerPort private val port: Int,
 ) : BaseIntegrationTest() {
@@ -39,8 +37,7 @@ class LoginScenarioTest(
 
     init {
         Given("등록된 유저가 있을 때") {
-            val hashedPassword = passwordEncoder.encode("ValidPass123")
-            userDomainService.register("login-scenario@example.com", hashedPassword)
+            userDomainService.register("login-scenario@example.com", "ValidPass123")
 
             When("[S-01] POST /auth/login 에 올바른 자격증명을 보내면") {
                 val headers = HttpHeaders().apply { set("Content-Type", "application/json") }
@@ -81,8 +78,7 @@ class LoginScenarioTest(
         }
 
         Given("유효한 accessToken 으로 보호 API 를 호출할 때") {
-            val hashedPassword = passwordEncoder.encode("SecurePass456")
-            userDomainService.register("protected-scenario@example.com", hashedPassword)
+            userDomainService.register("protected-scenario@example.com", "SecurePass456")
 
             val loginHeaders = HttpHeaders().apply { set("Content-Type", "application/json") }
             val loginBody = objectMapper.writeValueAsString(
@@ -131,8 +127,7 @@ class LoginScenarioTest(
         }
 
         Given("로그인 후 발급된 refreshToken 이 있을 때") {
-            val hashedPassword = passwordEncoder.encode("RefreshPass789")
-            userDomainService.register("refresh-scenario@example.com", hashedPassword)
+            userDomainService.register("refresh-scenario@example.com", "RefreshPass789")
 
             val loginHeaders = HttpHeaders().apply { set("Content-Type", "application/json") }
             val loginBody = objectMapper.writeValueAsString(

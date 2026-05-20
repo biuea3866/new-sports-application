@@ -69,7 +69,7 @@ class UserRepositoryTest(
                     val roleEntity = roleJpaRepository.findByNameAndDeletedAtIsNull("USER")
                     roleEntity.shouldNotBeNull()
 
-                    userRoleJpaRepository.save(UserRole(userId = userEntity.id, roleId = roleEntity.id))
+                    userRoleJpaRepository.save(UserRole(userId = userEntity.id, roleId = roleEntity.id, grantedBy = null))
 
                     userRoleJpaRepository.existsByUserIdAndRoleIdAndDeletedAtIsNull(
                         userEntity.id,
