@@ -2,7 +2,9 @@ package com.sportsapp.domain.message
 
 import com.sportsapp.domain.common.exceptions.BusinessRuleViolationException
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
+import org.springframework.stereotype.Service
 
+@Service
 class MessageDomainService(
     private val roomRepository: RoomRepository,
     private val messageRepository: MessageRepository,
