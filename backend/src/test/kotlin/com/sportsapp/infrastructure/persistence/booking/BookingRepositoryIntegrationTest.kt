@@ -7,11 +7,13 @@ import com.sportsapp.domain.booking.Slot
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.jdbc.core.JdbcTemplate
 import java.time.ZonedDateTime
 
 class BookingRepositoryIntegrationTest(
     @Autowired private val slotJpaRepository: SlotJpaRepository,
     @Autowired private val bookingJpaRepository: BookingJpaRepository,
+    @Autowired private val jdbcTemplate: JdbcTemplate,
 ) : BaseIntegrationTest() {
 
     private fun createSlot(): Slot = slotJpaRepository.save(
@@ -40,8 +42,8 @@ class BookingRepositoryIntegrationTest(
 
     init {
         afterEach {
-            bookingJpaRepository.deleteAll()
-            slotJpaRepository.deleteAll()
+            jdbcTemplate.execute("TRUNCATE TABLE bookings")
+            jdbcTemplate.execute("TRUNCATE TABLE slots")
         }
 
         Given("[R-01] PENDING Booking 저장 후 userId + status 조회") {
