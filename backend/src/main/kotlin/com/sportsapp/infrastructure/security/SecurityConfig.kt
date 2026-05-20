@@ -45,7 +45,7 @@ class SecurityConfig(
                     "/bookings/**", "/payments/**", "/facilities/**",
                     "/products/**", "/posts/**", "/comments/**", "/rooms/**",
                     "/events/**", "/notifications/**",
-                    "/cart/**", "/ticket-orders/**",
+                    "/cart/**", "/ticket-orders/**", "/goods-orders/**",
                 ).permitAll()
                 auth.anyRequest().authenticated()
             }

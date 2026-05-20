@@ -31,4 +31,8 @@ class Stock(
         if (amount <= 0) throw InvalidQuantityException(amount)
         quantity += amount
     }
+
+    fun requireSufficient(required: Int) {
+        if (quantity < required) throw OutOfStockException(productId, required, quantity)
+    }
 }

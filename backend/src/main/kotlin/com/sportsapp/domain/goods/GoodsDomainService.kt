@@ -1,11 +1,22 @@
 package com.sportsapp.domain.goods
 
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
+import com.sportsapp.domain.payment.OrderType
+import com.sportsapp.domain.payment.PaymentDomainService
+import com.sportsapp.domain.payment.PaymentMethod
+import com.sportsapp.domain.payment.PaymentStatus
 import java.math.BigDecimal
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+
+data class OrderWithPayment(
+    val orderId: Long,
+    val paymentId: Long,
+    val paymentStatus: PaymentStatus,
+    val totalAmount: BigDecimal,
+)
 
 @Service
 class GoodsDomainService(
@@ -13,6 +24,10 @@ class GoodsDomainService(
     private val stockRepository: StockRepository,
     private val customProductRepository: CustomProductRepository,
     private val popularProductsCache: PopularProductsCache,
+    private val goodsOrderRepository: GoodsOrderRepository,
+    private val goodsOrderItemRepository: GoodsOrderItemRepository,
+    private val paymentDomainService: PaymentDomainService,
+    private val cartDomainService: CartDomainService,
 ) {
     @Transactional(readOnly = true)
     fun search(
@@ -57,6 +72,74 @@ class GoodsDomainService(
     fun invalidatePopularCache(category: ProductCategory) {
         popularProductsCache.invalidate(category)
     }
+
+    fun createPendingOrder(userId: Long, items: List<OrderItemInput>): GoodsOrder {
+        if (items.isEmpty()) throw EmptyOrderException()
+        val products = items.associate { item -> item.productId to validateAndDeductStock(item) }
+        val totalAmount = items.fold(BigDecimal.ZERO) { acc, item ->
+            acc.add(products.getValue(item.productId).price.multiply(BigDecimal(item.quantity)))
+        }
+        val order = goodsOrderRepository.save(GoodsOrder.create(userId, totalAmount))
+        val orderItems = items.map { item ->
+            GoodsOrderItem(
+                orderId = order.id,
+                productId = item.productId,
+                quantity = item.quantity,
+                unitPrice = products.getValue(item.productId).price,
+            )
+        }
+        goodsOrderItemRepository.saveAll(orderItems)
+        return order
+    }
+
+    private fun validateAndDeductStock(item: OrderItemInput): Product {
+        val product = productRepository.findById(item.productId)
+            ?: throw ResourceNotFoundException("Product", item.productId)
+        product.requireActive()
+        val stock = stockRepository.findByProductId(item.productId)
+            ?: throw ResourceNotFoundException("Stock", item.productId)
+        stock.requireSufficient(item.quantity)
+        stock.deduct(item.quantity)
+        stockRepository.save(stock)
+        return product
+    }
+
+    fun createOrderWithPayment(
+        userId: Long,
+        idempotencyKey: String,
+        method: PaymentMethod,
+        fromCart: Boolean,
+        items: List<OrderItemInput>,
+    ): OrderWithPayment {
+        val order = createPendingOrder(userId, items)
+        val payment = paymentDomainService.create(
+            userId = userId,
+            idempotencyKey = idempotencyKey,
+            orderType = OrderType.GOODS,
+            orderId = order.id,
+            method = method,
+            amount = order.totalAmount,
+            currency = "KRW",
+        )
+        if (fromCart) cartDomainService.clearCart(userId)
+        return OrderWithPayment(
+            orderId = order.id,
+            paymentId = payment.id,
+            paymentStatus = payment.status,
+            totalAmount = order.totalAmount,
+        )
+    }
+
+    fun getOrder(userId: Long, orderId: Long): Pair<GoodsOrder, List<GoodsOrderItem>> {
+        val order = goodsOrderRepository.findById(orderId)
+            ?: throw GoodsOrderNotFoundException(orderId)
+        order.requireOwnedBy(userId)
+        val items = goodsOrderItemRepository.findByOrderId(orderId)
+        return order to items
+    }
+
+    fun listMyOrders(userId: Long, pageable: Pageable): Page<GoodsOrder> =
+        goodsOrderRepository.findByUserId(userId, pageable)
 
     companion object {
         private const val POPULAR_LIMIT = 20
