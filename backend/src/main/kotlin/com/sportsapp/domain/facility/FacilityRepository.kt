@@ -14,4 +14,6 @@ interface FacilityRepository {
     fun findAll(gu: String?, type: String?, pageable: Pageable): Page<Facility>
     fun aggregateGuType(): List<GuTypeCount>
     fun upsertByCode(facility: Facility): Facility
+    fun findByOwnerUserId(ownerUserId: Long, pageable: Pageable): Page<Facility>
+    fun findByIdAndOwnerUserId(id: String, ownerUserId: Long): Facility?
 }
