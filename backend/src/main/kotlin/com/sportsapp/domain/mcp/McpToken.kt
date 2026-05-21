@@ -84,6 +84,10 @@ class McpToken(
         lastUsedAt = ZonedDateTime.now()
     }
 
+    fun requireOwnedBy(userId: Long) {
+        if (this.userId != userId) throw McpTokenNotOwnedException(id)
+    }
+
     fun requireActive() {
         if (status != McpTokenStatus.ACTIVE) {
             throw McpTokenInactiveException(id, status)
