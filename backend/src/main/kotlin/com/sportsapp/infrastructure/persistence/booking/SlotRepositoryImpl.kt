@@ -3,6 +3,7 @@ package com.sportsapp.infrastructure.persistence.booking
 import com.sportsapp.domain.booking.BookingStatus
 import com.sportsapp.domain.booking.Slot
 import com.sportsapp.domain.booking.SlotRepository
+import java.time.ZonedDateTime
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Repository
 
@@ -29,4 +30,14 @@ class SlotRepositoryImpl(
 
     override fun existsActiveByFacilityId(facilityId: String): Boolean =
         slotJpaRepository.existsByFacilityIdAndDeletedAtIsNull(facilityId)
+
+    override fun countTodayByFacilityIds(facilityIds: List<String>): Long {
+        val startOfToday = ZonedDateTime.now().toLocalDate().atStartOfDay(ZonedDateTime.now().zone)
+        val startOfTomorrow = startOfToday.plusDays(1)
+        return slotJpaRepository.countByFacilityIdInAndDeletedAtIsNullAndDateGreaterThanEqualAndDateLessThan(
+            facilityIds,
+            startOfToday,
+            startOfTomorrow,
+        )
+    }
 }

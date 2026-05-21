@@ -8,5 +8,7 @@ interface EventRepository {
     fun findById(id: Long): Event?
     fun softDelete(id: Long, deletedBy: Long?)
     fun findByOwnerId(ownerId: Long, pageable: Pageable): Page<Event>
+    fun findByOwnerId(ownerId: Long, status: EventStatus?, pageable: Pageable): Page<Event>
     fun findByIdAndOwnerId(id: Long, ownerId: Long): Event?
+    fun countByOwnerIdGroupByStatus(ownerId: Long): Map<EventStatus, Long>
 }

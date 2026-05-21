@@ -21,4 +21,7 @@ class ProductRepositoryImpl(
 
     override fun findByOwnerId(ownerId: Long): List<Product> =
         productJpaRepository.findAllByOwnerIdAndDeletedAtIsNull(ownerId)
+
+    override fun countByOwnerIdAndStatus(ownerId: Long, status: ProductStatus): Long =
+        productJpaRepository.countByOwnerIdAndStatusAndDeletedAtIsNull(ownerId, status)
 }
