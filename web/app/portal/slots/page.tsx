@@ -25,6 +25,11 @@ import {
 } from "@/lib/portal/slots";
 import { cn } from "@/lib/utils";
 
+interface FacilityOption {
+  id: string;
+  name: string;
+}
+
 // 달력 표시용 날짜 유틸
 function getDaysInMonth(year: number, month: number): Date[] {
   const days: Date[] = [];
@@ -37,18 +42,15 @@ function getDaysInMonth(year: number, month: number): Date[] {
 }
 
 function formatDate(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  const y = date.getFullYear();
+  const mo = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${mo}-${d}`;
 }
 
 function isSameDay(a: Date, b: Date): boolean {
   return formatDate(a) === formatDate(b);
 }
-
-// 임시 시설 목록 (실제 환경에서는 /api/portal/facilities에서 가져온다)
-const DEMO_FACILITIES = [
-  { id: "facility-001", name: "서울 종합 체육관" },
-  { id: "facility-002", name: "강남 스포츠 센터" },
-];
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -70,7 +72,8 @@ export default function SlotsPage() {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
-  const [facilityId, setFacilityId] = useState(DEMO_FACILITIES[0]?.id ?? "");
+  const [facilities, setFacilities] = useState<FacilityOption[]>([]);
+  const [facilityId, setFacilityId] = useState("");
   const [slots, setSlots] = useState<SlotResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,6 +81,21 @@ export default function SlotsPage() {
   const [form, setForm] = useState<SlotFormValues>(DEFAULT_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [deletingSlot, setDeletingSlot] = useState<SlotResponse | null>(null);
+
+  useEffect(() => {
+    fetch("/api/portal/facilities?page=0&size=100")
+      .then((r) => r.json())
+      .then((data: { content: FacilityOption[] }) => {
+        setFacilities(data.content);
+        if (data.content.length > 0 && data.content[0]) {
+          setFacilityId(data.content[0].id);
+        }
+      })
+      .catch(() => {
+        setError("시설 목록을 불러오지 못했습니다.");
+      });
+  }, []);
 
   const loadSlots = useCallback(async () => {
     if (!facilityId) return;
@@ -165,13 +183,15 @@ export default function SlotsPage() {
     }
   }
 
-  async function handleDelete(slot: SlotResponse) {
-    if (!window.confirm(`슬롯(${slot.timeRange})을 삭제하시겠습니까?`)) return;
+  async function confirmDelete() {
+    if (!deletingSlot) return;
     try {
-      await deleteSlot(facilityId, slot.id);
+      await deleteSlot(facilityId, deletingSlot.id);
       await loadSlots();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "삭제에 실패했습니다.");
+      setError(err instanceof Error ? err.message : "삭제에 실패했습니다.");
+    } finally {
+      setDeletingSlot(null);
     }
   }
 
@@ -211,7 +231,7 @@ export default function SlotsPage() {
           className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="시설 선택"
         >
-          {DEMO_FACILITIES.map((f) => (
+          {facilities.map((f) => (
             <option key={f.id} value={f.id}>
               {f.name}
             </option>
@@ -342,7 +362,7 @@ export default function SlotsPage() {
                         className="rounded px-1 py-0.5 text-xs text-red-600 hover:bg-red-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500"
                         onClick={(e) => {
                           e.stopPropagation();
-                          void handleDelete(slot);
+                          setDeletingSlot(slot);
                         }}
                         aria-label={`슬롯 ${slot.timeRange} 삭제`}
                       >
@@ -434,6 +454,33 @@ export default function SlotsPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+      {/* 슬롯 삭제 확인 Dialog */}
+      <Dialog open={deletingSlot !== null} onOpenChange={(open) => !open && setDeletingSlot(null)}>
+        <DialogContent aria-labelledby="delete-confirm-title">
+          <DialogHeader>
+            <DialogTitle id="delete-confirm-title">슬롯 삭제</DialogTitle>
+          </DialogHeader>
+          <p className="py-2 text-sm">
+            슬롯({deletingSlot?.timeRange})을 삭제하시겠습니까?
+          </p>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeletingSlot(null)}
+            >
+              취소
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => void confirmDelete()}
+            >
+              삭제
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </main>
