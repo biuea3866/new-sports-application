@@ -1,8 +1,8 @@
 package com.sportsapp.domain.mcp
 
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
-import com.sportsapp.domain.user.Permission
-import com.sportsapp.domain.user.PermissionRepository
+import com.sportsapp.domain.common.Permission
+import com.sportsapp.domain.common.PermissionRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe

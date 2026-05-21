@@ -1,7 +1,7 @@
 package com.sportsapp.domain.mcp
 
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
-import com.sportsapp.domain.user.PermissionRepository
+import com.sportsapp.domain.common.PermissionRepository
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import java.security.SecureRandom
@@ -17,12 +17,10 @@ class McpTokenDomainService(
 ) {
     data class IssueResult(val plainToken: String, val token: McpToken)
 
+    private val secureRandom = SecureRandom()
+
     fun issueToken(command: IssueMcpTokenCommand): IssueResult {
-        val permissionIds = command.scopes.map { scope ->
-            val permissionName = McpScope.of(scope).toPermissionName()
-            permissionRepository.findByName(permissionName)?.id
-                ?: throw McpScopeNotFoundException(permissionName)
-        }
+        val permissionIds = resolvePermissionIds(command.scopes)
         val plainToken = generatePlainToken()
         val tokenHash = passwordEncoder.encode(plainToken)
         val mcpToken = mcpTokenRepository.save(
@@ -50,9 +48,16 @@ class McpTokenDomainService(
         mcpTokenRepository.save(mcpToken)
     }
 
+    private fun resolvePermissionIds(scopes: List<String>): List<Long> =
+        scopes.map { scope ->
+            val permissionName = McpScope.of(scope).toPermissionName()
+            permissionRepository.findByName(permissionName)?.id
+                ?: throw McpScopeNotFoundException(permissionName)
+        }
+
     private fun generatePlainToken(): String {
         val bytes = ByteArray(32)
-        SecureRandom().nextBytes(bytes)
+        secureRandom.nextBytes(bytes)
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
     }
 }

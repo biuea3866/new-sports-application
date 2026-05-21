@@ -1,6 +1,5 @@
 package com.sportsapp.application.mcp
 
-import com.sportsapp.domain.mcp.McpToken
 import com.sportsapp.domain.mcp.McpTokenDomainService
 import com.sportsapp.domain.mcp.McpTokenStatus
 import java.time.ZonedDateTime

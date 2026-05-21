@@ -1,6 +1,5 @@
-package com.sportsapp.domain.user
+package com.sportsapp.domain.common
 
-import com.sportsapp.domain.common.JpaAuditingBase
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue

@@ -204,8 +204,8 @@ class McpTokenAdminApiScenarioTest(
                     String::class.java,
                 )
 
-                Then("[S-04] 4xx 응답이 반환된다") {
-                    revokeResponse.statusCode.is4xxClientError shouldBe true
+                Then("[S-04] 403 응답이 반환된다") {
+                    revokeResponse.statusCode shouldBe HttpStatus.FORBIDDEN
                 }
             }
         }
