@@ -26,7 +26,7 @@ import org.springframework.http.client.HttpComponentsClientHttpRequestFactory
 import org.springframework.web.client.ResponseErrorHandler
 import org.springframework.web.client.RestTemplate
 
-class B2bFacilityApiScenarioTest(
+class FacilityOwnerApiScenarioTest(
     @Autowired private val userDomainService: UserDomainService,
     @Autowired private val facilityRepository: FacilityRepository,
     @Autowired private val mongoTemplate: MongoTemplate,
@@ -85,14 +85,14 @@ class B2bFacilityApiScenarioTest(
 
             val ownerToken = login("b2b-owner-facility@example.com", ownerPassword)
 
-            When("[S-01] POST /api/b2b/facilities 로 시설을 등록하면") {
+            When("[S-01] POST /api/facility-owner/facilities 로 시설을 등록하면") {
                 val request = buildRegisterRequest("B2B-GN-001")
                 val headers = HttpHeaders().apply {
                     contentType = MediaType.APPLICATION_JSON
                     setBearerAuth(ownerToken)
                 }
                 val response = restTemplate.exchange(
-                    "${baseUrl()}/api/b2b/facilities",
+                    "${baseUrl()}/api/facility-owner/facilities",
                     HttpMethod.POST,
                     HttpEntity(objectMapper.writeValueAsString(request), headers),
                     String::class.java,
@@ -106,7 +106,7 @@ class B2bFacilityApiScenarioTest(
                 }
             }
 
-            When("[S-02] GET /api/b2b/facilities 로 내 시설 목록을 조회하면") {
+            When("[S-02] GET /api/facility-owner/facilities 로 내 시설 목록을 조회하면") {
                 val savedFacility = facilityRepository.save(
                     Facility.create(buildRegisterRequest("B2B-LIST-001").run {
                         FacilityAttributes(
@@ -120,7 +120,7 @@ class B2bFacilityApiScenarioTest(
 
                 val headers = HttpHeaders().apply { setBearerAuth(ownerToken) }
                 val response = restTemplate.exchange(
-                    "${baseUrl()}/api/b2b/facilities",
+                    "${baseUrl()}/api/facility-owner/facilities",
                     HttpMethod.GET,
                     HttpEntity<Void>(headers),
                     String::class.java,
@@ -134,7 +134,7 @@ class B2bFacilityApiScenarioTest(
                 }
             }
 
-            When("[S-03] GET /api/b2b/facilities/{id} 로 내 시설 단건을 조회하면") {
+            When("[S-03] GET /api/facility-owner/facilities/{id} 로 내 시설 단건을 조회하면") {
                 val savedFacility = facilityRepository.save(
                     Facility.create(
                         FacilityAttributes(
@@ -149,7 +149,7 @@ class B2bFacilityApiScenarioTest(
 
                 val headers = HttpHeaders().apply { setBearerAuth(ownerToken) }
                 val response = restTemplate.exchange(
-                    "${baseUrl()}/api/b2b/facilities/$facilityId",
+                    "${baseUrl()}/api/facility-owner/facilities/$facilityId",
                     HttpMethod.GET,
                     HttpEntity<Void>(headers),
                     String::class.java,
@@ -162,7 +162,7 @@ class B2bFacilityApiScenarioTest(
                 }
             }
 
-            When("[S-04] PATCH /api/b2b/facilities/{id} 로 내 시설 meta를 수정하면") {
+            When("[S-04] PATCH /api/facility-owner/facilities/{id} 로 내 시설 meta를 수정하면") {
                 val savedFacility = facilityRepository.save(
                     Facility.create(
                         FacilityAttributes(
@@ -181,7 +181,7 @@ class B2bFacilityApiScenarioTest(
                     setBearerAuth(ownerToken)
                 }
                 val response = restTemplate.exchange(
-                    "${baseUrl()}/api/b2b/facilities/$facilityId",
+                    "${baseUrl()}/api/facility-owner/facilities/$facilityId",
                     HttpMethod.PATCH,
                     HttpEntity(objectMapper.writeValueAsString(updateRequest), headers),
                     String::class.java,
@@ -194,7 +194,7 @@ class B2bFacilityApiScenarioTest(
                 }
             }
 
-            When("[S-05] 다른 사용자 소유 시설 ID로 GET /api/b2b/facilities/{id} 를 호출하면") {
+            When("[S-05] 다른 사용자 소유 시설 ID로 GET /api/facility-owner/facilities/{id} 를 호출하면") {
                 val otherOwner = userDomainService.register("b2b-other-owner@example.com", "Other1Pass")
                 userDomainService.assignRole(adminId = admin.id, userId = otherOwner.id, roleName = "FACILITY_OWNER")
 
@@ -212,7 +212,7 @@ class B2bFacilityApiScenarioTest(
 
                 val headers = HttpHeaders().apply { setBearerAuth(ownerToken) }
                 val response = restTemplate.exchange(
-                    "${baseUrl()}/api/b2b/facilities/$otherFacilityId",
+                    "${baseUrl()}/api/facility-owner/facilities/$otherFacilityId",
                     HttpMethod.GET,
                     HttpEntity<Void>(headers),
                     String::class.java,
@@ -225,9 +225,9 @@ class B2bFacilityApiScenarioTest(
         }
 
         Given("인증되지 않은 사용자가") {
-            When("[S-06] GET /api/b2b/facilities 를 호출하면") {
+            When("[S-06] GET /api/facility-owner/facilities 를 호출하면") {
                 val response = restTemplate.exchange(
-                    "${baseUrl()}/api/b2b/facilities",
+                    "${baseUrl()}/api/facility-owner/facilities",
                     HttpMethod.GET,
                     HttpEntity<Void>(HttpHeaders()),
                     String::class.java,
@@ -244,14 +244,14 @@ class B2bFacilityApiScenarioTest(
             userDomainService.register("b2b-user-only-facility@example.com", userPassword)
             val userToken = login("b2b-user-only-facility@example.com", userPassword)
 
-            When("[S-07] POST /api/b2b/facilities 를 호출하면") {
+            When("[S-07] POST /api/facility-owner/facilities 를 호출하면") {
                 val request = buildRegisterRequest("B2B-FORBIDDEN-001")
                 val headers = HttpHeaders().apply {
                     contentType = MediaType.APPLICATION_JSON
                     setBearerAuth(userToken)
                 }
                 val response = restTemplate.exchange(
-                    "${baseUrl()}/api/b2b/facilities",
+                    "${baseUrl()}/api/facility-owner/facilities",
                     HttpMethod.POST,
                     HttpEntity(objectMapper.writeValueAsString(request), headers),
                     String::class.java,

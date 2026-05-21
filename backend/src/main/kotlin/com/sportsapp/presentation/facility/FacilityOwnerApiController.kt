@@ -24,10 +24,10 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-@RequestMapping("/api/b2b/facilities")
+@RequestMapping("/api/facility-owner/facilities")
 @Profile("!test-jpa")
 @PreAuthorize("hasRole('FACILITY_OWNER')")
-class B2bFacilityApiController(
+class FacilityOwnerApiController(
     private val registerMyFacilityUseCase: RegisterMyFacilityUseCase,
     private val listMyFacilitiesUseCase: ListMyFacilitiesUseCase,
     private val getMyFacilityUseCase: GetMyFacilityUseCase,

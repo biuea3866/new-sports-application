@@ -17,6 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.access.AccessDeniedHandler
+import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 
 @Configuration
@@ -36,23 +37,30 @@ class SecurityConfig(
                 it.authenticationEntryPoint(jsonAuthenticationEntryPoint())
                 it.accessDeniedHandler(jsonAccessDeniedHandler())
             }
-            .authorizeHttpRequests { auth ->
-                auth.requestMatchers(HttpMethod.POST, "/auth/login", "/auth/refresh", "/users/register").permitAll()
-                auth.requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                auth.requestMatchers("/admin/**").hasRole("ADMIN")
-                auth.requestMatchers("/api/b2b/**").authenticated()
-                // TODO(AUTH-04): SecurityContext 통합 전까지 도메인 API는 X-User-Id 헤더 기반으로 임시 permitAll
-                auth.requestMatchers(HttpMethod.POST, "/images/presigned-upload").authenticated()
-                auth.requestMatchers(
-                    "/bookings/**", "/payments/**", "/facilities/**",
-                    "/products/**", "/posts/**", "/comments/**", "/rooms/**",
-                    "/events/**", "/notifications/**",
-                    "/cart/**", "/ticket-orders/**", "/goods-orders/**",
-                ).permitAll()
-                auth.anyRequest().authenticated()
-            }
+            .authorizeHttpRequests { configureAuthorization(it) }
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
         return http.build()
+    }
+
+    private fun configureAuthorization(
+        auth: AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry,
+    ) {
+        auth.requestMatchers(HttpMethod.POST, "/auth/login", "/auth/refresh", "/users/register").permitAll()
+        auth.requestMatchers("/actuator/health", "/actuator/info").permitAll()
+        auth.requestMatchers("/admin/**").hasRole("ADMIN")
+        auth.requestMatchers("/api/facility-owner/**").authenticated()
+        auth.requestMatchers("/api/event-host/**").authenticated()
+        auth.requestMatchers("/api/goods-seller/**").authenticated()
+        auth.requestMatchers("/api/operator/**").authenticated()
+        // TODO(AUTH-04): SecurityContext 통합 전까지 도메인 API는 X-User-Id 헤더 기반으로 임시 permitAll
+        auth.requestMatchers(HttpMethod.POST, "/images/presigned-upload").authenticated()
+        auth.requestMatchers(
+            "/bookings/**", "/payments/**", "/facilities/**",
+            "/products/**", "/posts/**", "/comments/**", "/rooms/**",
+            "/events/**", "/notifications/**",
+            "/cart/**", "/ticket-orders/**", "/goods-orders/**",
+        ).permitAll()
+        auth.anyRequest().authenticated()
     }
 
     private fun jsonAuthenticationEntryPoint(): AuthenticationEntryPoint =

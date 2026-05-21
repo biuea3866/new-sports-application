@@ -1,4 +1,4 @@
-package com.sportsapp.presentation.b2b
+package com.sportsapp.presentation.ticketing
 
 import com.sportsapp.application.ticketing.CloseMyEventUseCase
 import com.sportsapp.application.ticketing.CreateMyEventUseCase
@@ -25,8 +25,8 @@ import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
 
 @RestController
-@RequestMapping("/api/b2b/events")
-class B2bEventApiController(
+@RequestMapping("/api/event-host/events")
+class EventHostApiController(
     private val createMyEventUseCase: CreateMyEventUseCase,
     private val openMyEventUseCase: OpenMyEventUseCase,
     private val closeMyEventUseCase: CloseMyEventUseCase,
@@ -43,7 +43,7 @@ class B2bEventApiController(
     ): ResponseEntity<CreateMyEventResult> {
         val authUserId = ownershipGuard.authUserId()
         val result = createMyEventUseCase.execute(request.toCommand(authUserId))
-        val location = uriBuilder.path("/api/b2b/events/{id}").buildAndExpand(result.eventId).toUri()
+        val location = uriBuilder.path("/api/event-host/events/{id}").buildAndExpand(result.eventId).toUri()
         return ResponseEntity.created(location).body(result)
     }
 

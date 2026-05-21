@@ -1,4 +1,4 @@
-package com.sportsapp.presentation.b2b
+package com.sportsapp.presentation.dashboard
 
 import com.sportsapp.application.dashboard.DashboardSummaryResponse
 import com.sportsapp.application.dashboard.GetMyDashboardSummaryUseCase
@@ -12,9 +12,9 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-@RequestMapping("/api/b2b/dashboard")
+@RequestMapping("/api/operator/dashboard")
 @Profile("!test-jpa")
-class B2bDashboardApiController(
+class OperatorDashboardApiController(
     private val getMyDashboardSummaryUseCase: GetMyDashboardSummaryUseCase,
 ) {
     @GetMapping("/summary")

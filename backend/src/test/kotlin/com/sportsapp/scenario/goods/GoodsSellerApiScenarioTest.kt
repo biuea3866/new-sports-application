@@ -20,7 +20,7 @@ import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.web.client.ResponseErrorHandler
 import org.springframework.web.client.RestTemplate
 
-class B2bProductApiScenarioTest(
+class GoodsSellerApiScenarioTest(
     @Autowired private val userDomainService: UserDomainService,
     @Autowired private val objectMapper: ObjectMapper,
     @Autowired private val jdbcTemplate: JdbcTemplate,
@@ -79,9 +79,9 @@ class B2bProductApiScenarioTest(
                 )
             )
 
-            When("POST /api/b2b/products 로 상품 등록하면") {
+            When("POST /api/goods-seller/products 로 상품 등록하면") {
                 val createResponse = restTemplate.exchange(
-                    "${baseUrl()}/api/b2b/products",
+                    "${baseUrl()}/api/goods-seller/products",
                     HttpMethod.POST,
                     HttpEntity(createBody, jsonHeaders(token)),
                     String::class.java,
@@ -96,7 +96,7 @@ class B2bProductApiScenarioTest(
 
                     val restoreBody = objectMapper.writeValueAsString(mapOf("quantity" to 10))
                     val restoreResponse = restTemplate.exchange(
-                        "${baseUrl()}/api/b2b/products/$productId/stock/restore",
+                        "${baseUrl()}/api/goods-seller/products/$productId/stock/restore",
                         HttpMethod.POST,
                         HttpEntity(restoreBody, jsonHeaders(token)),
                         String::class.java,
@@ -105,7 +105,7 @@ class B2bProductApiScenarioTest(
                     objectMapper.readTree(restoreResponse.body).get("stockQuantity").asInt() shouldBe 10
 
                     val activateResponse = restTemplate.exchange(
-                        "${baseUrl()}/api/b2b/products/$productId/activate",
+                        "${baseUrl()}/api/goods-seller/products/$productId/activate",
                         HttpMethod.POST,
                         HttpEntity<Void>(jsonHeaders(token)),
                         String::class.java,
@@ -114,7 +114,7 @@ class B2bProductApiScenarioTest(
                     objectMapper.readTree(activateResponse.body).get("status").asText() shouldBe "ACTIVE"
 
                     val listResponse = restTemplate.exchange(
-                        "${baseUrl()}/api/b2b/products",
+                        "${baseUrl()}/api/goods-seller/products",
                         HttpMethod.GET,
                         HttpEntity<Void>(jsonHeaders(token)),
                         String::class.java,
@@ -147,7 +147,7 @@ class B2bProductApiScenarioTest(
                 )
             )
             val createResponse = restTemplate.exchange(
-                "${baseUrl()}/api/b2b/products",
+                "${baseUrl()}/api/goods-seller/products",
                 HttpMethod.POST,
                 HttpEntity(createBody, jsonHeaders(ownerToken)),
                 String::class.java,
@@ -157,7 +157,7 @@ class B2bProductApiScenarioTest(
             When("다른 사업자가 PATCH 시도하면") {
                 val patchBody = objectMapper.writeValueAsString(mapOf("name" to "해킹 시도"))
                 val patchResponse = restTemplate.exchange(
-                    "${baseUrl()}/api/b2b/products/$productId",
+                    "${baseUrl()}/api/goods-seller/products/$productId",
                     HttpMethod.PATCH,
                     HttpEntity(patchBody, jsonHeaders(otherToken)),
                     String::class.java,
@@ -174,7 +174,7 @@ class B2bProductApiScenarioTest(
             userDomainService.register("b2b-product-norole-s03@example.com", password)
             val token = login("b2b-product-norole-s03@example.com", password)
 
-            When("POST /api/b2b/products 호출하면") {
+            When("POST /api/goods-seller/products 호출하면") {
                 val createBody = objectMapper.writeValueAsString(
                     mapOf(
                         "name" to "무권한 상품",
@@ -185,7 +185,7 @@ class B2bProductApiScenarioTest(
                     )
                 )
                 val response = restTemplate.exchange(
-                    "${baseUrl()}/api/b2b/products",
+                    "${baseUrl()}/api/goods-seller/products",
                     HttpMethod.POST,
                     HttpEntity(createBody, jsonHeaders(token)),
                     String::class.java,
@@ -213,7 +213,7 @@ class B2bProductApiScenarioTest(
                 )
             )
             val createResponse = restTemplate.exchange(
-                "${baseUrl()}/api/b2b/products",
+                "${baseUrl()}/api/goods-seller/products",
                 HttpMethod.POST,
                 HttpEntity(createBody, jsonHeaders(token)),
                 String::class.java,
@@ -223,7 +223,7 @@ class B2bProductApiScenarioTest(
             When("quantity=-1로 restoreStock 호출하면") {
                 val restoreBody = objectMapper.writeValueAsString(mapOf("quantity" to -1))
                 val response = restTemplate.exchange(
-                    "${baseUrl()}/api/b2b/products/$productId/stock/restore",
+                    "${baseUrl()}/api/goods-seller/products/$productId/stock/restore",
                     HttpMethod.POST,
                     HttpEntity(restoreBody, jsonHeaders(token)),
                     String::class.java,
@@ -235,10 +235,10 @@ class B2bProductApiScenarioTest(
             }
         }
 
-        Given("[S-미인증] 미인증 사용자가 /api/b2b/products에 접근하면") {
-            When("GET /api/b2b/products 를 인증 없이 호출하면") {
+        Given("[S-미인증] 미인증 사용자가 /api/goods-seller/products에 접근하면") {
+            When("GET /api/goods-seller/products 를 인증 없이 호출하면") {
                 val response = restTemplate.exchange(
-                    "${baseUrl()}/api/b2b/products",
+                    "${baseUrl()}/api/goods-seller/products",
                     HttpMethod.GET,
                     HttpEntity<Void>(HttpHeaders()),
                     String::class.java,

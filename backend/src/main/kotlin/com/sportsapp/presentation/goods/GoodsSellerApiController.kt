@@ -24,9 +24,9 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-@RequestMapping("/api/b2b/products")
+@RequestMapping("/api/goods-seller/products")
 @PreAuthorize("hasRole('GOODS_SELLER')")
-class B2bProductApiController(
+class GoodsSellerApiController(
     private val createMyProductUseCase: CreateMyProductUseCase,
     private val listMyProductsUseCase: ListMyProductsUseCase,
     private val getMyProductUseCase: GetMyProductUseCase,

@@ -1,4 +1,4 @@
-package com.sportsapp.presentation.b2b
+package com.sportsapp.presentation.ticketing
 
 import com.sportsapp.application.ticketing.CreateMyEventCommand
 import com.sportsapp.domain.ticketing.SeatSpec
