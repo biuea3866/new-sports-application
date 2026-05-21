@@ -85,7 +85,8 @@ class McpTokenDomainServiceTest : BehaviorSpec({
             Then("[U-01] 평문 토큰이 포함된 결과가 반환되고 저장은 해시로 이루어진다") {
                 result.plainToken.shouldHaveMinLength(10)
                 result.token shouldBe savedToken
-                verify(exactly = 1) { passwordEncoder.encode(any()) }
+                // issueToken은 placeholder해시 + 최종 토큰해시로 2회 encode 호출
+                verify(exactly = 2) { passwordEncoder.encode(any()) }
             }
         }
     }
@@ -171,6 +172,33 @@ class McpTokenDomainServiceTest : BehaviorSpec({
             Then("[U-07] ResourceNotFoundException이 발생한다") {
                 shouldThrow<ResourceNotFoundException> {
                     domainService.revokeToken(tokenId = 999L, requesterId = 1L)
+                }
+            }
+        }
+    }
+
+    Given("[U-08] 존재하는 tokenId로 recordUsage를 호출하면") {
+        val token = makeToken(userId = 1L, id = 5L)
+        every { mcpTokenRepository.findById(5L) } returns token
+        every { mcpTokenRepository.save(any()) } answers { firstArg() }
+
+        When("recordUsage를 호출하면") {
+            domainService.recordUsage(5L)
+
+            Then("[U-08] lastUsedAt이 설정되고 save가 호출된다") {
+                token.lastUsedAt shouldNotBe null
+                verify(exactly = 1) { mcpTokenRepository.save(token) }
+            }
+        }
+    }
+
+    Given("[U-09] 존재하지 않는 tokenId로 recordUsage를 호출하면") {
+        every { mcpTokenRepository.findById(999L) } returns null
+
+        When("recordUsage를 호출하면") {
+            Then("[U-09] ResourceNotFoundException이 발생한다") {
+                shouldThrow<ResourceNotFoundException> {
+                    domainService.recordUsage(999L)
                 }
             }
         }

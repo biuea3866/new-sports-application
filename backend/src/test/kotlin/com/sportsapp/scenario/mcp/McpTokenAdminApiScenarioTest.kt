@@ -26,6 +26,8 @@ class McpTokenAdminApiScenarioTest(
     @LocalServerPort private val port: Int,
 ) : BaseIntegrationTest() {
 
+    // /api/admin/mcp/tokens 는 ADMIN role 필요. 테스트 사용자에게 ADMIN role을 부여한다.
+
     private val restTemplate = RestTemplate(
         HttpComponentsClientHttpRequestFactory(HttpClients.createDefault()),
     ).apply {
@@ -38,7 +40,8 @@ class McpTokenAdminApiScenarioTest(
     private fun baseUrl() = "http://localhost:$port"
 
     private fun loginAndGetToken(email: String, password: String): String {
-        userDomainService.register(email, password)
+        val user = userDomainService.register(email, password)
+        userDomainService.assignRole(adminId = user.id, userId = user.id, roleName = "ADMIN")
         val headers = HttpHeaders().apply { set("Content-Type", "application/json") }
         val body = objectMapper.writeValueAsString(mapOf("email" to email, "password" to password))
         val response = restTemplate.exchange(
