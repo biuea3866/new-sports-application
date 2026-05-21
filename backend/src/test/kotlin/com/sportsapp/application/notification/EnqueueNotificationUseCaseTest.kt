@@ -1,8 +1,10 @@
 package com.sportsapp.application.notification
 
+import com.sportsapp.domain.notification.Notification
 import com.sportsapp.domain.notification.NotificationChannel
 import com.sportsapp.domain.notification.NotificationDomainService
 import com.sportsapp.domain.notification.NotificationPayload
+import com.sportsapp.domain.notification.NotificationStatus
 import com.sportsapp.domain.notification.UnsupportedChannelException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
@@ -31,6 +33,44 @@ class EnqueueNotificationUseCaseTest : BehaviorSpec({
             Then("[U-01] UnsupportedChannelException 을 던진다") {
                 shouldThrow<UnsupportedChannelException> {
                     useCase.execute(command)
+                }
+            }
+        }
+    }
+
+    Given("[U-03] gateway 발송 실패로 FAILED 상태 Notification 이 반환되는 경우") {
+        val command = EnqueueNotificationCommand(
+            channel = NotificationChannel.IN_APP,
+            templateId = "payment-completed",
+            payload = NotificationPayload(mapOf("amount" to "10000")),
+            recipientUserId = 1L,
+            eventId = "payment-fail-789",
+        )
+        val failedNotification = mockk<Notification> {
+            every { status } returns NotificationStatus.FAILED
+        }
+        every {
+            notificationDomainService.enqueueOrSkip(
+                eventId = "payment-fail-789",
+                userId = 1L,
+                channel = NotificationChannel.IN_APP,
+                templateId = "payment-completed",
+                payload = NotificationPayload(mapOf("amount" to "10000")),
+            )
+        } returns failedNotification
+
+        When("execute 를 호출하면") {
+            useCase.execute(command)
+
+            Then("[U-03] throw 하지 않고 정상 완료되며 enqueueOrSkip 이 1회 호출된다") {
+                verify(exactly = 1) {
+                    notificationDomainService.enqueueOrSkip(
+                        eventId = "payment-fail-789",
+                        userId = 1L,
+                        channel = NotificationChannel.IN_APP,
+                        templateId = "payment-completed",
+                        payload = any(),
+                    )
                 }
             }
         }
