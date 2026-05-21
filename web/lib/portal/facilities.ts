@@ -14,7 +14,7 @@ import type {
 } from "./types";
 
 export async function createMyFacility(input: CreateFacilityInput): Promise<MyFacility> {
-  const response = await beClient("/api/b2b/facilities", {
+  const response = await beClient("/api/facility-owner/facilities", {
     method: "POST",
     body: JSON.stringify(input),
   });
@@ -32,7 +32,7 @@ export async function listMyFacilities(params: {
   if (params.size !== undefined) searchParams.set("size", String(params.size));
 
   const query = searchParams.toString();
-  const path = query ? `/api/b2b/facilities?${query}` : "/api/b2b/facilities";
+  const path = query ? `/api/facility-owner/facilities?${query}` : "/api/facility-owner/facilities";
 
   const response = await beClient(path, { method: "GET" });
   await throwIfErrorResponse(response);
@@ -41,7 +41,7 @@ export async function listMyFacilities(params: {
 }
 
 export async function getMyFacility(id: string): Promise<MyFacility> {
-  const response = await beClient(`/api/b2b/facilities/${id}`, { method: "GET" });
+  const response = await beClient(`/api/facility-owner/facilities/${id}`, { method: "GET" });
   await throwIfErrorResponse(response);
   const data: unknown = await response.json();
   return MyFacilitySchema.parse(data);
@@ -51,7 +51,7 @@ export async function updateMyFacility(
   id: string,
   patch: UpdateFacilityInput
 ): Promise<MyFacility> {
-  const response = await beClient(`/api/b2b/facilities/${id}`, {
+  const response = await beClient(`/api/facility-owner/facilities/${id}`, {
     method: "PATCH",
     body: JSON.stringify(patch),
   });
@@ -61,6 +61,6 @@ export async function updateMyFacility(
 }
 
 export async function deleteMyFacility(id: string): Promise<void> {
-  const response = await beClient(`/api/b2b/facilities/${id}`, { method: "DELETE" });
+  const response = await beClient(`/api/facility-owner/facilities/${id}`, { method: "DELETE" });
   await throwIfErrorResponse(response);
 }

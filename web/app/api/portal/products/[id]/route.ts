@@ -25,7 +25,7 @@ export async function PATCH(
     throw error;
   }
 
-  return forwardBeResponse(`/api/b2b/products/${params.id}`, {
+  return forwardBeResponse(`/api/goods-seller/products/${params.id}`, {
     method: "PATCH",
     body: JSON.stringify(body),
   });

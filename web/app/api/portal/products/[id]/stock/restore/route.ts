@@ -25,7 +25,7 @@ export async function POST(
     throw error;
   }
 
-  return forwardBeResponse(`/api/b2b/products/${params.id}/stock/restore`, {
+  return forwardBeResponse(`/api/goods-seller/products/${params.id}/stock/restore`, {
     method: "POST",
     body: JSON.stringify(body),
   });

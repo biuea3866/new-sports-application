@@ -6,7 +6,7 @@ import { forwardBeResponse, zodValidationError } from "../_lib/bff-helpers";
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const { searchParams } = request.nextUrl;
   const query = searchParams.toString();
-  const path = query ? `/api/b2b/facilities?${query}` : "/api/b2b/facilities";
+  const path = query ? `/api/facility-owner/facilities?${query}` : "/api/facility-owner/facilities";
   return forwardBeResponse(path, { method: "GET" });
 }
 
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     throw error;
   }
 
-  return forwardBeResponse("/api/b2b/facilities", {
+  return forwardBeResponse("/api/facility-owner/facilities", {
     method: "POST",
     body: JSON.stringify(body),
   });

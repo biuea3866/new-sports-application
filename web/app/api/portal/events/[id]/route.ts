@@ -9,5 +9,5 @@ export async function GET(
   _request: NextRequest,
   { params }: RouteContext
 ): Promise<NextResponse> {
-  return forwardBeResponse(`/api/b2b/events/${params.id}`, { method: "GET" });
+  return forwardBeResponse(`/api/event-host/events/${params.id}`, { method: "GET" });
 }

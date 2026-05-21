@@ -11,7 +11,7 @@ export async function GET(
   _request: NextRequest,
   { params }: RouteContext
 ): Promise<NextResponse> {
-  return forwardBeResponse(`/api/b2b/facilities/${params.id}`, { method: "GET" });
+  return forwardBeResponse(`/api/facility-owner/facilities/${params.id}`, { method: "GET" });
 }
 
 export async function PATCH(
@@ -32,7 +32,7 @@ export async function PATCH(
     throw error;
   }
 
-  return forwardBeResponse(`/api/b2b/facilities/${params.id}`, {
+  return forwardBeResponse(`/api/facility-owner/facilities/${params.id}`, {
     method: "PATCH",
     body: JSON.stringify(body),
   });
@@ -42,5 +42,5 @@ export async function DELETE(
   _request: NextRequest,
   { params }: RouteContext
 ): Promise<NextResponse> {
-  return forwardBeResponse(`/api/b2b/facilities/${params.id}`, { method: "DELETE" });
+  return forwardBeResponse(`/api/facility-owner/facilities/${params.id}`, { method: "DELETE" });
 }

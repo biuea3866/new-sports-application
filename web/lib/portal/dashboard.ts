@@ -9,7 +9,7 @@ import { throwIfErrorResponse } from "./error";
 import type { DashboardSummary } from "./types";
 
 export async function getMyDashboardSummary(): Promise<DashboardSummary> {
-  const response = await beClient("/api/b2b/dashboard/summary", { method: "GET" });
+  const response = await beClient("/api/operator/dashboard/summary", { method: "GET" });
   await throwIfErrorResponse(response);
   const data: unknown = await response.json();
   return DashboardSummarySchema.parse(data);

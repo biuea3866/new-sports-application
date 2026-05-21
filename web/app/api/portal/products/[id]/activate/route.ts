@@ -9,5 +9,5 @@ export async function POST(
   _request: NextRequest,
   { params }: RouteContext
 ): Promise<NextResponse> {
-  return forwardBeResponse(`/api/b2b/products/${params.id}/activate`, { method: "POST" });
+  return forwardBeResponse(`/api/goods-seller/products/${params.id}/activate`, { method: "POST" });
 }

@@ -9,7 +9,7 @@ import { throwIfErrorResponse } from "./error";
 import type { MyEvent, MyEventDetail, Page, CreateEventInput } from "./types";
 
 export async function createMyEvent(input: CreateEventInput): Promise<MyEvent> {
-  const response = await beClient("/api/b2b/events", {
+  const response = await beClient("/api/event-host/events", {
     method: "POST",
     body: JSON.stringify(input),
   });
@@ -27,7 +27,7 @@ export async function listMyEvents(params: {
   if (params.size !== undefined) searchParams.set("size", String(params.size));
 
   const query = searchParams.toString();
-  const path = query ? `/api/b2b/events?${query}` : "/api/b2b/events";
+  const path = query ? `/api/event-host/events?${query}` : "/api/event-host/events";
 
   const response = await beClient(path, { method: "GET" });
   await throwIfErrorResponse(response);
@@ -36,21 +36,21 @@ export async function listMyEvents(params: {
 }
 
 export async function getMyEvent(id: number): Promise<MyEventDetail> {
-  const response = await beClient(`/api/b2b/events/${id}`, { method: "GET" });
+  const response = await beClient(`/api/event-host/events/${id}`, { method: "GET" });
   await throwIfErrorResponse(response);
   const data: unknown = await response.json();
   return MyEventDetailSchema.parse(data);
 }
 
 export async function openMyEvent(id: number): Promise<MyEvent> {
-  const response = await beClient(`/api/b2b/events/${id}/open`, { method: "POST" });
+  const response = await beClient(`/api/event-host/events/${id}/open`, { method: "POST" });
   await throwIfErrorResponse(response);
   const data: unknown = await response.json();
   return MyEventSchema.parse(data);
 }
 
 export async function closeMyEvent(id: number): Promise<MyEvent> {
-  const response = await beClient(`/api/b2b/events/${id}/close`, { method: "POST" });
+  const response = await beClient(`/api/event-host/events/${id}/close`, { method: "POST" });
   await throwIfErrorResponse(response);
   const data: unknown = await response.json();
   return MyEventSchema.parse(data);
