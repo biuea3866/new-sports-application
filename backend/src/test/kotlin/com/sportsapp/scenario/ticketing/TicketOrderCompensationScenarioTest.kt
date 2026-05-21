@@ -42,13 +42,16 @@ class TicketOrderCompensationScenarioTest(
         }
 
         Given("[S-comp-01] 좌석 락을 보유한 사용자가 구매 요청 — PG 항상 실패 환경") {
-            val event = eventJpaRepository.save(
-                Event(0L, "Compensation Test Concert", "Seoul Arena", baseTime, EventStatus.OPEN, 1L)
-            )
-            val seat = seatJpaRepository.save(Seat(0L, event.id, "A", "1", "1", BigDecimal("50000")))
+            var lockId = ""
 
-            val lockId = "${event.id}:${seat.id}"
-            redisTemplate.opsForValue().set("seat:lock:${event.id}:${seat.id}", userId.toString())
+            beforeTest {
+                val event = eventJpaRepository.save(
+                    Event(0L, "Compensation Test Concert", "Seoul Arena", baseTime, EventStatus.OPEN, 1L)
+                )
+                val seat = seatJpaRepository.save(Seat(0L, event.id, "A", "1", "1", BigDecimal("50000")))
+                lockId = "${event.id}:${seat.id}"
+                redisTemplate.opsForValue().set("seat:lock:${event.id}:${seat.id}", userId.toString())
+            }
 
             When("purchaseTicketsUseCase.execute를 호출하면") {
                 val command = PurchaseTicketsCommand(

@@ -24,6 +24,7 @@ class TicketingDomainService(
     private val customTicketOrderRepository: CustomTicketOrderRepository,
     private val seatLockStore: SeatLockStore,
     private val ticketOrderRepository: TicketOrderRepository,
+    private val ticketRepository: TicketRepository,
 ) {
     fun createEvent(
         title: String,
@@ -98,6 +99,16 @@ class TicketingDomainService(
             lockedSeatIds = seatIds,
         )
         return ticketOrderRepository.save(order)
+    }
+
+    @Transactional
+    fun confirmOrder(orderId: Long, paymentId: Long): TicketOrder {
+        val order = ticketOrderRepository.findById(orderId)
+            ?: throw ResourceNotFoundException("TicketOrder", orderId)
+        val tickets = order.confirm(paymentId, order.lockedSeatIds)
+        val saved = ticketOrderRepository.save(order)
+        if (tickets.isNotEmpty()) ticketRepository.saveAll(tickets)
+        return saved
     }
 
     @Transactional

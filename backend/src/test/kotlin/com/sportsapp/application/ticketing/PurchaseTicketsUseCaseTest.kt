@@ -63,11 +63,12 @@ class PurchaseTicketsUseCaseTest : BehaviorSpec({
         }
     }
 
-    Given("락 검증 성공 + PaymentDomainService 예외 발생") {
+    Given("락 검증 성공 + PG FAILED 응답 (PaymentStatus.FAILED)") {
         val ticketingDomainService = mockk<TicketingDomainService>()
         val paymentDomainService = mockk<PaymentDomainService>()
         val useCase = PurchaseTicketsUseCase(ticketingDomainService, paymentDomainService)
         val pendingOrder = buildPendingOrder()
+        val failedPayment = buildPayment(PaymentStatus.FAILED)
 
         every { ticketingDomainService.verifyLockOwner(lockId, userId) } returns Unit
         every { ticketingDomainService.calculateAmount(lockId) } returns BigDecimal("50000")
@@ -82,10 +83,10 @@ class PurchaseTicketsUseCaseTest : BehaviorSpec({
                 amount = BigDecimal("50000"),
                 currency = "KRW",
             )
-        } throws RuntimeException("PG 연결 실패")
+        } returns failedPayment
         justRun { ticketingDomainService.cancelOrder(100L) }
 
-        When("[U-02] PaymentDomainService 호출 실패 시") {
+        When("[U-02] PG가 FAILED 상태를 반환하면") {
             useCase.execute(buildCommand())
 
             Then("ticketingDomainService.cancelOrder(orderId)가 호출된다") {
@@ -100,6 +101,10 @@ class PurchaseTicketsUseCaseTest : BehaviorSpec({
         val useCase = PurchaseTicketsUseCase(ticketingDomainService, paymentDomainService)
         val pendingOrder = buildPendingOrder()
         val completedPayment = buildPayment(PaymentStatus.COMPLETED)
+        val confirmedOrder = mockk<TicketOrder>(relaxed = true).also {
+            every { it.id } returns 100L
+            every { it.status } returns OrderStatus.CONFIRMED
+        }
 
         every { ticketingDomainService.verifyLockOwner(lockId, userId) } returns Unit
         every { ticketingDomainService.calculateAmount(lockId) } returns BigDecimal("80000")
@@ -115,14 +120,16 @@ class PurchaseTicketsUseCaseTest : BehaviorSpec({
                 currency = "KRW",
             )
         } returns completedPayment
+        every { ticketingDomainService.confirmOrder(100L, 999L) } returns confirmedOrder
 
         When("[U-03] totalAmount가 서버 계산값을 사용하는 경우") {
             val result = useCase.execute(buildCommand())
 
-            Then("TicketOrderResponse에 ticketOrderId와 PENDING 상태가 포함되고 cancelOrder가 호출되지 않는다") {
+            Then("TicketOrderResponse에 ticketOrderId와 CONFIRMED 상태가 포함되고 confirmOrder가 호출된다") {
                 result.ticketOrderId shouldBe 100L
-                result.status shouldBe OrderStatus.PENDING
+                result.status shouldBe OrderStatus.CONFIRMED
                 verify(exactly = 1) { ticketingDomainService.calculateAmount(lockId) }
+                verify(exactly = 1) { ticketingDomainService.confirmOrder(100L, 999L) }
                 verify(exactly = 0) { ticketingDomainService.cancelOrder(any()) }
             }
         }

@@ -14,6 +14,7 @@ class TicketingDomainServiceParseLockIdTest : BehaviorSpec({
     val customTicketOrderRepository = mockk<CustomTicketOrderRepository>(relaxed = true)
     val seatLockStore = mockk<SeatLockStore>(relaxed = true)
     val ticketOrderRepository = mockk<TicketOrderRepository>(relaxed = true)
+    val ticketRepository = mockk<TicketRepository>(relaxed = true)
     val service = TicketingDomainService(
         eventRepository = eventRepository,
         seatRepository = seatRepository,
@@ -22,6 +23,7 @@ class TicketingDomainServiceParseLockIdTest : BehaviorSpec({
         customTicketOrderRepository = customTicketOrderRepository,
         seatLockStore = seatLockStore,
         ticketOrderRepository = ticketOrderRepository,
+        ticketRepository = ticketRepository,
     )
 
     Given("non-numeric lockId 토큰") {

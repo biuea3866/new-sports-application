@@ -74,7 +74,7 @@ class GoodsOrderCompensationScenarioTest(
                     orders.first().status shouldBe GoodsOrderStatus.CANCELLED
 
                     val stock = requireNotNull(stockJpaRepository.findByProductId(productId))
-                    stock.quantity shouldBe 3
+                    stock.quantity shouldBe 5
                 }
             }
         }

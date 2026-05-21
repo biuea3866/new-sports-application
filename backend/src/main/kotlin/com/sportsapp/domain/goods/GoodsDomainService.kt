@@ -27,7 +27,6 @@ class GoodsDomainService(
     ): Page<ProductWithStock> =
         customProductRepository.search(category, keyword, priceMin, priceMax, pageable)
 
-    // TODO: UseCase 신설 시 @Transactional 을 UseCase 레이어로 이동. DomainService 에 @Transactional 유지는 UseCase 미존재 과도기 한정.
     @Transactional
     fun deductStock(productId: Long, quantity: Int) {
         productRepository.findById(productId) ?: throw ResourceNotFoundException("Product", productId)
@@ -99,6 +98,21 @@ class GoodsDomainService(
             ?: throw GoodsOrderNotFoundException(orderId)
         order.cancel()
         goodsOrderRepository.save(order)
+        val items = goodsOrderItemRepository.findByOrderId(orderId)
+        items.forEach { item ->
+            val stock = stockRepository.findByProductId(item.productId)
+                ?: throw com.sportsapp.domain.common.exceptions.ResourceNotFoundException("Stock", item.productId)
+            stock.restore(item.quantity)
+            stockRepository.save(stock)
+        }
+    }
+
+    @Transactional
+    fun markPaid(orderId: Long, paymentId: Long): GoodsOrder {
+        val order = goodsOrderRepository.findById(orderId)
+            ?: throw GoodsOrderNotFoundException(orderId)
+        order.markPaid(paymentId)
+        return goodsOrderRepository.save(order)
     }
 
     fun getOrder(userId: Long, orderId: Long): Pair<GoodsOrder, List<GoodsOrderItem>> {
