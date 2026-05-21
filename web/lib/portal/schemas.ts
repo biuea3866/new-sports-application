@@ -112,12 +112,15 @@ export const CreateEventInputSchema = z.object({
 // ─── Product ─────────────────────────────────────────────────────────────────
 
 const ProductStatusSchema = z.enum(["ACTIVE", "INACTIVE"]);
+const ProductCategorySchema = z.enum(["EQUIPMENT", "APPAREL", "FOOTWEAR", "ACCESSORY"]);
 
 export const MyProductSchema = z.object({
   id: z.number().int(),
   name: z.string(),
   description: z.string(),
-  price: z.number().nonnegative(),
+  price: z.number().positive(),
+  category: ProductCategorySchema,
+  imageUrl: z.string(),
   status: ProductStatusSchema,
   stockQuantity: z.number().int().nonnegative(),
   ownerId: z.number().int(),
@@ -130,14 +133,18 @@ export const MyProductPageSchema = PageSchema(MyProductSchema);
 export const CreateProductInputSchema = z.object({
   name: z.string().min(1),
   description: z.string().min(1),
-  price: z.number().nonnegative(),
+  price: z.number().int().positive(),
+  category: ProductCategorySchema,
+  imageUrl: z.string().url(),
 });
 
 export const UpdateProductInputSchema = z
   .object({
     name: z.string().min(1).optional(),
     description: z.string().min(1).optional(),
-    price: z.number().nonnegative().optional(),
+    price: z.number().int().positive().optional(),
+    category: ProductCategorySchema.optional(),
+    imageUrl: z.string().url().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: "수정할 필드가 최소 1개 이상 있어야 합니다.",

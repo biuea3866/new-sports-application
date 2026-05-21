@@ -28,6 +28,8 @@ const baseProduct: MyProduct = {
   name: "스포츠 양말",
   description: "고품질 스포츠 양말",
   price: 9900,
+  category: "EQUIPMENT",
+  imageUrl: "https://example.com/socks.jpg",
   status: "INACTIVE",
   stockQuantity: 0,
   ownerId: 1,
@@ -73,6 +75,10 @@ describe("[S-01] 상품 등록 페이지", () => {
       target: { value: "고품질 스포츠 양말" },
     });
     fireEvent.change(screen.getByLabelText(/가격/), { target: { value: "9900" } });
+    fireEvent.change(screen.getByLabelText(/카테고리/), { target: { value: "EQUIPMENT" } });
+    fireEvent.change(screen.getByLabelText(/이미지 URL/), {
+      target: { value: "https://example.com/socks.jpg" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "상품 등록 제출" }));
 
     await waitFor(() => {

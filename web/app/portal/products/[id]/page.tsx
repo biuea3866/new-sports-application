@@ -6,8 +6,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
-import { productUpdateFormSchema, restoreStockFormSchema } from "../product-form-schema";
+import {
+  productUpdateFormSchema,
+  restoreStockFormSchema,
+  PRODUCT_CATEGORIES,
+} from "../product-form-schema";
 import type { MyProduct } from "@/lib/portal/types";
+
+const CATEGORY_LABELS: Record<(typeof PRODUCT_CATEGORIES)[number], string> = {
+  EQUIPMENT: "장비",
+  APPAREL: "의류",
+  FOOTWEAR: "신발",
+  ACCESSORY: "액세서리",
+};
 
 // ─── RestoreStockDialog ───────────────────────────────────────────────────────
 
@@ -100,7 +111,7 @@ function EditForm({ product, onSaved }: EditFormProps) {
   const { addToast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<
-    Partial<Record<"name" | "description" | "price", string>>
+    Partial<Record<"name" | "description" | "price" | "category" | "imageUrl", string>>
   >({});
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -110,17 +121,29 @@ function EditForm({ product, onSaved }: EditFormProps) {
     const nameVal = (data.get("name") as string | null) ?? "";
     const descVal = (data.get("description") as string | null) ?? "";
     const priceStr = (data.get("price") as string | null) ?? "";
+    const categoryVal = (data.get("category") as string | null) ?? "";
+    const imageUrlVal = (data.get("imageUrl") as string | null) ?? "";
 
     const raw: Record<string, unknown> = {};
     if (nameVal !== "") raw["name"] = nameVal;
     if (descVal !== "") raw["description"] = descVal;
     if (priceStr !== "") raw["price"] = Number(priceStr);
+    if (categoryVal !== "") raw["category"] = categoryVal;
+    if (imageUrlVal !== "") raw["imageUrl"] = imageUrlVal;
 
     const parsed = productUpdateFormSchema.safeParse(raw);
     if (!parsed.success) {
-      const fieldErrors: Partial<Record<"name" | "description" | "price", string>> = {};
+      const fieldErrors: Partial<
+        Record<"name" | "description" | "price" | "category" | "imageUrl", string>
+      > = {};
       for (const issue of parsed.error.issues) {
-        const field = issue.path[0] as "name" | "description" | "price" | undefined;
+        const field = issue.path[0] as
+          | "name"
+          | "description"
+          | "price"
+          | "category"
+          | "imageUrl"
+          | undefined;
         if (field) fieldErrors[field] = issue.message;
       }
       if (Object.keys(fieldErrors).length === 0) {
@@ -221,6 +244,51 @@ function EditForm({ product, onSaved }: EditFormProps) {
         {errors.price && (
           <p id="edit-price-error" role="alert" className="text-xs text-destructive">
             {errors.price}
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-1">
+        <label htmlFor="edit-category" className="text-sm font-medium">
+          카테고리
+        </label>
+        <select
+          id="edit-category"
+          name="category"
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          defaultValue={product.category}
+          aria-invalid={errors.category !== undefined}
+          aria-describedby={errors.category !== undefined ? "edit-category-error" : undefined}
+        >
+          <option value="">변경하지 않음</option>
+          {PRODUCT_CATEGORIES.map((cat) => (
+            <option key={cat} value={cat}>
+              {CATEGORY_LABELS[cat]}
+            </option>
+          ))}
+        </select>
+        {errors.category && (
+          <p id="edit-category-error" role="alert" className="text-xs text-destructive">
+            {errors.category}
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-1">
+        <label htmlFor="edit-image-url" className="text-sm font-medium">
+          이미지 URL
+        </label>
+        <Input
+          id="edit-image-url"
+          name="imageUrl"
+          type="url"
+          defaultValue={product.imageUrl}
+          aria-invalid={errors.imageUrl !== undefined}
+          aria-describedby={errors.imageUrl !== undefined ? "edit-image-url-error" : undefined}
+        />
+        {errors.imageUrl && (
+          <p id="edit-image-url-error" role="alert" className="text-xs text-destructive">
+            {errors.imageUrl}
           </p>
         )}
       </div>
@@ -392,6 +460,10 @@ export default function ProductDetailPage() {
             </Badge>
           </div>
           <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-muted-foreground">카테고리</span>
+            <span>{CATEGORY_LABELS[product.category]}</span>
+          </div>
+          <div className="flex items-center gap-3">
             <span className="text-sm font-medium text-muted-foreground">가격</span>
             <span>{product.price.toLocaleString("ko-KR")}원</span>
           </div>
@@ -402,6 +474,18 @@ export default function ProductDetailPage() {
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium text-muted-foreground">설명</span>
             <span>{product.description}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-muted-foreground">이미지 URL</span>
+            <a
+              href={product.imageUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm text-blue-600 underline break-all"
+              aria-label={`상품 이미지 보기: ${product.imageUrl}`}
+            >
+              {product.imageUrl}
+            </a>
           </div>
         </section>
 

@@ -5,7 +5,6 @@ import java.math.BigDecimal
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 
 @Service
 class GoodsDomainService(
@@ -17,7 +16,6 @@ class GoodsDomainService(
     private val goodsOrderItemRepository: GoodsOrderItemRepository,
     private val cartDomainService: CartDomainService,
 ) {
-    @Transactional(readOnly = true)
     fun search(
         category: ProductCategory?,
         keyword: String?,
@@ -27,7 +25,6 @@ class GoodsDomainService(
     ): Page<ProductWithStock> =
         productCustomRepository.search(category, keyword, priceMin, priceMax, pageable)
 
-    @Transactional
     fun deductStock(productId: Long, quantity: Int) {
         productRepository.findById(productId) ?: throw ResourceNotFoundException("Product", productId)
         val stock = stockRepository.findByProductId(productId)
@@ -36,7 +33,6 @@ class GoodsDomainService(
         stockRepository.save(stock)
     }
 
-    @Transactional
     fun restoreStock(productId: Long, quantity: Int) {
         val stock = stockRepository.findByProductId(productId)
             ?: throw ResourceNotFoundException("Stock", productId)
@@ -44,7 +40,6 @@ class GoodsDomainService(
         stockRepository.save(stock)
     }
 
-    @Transactional(readOnly = true)
     fun getPopular(category: ProductCategory): List<PopularProductSnapshot> {
         popularProductsCache.get(category)?.let { return it }
         // TODO(GOODS-05): 판매 수 집계 기반 정렬로 교체
@@ -60,7 +55,6 @@ class GoodsDomainService(
         popularProductsCache.invalidate(category)
     }
 
-    @Transactional
     fun createPendingOrder(userId: Long, items: List<OrderItemInput>): GoodsOrder {
         if (items.isEmpty()) throw EmptyOrderException()
         val products = items.associate { item -> item.productId to validateAndDeductStock(item) }
@@ -92,7 +86,6 @@ class GoodsDomainService(
         return product
     }
 
-    @Transactional
     fun cancelPendingOrder(orderId: Long) {
         val order = goodsOrderRepository.findById(orderId)
             ?: throw GoodsOrderNotFoundException(orderId)
@@ -107,7 +100,6 @@ class GoodsDomainService(
         }
     }
 
-    @Transactional
     fun markPaid(orderId: Long, paymentId: Long): GoodsOrder {
         val order = goodsOrderRepository.findById(orderId)
             ?: throw GoodsOrderNotFoundException(orderId)
@@ -174,7 +166,6 @@ class GoodsDomainService(
         return ProductWithStock(product = saved, stockQuantity = stockQuantity)
     }
 
-    @Transactional
     fun activateProduct(productId: Long, ownerUserId: Long): Product {
         val productEntity = productRepository.findById(productId)
             ?: throw ResourceNotFoundException("Product", productId)
@@ -189,7 +180,6 @@ class GoodsDomainService(
         return ProductWithStock(product = productEntity, stockQuantity = stockQuantity)
     }
 
-    @Transactional
     fun deactivateProduct(productId: Long, ownerUserId: Long): Product {
         val productEntity = productRepository.findById(productId)
             ?: throw ResourceNotFoundException("Product", productId)
