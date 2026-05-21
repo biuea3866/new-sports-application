@@ -130,6 +130,33 @@ class B2bEventScenarioTest(
             }
         }
 
+        Given("[S-06] 미인증 사용자가 B2B API에 접근할 때") {
+            When("GET /b2b/my/events 를 인증 없이 호출하면") {
+                val result = mockMvc.get("/b2b/my/events").andReturn()
+
+                Then("[S-06] 401 Unauthorized가 반환된다") {
+                    result.response.status shouldBe 401
+                }
+            }
+        }
+
+        Given("[S-07] EVENT_HOST 권한이 없는 USER 역할 사용자가 B2B API에 접근할 때") {
+            val userOnlyPrincipal = UserPrincipal(id = 200L, email = "user@test.com", roles = listOf("USER"))
+            val userOnlyAuth = UsernamePasswordAuthenticationToken(
+                userOnlyPrincipal, null, listOf(SimpleGrantedAuthority("ROLE_USER"))
+            )
+
+            When("GET /b2b/my/events 를 호출하면") {
+                val result = mockMvc.get("/b2b/my/events") {
+                    with(authentication(userOnlyAuth))
+                }.andReturn()
+
+                Then("[S-07] 403 Forbidden이 반환된다") {
+                    result.response.status shouldBe 403
+                }
+            }
+        }
+
         Given("[S-05] 다른 owner의 이벤트에 접근할 때") {
             val otherOwnerId = 999L
             val event = eventJpaRepository.save(

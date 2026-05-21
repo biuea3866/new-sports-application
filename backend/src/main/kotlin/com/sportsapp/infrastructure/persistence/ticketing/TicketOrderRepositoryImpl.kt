@@ -19,7 +19,7 @@ class TicketOrderRepositoryImpl(
     override fun findByUserId(userId: Long): List<TicketOrder> =
         ticketOrderJpaRepository.findByUserIdAndDeletedAtIsNull(userId)
 
-    override fun countConfirmedSeatsByEventId(eventId: Long): Long =
+    override fun countConfirmedOrdersByEventId(eventId: Long): Long =
         ticketOrderJpaRepository.countByLockedEventIdAndStatusAndDeletedAtIsNull(
             eventId,
             OrderStatus.CONFIRMED,

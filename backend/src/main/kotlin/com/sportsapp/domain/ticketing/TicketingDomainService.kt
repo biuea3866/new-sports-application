@@ -128,8 +128,8 @@ class TicketingDomainService(
         return eventRepository.save(event)
     }
 
-    fun countConfirmedSeatsByEventId(eventId: Long): Long =
-        ticketOrderRepository.countConfirmedSeatsByEventId(eventId)
+    fun countConfirmedOrdersByEventId(eventId: Long): Long =
+        ticketOrderRepository.countConfirmedOrdersByEventId(eventId)
 
     private fun parseLockId(lockId: String): List<Pair<Long, Long>> =
         lockId.split(",").map { token ->

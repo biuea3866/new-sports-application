@@ -11,7 +11,7 @@ class GetMyEventUseCase(
     @Transactional(readOnly = true)
     fun execute(eventId: Long, ownerUserId: Long): MyEventResponse {
         val event = ticketingDomainService.getMyEvent(eventId, ownerUserId)
-        val count = ticketingDomainService.countConfirmedSeatsByEventId(eventId)
+        val count = ticketingDomainService.countConfirmedOrdersByEventId(eventId)
         return MyEventResponse.of(event, count)
     }
 }

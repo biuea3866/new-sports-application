@@ -38,8 +38,8 @@ class ListMyEventsUseCaseTest : BehaviorSpec({
 
         every { ticketingDomainService.listMyEvents(1L, pageable) } returns
             PageImpl(listOf(event1, event2), pageable, 2L)
-        every { ticketingDomainService.countConfirmedSeatsByEventId(10L) } returns 50L
-        every { ticketingDomainService.countConfirmedSeatsByEventId(11L) } returns 0L
+        every { ticketingDomainService.countConfirmedOrdersByEventId(10L) } returns 50L
+        every { ticketingDomainService.countConfirmedOrdersByEventId(11L) } returns 0L
 
         When("execute를 호출하면") {
             val result = listMyEventsUseCase.execute(1L, pageable)

@@ -17,6 +17,7 @@ class UpdateMyEventUseCase(
             venue = command.venue,
             startsAt = command.startsAt,
         )
-        return MyEventResponse.of(event)
+        val count = ticketingDomainService.countConfirmedOrdersByEventId(command.eventId)
+        return MyEventResponse.of(event, count)
     }
 }

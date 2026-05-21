@@ -57,7 +57,13 @@ class CreateMyEventUseCaseTest : BehaviorSpec({
 
             Then("[U-01] ticketingDomainService.createEvent가 1회 호출된다") {
                 verify(exactly = 1) {
-                    ticketingDomainService.createEvent(any(), any(), any(), any(), any())
+                    ticketingDomainService.createEvent(
+                        title = "Summer Concert",
+                        venue = "Seoul Arena",
+                        startsAt = startsAt,
+                        seats = listOf(SeatSpec("A", "1", "1", BigDecimal("50000"))),
+                        ownerUserId = 1L,
+                    )
                 }
             }
         }

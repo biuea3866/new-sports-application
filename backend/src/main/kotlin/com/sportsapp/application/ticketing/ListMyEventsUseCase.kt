@@ -14,7 +14,8 @@ class ListMyEventsUseCase(
     fun execute(ownerUserId: Long, pageable: Pageable): Page<MyEventResponse> {
         val events = ticketingDomainService.listMyEvents(ownerUserId, pageable)
         return events.map { event ->
-            val count = ticketingDomainService.countConfirmedSeatsByEventId(event.id)
+            // TODO(B2B-09): N+1 회피를 위해 countByEventIds(eventIds): Map<Long, Long> 배치 메서드 도입 필요
+            val count = ticketingDomainService.countConfirmedOrdersByEventId(event.id)
             MyEventResponse.of(event, count)
         }
     }

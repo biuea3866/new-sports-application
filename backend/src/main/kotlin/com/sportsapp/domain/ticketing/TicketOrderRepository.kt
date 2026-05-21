@@ -4,5 +4,5 @@ interface TicketOrderRepository {
     fun save(ticketOrder: TicketOrder): TicketOrder
     fun findById(id: Long): TicketOrder?
     fun findByUserId(userId: Long): List<TicketOrder>
-    fun countConfirmedSeatsByEventId(eventId: Long): Long
+    fun countConfirmedOrdersByEventId(eventId: Long): Long
 }
