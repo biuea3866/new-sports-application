@@ -1,7 +1,7 @@
 package com.sportsapp.infrastructure.persistence.ticketing
 
 import com.querydsl.jpa.impl.JPAQueryFactory
-import com.sportsapp.domain.ticketing.CustomSeatRepository
+import com.sportsapp.domain.ticketing.SeatCustomRepository
 import com.sportsapp.domain.ticketing.QEvent
 import com.sportsapp.domain.ticketing.QSeat
 import com.sportsapp.domain.ticketing.QTicket
@@ -9,9 +9,9 @@ import com.sportsapp.domain.ticketing.TicketStatus
 import org.springframework.stereotype.Component
 
 @Component
-class CustomSeatRepositoryImpl(
+class SeatCustomRepositoryImpl(
     private val queryFactory: JPAQueryFactory,
-) : CustomSeatRepository {
+) : SeatCustomRepository {
 
     override fun countSoldByEventId(eventId: Long): Long {
         val seat = QSeat.seat

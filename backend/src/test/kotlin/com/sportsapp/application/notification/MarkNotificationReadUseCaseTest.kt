@@ -1,6 +1,6 @@
 package com.sportsapp.application.notification
 
-import com.sportsapp.domain.notification.CustomNotificationRepository
+import com.sportsapp.domain.notification.NotificationCustomRepository
 import com.sportsapp.domain.notification.Notification
 import com.sportsapp.domain.notification.NotificationChannel
 import com.sportsapp.domain.notification.NotificationDomainService
@@ -22,11 +22,11 @@ import java.time.ZonedDateTime
 class MarkNotificationReadUseCaseTest : BehaviorSpec({
 
     val notificationRepository = mockk<NotificationRepository>()
-    val customNotificationRepository = mockk<CustomNotificationRepository>()
+    val notificationCustomRepository = mockk<NotificationCustomRepository>()
     val templateRenderer = mockk<TemplateRenderer>()
     val notificationDomainService = NotificationDomainService(
         notificationRepository = notificationRepository,
-        customNotificationRepository = customNotificationRepository,
+        notificationCustomRepository = notificationCustomRepository,
         channelGateways = emptyList(),
         templateRenderer = templateRenderer,
     )

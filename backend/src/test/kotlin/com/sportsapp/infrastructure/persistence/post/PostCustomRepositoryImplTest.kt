@@ -10,9 +10,9 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.jdbc.core.JdbcTemplate
 
-class CustomPostRepositoryImplTest(
+class PostCustomRepositoryImplTest(
     @Autowired private val postJpaRepository: PostJpaRepository,
-    @Autowired private val customPostRepositoryImpl: CustomPostRepositoryImpl,
+    @Autowired private val postCustomRepositoryImpl: PostCustomRepositoryImpl,
     @Autowired private val jdbcTemplate: JdbcTemplate,
 ) : BaseJpaIntegrationTest() {
 
@@ -32,7 +32,7 @@ class CustomPostRepositoryImplTest(
             When("[R-01] type=FREE, size=20으로 조회하면") {
                 val criteria = PostSearchCriteria(type = PostType.FREE, userId = null, keyword = null)
                 val pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt"))
-                val result = customPostRepositoryImpl.findByCriteria(criteria, pageable)
+                val result = postCustomRepositoryImpl.findByCriteria(criteria, pageable)
 
                 Then("정확히 20건이 반환되고 totalElements=25이다") {
                     result.content.size shouldBe 20
@@ -50,7 +50,7 @@ class CustomPostRepositoryImplTest(
             When("[R-02] keyword='풋살'로 조회하면") {
                 val criteria = PostSearchCriteria(type = null, userId = null, keyword = "풋살")
                 val pageable = PageRequest.of(0, 10)
-                val result = customPostRepositoryImpl.findByCriteria(criteria, pageable)
+                val result = postCustomRepositoryImpl.findByCriteria(criteria, pageable)
 
                 Then("title 또는 content에 풋살이 포함된 2건이 반환된다") {
                     result.totalElements shouldBe 2L
@@ -66,7 +66,7 @@ class CustomPostRepositoryImplTest(
             When("[R-03] userId=10 필터를 적용하면") {
                 val criteria = PostSearchCriteria(type = null, userId = 10L, keyword = null)
                 val pageable = PageRequest.of(0, 10)
-                val result = customPostRepositoryImpl.findByCriteria(criteria, pageable)
+                val result = postCustomRepositoryImpl.findByCriteria(criteria, pageable)
 
                 Then("userId=10의 Post 2건만 반환된다") {
                     result.totalElements shouldBe 2L
@@ -84,7 +84,7 @@ class CustomPostRepositoryImplTest(
             When("필터 없이 조회하면") {
                 val criteria = PostSearchCriteria(type = null, userId = null, keyword = null)
                 val pageable = PageRequest.of(0, 10)
-                val result = customPostRepositoryImpl.findByCriteria(criteria, pageable)
+                val result = postCustomRepositoryImpl.findByCriteria(criteria, pageable)
 
                 Then("활성 Post 1건만 반환된다") {
                     result.totalElements shouldBe 1L
@@ -101,7 +101,7 @@ class CustomPostRepositoryImplTest(
             When("기본 정렬(createdAt desc)로 조회하면") {
                 val criteria = PostSearchCriteria(type = null, userId = null, keyword = null)
                 val pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "createdAt"))
-                val result = customPostRepositoryImpl.findByCriteria(criteria, pageable)
+                val result = postCustomRepositoryImpl.findByCriteria(criteria, pageable)
 
                 Then("최신 Post가 먼저 반환된다") {
                     result.content.first().id shouldBe post3.id

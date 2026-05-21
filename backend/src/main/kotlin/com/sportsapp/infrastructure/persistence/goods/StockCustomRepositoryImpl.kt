@@ -1,7 +1,7 @@
 package com.sportsapp.infrastructure.persistence.goods
 
 import com.querydsl.jpa.impl.JPAQueryFactory
-import com.sportsapp.domain.goods.CustomStockRepository
+import com.sportsapp.domain.goods.StockCustomRepository
 import com.sportsapp.domain.goods.QProduct.product
 import com.sportsapp.domain.goods.QStock.stock
 import jakarta.persistence.EntityManager
@@ -9,7 +9,7 @@ import jakarta.persistence.PersistenceContext
 import org.springframework.stereotype.Repository
 
 @Repository
-class CustomStockRepositoryImpl : CustomStockRepository {
+class StockCustomRepositoryImpl : StockCustomRepository {
 
     @PersistenceContext
     private lateinit var entityManager: EntityManager

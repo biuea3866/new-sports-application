@@ -1,6 +1,6 @@
 package com.sportsapp.infrastructure.persistence.payment
 
-import com.sportsapp.domain.payment.CustomPaymentRepository
+import com.sportsapp.domain.payment.PaymentCustomRepository
 import com.sportsapp.domain.payment.Payment
 import com.sportsapp.domain.payment.PaymentRepository
 import com.sportsapp.domain.payment.PaymentStatus
@@ -13,7 +13,7 @@ import java.time.ZonedDateTime
 @Repository
 class PaymentRepositoryImpl(
     private val paymentJpaRepository: PaymentJpaRepository,
-    private val customPaymentRepository: CustomPaymentRepository,
+    private val paymentCustomRepository: PaymentCustomRepository,
 ) : PaymentRepository {
 
     override fun save(payment: Payment): Payment = paymentJpaRepository.save(payment)
@@ -32,7 +32,7 @@ class PaymentRepositoryImpl(
         paidAtFrom: ZonedDateTime?,
         paidAtTo: ZonedDateTime?,
         pageable: Pageable,
-    ): Page<Payment> = customPaymentRepository.findByUserIdAndConditions(
+    ): Page<Payment> = paymentCustomRepository.findByUserIdAndConditions(
         userId = userId,
         status = status,
         paidAtFrom = paidAtFrom,

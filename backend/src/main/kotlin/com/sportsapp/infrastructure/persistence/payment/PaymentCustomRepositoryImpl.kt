@@ -2,7 +2,7 @@ package com.sportsapp.infrastructure.persistence.payment
 
 import com.querydsl.core.BooleanBuilder
 import com.querydsl.jpa.impl.JPAQueryFactory
-import com.sportsapp.domain.payment.CustomPaymentRepository
+import com.sportsapp.domain.payment.PaymentCustomRepository
 import com.sportsapp.domain.payment.Payment
 import com.sportsapp.domain.payment.PaymentStatus
 import com.sportsapp.domain.payment.QPayment
@@ -13,9 +13,9 @@ import org.springframework.stereotype.Component
 import java.time.ZonedDateTime
 
 @Component
-class CustomPaymentRepositoryImpl(
+class PaymentCustomRepositoryImpl(
     private val queryFactory: JPAQueryFactory,
-) : CustomPaymentRepository {
+) : PaymentCustomRepository {
 
     override fun findByUserIdAndConditions(
         userId: Long,

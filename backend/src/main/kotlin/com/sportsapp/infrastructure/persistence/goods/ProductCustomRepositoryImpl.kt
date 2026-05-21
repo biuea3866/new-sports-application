@@ -3,7 +3,7 @@ package com.sportsapp.infrastructure.persistence.goods
 import com.querydsl.core.BooleanBuilder
 import com.querydsl.core.types.OrderSpecifier
 import com.querydsl.jpa.impl.JPAQueryFactory
-import com.sportsapp.domain.goods.CustomProductRepository
+import com.sportsapp.domain.goods.ProductCustomRepository
 import com.sportsapp.domain.goods.ProductCategory
 import com.sportsapp.domain.goods.ProductWithStock
 import com.sportsapp.domain.goods.QProduct.product
@@ -17,7 +17,7 @@ import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Repository
 
 @Repository
-class CustomProductRepositoryImpl : CustomProductRepository {
+class ProductCustomRepositoryImpl : ProductCustomRepository {
 
     @PersistenceContext
     private lateinit var entityManager: EntityManager

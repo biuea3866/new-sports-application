@@ -2,7 +2,7 @@ package com.sportsapp.domain.ticketing
 
 import java.time.ZonedDateTime
 
-interface CustomTicketOrderRepository {
+interface TicketOrderCustomRepository {
     fun aggregateTicketSales(
         ownerUserId: Long,
         eventId: Long?,

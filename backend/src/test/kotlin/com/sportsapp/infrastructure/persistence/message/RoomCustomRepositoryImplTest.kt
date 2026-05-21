@@ -10,10 +10,10 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 
-class CustomRoomRepositoryImplTest(
+class RoomCustomRepositoryImplTest(
     @Autowired private val roomJpaRepository: RoomJpaRepository,
     @Autowired private val roomParticipantJpaRepository: RoomParticipantJpaRepository,
-    @Autowired private val customRoomRepositoryImpl: CustomRoomRepositoryImpl,
+    @Autowired private val roomCustomRepositoryImpl: RoomCustomRepositoryImpl,
 ) : BaseIntegrationTest() {
 
     init {
@@ -23,7 +23,7 @@ class CustomRoomRepositoryImplTest(
             roomParticipantJpaRepository.save(RoomParticipant.create(room.id, 102L))
 
             When("두 userId 로 findDirectRoomByParticipantIds 를 호출하면") {
-                val found = customRoomRepositoryImpl.findDirectRoomByParticipantIds(101L, 102L)
+                val found = roomCustomRepositoryImpl.findDirectRoomByParticipantIds(101L, 102L)
 
                 Then("[R-01] 기존 1:1 룸이 반환된다") {
                     found.shouldNotBeNull()
@@ -32,7 +32,7 @@ class CustomRoomRepositoryImplTest(
             }
 
             When("관련 없는 userId 로 검색하면") {
-                val notFound = customRoomRepositoryImpl.findDirectRoomByParticipantIds(101L, 999L)
+                val notFound = roomCustomRepositoryImpl.findDirectRoomByParticipantIds(101L, 999L)
 
                 Then("[R-01] null 이 반환된다") {
                     notFound.shouldBeNull()
@@ -47,7 +47,7 @@ class CustomRoomRepositoryImplTest(
             roomParticipantJpaRepository.save(RoomParticipant.create(unmatchedRoom.id, 200L))
 
             When("keyword='축구' 로 findMyRoomsByKeyword 를 호출하면") {
-                val result = customRoomRepositoryImpl.findMyRoomsByKeyword(200L, "축구")
+                val result = roomCustomRepositoryImpl.findMyRoomsByKeyword(200L, "축구")
 
                 Then("[R-01] room.name 매칭 결과가 반환된다") {
                     result shouldHaveSize 1
@@ -56,7 +56,7 @@ class CustomRoomRepositoryImplTest(
             }
 
             When("keyword=null 로 findMyRoomsByKeyword 를 호출하면") {
-                val allRooms = customRoomRepositoryImpl.findMyRoomsByKeyword(200L, null)
+                val allRooms = roomCustomRepositoryImpl.findMyRoomsByKeyword(200L, null)
 
                 Then("참여한 모든 룸이 반환된다") {
                     allRooms shouldHaveSize 2
@@ -71,7 +71,7 @@ class CustomRoomRepositoryImplTest(
             roomJpaRepository.save(room)
 
             When("findDirectRoomByParticipantIds 로 삭제된 룸을 검색하면") {
-                val result = customRoomRepositoryImpl.findDirectRoomByParticipantIds(300L, 301L)
+                val result = roomCustomRepositoryImpl.findDirectRoomByParticipantIds(300L, 301L)
 
                 Then("[R-02] 삭제된 룸은 반환되지 않는다") {
                     result.shouldBeNull()

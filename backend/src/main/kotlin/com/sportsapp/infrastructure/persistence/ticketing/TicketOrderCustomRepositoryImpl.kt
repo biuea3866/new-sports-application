@@ -1,7 +1,7 @@
 package com.sportsapp.infrastructure.persistence.ticketing
 
 import com.querydsl.jpa.impl.JPAQueryFactory
-import com.sportsapp.domain.ticketing.CustomTicketOrderRepository
+import com.sportsapp.domain.ticketing.TicketOrderCustomRepository
 import com.sportsapp.domain.ticketing.OrderStatus
 import com.sportsapp.domain.ticketing.QEvent.event
 import com.sportsapp.domain.ticketing.QSeat.seat
@@ -16,7 +16,7 @@ import java.math.BigDecimal
 import java.time.ZonedDateTime
 
 @Repository
-class CustomTicketOrderRepositoryImpl : CustomTicketOrderRepository {
+class TicketOrderCustomRepositoryImpl : TicketOrderCustomRepository {
 
     @PersistenceContext
     private lateinit var entityManager: EntityManager

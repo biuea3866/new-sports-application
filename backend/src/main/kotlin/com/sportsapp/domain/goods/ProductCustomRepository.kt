@@ -4,7 +4,7 @@ import java.math.BigDecimal
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 
-interface CustomProductRepository {
+interface ProductCustomRepository {
     fun search(
         category: ProductCategory?,
         keyword: String?,

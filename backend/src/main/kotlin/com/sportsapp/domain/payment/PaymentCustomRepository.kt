@@ -4,7 +4,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import java.time.ZonedDateTime
 
-interface CustomPaymentRepository {
+interface PaymentCustomRepository {
     fun findByUserIdAndConditions(
         userId: Long,
         status: PaymentStatus?,

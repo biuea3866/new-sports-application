@@ -1,7 +1,7 @@
 package com.sportsapp.infrastructure.notification
 
 import com.querydsl.jpa.impl.JPAQueryFactory
-import com.sportsapp.domain.notification.CustomNotificationRepository
+import com.sportsapp.domain.notification.NotificationCustomRepository
 import com.sportsapp.domain.notification.Notification
 import com.sportsapp.domain.notification.QNotification
 import org.springframework.data.domain.Page
@@ -10,9 +10,9 @@ import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Component
 
 @Component
-class CustomNotificationRepositoryImpl(
+class NotificationCustomRepositoryImpl(
     private val queryFactory: JPAQueryFactory,
-) : CustomNotificationRepository {
+) : NotificationCustomRepository {
 
     override fun findByUserIdPaged(userId: Long, onlyUnread: Boolean, pageable: Pageable): Page<Notification> {
         val notification = QNotification.notification

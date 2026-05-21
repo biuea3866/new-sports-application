@@ -22,7 +22,7 @@ data class OrderWithPayment(
 class GoodsDomainService(
     private val productRepository: ProductRepository,
     private val stockRepository: StockRepository,
-    private val customProductRepository: CustomProductRepository,
+    private val productCustomRepository: ProductCustomRepository,
     private val popularProductsCache: PopularProductsCache,
     private val goodsOrderRepository: GoodsOrderRepository,
     private val goodsOrderItemRepository: GoodsOrderItemRepository,
@@ -37,7 +37,7 @@ class GoodsDomainService(
         priceMax: BigDecimal?,
         pageable: Pageable,
     ): Page<ProductWithStock> =
-        customProductRepository.search(category, keyword, priceMin, priceMax, pageable)
+        productCustomRepository.search(category, keyword, priceMin, priceMax, pageable)
 
     // TODO: UseCase 신설 시 @Transactional 을 UseCase 레이어로 이동. DomainService 에 @Transactional 유지는 UseCase 미존재 과도기 한정.
     @Transactional
@@ -220,7 +220,7 @@ class GoodsDomainService(
     }
 
     fun listMyProducts(ownerUserId: Long, pageable: Pageable): Page<ProductWithStock> =
-        customProductRepository.findByOwnerId(ownerUserId, pageable)
+        productCustomRepository.findByOwnerId(ownerUserId, pageable)
 
     fun countActiveProductsByOwnerId(ownerId: Long): Long =
         productRepository.countByOwnerIdAndStatus(ownerId, ProductStatus.ACTIVE)
