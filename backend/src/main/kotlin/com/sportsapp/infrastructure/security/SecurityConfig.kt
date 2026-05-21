@@ -53,6 +53,7 @@ class SecurityConfig(
         auth.requestMatchers("/api/goods-seller/**").authenticated()
         auth.requestMatchers("/api/operator/**").authenticated()
         auth.requestMatchers("/api/admin/mcp/tokens/**").authenticated()
+        auth.requestMatchers("/api/admin/mcp/audit-logs/**").authenticated()
         // TODO(AUTH-04): SecurityContext 통합 전까지 도메인 API는 X-User-Id 헤더 기반으로 임시 permitAll
         auth.requestMatchers(HttpMethod.POST, "/images/presigned-upload").authenticated()
         auth.requestMatchers(
