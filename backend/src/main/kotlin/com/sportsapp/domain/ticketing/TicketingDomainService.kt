@@ -5,6 +5,7 @@ import com.sportsapp.domain.ticketing.exception.LockExpiredException
 import com.sportsapp.domain.ticketing.exception.MalformedLockIdException
 import com.sportsapp.domain.ticketing.exception.SeatAlreadyLockedException
 import com.sportsapp.domain.ticketing.exception.SeatNotLockOwnerException
+import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
@@ -14,6 +15,7 @@ import java.time.Duration
 import java.time.ZonedDateTime
 
 private val SEAT_LOCK_TTL = Duration.ofSeconds(300)
+private val logger = LoggerFactory.getLogger(TicketingDomainService::class.java)
 
 @Service
 class TicketingDomainService(
@@ -117,6 +119,10 @@ class TicketingDomainService(
             ?: throw ResourceNotFoundException("TicketOrder", orderId)
         order.cancel()
         ticketOrderRepository.save(order)
+        order.lockedSeatIds.forEach { seatId ->
+            runCatching { seatLockStore.unlock(order.lockedEventId, seatId, order.userId) }
+                .onFailure { logger.warn("Failed to unlock seat $seatId for event ${order.lockedEventId}: ${it.message}") }
+        }
     }
 
     fun calculateAmount(lockId: String): BigDecimal {

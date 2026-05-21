@@ -148,6 +148,30 @@ class CreateGoodsOrderUseCaseTest : BehaviorSpec({
         }
     }
 
+    Given("PG 호출이 PaymentStatus.PENDING 같은 예상치 못한 상태를 반환하는 경우") {
+        val goodsDomainService = mockk<GoodsDomainService>()
+        val paymentDomainService = mockk<PaymentDomainService>()
+        val cartDomainService = mockk<CartDomainService>()
+        val useCase = CreateGoodsOrderUseCase(goodsDomainService, paymentDomainService, cartDomainService)
+        val validCommand = command()
+        val pendingOrder = buildPendingOrder()
+        val unexpectedPayment = buildPayment(status = PaymentStatus.PENDING)
+
+        every { goodsDomainService.createPendingOrder(1L, baseItems) } returns pendingOrder
+        every {
+            paymentDomainService.create(any(), any(), any(), any(), any(), any(), any())
+        } returns unexpectedPayment
+        justRun { goodsDomainService.cancelPendingOrder(1L) }
+
+        When("execute를 호출하면") {
+            Then("[U-06] markPaid가 호출되지 않고 cancelPendingOrder가 호출된다") {
+                useCase.execute(validCommand)
+                verify(exactly = 0) { goodsDomainService.markPaid(any(), any()) }
+                verify(exactly = 1) { goodsDomainService.cancelPendingOrder(1L) }
+            }
+        }
+    }
+
     Given("fromCart=true이고 결제가 성공하는 경우") {
         val goodsDomainService = mockk<GoodsDomainService>()
         val paymentDomainService = mockk<PaymentDomainService>()

@@ -14,7 +14,6 @@ class GoodsDomainService(
     private val popularProductsCache: PopularProductsCache,
     private val goodsOrderRepository: GoodsOrderRepository,
     private val goodsOrderItemRepository: GoodsOrderItemRepository,
-    private val cartDomainService: CartDomainService,
 ) {
     fun search(
         category: ProductCategory?,
@@ -94,7 +93,7 @@ class GoodsDomainService(
         val items = goodsOrderItemRepository.findByOrderId(orderId)
         items.forEach { item ->
             val stock = stockRepository.findByProductId(item.productId)
-                ?: throw com.sportsapp.domain.common.exceptions.ResourceNotFoundException("Stock", item.productId)
+                ?: throw ResourceNotFoundException("Stock", item.productId)
             stock.restore(item.quantity)
             stockRepository.save(stock)
         }

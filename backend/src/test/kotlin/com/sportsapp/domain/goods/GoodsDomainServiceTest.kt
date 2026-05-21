@@ -16,7 +16,6 @@ class GoodsDomainServiceTest : BehaviorSpec({
     val popularProductsCache = mockk<PopularProductsCache>()
     val goodsOrderRepository = mockk<GoodsOrderRepository>()
     val goodsOrderItemRepository = mockk<GoodsOrderItemRepository>()
-    val cartDomainService = mockk<CartDomainService>()
     val service = GoodsDomainService(
         productRepository = productRepository,
         stockRepository = stockRepository,
@@ -24,7 +23,6 @@ class GoodsDomainServiceTest : BehaviorSpec({
         popularProductsCache = popularProductsCache,
         goodsOrderRepository = goodsOrderRepository,
         goodsOrderItemRepository = goodsOrderItemRepository,
-        cartDomainService = cartDomainService,
     )
 
     Given("재고가 충분한 Product가 존재할 때") {

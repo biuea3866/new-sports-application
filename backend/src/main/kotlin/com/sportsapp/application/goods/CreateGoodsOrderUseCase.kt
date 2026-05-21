@@ -6,6 +6,7 @@ import com.sportsapp.domain.payment.OrderType
 import com.sportsapp.domain.payment.Payment
 import com.sportsapp.domain.payment.PaymentDomainService
 import com.sportsapp.domain.payment.PaymentStatus
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 @Service
@@ -14,6 +15,7 @@ class CreateGoodsOrderUseCase(
     private val paymentDomainService: PaymentDomainService,
     private val cartDomainService: CartDomainService,
 ) {
+    private val logger = LoggerFactory.getLogger(javaClass)
     fun execute(command: CreateGoodsOrderCommand): GoodsOrderResponse {
         val order = goodsDomainService.createPendingOrder(command.userId, command.items)
         val payment = paymentDomainService.create(
@@ -37,11 +39,16 @@ class CreateGoodsOrderUseCase(
     }
 
     private fun processPaymentResult(orderId: Long, payment: Payment, command: CreateGoodsOrderCommand) {
-        if (payment.status == PaymentStatus.FAILED) {
-            goodsDomainService.cancelPendingOrder(orderId)
-            return
+        when (payment.status) {
+            PaymentStatus.COMPLETED -> {
+                goodsDomainService.markPaid(orderId, payment.id)
+                if (command.fromCart) cartDomainService.clearCart(command.userId)
+            }
+            PaymentStatus.FAILED -> goodsDomainService.cancelPendingOrder(orderId)
+            else -> {
+                logger.error("Unexpected payment status: ${payment.status}, orderId=$orderId")
+                goodsDomainService.cancelPendingOrder(orderId)
+            }
         }
-        goodsDomainService.markPaid(orderId, payment.id)
-        if (command.fromCart) cartDomainService.clearCart(command.userId)
     }
 }
