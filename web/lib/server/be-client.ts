@@ -6,14 +6,6 @@
 import "server-only";
 import { cookies } from "next/headers";
 
-const BACKEND_URL = process.env["BACKEND_URL"];
-
-if (!BACKEND_URL) {
-  throw new Error(
-    "[be-client] BACKEND_URL 환경 변수가 설정되지 않았습니다. .env.local 또는 환경 변수를 확인하세요."
-  );
-}
-
 /** 서버 사이드에서 JWT 액세스 토큰을 httpOnly 쿠키에서 추출한다. */
 function extractAccessToken(): string | undefined {
   const cookieStore = cookies();
@@ -31,10 +23,16 @@ const DEFAULT_TIMEOUT_MS = 5000;
  * BE API 를 호출하는 단일 fetch 인스턴스.
  * JWT 쿠키가 존재하면 Authorization: Bearer <token> 헤더를 자동 부착한다.
  * timeoutMs(기본 5초) 초과 시 AbortError 를 throw 한다.
+ * BACKEND_URL 이 설정되지 않으면 호출 시점에 Error 를 throw 한다 (모듈 로드 시 throw 금지).
  */
 export async function beClient(path: string, init: BeRequestInit = {}): Promise<Response> {
-  const baseUrl = BACKEND_URL as string;
-  const url = `${baseUrl}${path}`;
+  const backendUrl = process.env["BACKEND_URL"];
+  if (!backendUrl) {
+    throw new Error(
+      "[be-client] BACKEND_URL 환경 변수가 설정되지 않았습니다. .env.local 또는 환경 변수를 확인하세요."
+    );
+  }
+  const url = `${backendUrl}${path}`;
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",

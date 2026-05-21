@@ -70,11 +70,18 @@ describe("be-client", () => {
     });
   });
 
-  describe("U-02: BACKEND_URL 환경 변수 누락 시 에러", () => {
-    it("BACKEND_URL이 undefined이면 모듈 로드 시 Error를 던진다", async () => {
+  describe("U-02: BACKEND_URL 환경 변수 누락 시 호출 시점 에러", () => {
+    it("BACKEND_URL이 undefined이면 모듈 import는 통과하고 beClient 호출 시 Error를 던진다", async () => {
       delete process.env["BACKEND_URL"];
 
-      await expect(import("@/lib/server/be-client")).rejects.toThrow(
+      const { cookies } = await import("next/headers");
+      vi.mocked(cookies).mockReturnValue({
+        get: vi.fn().mockReturnValue(undefined),
+      } as ReturnType<typeof cookies>);
+
+      const { beClient } = await import("@/lib/server/be-client");
+
+      await expect(beClient("/test")).rejects.toThrow(
         "BACKEND_URL 환경 변수가 설정되지 않았습니다"
       );
     });
