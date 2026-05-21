@@ -8,6 +8,7 @@ import com.sportsapp.domain.ticketing.exception.SeatNotLockOwnerException
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.ZonedDateTime
@@ -86,6 +87,7 @@ class TicketingDomainService(
         }
     }
 
+    @Transactional
     fun createPendingOrder(lockId: String, userId: Long): TicketOrder {
         val pairs = parseLockId(lockId)
         val eventId = pairs.first().first
@@ -96,6 +98,14 @@ class TicketingDomainService(
             lockedSeatIds = seatIds,
         )
         return ticketOrderRepository.save(order)
+    }
+
+    @Transactional
+    fun cancelOrder(orderId: Long) {
+        val order = ticketOrderRepository.findById(orderId)
+            ?: throw ResourceNotFoundException("TicketOrder", orderId)
+        order.cancel()
+        ticketOrderRepository.save(order)
     }
 
     fun calculateAmount(lockId: String): BigDecimal {

@@ -13,6 +13,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
+import io.mockk.justRun
 import io.mockk.mockk
 import io.mockk.verify
 import java.math.BigDecimal
@@ -31,9 +32,9 @@ class PurchaseTicketsUseCaseTest : BehaviorSpec({
         currency = "KRW",
     )
 
-    fun buildPendingOrder(): TicketOrder {
+    fun buildPendingOrder(orderId: Long = 100L): TicketOrder {
         val order = mockk<TicketOrder>(relaxed = true)
-        every { order.id } returns 100L
+        every { order.id } returns orderId
         every { order.status } returns OrderStatus.PENDING
         return order
     }
@@ -82,12 +83,13 @@ class PurchaseTicketsUseCaseTest : BehaviorSpec({
                 currency = "KRW",
             )
         } throws RuntimeException("PG 연결 실패")
+        justRun { ticketingDomainService.cancelOrder(100L) }
 
         When("[U-02] PaymentDomainService 호출 실패 시") {
             useCase.execute(buildCommand())
 
-            Then("TicketOrder.cancel()이 호출된다") {
-                verify(exactly = 1) { pendingOrder.cancel() }
+            Then("ticketingDomainService.cancelOrder(orderId)가 호출된다") {
+                verify(exactly = 1) { ticketingDomainService.cancelOrder(100L) }
             }
         }
     }
@@ -117,11 +119,43 @@ class PurchaseTicketsUseCaseTest : BehaviorSpec({
         When("[U-03] totalAmount가 서버 계산값을 사용하는 경우") {
             val result = useCase.execute(buildCommand())
 
-            Then("TicketOrderResponse에 ticketOrderId와 PENDING 상태가 포함된다") {
+            Then("TicketOrderResponse에 ticketOrderId와 PENDING 상태가 포함되고 cancelOrder가 호출되지 않는다") {
                 result.ticketOrderId shouldBe 100L
                 result.status shouldBe OrderStatus.PENDING
                 verify(exactly = 1) { ticketingDomainService.calculateAmount(lockId) }
-                verify(exactly = 0) { pendingOrder.cancel() }
+                verify(exactly = 0) { ticketingDomainService.cancelOrder(any()) }
+            }
+        }
+    }
+
+    Given("락 검증 성공 + PG FAILED 응답") {
+        val ticketingDomainService = mockk<TicketingDomainService>()
+        val paymentDomainService = mockk<PaymentDomainService>()
+        val useCase = PurchaseTicketsUseCase(ticketingDomainService, paymentDomainService)
+        val pendingOrder = buildPendingOrder()
+        val failedPayment = buildPayment(PaymentStatus.FAILED)
+
+        every { ticketingDomainService.verifyLockOwner(lockId, userId) } returns Unit
+        every { ticketingDomainService.calculateAmount(lockId) } returns BigDecimal("60000")
+        every { ticketingDomainService.createPendingOrder(lockId, userId) } returns pendingOrder
+        every {
+            paymentDomainService.create(
+                userId = userId,
+                idempotencyKey = idempotencyKey,
+                orderType = OrderType.TICKETING,
+                orderId = 100L,
+                method = PaymentMethod.CREDIT_CARD,
+                amount = BigDecimal("60000"),
+                currency = "KRW",
+            )
+        } returns failedPayment
+        justRun { ticketingDomainService.cancelOrder(100L) }
+
+        When("[U-04] PG가 FAILED 상태를 반환하면") {
+            useCase.execute(buildCommand())
+
+            Then("ticketingDomainService.cancelOrder(orderId)가 호출된다") {
+                verify(exactly = 1) { ticketingDomainService.cancelOrder(100L) }
             }
         }
     }
