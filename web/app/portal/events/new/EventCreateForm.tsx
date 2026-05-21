@@ -48,10 +48,11 @@ export default function EventCreateForm() {
 
   function validate(): boolean {
     const seats = parseSeats(fields.seatsText);
+    const startsAtIso = fields.startsAt ? new Date(fields.startsAt).toISOString() : "";
     const parsed = CreateEventInputSchema.safeParse({
       title: fields.title,
       venue: fields.venue,
-      startsAt: fields.startsAt,
+      startsAt: startsAtIso,
       seats,
     });
 
