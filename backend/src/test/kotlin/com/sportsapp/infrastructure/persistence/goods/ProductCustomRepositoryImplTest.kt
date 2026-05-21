@@ -15,7 +15,7 @@ import org.springframework.jdbc.core.JdbcTemplate
 import java.math.BigDecimal
 
 class ProductCustomRepositoryImplTest(
-    @Autowired private val lProductCustomRepository: ProductCustomRepository,
+    @Autowired private val productCustomRepository: ProductCustomRepository,
     @Autowired private val productJpaRepository: ProductJpaRepository,
     @Autowired private val stockJpaRepository: StockJpaRepository,
     @Autowired private val jdbcTemplate: JdbcTemplate,
@@ -63,7 +63,7 @@ class ProductCustomRepositoryImplTest(
 
             When("검색을 실행하면") {
                 Then("FOOTWEAR 카테고리의 러닝 포함 상품 2건이 반환된다") {
-                    val result = lProductCustomRepository.search(
+                    val result = productCustomRepository.search(
                         category = ProductCategory.FOOTWEAR,
                         keyword = "러닝",
                         priceMin = null,
@@ -83,7 +83,7 @@ class ProductCustomRepositoryImplTest(
 
             When("검색을 실행하면") {
                 Then("해당 범위의 상품 1건(89000원)만 반환된다") {
-                    val result = lProductCustomRepository.search(
+                    val result = productCustomRepository.search(
                         category = null,
                         keyword = null,
                         priceMin = BigDecimal("50000"),
@@ -103,7 +103,7 @@ class ProductCustomRepositoryImplTest(
 
             When("FOOTWEAR 전체 조회하면") {
                 Then("재고 0인 상품도 stockQuantity=0으로 응답에 포함된다") {
-                    val result = lProductCustomRepository.search(
+                    val result = productCustomRepository.search(
                         category = ProductCategory.FOOTWEAR,
                         keyword = null,
                         priceMin = null,
@@ -125,7 +125,7 @@ class ProductCustomRepositoryImplTest(
 
             When("sort=price(ASC)로 검색하면") {
                 Then("가격 오름차순으로 정렬된 결과가 반환된다") {
-                    val result = lProductCustomRepository.search(
+                    val result = productCustomRepository.search(
                         category = ProductCategory.FOOTWEAR,
                         keyword = null,
                         priceMin = null,
@@ -146,7 +146,7 @@ class ProductCustomRepositoryImplTest(
 
             When("size=1, page=0으로 검색하면") {
                 Then("totalElements=2, content 1건, totalPages=2가 반환된다") {
-                    val result = lProductCustomRepository.search(
+                    val result = productCustomRepository.search(
                         category = ProductCategory.FOOTWEAR,
                         keyword = null,
                         priceMin = null,
@@ -168,7 +168,7 @@ class ProductCustomRepositoryImplTest(
 
             When("ownerId=10으로 findByOwnerId를 호출하면") {
                 Then("[R-03] ownerId=10의 상품 2건만 Stock join과 함께 반환된다") {
-                    val result = lProductCustomRepository.findByOwnerId(
+                    val result = productCustomRepository.findByOwnerId(
                         ownerId = 10L,
                         pageable = PageRequest.of(0, 20),
                     )
@@ -188,7 +188,7 @@ class ProductCustomRepositoryImplTest(
 
             When("ownerId=10으로 size=1 페이지네이션을 호출하면") {
                 Then("[R-03] totalElements=2, content 1건, totalPages=2가 반환된다") {
-                    val result = lProductCustomRepository.findByOwnerId(
+                    val result = productCustomRepository.findByOwnerId(
                         ownerId = 10L,
                         pageable = PageRequest.of(0, 1),
                     )

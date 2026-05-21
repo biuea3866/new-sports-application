@@ -13,7 +13,7 @@ import java.time.ZonedDateTime
 
 class EventCustomRepositoryImplTest(
     @Autowired private val eventJpaRepository: EventJpaRepository,
-    @Autowired private val lEventCustomRepositoryImpl: EventCustomRepositoryImpl,
+    @Autowired private val eventCustomRepositoryImpl: EventCustomRepositoryImpl,
 ) : BaseJpaIntegrationTest() {
 
     private val baseTime = ZonedDateTime.of(2026, 12, 1, 18, 0, 0, 0, ZoneOffset.UTC)
@@ -33,7 +33,7 @@ class EventCustomRepositoryImplTest(
             When("[R-01] status=OPEN 필터만 적용하면") {
                 val criteria = EventCriteria(status = EventStatus.OPEN, startsAtFrom = null, startsAtTo = null)
                 val pageable = PageRequest.of(0, 10, Sort.by("startsAt").ascending())
-                val result = lEventCustomRepositoryImpl.findByCriteria(criteria, pageable)
+                val result = eventCustomRepositoryImpl.findByCriteria(criteria, pageable)
 
                 Then("OPEN 상태 2건만 반환된다") {
                     result.totalElements shouldBe 2L
@@ -46,7 +46,7 @@ class EventCustomRepositoryImplTest(
                 val to = baseTime.plusDays(1)
                 val criteria = EventCriteria(status = null, startsAtFrom = from, startsAtTo = to)
                 val pageable = PageRequest.of(0, 10, Sort.by("startsAt").ascending())
-                val result = lEventCustomRepositoryImpl.findByCriteria(criteria, pageable)
+                val result = eventCustomRepositoryImpl.findByCriteria(criteria, pageable)
 
                 Then("범위 내 이벤트 1건(event1)만 반환된다") {
                     result.totalElements shouldBe 1L
@@ -57,7 +57,7 @@ class EventCustomRepositoryImplTest(
             When("[R-03] 페이지 크기=1로 두 번째 페이지를 조회하면") {
                 val criteria = EventCriteria(status = EventStatus.OPEN, startsAtFrom = null, startsAtTo = null)
                 val pageable = PageRequest.of(1, 1, Sort.by("startsAt").ascending())
-                val result = lEventCustomRepositoryImpl.findByCriteria(criteria, pageable)
+                val result = eventCustomRepositoryImpl.findByCriteria(criteria, pageable)
 
                 Then("totalElements=2이고 두 번째 페이지 1건이 반환된다") {
                     result.totalElements shouldBe 2L
@@ -72,7 +72,7 @@ class EventCustomRepositoryImplTest(
 
                 val criteria = EventCriteria(status = EventStatus.OPEN, startsAtFrom = null, startsAtTo = null)
                 val pageable = PageRequest.of(0, 10)
-                val result = lEventCustomRepositoryImpl.findByCriteria(criteria, pageable)
+                val result = eventCustomRepositoryImpl.findByCriteria(criteria, pageable)
 
                 Then("soft-delete된 event1은 포함되지 않는다") {
                     result.content.none { it.id == event1.id } shouldBe true

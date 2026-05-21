@@ -22,11 +22,11 @@ import java.time.ZonedDateTime
 class MarkNotificationReadUseCaseTest : BehaviorSpec({
 
     val notificationRepository = mockk<NotificationRepository>()
-    val lNotificationCustomRepository = mockk<NotificationCustomRepository>()
+    val notificationCustomRepository = mockk<NotificationCustomRepository>()
     val templateRenderer = mockk<TemplateRenderer>()
     val notificationDomainService = NotificationDomainService(
         notificationRepository = notificationRepository,
-        lNotificationCustomRepository = lNotificationCustomRepository,
+        notificationCustomRepository = notificationCustomRepository,
         channelGateways = emptyList(),
         templateRenderer = templateRenderer,
     )

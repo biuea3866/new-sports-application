@@ -21,7 +21,7 @@ class DashboardCountQueryTest(
     @Autowired private val productJpaRepository: ProductJpaRepository,
     @Autowired private val stockJpaRepository: StockJpaRepository,
     @Autowired private val eventJpaRepository: EventJpaRepository,
-    @Autowired private val lEventCustomRepositoryImpl: EventCustomRepositoryImpl,
+    @Autowired private val eventCustomRepositoryImpl: EventCustomRepositoryImpl,
     @Autowired private val jdbcTemplate: JdbcTemplate,
 ) : BaseJpaIntegrationTest() {
 
@@ -65,7 +65,7 @@ class DashboardCountQueryTest(
             }
 
             When("[R-01] countByOwnerIdGroupByStatus 쿼리 실행 시") {
-                val result = lEventCustomRepositoryImpl.countByOwnerIdGroupByStatus(100L)
+                val result = eventCustomRepositoryImpl.countByOwnerIdGroupByStatus(100L)
 
                 Then("[R-01] SCHEDULED 2, OPEN 1, CLOSED 3이 정확히 반환된다") {
                     result[EventStatus.SCHEDULED] shouldBe 2L

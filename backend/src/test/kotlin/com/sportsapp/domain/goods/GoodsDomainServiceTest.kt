@@ -13,7 +13,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
 
     val productRepository = mockk<ProductRepository>()
     val stockRepository = mockk<StockRepository>()
-    val lProductCustomRepository = mockk<ProductCustomRepository>()
+    val productCustomRepository = mockk<ProductCustomRepository>()
     val popularProductsCache = mockk<PopularProductsCache>()
     val goodsOrderRepository = mockk<GoodsOrderRepository>()
     val goodsOrderItemRepository = mockk<GoodsOrderItemRepository>()
@@ -22,7 +22,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
     val service = GoodsDomainService(
         productRepository = productRepository,
         stockRepository = stockRepository,
-        lProductCustomRepository = lProductCustomRepository,
+        productCustomRepository = productCustomRepository,
         popularProductsCache = popularProductsCache,
         goodsOrderRepository = goodsOrderRepository,
         goodsOrderItemRepository = goodsOrderItemRepository,

@@ -12,7 +12,7 @@ import java.time.ZonedDateTime
 class MessageCustomRepositoryImplTest(
     @Autowired private val roomJpaRepository: RoomJpaRepository,
     @Autowired private val messageJpaRepository: MessageJpaRepository,
-    @Autowired private val lMessageCustomRepositoryImpl: MessageCustomRepositoryImpl,
+    @Autowired private val messageCustomRepositoryImpl: MessageCustomRepositoryImpl,
 ) : BaseIntegrationTest() {
 
     init {
@@ -23,7 +23,7 @@ class MessageCustomRepositoryImplTest(
             }
 
             When("before=null 로 findByCursor 를 호출하면") {
-                val result = lMessageCustomRepositoryImpl.findByCursor(room.id, null, 30)
+                val result = messageCustomRepositoryImpl.findByCursor(room.id, null, 30)
 
                 Then("5건이 createdAt 내림차순으로 반환된다") {
                     result shouldHaveSize 5
@@ -39,7 +39,7 @@ class MessageCustomRepositoryImplTest(
             val cursor = saved[4].createdAt
 
             When("before=cursor(5번째 메시지 createdAt) 로 findByCursor 를 호출하면") {
-                val result = lMessageCustomRepositoryImpl.findByCursor(room.id, cursor, 30)
+                val result = messageCustomRepositoryImpl.findByCursor(room.id, cursor, 30)
 
                 Then("[R-01] cursor 이전 메시지 4건 이하가 반환된다") {
                     result.size shouldNotBe 0
@@ -55,7 +55,7 @@ class MessageCustomRepositoryImplTest(
             }
 
             When("pageSize=30 으로 findByCursor 를 호출하면") {
-                val result = lMessageCustomRepositoryImpl.findByCursor(room.id, null, 30)
+                val result = messageCustomRepositoryImpl.findByCursor(room.id, null, 30)
 
                 Then("[R-01] 최대 30건만 반환된다") {
                     result shouldHaveSize 30
@@ -71,7 +71,7 @@ class MessageCustomRepositoryImplTest(
             messageJpaRepository.save(deletedMessage)
 
             When("findByCursor 를 호출하면") {
-                val result = lMessageCustomRepositoryImpl.findByCursor(room.id, null, 30)
+                val result = messageCustomRepositoryImpl.findByCursor(room.id, null, 30)
 
                 Then("[R-01] 소프트 삭제된 메시지는 제외되고 1건만 반환된다") {
                     result shouldHaveSize 1

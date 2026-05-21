@@ -12,7 +12,7 @@ private val SUPPORTED_ENQUEUE_CHANNELS = setOf(NotificationChannel.IN_APP)
 @Service
 class NotificationDomainService(
     private val notificationRepository: NotificationRepository,
-    private val lNotificationCustomRepository: NotificationCustomRepository,
+    private val notificationCustomRepository: NotificationCustomRepository,
     private val channelGateways: List<NotificationChannelGateway>,
     private val templateRenderer: TemplateRenderer,
 ) {
@@ -65,7 +65,7 @@ class NotificationDomainService(
 
     fun listMyNotifications(userId: Long, onlyUnread: Boolean, page: Int, size: Int): Page<Notification> {
         val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
-        return lNotificationCustomRepository.findByUserIdPaged(userId, onlyUnread, pageable)
+        return notificationCustomRepository.findByUserIdPaged(userId, onlyUnread, pageable)
     }
 
     @Transactional

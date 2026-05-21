@@ -17,7 +17,7 @@ import java.time.ZonedDateTime
 import java.util.UUID
 
 class NotificationCustomRepositoryImplTest(
-    @Autowired private val lNotificationCustomRepository: NotificationCustomRepository,
+    @Autowired private val notificationCustomRepository: NotificationCustomRepository,
     @Autowired private val notificationJpaRepository: NotificationJpaRepository,
     @Autowired private val notificationRepository: NotificationRepository,
 ) : BaseJpaIntegrationTest() {
@@ -38,7 +38,7 @@ class NotificationCustomRepositoryImplTest(
 
             When("onlyUnread=false, page=0, size=20 으로 조회하면") {
                 val pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt"))
-                val result = lNotificationCustomRepository.findByUserIdPaged(userId, false, pageable)
+                val result = notificationCustomRepository.findByUserIdPaged(userId, false, pageable)
 
                 Then("[R-01] 5건이 반환되고 createdAt desc 정렬이다") {
                     result.totalElements shouldBe 5L
@@ -81,7 +81,7 @@ class NotificationCustomRepositoryImplTest(
 
             When("onlyUnread=true 로 조회하면") {
                 val pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt"))
-                val result = lNotificationCustomRepository.findByUserIdPaged(userId, true, pageable)
+                val result = notificationCustomRepository.findByUserIdPaged(userId, true, pageable)
 
                 Then("읽지 않은 3건만 반환된다") {
                     result.totalElements shouldBe 3L
@@ -105,7 +105,7 @@ class NotificationCustomRepositoryImplTest(
 
             When("page=0, size=20 으로 조회하면") {
                 val pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt"))
-                val result = lNotificationCustomRepository.findByUserIdPaged(userId, false, pageable)
+                val result = notificationCustomRepository.findByUserIdPaged(userId, false, pageable)
 
                 Then("[R-02] 20건이 반환되고 totalElements 는 25 이다") {
                     result.content.size shouldBe 20
@@ -115,7 +115,7 @@ class NotificationCustomRepositoryImplTest(
 
             When("page=1, size=20 으로 조회하면") {
                 val pageable = PageRequest.of(1, 20, Sort.by(Sort.Direction.DESC, "createdAt"))
-                val result = lNotificationCustomRepository.findByUserIdPaged(userId, false, pageable)
+                val result = notificationCustomRepository.findByUserIdPaged(userId, false, pageable)
 
                 Then("나머지 5건이 반환된다") {
                     result.content.size shouldBe 5

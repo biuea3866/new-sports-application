@@ -13,7 +13,7 @@ import java.time.ZonedDateTime
 @Repository
 class PaymentRepositoryImpl(
     private val paymentJpaRepository: PaymentJpaRepository,
-    private val lPaymentCustomRepository: PaymentCustomRepository,
+    private val paymentCustomRepository: PaymentCustomRepository,
 ) : PaymentRepository {
 
     override fun save(payment: Payment): Payment = paymentJpaRepository.save(payment)
@@ -32,7 +32,7 @@ class PaymentRepositoryImpl(
         paidAtFrom: ZonedDateTime?,
         paidAtTo: ZonedDateTime?,
         pageable: Pageable,
-    ): Page<Payment> = lPaymentCustomRepository.findByUserIdAndConditions(
+    ): Page<Payment> = paymentCustomRepository.findByUserIdAndConditions(
         userId = userId,
         status = status,
         paidAtFrom = paidAtFrom,

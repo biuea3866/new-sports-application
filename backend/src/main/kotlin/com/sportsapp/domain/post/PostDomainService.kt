@@ -11,7 +11,7 @@ import org.springframework.data.domain.Sort
 class PostDomainService(
     private val postRepository: PostRepository,
     private val commentRepository: CommentRepository,
-    private val lPostCustomRepository: PostCustomRepository,
+    private val postCustomRepository: PostCustomRepository,
 ) {
     fun createPost(userId: Long, title: String, content: String): Post {
         val post = Post.create(userId = userId, title = title, content = content)
@@ -37,7 +37,7 @@ class PostDomainService(
             ?: throw ResourceNotFoundException("Post", postId)
 
     fun search(criteria: PostSearchCriteria, pageable: Pageable): Page<Post> =
-        lPostCustomRepository.findByCriteria(criteria, pageable)
+        postCustomRepository.findByCriteria(criteria, pageable)
 
     fun getDetail(postId: Long): Pair<Post, List<Comment>> {
         val post = postRepository.findById(postId)
