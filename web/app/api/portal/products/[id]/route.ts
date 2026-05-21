@@ -7,6 +7,13 @@ interface RouteContext {
   params: { id: string };
 }
 
+export async function GET(
+  _request: NextRequest,
+  { params }: RouteContext
+): Promise<NextResponse> {
+  return forwardBeResponse(`/api/goods-seller/products/${params.id}`, { method: "GET" });
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: RouteContext
