@@ -3,8 +3,10 @@ package com.sportsapp.presentation.exception
 import com.sportsapp.domain.common.BusinessException
 import com.sportsapp.domain.common.ErrorStatus
 import org.slf4j.LoggerFactory
+import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.AccessDeniedException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
@@ -39,6 +41,13 @@ class GlobalExceptionHandler {
         }
         problemDetail.setProperty("fieldErrors", fieldErrors)
         return ResponseEntity.status(ErrorStatus.UNPROCESSABLE.httpStatus).body(problemDetail)
+    }
+
+    @ExceptionHandler(AccessDeniedException::class)
+    fun handleAccessDeniedException(exception: AccessDeniedException): ResponseEntity<ProblemDetail> {
+        val problemDetail = ProblemDetail.forStatus(HttpStatus.FORBIDDEN)
+        problemDetail.detail = exception.message ?: "Access denied"
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(problemDetail)
     }
 
     @ExceptionHandler(Exception::class)
