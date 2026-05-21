@@ -141,7 +141,6 @@ class GoodsDomainService(
     fun listMyOrders(userId: Long, pageable: Pageable): Page<GoodsOrder> =
         goodsOrderRepository.findByUserId(userId, pageable)
 
-    @Transactional
     fun createProduct(
         name: String,
         category: ProductCategory,
@@ -164,7 +163,6 @@ class GoodsDomainService(
         return product to stock
     }
 
-    @Transactional(readOnly = true)
     fun getProductByIdAndOwnerId(productId: Long, ownerUserId: Long): ProductWithStock {
         val productEntity = productRepository.findById(productId)
             ?: throw ResourceNotFoundException("Product", productId)
@@ -173,7 +171,6 @@ class GoodsDomainService(
         return ProductWithStock(product = productEntity, stockQuantity = stockQuantity)
     }
 
-    @Transactional
     fun updateProduct(
         productId: Long,
         ownerUserId: Long,
@@ -201,7 +198,6 @@ class GoodsDomainService(
         return productRepository.save(productEntity)
     }
 
-    @Transactional
     fun activateProductWithStock(productId: Long, ownerUserId: Long): ProductWithStock {
         val productEntity = activateProduct(productId, ownerUserId)
         val stockQuantity = stockRepository.findByProductId(productId)?.quantity ?: 0
@@ -217,18 +213,15 @@ class GoodsDomainService(
         return productRepository.save(productEntity)
     }
 
-    @Transactional
     fun deactivateProductWithStock(productId: Long, ownerUserId: Long): ProductWithStock {
         val productEntity = deactivateProduct(productId, ownerUserId)
         val stockQuantity = stockRepository.findByProductId(productId)?.quantity ?: 0
         return ProductWithStock(product = productEntity, stockQuantity = stockQuantity)
     }
 
-    @Transactional(readOnly = true)
     fun listMyProducts(ownerUserId: Long, pageable: Pageable): Page<ProductWithStock> =
         customProductRepository.findByOwnerId(ownerUserId, pageable)
 
-    @Transactional
     fun restoreProductStock(productId: Long, ownerUserId: Long, quantity: Int) {
         val productEntity = productRepository.findById(productId)
             ?: throw ResourceNotFoundException("Product", productId)

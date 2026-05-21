@@ -2,11 +2,13 @@ package com.sportsapp.presentation.goods
 
 import com.sportsapp.application.goods.UpdateMyProductCommand
 import com.sportsapp.domain.goods.ProductCategory
+import jakarta.validation.constraints.DecimalMin
 import java.math.BigDecimal
 
 data class UpdateMyProductRequest(
     val name: String?,
     val category: ProductCategory?,
+    @field:DecimalMin("0.01")
     val price: BigDecimal?,
     val description: String?,
     val imageUrl: String?,

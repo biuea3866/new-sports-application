@@ -229,7 +229,7 @@ class B2bProductApiScenarioTest(
                     String::class.java,
                 )
 
-                Then("400 Bad Request가 반환된다") {
+                Then("422 Unprocessable Entity가 반환된다") {
                     response.statusCode shouldBe HttpStatus.UNPROCESSABLE_ENTITY
                 }
             }

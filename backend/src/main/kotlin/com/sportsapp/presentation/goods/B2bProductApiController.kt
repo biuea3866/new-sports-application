@@ -58,7 +58,7 @@ class B2bProductApiController(
     @PatchMapping("/{id}")
     fun updateMyProduct(
         @PathVariable id: Long,
-        @RequestBody request: UpdateMyProductRequest,
+        @Valid @RequestBody request: UpdateMyProductRequest,
     ): ResponseEntity<ProductWithStockResponse> =
         ResponseEntity.ok(updateMyProductUseCase.execute(request.toCommand(id)))
 
