@@ -1,12 +1,14 @@
 package com.sportsapp.infrastructure.persistence.goods
 
 import com.sportsapp.domain.goods.Stock
+import com.sportsapp.domain.goods.StockCustomRepository
 import com.sportsapp.domain.goods.StockRepository
 import org.springframework.stereotype.Repository
 
 @Repository
 class StockRepositoryImpl(
     private val stockJpaRepository: StockJpaRepository,
+    private val stockCustomRepository: StockCustomRepository,
 ) : StockRepository {
 
     override fun save(stock: Stock): Stock = stockJpaRepository.save(stock)
@@ -15,5 +17,5 @@ class StockRepositoryImpl(
         stockJpaRepository.findByProductId(productId)
 
     override fun countOutOfStockByOwnerId(ownerId: Long): Long =
-        stockJpaRepository.countOutOfStockByOwnerId(ownerId)
+        stockCustomRepository.countOutOfStockByOwnerId(ownerId)
 }

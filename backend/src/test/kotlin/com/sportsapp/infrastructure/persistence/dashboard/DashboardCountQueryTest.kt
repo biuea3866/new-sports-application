@@ -7,6 +7,7 @@ import com.sportsapp.domain.goods.ProductStatus
 import com.sportsapp.domain.goods.Stock
 import com.sportsapp.domain.ticketing.Event
 import com.sportsapp.domain.ticketing.EventStatus
+import com.sportsapp.domain.goods.StockCustomRepository
 import com.sportsapp.infrastructure.persistence.goods.ProductJpaRepository
 import com.sportsapp.infrastructure.persistence.goods.StockJpaRepository
 import com.sportsapp.infrastructure.persistence.ticketing.EventCustomRepositoryImpl
@@ -20,6 +21,7 @@ import java.time.ZonedDateTime
 class DashboardCountQueryTest(
     @Autowired private val productJpaRepository: ProductJpaRepository,
     @Autowired private val stockJpaRepository: StockJpaRepository,
+    @Autowired private val stockCustomRepository: StockCustomRepository,
     @Autowired private val eventJpaRepository: EventJpaRepository,
     @Autowired private val eventCustomRepositoryImpl: EventCustomRepositoryImpl,
     @Autowired private val jdbcTemplate: JdbcTemplate,
@@ -124,7 +126,7 @@ class DashboardCountQueryTest(
 
             When("[R-02] countByOwnerIdAndStatus + countOutOfStockByOwnerId 쿼리 실행 시") {
                 val activeCount = productJpaRepository.countByOwnerIdAndStatusAndDeletedAtIsNull(200L, ProductStatus.ACTIVE)
-                val outOfStockCount = stockJpaRepository.countOutOfStockByOwnerId(200L)
+                val outOfStockCount = stockCustomRepository.countOutOfStockByOwnerId(200L)
 
                 Then("[R-02] ACTIVE 4건, outOfStock(stock=0) 1건이 반환된다") {
                     activeCount shouldBe 4L

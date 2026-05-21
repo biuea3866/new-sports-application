@@ -1,0 +1,18 @@
+package com.sportsapp.application.mcp
+
+import com.sportsapp.domain.mcp.IssueMcpTokenCommand
+import java.time.ZonedDateTime
+
+data class IssueMcpTokenUseCaseCommand(
+    val userId: Long,
+    val name: String,
+    val scopes: List<String>,
+    val expiresAt: ZonedDateTime?,
+) {
+    fun toDomainCommand(): IssueMcpTokenCommand = IssueMcpTokenCommand(
+        userId = userId,
+        name = name,
+        scopes = scopes,
+        expiresAt = expiresAt,
+    )
+}
