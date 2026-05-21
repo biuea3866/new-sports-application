@@ -94,5 +94,34 @@ class PaymentQueryScenarioTest(
                 }
             }
         }
+
+        Given("userId = 7 의 COMPLETED 결제 1건이 존재하는 상태") {
+            val userId = 7L
+            saveCompletedPayment(userId, "idem-s04-paid")
+
+            When("GET /payments/me?status=PAID 요청 시") {
+                val response = mockMvc.get("/payments/me") {
+                    header("X-User-Id", userId.toString())
+                    param("status", "PAID")
+                    accept = MediaType.APPLICATION_JSON
+                }.andReturn()
+
+                Then("[DEF-006] 200 응답이 반환된다") {
+                    response.response.status shouldBe 200
+                }
+            }
+
+            When("GET /payments/me?status=PENDING 요청 시") {
+                val response = mockMvc.get("/payments/me") {
+                    header("X-User-Id", userId.toString())
+                    param("status", "PENDING")
+                    accept = MediaType.APPLICATION_JSON
+                }.andReturn()
+
+                Then("[DEF-006-reg] 200 응답이 반환된다") {
+                    response.response.status shouldBe 200
+                }
+            }
+        }
     }
 }

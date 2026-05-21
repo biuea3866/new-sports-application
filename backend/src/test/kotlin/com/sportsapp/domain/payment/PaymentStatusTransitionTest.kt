@@ -24,6 +24,21 @@ class PaymentStatusTransitionTest : BehaviorSpec({
                 PaymentStatus.COMPLETED.canTransitTo(PaymentStatus.REFUNDED) shouldBe true
             }
         }
+        When("PENDING → PAID") {
+            Then("[U-04] canTransitTo 는 true 를 반환한다") {
+                PaymentStatus.PENDING.canTransitTo(PaymentStatus.PAID) shouldBe true
+            }
+        }
+        When("PAID → REFUNDED") {
+            Then("[U-04] canTransitTo 는 true 를 반환한다") {
+                PaymentStatus.PAID.canTransitTo(PaymentStatus.REFUNDED) shouldBe true
+            }
+        }
+        When("PAID → PENDING") {
+            Then("[U-04] canTransitTo 는 false 를 반환한다") {
+                PaymentStatus.PAID.canTransitTo(PaymentStatus.PENDING) shouldBe false
+            }
+        }
         When("COMPLETED → PENDING") {
             Then("[U-04] canTransitTo 는 false 를 반환한다") {
                 PaymentStatus.COMPLETED.canTransitTo(PaymentStatus.PENDING) shouldBe false
