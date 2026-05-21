@@ -1,567 +1,548 @@
 "use client";
 
-import * as React from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import {
   productUpdateFormSchema,
   restoreStockFormSchema,
-} from "@/app/portal/products/product-form-schema";
+  PRODUCT_CATEGORIES,
+} from "../product-form-schema";
 import type { MyProduct } from "@/lib/portal/types";
 
-// ─── 상태 레이블 ──────────────────────────────────────────────────────────────
-
-const STATUS_LABELS: Record<string, string> = {
-  ACTIVE: "활성",
-  INACTIVE: "비활성",
+const CATEGORY_LABELS: Record<(typeof PRODUCT_CATEGORIES)[number], string> = {
+  EQUIPMENT: "장비",
+  APPAREL: "의류",
+  FOOTWEAR: "신발",
+  ACCESSORY: "액세서리",
 };
 
-const STATUS_BADGE_VARIANT: Record<string, "default" | "outline"> = {
-  ACTIVE: "default",
-  INACTIVE: "outline",
-};
-
-// ─── 재고 보충 Dialog ─────────────────────────────────────────────────────────
+// ─── RestoreStockDialog ───────────────────────────────────────────────────────
 
 interface RestoreStockDialogProps {
-  isOpen: boolean;
-  isSubmitting: boolean;
-  error: string | null;
-  onConfirm: (quantity: number) => void;
+  onConfirm: (quantity: number) => Promise<void>;
   onClose: () => void;
+  isSubmitting: boolean;
 }
 
-function RestoreStockDialog({
-  isOpen,
-  isSubmitting,
-  error,
-  onConfirm,
-  onClose,
-}: RestoreStockDialogProps) {
-  const [quantityText, setQuantityText] = React.useState("");
-  const [quantityError, setQuantityError] = React.useState<string | undefined>(undefined);
+function RestoreStockDialog({ onConfirm, onClose, isSubmitting }: RestoreStockDialogProps) {
+  const [quantityError, setQuantityError] = useState<string | null>(null);
 
-  function handleConfirm() {
-    const n = parseInt(quantityText, 10);
-    const parsed = restoreStockFormSchema.safeParse({ quantity: isNaN(n) ? undefined : n });
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const raw = Number((new FormData(form).get("quantity") as string | null) ?? "");
+    const parsed = restoreStockFormSchema.safeParse({ quantity: raw });
     if (!parsed.success) {
-      setQuantityError(parsed.error.flatten().fieldErrors["quantity"]?.[0]);
+      setQuantityError(parsed.error.issues[0]?.message ?? "올바른 수량을 입력해 주세요.");
       return;
     }
-    setQuantityError(undefined);
-    onConfirm(parsed.data.quantity);
+    setQuantityError(null);
+    await onConfirm(parsed.data.quantity);
   }
-
-  function handleClose() {
-    setQuantityText("");
-    setQuantityError(undefined);
-    onClose();
-  }
-
-  if (!isOpen) return null;
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-labelledby="restore-stock-dialog-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      aria-label="재고 보충"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
     >
-      <div className="bg-background border rounded-lg p-6 max-w-sm w-full mx-4 space-y-4">
-        <h2 id="restore-stock-dialog-title" className="text-lg font-semibold">
-          재고 보충
-        </h2>
-        <p className="text-sm text-muted-foreground">보충할 재고 수량을 입력해 주세요.</p>
-
-        {error !== null && (
-          <div role="alert" className="rounded-md border border-destructive p-3 text-sm text-destructive">
-            {error}
+      <div className="w-full max-w-sm rounded-lg bg-background p-6 shadow-lg">
+        <h2 className="mb-4 text-lg font-semibold">재고 보충</h2>
+        <form
+          onSubmit={(e) => {
+            void handleSubmit(e);
+          }}
+          className="space-y-4"
+          noValidate
+        >
+          <div className="space-y-1">
+            <label htmlFor="restore-quantity" className="text-sm font-medium">
+              보충 수량 <span aria-hidden="true">*</span>
+            </label>
+            <Input
+              id="restore-quantity"
+              name="quantity"
+              type="number"
+              min={1}
+              step={1}
+              placeholder="보충할 수량을 입력해 주세요."
+              aria-required="true"
+              aria-invalid={quantityError !== null}
+              aria-describedby={quantityError !== null ? "restore-quantity-error" : undefined}
+            />
+            {quantityError && (
+              <p id="restore-quantity-error" role="alert" className="text-xs text-destructive">
+                {quantityError}
+              </p>
+            )}
           </div>
-        )}
-
-        <div>
-          <label htmlFor="restore-quantity" className="block text-sm font-medium mb-1">
-            수량 <span aria-hidden="true" className="text-destructive">*</span>
-          </label>
-          <Input
-            id="restore-quantity"
-            type="number"
-            min={1}
-            value={quantityText}
-            onChange={(e) => {
-              setQuantityText(e.target.value);
-              setQuantityError(undefined);
-            }}
-            placeholder="10"
-            aria-required="true"
-            aria-describedby={quantityError !== undefined ? "restore-quantity-error" : undefined}
-            aria-invalid={quantityError !== undefined}
-          />
-          {quantityError !== undefined && (
-            <p id="restore-quantity-error" className="text-xs text-destructive mt-1" role="alert">
-              {quantityError}
-            </p>
-          )}
-        </div>
-
-        <div className="flex gap-2 justify-end">
-          <Button variant="outline" onClick={handleClose} disabled={isSubmitting} aria-label="취소">
-            취소
-          </Button>
-          <Button onClick={handleConfirm} disabled={isSubmitting} aria-label="재고 보충 확인">
-            {isSubmitting ? "처리 중..." : "보충"}
-          </Button>
-        </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              aria-label="재고 보충 취소"
+            >
+              취소
+            </Button>
+            <Button type="submit" disabled={isSubmitting} aria-label="재고 보충 확인">
+              {isSubmitting ? "처리 중..." : "보충"}
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   );
 }
 
-// ─── 수정 폼 ──────────────────────────────────────────────────────────────────
+// ─── EditForm ─────────────────────────────────────────────────────────────────
 
 interface EditFormProps {
   product: MyProduct;
-  isSubmitting: boolean;
-  error: string | null;
-  onSubmit: (patch: { name?: string; description?: string; price?: number }) => void;
-  onCancel: () => void;
+  onSaved: (updated: MyProduct) => void;
 }
 
-interface EditFieldErrors {
-  name?: string;
-  description?: string;
-  price?: string;
-}
+function EditForm({ product, onSaved }: EditFormProps) {
+  const { addToast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<
+    Partial<Record<"name" | "description" | "price" | "category" | "imageUrl", string>>
+  >({});
 
-function EditForm({ product, isSubmitting, error, onSubmit, onCancel }: EditFormProps) {
-  const [name, setName] = React.useState(product.name);
-  const [description, setDescription] = React.useState(product.description);
-  const [priceText, setPriceText] = React.useState(String(product.price));
-  const [fieldErrors, setFieldErrors] = React.useState<EditFieldErrors>({});
-
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const data = new FormData(e.currentTarget);
 
-    const priceNum = parseInt(priceText, 10);
-    const patch = {
-      name: name !== product.name ? name : undefined,
-      description: description !== product.description ? description : undefined,
-      price: !isNaN(priceNum) && priceNum !== product.price ? priceNum : undefined,
-    };
+    const nameVal = (data.get("name") as string | null) ?? "";
+    const descVal = (data.get("description") as string | null) ?? "";
+    const priceStr = (data.get("price") as string | null) ?? "";
+    const categoryVal = (data.get("category") as string | null) ?? "";
+    const imageUrlVal = (data.get("imageUrl") as string | null) ?? "";
 
-    const parsed = productUpdateFormSchema.safeParse(patch);
+    const raw: Record<string, unknown> = {};
+    if (nameVal !== "") raw["name"] = nameVal;
+    if (descVal !== "") raw["description"] = descVal;
+    if (priceStr !== "") raw["price"] = Number(priceStr);
+    if (categoryVal !== "") raw["category"] = categoryVal;
+    if (imageUrlVal !== "") raw["imageUrl"] = imageUrlVal;
+
+    const parsed = productUpdateFormSchema.safeParse(raw);
     if (!parsed.success) {
-      const fe = parsed.error.flatten().fieldErrors;
-      setFieldErrors({
-        name: fe["name"]?.[0],
-        description: fe["description"]?.[0],
-        price: fe["price"]?.[0],
-      });
+      const fieldErrors: Partial<
+        Record<"name" | "description" | "price" | "category" | "imageUrl", string>
+      > = {};
+      for (const issue of parsed.error.issues) {
+        const field = issue.path[0] as
+          | "name"
+          | "description"
+          | "price"
+          | "category"
+          | "imageUrl"
+          | undefined;
+        if (field) fieldErrors[field] = issue.message;
+      }
+      if (Object.keys(fieldErrors).length === 0) {
+        addToast({
+          title: "수정할 항목을 입력해 주세요.",
+          variant: "destructive",
+        });
+      }
+      setErrors(fieldErrors);
       return;
     }
 
-    setFieldErrors({});
-    onSubmit(parsed.data);
+    setErrors({});
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/portal/products/${product.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(parsed.data),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || res.statusText);
+      }
+      const updated = (await res.json()) as MyProduct;
+      onSaved(updated);
+      addToast({ title: "상품 정보가 수정되었습니다.", variant: "default" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.";
+      addToast({ title: "수정에 실패했습니다.", description: message, variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
     <form
-      onSubmit={handleSubmit}
-      noValidate
-      aria-label="상품 수정 폼"
+      onSubmit={(e) => {
+        void handleSubmit(e);
+      }}
       className="space-y-4"
+      noValidate
     >
-      {error !== null && (
-        <div role="alert" className="rounded-md border border-destructive p-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
-
-      <div>
-        <label htmlFor="edit-product-name" className="block text-sm font-medium mb-1">
+      <div className="space-y-1">
+        <label htmlFor="edit-name" className="text-sm font-medium">
           상품명
         </label>
         <Input
-          id="edit-product-name"
+          id="edit-name"
+          name="name"
           type="text"
-          value={name}
-          onChange={(e) => {
-            setName(e.target.value);
-            setFieldErrors((prev) => ({ ...prev, name: undefined }));
-          }}
-          aria-describedby={fieldErrors.name !== undefined ? "edit-name-error" : undefined}
-          aria-invalid={fieldErrors.name !== undefined}
+          defaultValue={product.name}
+          aria-invalid={errors.name !== undefined}
+          aria-describedby={errors.name !== undefined ? "edit-name-error" : undefined}
         />
-        {fieldErrors.name !== undefined && (
-          <p id="edit-name-error" className="text-xs text-destructive mt-1" role="alert">
-            {fieldErrors.name}
+        {errors.name && (
+          <p id="edit-name-error" role="alert" className="text-xs text-destructive">
+            {errors.name}
           </p>
         )}
       </div>
 
-      <div>
-        <label htmlFor="edit-product-description" className="block text-sm font-medium mb-1">
+      <div className="space-y-1">
+        <label htmlFor="edit-description" className="text-sm font-medium">
           상품 설명
         </label>
-        <textarea
-          id="edit-product-description"
-          value={description}
-          onChange={(e) => {
-            setDescription(e.target.value);
-            setFieldErrors((prev) => ({ ...prev, description: undefined }));
-          }}
-          rows={4}
-          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-          aria-describedby={fieldErrors.description !== undefined ? "edit-description-error" : undefined}
-          aria-invalid={fieldErrors.description !== undefined}
+        <Input
+          id="edit-description"
+          name="description"
+          type="text"
+          defaultValue={product.description}
+          aria-invalid={errors.description !== undefined}
+          aria-describedby={
+            errors.description !== undefined ? "edit-description-error" : undefined
+          }
         />
-        {fieldErrors.description !== undefined && (
-          <p id="edit-description-error" className="text-xs text-destructive mt-1" role="alert">
-            {fieldErrors.description}
+        {errors.description && (
+          <p id="edit-description-error" role="alert" className="text-xs text-destructive">
+            {errors.description}
           </p>
         )}
       </div>
 
-      <div>
-        <label htmlFor="edit-product-price" className="block text-sm font-medium mb-1">
+      <div className="space-y-1">
+        <label htmlFor="edit-price" className="text-sm font-medium">
           가격 (원)
         </label>
         <Input
-          id="edit-product-price"
+          id="edit-price"
+          name="price"
           type="number"
           min={1}
-          value={priceText}
-          onChange={(e) => {
-            setPriceText(e.target.value);
-            setFieldErrors((prev) => ({ ...prev, price: undefined }));
-          }}
-          aria-describedby={fieldErrors.price !== undefined ? "edit-price-error" : undefined}
-          aria-invalid={fieldErrors.price !== undefined}
+          step={1}
+          defaultValue={product.price}
+          aria-invalid={errors.price !== undefined}
+          aria-describedby={errors.price !== undefined ? "edit-price-error" : undefined}
         />
-        {fieldErrors.price !== undefined && (
-          <p id="edit-price-error" className="text-xs text-destructive mt-1" role="alert">
-            {fieldErrors.price}
+        {errors.price && (
+          <p id="edit-price-error" role="alert" className="text-xs text-destructive">
+            {errors.price}
           </p>
         )}
       </div>
 
-      <div className="flex gap-2 pt-2">
-        <Button type="submit" disabled={isSubmitting} aria-disabled={isSubmitting}>
-          {isSubmitting ? "저장 중..." : "저장"}
-        </Button>
-        <Button type="button" variant="outline" onClick={onCancel} aria-label="수정 취소">
-          취소
-        </Button>
+      <div className="space-y-1">
+        <label htmlFor="edit-category" className="text-sm font-medium">
+          카테고리
+        </label>
+        <select
+          id="edit-category"
+          name="category"
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          defaultValue={product.category}
+          aria-invalid={errors.category !== undefined}
+          aria-describedby={errors.category !== undefined ? "edit-category-error" : undefined}
+        >
+          <option value="">변경하지 않음</option>
+          {PRODUCT_CATEGORIES.map((cat) => (
+            <option key={cat} value={cat}>
+              {CATEGORY_LABELS[cat]}
+            </option>
+          ))}
+        </select>
+        {errors.category && (
+          <p id="edit-category-error" role="alert" className="text-xs text-destructive">
+            {errors.category}
+          </p>
+        )}
       </div>
+
+      <div className="space-y-1">
+        <label htmlFor="edit-image-url" className="text-sm font-medium">
+          이미지 URL
+        </label>
+        <Input
+          id="edit-image-url"
+          name="imageUrl"
+          type="url"
+          defaultValue={product.imageUrl}
+          aria-invalid={errors.imageUrl !== undefined}
+          aria-describedby={errors.imageUrl !== undefined ? "edit-image-url-error" : undefined}
+        />
+        {errors.imageUrl && (
+          <p id="edit-image-url-error" role="alert" className="text-xs text-destructive">
+            {errors.imageUrl}
+          </p>
+        )}
+      </div>
+
+      <Button type="submit" disabled={isSubmitting} aria-label="상품 정보 저장">
+        {isSubmitting ? "저장 중..." : "저장"}
+      </Button>
     </form>
   );
 }
 
-// ─── 상세 페이지 ──────────────────────────────────────────────────────────────
-
-type ViewMode = "detail" | "edit";
+// ─── ProductDetailPage ────────────────────────────────────────────────────────
 
 export default function ProductDetailPage() {
   const params = useParams<{ id: string }>();
-  const id = params.id;
   const router = useRouter();
   const { addToast } = useToast();
 
-  const [product, setProduct] = React.useState<MyProduct | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [product, setProduct] = useState<MyProduct | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isActioning, setIsActioning] = useState(false);
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
 
-  const [viewMode, setViewMode] = React.useState<ViewMode>("detail");
-  const [isUpdating, setIsUpdating] = React.useState(false);
-  const [updateError, setUpdateError] = React.useState<string | null>(null);
+  const productId = params.id;
 
-  const [isActing, setIsActing] = React.useState(false);
-  const [actionError, setActionError] = React.useState<string | null>(null);
-
-  const [showRestoreStock, setShowRestoreStock] = React.useState(false);
-  const [isRestoringStock, setIsRestoringStock] = React.useState(false);
-  const [restoreStockError, setRestoreStockError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    async function fetchProduct() {
-      try {
-        const res = await fetch(`/api/portal/products/${id}`);
-        if (!res.ok) {
-          const body = (await res.json()) as { message?: string };
-          setLoadError(body.message ?? "상품 정보를 불러오지 못했습니다.");
-          return;
-        }
-        const data = (await res.json()) as MyProduct;
-        setProduct(data);
-      } catch {
-        setLoadError("네트워크 오류가 발생했습니다.");
-      } finally {
-        setLoading(false);
-      }
-    }
-    void fetchProduct();
-  }, [id]);
-
-  async function handleUpdate(patch: { name?: string; description?: string; price?: number }) {
-    setIsUpdating(true);
-    setUpdateError(null);
-
+  const loadProduct = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
     try {
-      const res = await fetch(`/api/portal/products/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patch),
-      });
-
+      const res = await fetch(`/api/portal/products/${productId}`);
       if (!res.ok) {
-        const body = (await res.json()) as { message?: string };
-        setUpdateError(body.message ?? "수정 중 오류가 발생했습니다.");
-        return;
+        const text = await res.text();
+        throw new Error(text || res.statusText);
       }
-
-      const updated = (await res.json()) as MyProduct;
-      setProduct(updated);
-      setViewMode("detail");
-      addToast({ title: "상품 정보가 수정됐습니다.", variant: "default" });
-    } catch {
-      setUpdateError("네트워크 오류가 발생했습니다.");
+      const data = (await res.json()) as MyProduct;
+      setProduct(data);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : "상품 정보를 불러올 수 없습니다.");
     } finally {
-      setIsUpdating(false);
+      setIsLoading(false);
     }
-  }
+  }, [productId]);
+
+  useEffect(() => {
+    void loadProduct();
+  }, [loadProduct]);
 
   async function handleActivate() {
-    setIsActing(true);
-    setActionError(null);
-
+    setIsActioning(true);
     try {
-      const res = await fetch(`/api/portal/products/${id}/activate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-
+      const res = await fetch(`/api/portal/products/${productId}/activate`, { method: "POST" });
       if (!res.ok) {
-        const body = (await res.json()) as { message?: string };
-        setActionError(body.message ?? "활성화 중 오류가 발생했습니다.");
-        return;
+        const text = await res.text();
+        throw new Error(text || res.statusText);
       }
-
       const updated = (await res.json()) as MyProduct;
       setProduct(updated);
-      addToast({ title: "상품이 활성화됐습니다.", variant: "default" });
-    } catch {
-      setActionError("네트워크 오류가 발생했습니다.");
+      addToast({ title: "상품이 활성화되었습니다.", variant: "default" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.";
+      addToast({ title: "활성화에 실패했습니다.", description: message, variant: "destructive" });
     } finally {
-      setIsActing(false);
+      setIsActioning(false);
     }
   }
 
   async function handleDeactivate() {
-    setIsActing(true);
-    setActionError(null);
-
+    setIsActioning(true);
     try {
-      const res = await fetch(`/api/portal/products/${id}/deactivate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-
+      const res = await fetch(`/api/portal/products/${productId}/deactivate`, { method: "POST" });
       if (!res.ok) {
-        const body = (await res.json()) as { message?: string };
-        setActionError(body.message ?? "비활성화 중 오류가 발생했습니다.");
-        return;
+        const text = await res.text();
+        throw new Error(text || res.statusText);
       }
-
       const updated = (await res.json()) as MyProduct;
       setProduct(updated);
-      addToast({ title: "상품이 비활성화됐습니다.", variant: "default" });
-    } catch {
-      setActionError("네트워크 오류가 발생했습니다.");
+      addToast({ title: "상품이 비활성화되었습니다.", variant: "default" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.";
+      addToast({
+        title: "비활성화에 실패했습니다.",
+        description: message,
+        variant: "destructive",
+      });
     } finally {
-      setIsActing(false);
+      setIsActioning(false);
     }
   }
 
   async function handleRestoreStock(quantity: number) {
-    setIsRestoringStock(true);
-    setRestoreStockError(null);
-
+    setIsRestoring(true);
     try {
-      const res = await fetch(`/api/portal/products/${id}/stock/restore`, {
+      const res = await fetch(`/api/portal/products/${productId}/stock/restore`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ quantity }),
       });
-
       if (!res.ok) {
-        const body = (await res.json()) as { message?: string };
-        setRestoreStockError(body.message ?? "재고 보충 중 오류가 발생했습니다.");
-        return;
+        const text = await res.text();
+        throw new Error(text || res.statusText);
       }
-
       const updated = (await res.json()) as MyProduct;
       setProduct(updated);
-      setShowRestoreStock(false);
-      addToast({ title: `재고가 ${quantity}개 보충됐습니다.`, variant: "default" });
-    } catch {
-      setRestoreStockError("네트워크 오류가 발생했습니다.");
+      setShowRestoreDialog(false);
+      addToast({ title: "재고가 보충되었습니다.", variant: "default" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.";
+      addToast({
+        title: "재고 보충에 실패했습니다.",
+        description: message,
+        variant: "destructive",
+      });
     } finally {
-      setIsRestoringStock(false);
+      setIsRestoring(false);
     }
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <main className="max-w-2xl mx-auto px-4 py-8">
-        <p className="text-sm text-muted-foreground" aria-live="polite" aria-busy="true">
-          불러오는 중...
-        </p>
+      <main className="p-6">
+        <p aria-live="polite">상품 정보를 불러오는 중...</p>
       </main>
     );
   }
 
   if (loadError ?? !product) {
     return (
-      <main className="max-w-2xl mx-auto px-4 py-8 space-y-4">
-        <div role="alert" className="rounded-md border border-destructive p-4 text-sm text-destructive">
-          {loadError ?? "상품 정보를 찾을 수 없습니다."}
-        </div>
-        <Button variant="outline" onClick={() => router.push("/portal/products")} aria-label="목록으로 돌아가기">
-          목록으로
+      <main className="p-6">
+        <p role="alert" className="text-destructive">
+          {loadError ?? "상품 정보를 불러올 수 없습니다."}
+        </p>
+        <Button
+          variant="outline"
+          onClick={() => {
+            router.back();
+          }}
+          className="mt-4"
+          aria-label="이전 페이지로 돌아가기"
+        >
+          돌아가기
         </Button>
       </main>
     );
   }
 
-  const canActivate = product.status === "INACTIVE";
-  const canDeactivate = product.status === "ACTIVE";
-
   return (
     <>
-      <RestoreStockDialog
-        isOpen={showRestoreStock}
-        isSubmitting={isRestoringStock}
-        error={restoreStockError}
-        onConfirm={(qty) => { void handleRestoreStock(qty); }}
-        onClose={() => {
-          setShowRestoreStock(false);
-          setRestoreStockError(null);
-        }}
-      />
-
-      <main className="max-w-2xl mx-auto px-4 py-8 space-y-6">
-        <div>
-          <a
-            href="/portal/products"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="내 상품 목록으로 돌아가기"
+      <main className="p-6">
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-2xl font-bold">{product.name}</h1>
+          <Button
+            variant="outline"
+            onClick={() => {
+              router.push("/portal/products");
+            }}
+            aria-label="상품 목록으로 이동"
           >
-            ← 내 상품 목록
-          </a>
+            목록
+          </Button>
         </div>
 
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-bold tracking-tight">{product.name}</h1>
-            <Badge variant={STATUS_BADGE_VARIANT[product.status] ?? "secondary"}>
-              {STATUS_LABELS[product.status] ?? product.status}
+        <section aria-label="상품 기본 정보" className="mb-8 space-y-3">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-muted-foreground">상태</span>
+            <Badge variant={product.status === "ACTIVE" ? "default" : "outline"}>
+              {product.status === "ACTIVE" ? "활성" : "비활성"}
             </Badge>
           </div>
-
-          {viewMode === "detail" && (
-            <div className="flex gap-2 flex-wrap justify-end">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setViewMode("edit")}
-                aria-label={`${product.name} 수정`}
-              >
-                수정
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowRestoreStock(true)}
-                aria-label="재고 보충"
-              >
-                재고 보충
-              </Button>
-              {canActivate && (
-                <Button
-                  size="sm"
-                  onClick={() => { void handleActivate(); }}
-                  disabled={isActing}
-                  aria-disabled={isActing}
-                  aria-label="상품 활성화"
-                >
-                  {isActing ? "처리 중..." : "활성화"}
-                </Button>
-              )}
-              {canDeactivate && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => { void handleDeactivate(); }}
-                  disabled={isActing}
-                  aria-disabled={isActing}
-                  aria-label="상품 비활성화"
-                >
-                  {isActing ? "처리 중..." : "비활성화"}
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {actionError !== null && (
-          <div role="alert" className="rounded-md border border-destructive p-3 text-sm text-destructive">
-            {actionError}
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-muted-foreground">카테고리</span>
+            <span>{CATEGORY_LABELS[product.category]}</span>
           </div>
-        )}
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-muted-foreground">가격</span>
+            <span>{product.price.toLocaleString("ko-KR")}원</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-muted-foreground">재고</span>
+            <span>{product.stockQuantity.toLocaleString("ko-KR")}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-muted-foreground">설명</span>
+            <span>{product.description}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-muted-foreground">이미지 URL</span>
+            <a
+              href={product.imageUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm text-blue-600 underline break-all"
+              aria-label={`상품 이미지 보기: ${product.imageUrl}`}
+            >
+              {product.imageUrl}
+            </a>
+          </div>
+        </section>
 
-        {viewMode === "detail" ? (
-          <section aria-label="상품 상세 정보" className="rounded-md border p-6 space-y-4">
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
-              <div>
-                <dt className="font-medium text-muted-foreground">가격</dt>
-                <dd className="mt-1">{product.price.toLocaleString("ko-KR")}원</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-muted-foreground">재고 수량</dt>
-                <dd className="mt-1">{product.stockQuantity.toLocaleString("ko-KR")}개</dd>
-              </div>
-              <div className="col-span-2">
-                <dt className="font-medium text-muted-foreground">설명</dt>
-                <dd className="mt-1 whitespace-pre-wrap">{product.description}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-muted-foreground">등록일</dt>
-                <dd className="mt-1">{new Date(product.createdAt).toLocaleDateString("ko-KR")}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-muted-foreground">최종 수정일</dt>
-                <dd className="mt-1">{new Date(product.updatedAt).toLocaleDateString("ko-KR")}</dd>
-              </div>
-            </dl>
-          </section>
-        ) : (
-          <section aria-label="상품 수정">
-            <EditForm
-              product={product}
-              isSubmitting={isUpdating}
-              error={updateError}
-              onSubmit={(patch) => { void handleUpdate(patch); }}
-              onCancel={() => {
-                setViewMode("detail");
-                setUpdateError(null);
+        <section aria-label="상품 관리 액션" className="mb-8 flex flex-wrap gap-2">
+          {product.status === "INACTIVE" ? (
+            <Button
+              onClick={() => {
+                void handleActivate();
               }}
-            />
-          </section>
-        )}
+              disabled={isActioning}
+              aria-label="상품 활성화"
+            >
+              {isActioning ? "처리 중..." : "활성화"}
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={() => {
+                void handleDeactivate();
+              }}
+              disabled={isActioning}
+              aria-label="상품 비활성화"
+            >
+              {isActioning ? "처리 중..." : "비활성화"}
+            </Button>
+          )}
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setShowRestoreDialog(true);
+            }}
+            aria-label="재고 보충 다이얼로그 열기"
+          >
+            재고 보충
+          </Button>
+        </section>
+
+        <section aria-label="상품 정보 수정" className="max-w-lg">
+          <h2 className="mb-4 text-lg font-semibold">정보 수정</h2>
+          <EditForm
+            product={product}
+            onSaved={(updated) => {
+              setProduct(updated);
+            }}
+          />
+        </section>
       </main>
+
+      {showRestoreDialog && (
+        <RestoreStockDialog
+          onConfirm={handleRestoreStock}
+          onClose={() => {
+            setShowRestoreDialog(false);
+          }}
+          isSubmitting={isRestoring}
+        />
+      )}
     </>
   );
 }

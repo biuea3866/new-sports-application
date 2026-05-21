@@ -51,8 +51,10 @@ describe("Portal Products Route Handler", () => {
         method: "POST",
         body: JSON.stringify({
           name: "스포츠 양말",
+          category: "ACCESSORY",
           description: "고품질 스포츠 양말",
           price: 9900,
+          imageUrl: "https://cdn.example.com/sock.png",
         }),
         headers: { "Content-Type": "application/json" },
       });

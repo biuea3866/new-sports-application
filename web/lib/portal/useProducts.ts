@@ -1,7 +1,3 @@
-/**
- * useProducts — 내 상품 목록 조회 훅
- * BFF 엔드포인트 /api/portal/products 만 호출한다.
- */
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -19,7 +15,8 @@ interface UseProductsResult {
   refetch: () => void;
 }
 
-export function useProducts({ page = 0, size = 10 }: UseProductsParams = {}): UseProductsResult {
+export function useProducts(params: UseProductsParams = {}): UseProductsResult {
+  const { page = 0, size = 20 } = params;
   const [data, setData] = useState<Page<MyProduct> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,40 +28,30 @@ export function useProducts({ page = 0, size = 10 }: UseProductsParams = {}): Us
 
   useEffect(() => {
     let cancelled = false;
+    setIsLoading(true);
+    setError(null);
 
-    async function load() {
-      setIsLoading(true);
-      setError(null);
-
-      const params = new URLSearchParams();
-      params.set("page", String(page));
-      params.set("size", String(size));
-
-      try {
-        const res = await fetch(`/api/portal/products?${params.toString()}`);
+    const url = `/api/portal/products?page=${page}&size=${size}`;
+    fetch(url)
+      .then(async (res) => {
         if (!res.ok) {
-          const body = (await res.json()) as { message?: string };
-          if (!cancelled) {
-            setError(body.message ?? "상품 목록을 불러오지 못했습니다.");
-          }
-          return;
+          const text = await res.text();
+          throw new Error(text || res.statusText);
         }
-        const json = (await res.json()) as Page<MyProduct>;
+        return res.json() as Promise<Page<MyProduct>>;
+      })
+      .then((json) => {
         if (!cancelled) {
           setData(json);
-        }
-      } catch {
-        if (!cancelled) {
-          setError("네트워크 오류가 발생했습니다.");
-        }
-      } finally {
-        if (!cancelled) {
           setIsLoading(false);
         }
-      }
-    }
-
-    void load();
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
+          setIsLoading(false);
+        }
+      });
 
     return () => {
       cancelled = true;

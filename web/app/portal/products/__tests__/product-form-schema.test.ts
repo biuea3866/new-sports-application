@@ -1,100 +1,135 @@
-/**
- * 상품 폼 스키마 단위 테스트
- * [U-01] productFormSchema — quantity > 0 검증
- * [U-02] productFormSchema — price > 0 검증
- * [U-03] restoreStockFormSchema — quantity > 0 (양수) 검증
- * [U-04] restoreStockFormSchema — quantity <= 0 거부
- */
 import { describe, it, expect } from "vitest";
 import {
   productFormSchema,
+  productUpdateFormSchema,
   restoreStockFormSchema,
 } from "../product-form-schema";
 
-describe("[U-01/U-02] productFormSchema", () => {
-  it("[U-01] name, description, price가 유효하면 parse에 성공한다", () => {
-    const result = productFormSchema.safeParse({
-      name: "스포츠 양말",
-      description: "고품질 스포츠 양말",
-      price: 9900,
+const VALID_PRODUCT = {
+  name: "스포츠 음료",
+  description: "이온 음료입니다.",
+  price: 1500,
+  category: "EQUIPMENT" as const,
+  imageUrl: "https://example.com/image.jpg",
+};
+
+describe("productFormSchema", () => {
+  // [U-01] 정상 입력 통과
+  it("[U-01] 유효한 name·description·price·category·imageUrl은 파싱에 성공한다", () => {
+    const result = productFormSchema.safeParse(VALID_PRODUCT);
+    expect(result.success).toBe(true);
+  });
+
+  // [U-02] 필수 필드 누락 시 오류
+  it("[U-02] name이 빈 문자열이면 유효성 검사에 실패한다", () => {
+    const result = productFormSchema.safeParse({ ...VALID_PRODUCT, name: "" });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path[0] === "name")).toBe(true);
+    }
+  });
+
+  it("[U-02] description이 빈 문자열이면 유효성 검사에 실패한다", () => {
+    const result = productFormSchema.safeParse({ ...VALID_PRODUCT, description: "" });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path[0] === "description")).toBe(true);
+    }
+  });
+
+  it("[U-02] price가 0이면 유효성 검사에 실패한다", () => {
+    const result = productFormSchema.safeParse({ ...VALID_PRODUCT, price: 0 });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path[0] === "price")).toBe(true);
+    }
+  });
+
+  it("[U-02] price가 음수이면 유효성 검사에 실패한다", () => {
+    const result = productFormSchema.safeParse({ ...VALID_PRODUCT, price: -100 });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path[0] === "price")).toBe(true);
+    }
+  });
+
+  it("[U-02] category가 빈 문자열이면 유효성 검사에 실패한다", () => {
+    const result = productFormSchema.safeParse({ ...VALID_PRODUCT, category: "" });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path[0] === "category")).toBe(true);
+    }
+  });
+
+  it("[U-02] imageUrl이 유효하지 않은 URL이면 유효성 검사에 실패한다", () => {
+    const result = productFormSchema.safeParse({ ...VALID_PRODUCT, imageUrl: "not-a-url" });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path[0] === "imageUrl")).toBe(true);
+    }
+  });
+
+  it("[U-02] imageUrl이 빈 문자열이면 유효성 검사에 실패한다", () => {
+    const result = productFormSchema.safeParse({ ...VALID_PRODUCT, imageUrl: "" });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path[0] === "imageUrl")).toBe(true);
+    }
+  });
+});
+
+describe("productUpdateFormSchema", () => {
+  it("[U-01] 하나 이상의 필드를 제공하면 파싱에 성공한다", () => {
+    const result = productUpdateFormSchema.safeParse({ name: "새 상품명" });
+    expect(result.success).toBe(true);
+  });
+
+  it("[U-01] category만 변경해도 파싱에 성공한다", () => {
+    const result = productUpdateFormSchema.safeParse({ category: "APPAREL" });
+    expect(result.success).toBe(true);
+  });
+
+  it("[U-01] imageUrl만 변경해도 파싱에 성공한다", () => {
+    const result = productUpdateFormSchema.safeParse({
+      imageUrl: "https://example.com/new.jpg",
     });
     expect(result.success).toBe(true);
   });
 
-  it("[U-02] price = 0이면 검증에 실패한다 (positive 조건)", () => {
-    const result = productFormSchema.safeParse({
-      name: "스포츠 양말",
-      description: "고품질 스포츠 양말",
-      price: 0,
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("price < 0이면 검증에 실패한다", () => {
-    const result = productFormSchema.safeParse({
-      name: "스포츠 양말",
-      description: "고품질 스포츠 양말",
-      price: -100,
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("name이 빈 문자열이면 검증에 실패한다", () => {
-    const result = productFormSchema.safeParse({
-      name: "",
-      description: "설명",
-      price: 1000,
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("description이 빈 문자열이면 검증에 실패한다", () => {
-    const result = productFormSchema.safeParse({
-      name: "상품명",
-      description: "",
-      price: 1000,
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("price가 undefined이면 검증에 실패한다", () => {
-    const result = productFormSchema.safeParse({
-      name: "상품명",
-      description: "설명",
-      price: undefined,
-    });
+  it("[U-02] 모든 필드가 undefined이면 유효성 검사에 실패한다", () => {
+    const result = productUpdateFormSchema.safeParse({});
     expect(result.success).toBe(false);
   });
 });
 
-describe("[U-03/U-04] restoreStockFormSchema", () => {
-  it("[U-03] quantity = 1이면 검증에 성공한다", () => {
-    const result = restoreStockFormSchema.safeParse({ quantity: 1 });
+describe("restoreStockFormSchema", () => {
+  // [U-03] 재고 수량 양수 정수
+  it("[U-03] quantity가 양수 정수이면 파싱에 성공한다", () => {
+    const result = restoreStockFormSchema.safeParse({ quantity: 10 });
     expect(result.success).toBe(true);
   });
 
-  it("[U-03] quantity = 100이면 검증에 성공한다", () => {
-    const result = restoreStockFormSchema.safeParse({ quantity: 100 });
-    expect(result.success).toBe(true);
-  });
-
-  it("[U-04] quantity = 0이면 검증에 실패한다 (positive 조건)", () => {
+  it("[U-04] quantity가 0이면 유효성 검사에 실패한다", () => {
     const result = restoreStockFormSchema.safeParse({ quantity: 0 });
     expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path[0] === "quantity")).toBe(true);
+    }
   });
 
-  it("[U-04] quantity = -1이면 검증에 실패한다", () => {
-    const result = restoreStockFormSchema.safeParse({ quantity: -1 });
+  it("[U-04] quantity가 음수이면 유효성 검사에 실패한다", () => {
+    const result = restoreStockFormSchema.safeParse({ quantity: -5 });
     expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path[0] === "quantity")).toBe(true);
+    }
   });
 
-  it("[U-04] quantity가 undefined이면 검증에 실패한다", () => {
-    const result = restoreStockFormSchema.safeParse({ quantity: undefined });
-    expect(result.success).toBe(false);
-  });
-
-  it("[U-04] quantity가 소수이면 검증에 실패한다 (int 조건)", () => {
+  it("[U-04] quantity가 소수이면 유효성 검사에 실패한다", () => {
     const result = restoreStockFormSchema.safeParse({ quantity: 1.5 });
     expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path[0] === "quantity")).toBe(true);
+    }
   });
 });

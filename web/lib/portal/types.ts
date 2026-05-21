@@ -108,12 +108,15 @@ export interface CreateEventInput {
 // ─── Product ─────────────────────────────────────────────────────────────────
 
 export type ProductStatus = "ACTIVE" | "INACTIVE";
+export type ProductCategory = "EQUIPMENT" | "APPAREL" | "FOOTWEAR" | "ACCESSORY";
 
 export interface MyProduct {
   id: number;
   name: string;
   description: string;
   price: number;
+  category: ProductCategory;
+  imageUrl: string;
   status: ProductStatus;
   stockQuantity: number;
   ownerId: number;
@@ -125,12 +128,16 @@ export interface CreateProductInput {
   name: string;
   description: string;
   price: number;
+  category: ProductCategory;
+  imageUrl: string;
 }
 
 export interface UpdateProductInput {
   name?: string;
   description?: string;
   price?: number;
+  category?: ProductCategory;
+  imageUrl?: string;
 }
 
 export interface RestoreStockInput {
