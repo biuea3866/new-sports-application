@@ -127,8 +127,10 @@ describe("[U-01] zod 스키마 응답 형태 검증", () => {
       const data = {
         id: 1,
         name: "축구공",
+        category: "EQUIPMENT",
         description: "프리미엄 축구공",
         price: 50000,
+        imageUrl: "https://cdn.example.com/products/ball.png",
         status: "ACTIVE",
         stockQuantity: 10,
         ownerId: 1,
@@ -226,13 +228,25 @@ describe("입력 스키마 검증", () => {
   });
 
   describe("CreateProductInputSchema", () => {
-    it("price 0은 통과한다 (비음수)", () => {
-      const input = { name: "상품", description: "설명", price: 0 };
-      expect(CreateProductInputSchema.safeParse(input).success).toBe(true);
+    it("price 0은 실패한다 (positive 검증)", () => {
+      const input = {
+        name: "상품",
+        category: "EQUIPMENT",
+        description: "설명",
+        price: 0,
+        imageUrl: "https://cdn.example.com/x.png",
+      };
+      expect(CreateProductInputSchema.safeParse(input).success).toBe(false);
     });
 
     it("price가 음수이면 실패한다", () => {
-      const input = { name: "상품", description: "설명", price: -1 };
+      const input = {
+        name: "상품",
+        category: "EQUIPMENT",
+        description: "설명",
+        price: -1,
+        imageUrl: "https://cdn.example.com/x.png",
+      };
       expect(CreateProductInputSchema.safeParse(input).success).toBe(false);
     });
   });
