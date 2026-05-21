@@ -16,7 +16,7 @@ class NotificationDomainService(
     private val channelGateways: List<NotificationChannelGateway>,
     private val templateRenderer: TemplateRenderer,
 ) {
-    @Transactional(noRollbackFor = [Exception::class])
+    @Transactional
     fun send(
         userId: Long,
         channel: NotificationChannel,
@@ -24,7 +24,7 @@ class NotificationDomainService(
         payload: NotificationPayload?,
     ): Notification = dispatchNotification(Notification.queue(userId, channel, templateId, payload))
 
-    @Transactional(noRollbackFor = [Exception::class])
+    @Transactional(noRollbackFor = [DataIntegrityViolationException::class])
     fun enqueueOrSkip(
         eventId: String,
         userId: Long,
@@ -52,14 +52,14 @@ class NotificationDomainService(
     private fun dispatchNotification(queued: Notification): Notification {
         val notification = notificationRepository.save(queued)
         val gateway = channelGateways.find { it.supportedChannel == notification.channel }
-            ?: return saveAsFailed(notification, UnsupportedChannelException(notification.channel))
+            ?: return markFailedAndSave(notification)
 
         val result = gateway.send(notification)
         return if (result.success) {
             notification.markSent()
             notificationRepository.save(notification)
         } else {
-            saveAsFailed(notification, RuntimeException(result.errorMessage))
+            markFailedAndSave(notification)
         }
     }
 
@@ -77,7 +77,7 @@ class NotificationDomainService(
         return notificationRepository.save(notification)
     }
 
-    @Transactional(noRollbackFor = [Exception::class])
+    @Transactional
     fun sendWithTemplate(
         userId: Long,
         channel: NotificationChannel,
@@ -94,9 +94,8 @@ class NotificationDomainService(
     fun countUnread(userId: Long): Long =
         notificationRepository.countUnreadByUserId(userId)
 
-    private fun saveAsFailed(notification: Notification, cause: Exception): Notification {
+    private fun markFailedAndSave(notification: Notification): Notification {
         notification.markFailed()
-        notificationRepository.save(notification)
-        throw cause
+        return notificationRepository.save(notification)
     }
 }

@@ -6,8 +6,6 @@ import com.sportsapp.domain.notification.NotificationDomainService
 import com.sportsapp.domain.notification.NotificationPayload
 import com.sportsapp.domain.notification.NotificationRepository
 import com.sportsapp.domain.notification.NotificationStatus
-import com.sportsapp.domain.notification.UnsupportedChannelException
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
@@ -49,21 +47,20 @@ class NotificationSendScenarioTest(
             val userId = 20L
 
             When("NotificationDomainService.send 를 EMAIL 채널로 호출하면") {
-                Then("[S-02] UnsupportedChannelException 이 발생하고 FAILED 상태로 저장된다") {
-                    shouldThrow<UnsupportedChannelException> {
-                        notificationDomainService.send(
-                            userId = userId,
-                            channel = NotificationChannel.EMAIL,
-                            templateId = "email-template",
-                            payload = null,
-                        )
-                    }
+                val result = notificationDomainService.send(
+                    userId = userId,
+                    channel = NotificationChannel.EMAIL,
+                    templateId = "email-template",
+                    payload = null,
+                )
 
-                    val failedNotifications = notificationRepository.findByUserIdAndStatus(
-                        userId,
-                        NotificationStatus.FAILED,
-                    )
-                    failedNotifications.any { it.channel == NotificationChannel.EMAIL } shouldBe true
+                Then("[S-02] throw 하지 않고 FAILED status 로 반환되며 DB 에도 FAILED 로 저장된다") {
+                    result.status shouldBe NotificationStatus.FAILED
+                    result.channel shouldBe NotificationChannel.EMAIL
+
+                    val stored = notificationRepository.findById(result.id)
+                    stored.shouldNotBeNull()
+                    stored.status shouldBe NotificationStatus.FAILED
                 }
             }
         }
