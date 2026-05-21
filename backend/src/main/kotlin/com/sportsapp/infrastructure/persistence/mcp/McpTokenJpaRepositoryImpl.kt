@@ -12,8 +12,7 @@ class McpTokenJpaRepositoryImpl : McpTokenQueryDslRepository {
     @PersistenceContext
     private lateinit var entityManager: EntityManager
 
-    private val queryFactory: JPAQueryFactory
-        get() = JPAQueryFactory(entityManager)
+    private val queryFactory: JPAQueryFactory by lazy { JPAQueryFactory(entityManager) }
 
     override fun findActiveByUserId(userId: Long): List<McpToken> {
         return queryFactory.selectFrom(mcpToken)

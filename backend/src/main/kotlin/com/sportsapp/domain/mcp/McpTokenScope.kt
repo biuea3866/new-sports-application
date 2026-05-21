@@ -12,6 +12,7 @@ import jakarta.persistence.Table
  * MCP 토큰-Permission 매핑 Entity (1급 Entity).
  * 매핑 테이블 독립 Entity 원칙에 따라 자체 PK + audit 6 컬럼 보유.
  * token_id + permission_id FK만 보유하며, 연관 객체 직접 참조 금지.
+ * `createdBy` = 부여자 (`JpaAuditingBase`의 createdBy가 grant 시각·부여자 audit을 커버)
  */
 @Entity
 @Table(name = "mcp_token_scopes")

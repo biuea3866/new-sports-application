@@ -8,9 +8,12 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import jakarta.persistence.EntityManagerFactory
+import jakarta.persistence.OptimisticLockException
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.orm.ObjectOptimisticLockingFailureException
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
 import java.time.ZonedDateTime
@@ -19,6 +22,7 @@ class McpTokenRepositoryImplTest(
     @Autowired private val mcpTokenJpaRepository: McpTokenJpaRepository,
     @Autowired private val jdbcTemplate: JdbcTemplate,
     @Autowired private val transactionManager: PlatformTransactionManager,
+    @Autowired private val entityManagerFactory: EntityManagerFactory,
 ) : BaseJpaIntegrationTest() {
 
     private fun createToken(
@@ -75,6 +79,20 @@ class McpTokenRepositoryImplTest(
             }
         }
 
+        Given("[R-02b] softDelete 후 findByIdAndDeletedAtIsNull 조회") {
+            val token = createToken(tokenHash = "hash-r02b-findbyid")
+            token.softDelete(userId = null)
+            mcpTokenJpaRepository.save(token)
+
+            When("softDelete 후 findByIdAndDeletedAtIsNull로 조회하면") {
+                val found = mcpTokenJpaRepository.findByIdAndDeletedAtIsNull(token.id)
+
+                Then("[R-02b] null이 반환된다") {
+                    found.shouldBeNull()
+                }
+            }
+        }
+
         Given("[R-03] findActiveByUserId — 활성 토큰만 반환") {
             val userId = 99L
             createToken(userId = userId, tokenHash = "hash-r03-active")
@@ -106,22 +124,93 @@ class McpTokenRepositoryImplTest(
             }
         }
 
-        Given("[R-05] 동일 McpToken을 두 번 softDelete 시도 — 상태 충돌 검증") {
+        Given("[R-05] 두 트랜잭션이 같은 McpToken row를 동시 수정") {
             val transactionTemplate = TransactionTemplate(transactionManager)
 
             val tokenId = transactionTemplate.execute {
-                createToken(tokenHash = "hash-r05-state-conflict").id
+                createToken(tokenHash = "hash-r05-optimistic-lock").id
             }
             tokenId.shouldNotBeNull()
 
-            Then("[R-05] 첫 번째 softDelete 성공 후 두 번째 softDelete는 IllegalStateException을 발생시킨다") {
-                shouldThrow<IllegalStateException> {
-                    val token = mcpTokenJpaRepository.findById(tokenId).get()
-                    token.softDelete(userId = null)
-                    mcpTokenJpaRepository.save(token)
+            Then("[R-05] 후행 커밋이 OptimisticLockException을 발생시킨다") {
+                val entityManager1 = entityManagerFactory.createEntityManager()
+                val entityManager2 = entityManagerFactory.createEntityManager()
 
-                    val alreadyDeleted = mcpTokenJpaRepository.findById(tokenId).get()
-                    alreadyDeleted.softDelete(userId = null)
+                try {
+                    entityManager1.transaction.begin()
+                    entityManager2.transaction.begin()
+
+                    val token1 = entityManager1.find(McpToken::class.java, tokenId)
+                    val token2 = entityManager2.find(McpToken::class.java, tokenId)
+
+                    token1.suspend()
+                    entityManager1.flush()
+                    entityManager1.transaction.commit()
+
+                    token2.suspend()
+
+                    shouldThrow<Exception> {
+                        entityManager2.flush()
+                        entityManager2.transaction.commit()
+                    }.also { exception ->
+                        val isOptimisticLock = exception is OptimisticLockException ||
+                            exception is ObjectOptimisticLockingFailureException ||
+                            exception.cause is OptimisticLockException
+                        isOptimisticLock shouldBe true
+                    }
+                } finally {
+                    if (entityManager1.transaction.isActive) entityManager1.transaction.rollback()
+                    if (entityManager2.transaction.isActive) entityManager2.transaction.rollback()
+                    entityManager1.close()
+                    entityManager2.close()
+                }
+            }
+        }
+
+        Given("[S-01] McpToken 저장 → suspend → reactivate 상태 전이 E2E") {
+            val token = createToken(tokenHash = "hash-s01-state-transition")
+
+            When("suspend() 후 저장하면") {
+                token.suspend()
+                val suspended = mcpTokenJpaRepository.save(token)
+
+                Then("[S-01] DB 상태가 SUSPENDED로 반영된다") {
+                    val found = mcpTokenJpaRepository.findById(suspended.id).get()
+                    found.status shouldBe McpTokenStatus.SUSPENDED
+                }
+
+                When("reactivate() 후 저장하면") {
+                    suspended.reactivate()
+                    val reactivated = mcpTokenJpaRepository.save(suspended)
+
+                    Then("[S-01] DB 상태가 ACTIVE로 복원된다") {
+                        val found = mcpTokenJpaRepository.findById(reactivated.id).get()
+                        found.status shouldBe McpTokenStatus.ACTIVE
+                    }
+                }
+            }
+        }
+
+        Given("[S-02] expiresAt이 과거인 토큰을 findByTokenHash로 조회 후 requireNotExpired 호출") {
+            val expiredAt = ZonedDateTime.now().minusDays(1)
+            createToken(
+                tokenHash = "hash-s02-expired",
+                expiresAt = expiredAt,
+            )
+
+            When("findByTokenHashAndDeletedAtIsNull로 조회하면") {
+                val found = mcpTokenJpaRepository.findByTokenHashAndDeletedAtIsNull("hash-s02-expired")
+
+                Then("[S-02] status=ACTIVE인 Entity가 조회된다") {
+                    found.shouldNotBeNull()
+                    found.status shouldBe McpTokenStatus.ACTIVE
+                }
+
+                Then("[S-02] requireNotExpired() 호출 시 McpTokenExpiredException이 발생한다") {
+                    shouldThrow<com.sportsapp.domain.mcp.McpTokenExpiredException> {
+                        found.shouldNotBeNull()
+                        found.requireNotExpired()
+                    }
                 }
             }
         }

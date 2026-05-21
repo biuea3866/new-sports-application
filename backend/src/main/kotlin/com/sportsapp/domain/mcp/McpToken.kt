@@ -9,6 +9,7 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.time.ZonedDateTime
 
 @Entity
@@ -31,6 +32,11 @@ class McpToken(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     val id: Long = 0
+
+    @Version
+    @Column(name = "version", nullable = false)
+    var version: Long = 0
+        protected set
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
