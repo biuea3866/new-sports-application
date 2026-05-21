@@ -38,6 +38,41 @@ class EnqueueNotificationUseCaseTest : BehaviorSpec({
         }
     }
 
+    Given("[U-02] 동일 eventId 의 알림이 이미 존재하는 경우") {
+        val command = EnqueueNotificationCommand(
+            channel = NotificationChannel.IN_APP,
+            templateId = "payment-completed",
+            payload = NotificationPayload(mapOf("amount" to "10000")),
+            recipientUserId = 1L,
+            eventId = "payment-dup-456",
+        )
+        every {
+            notificationDomainService.enqueueOrSkip(
+                eventId = "payment-dup-456",
+                userId = 1L,
+                channel = NotificationChannel.IN_APP,
+                templateId = "payment-completed",
+                payload = NotificationPayload(mapOf("amount" to "10000")),
+            )
+        } returns null
+
+        When("execute 를 호출하면") {
+            useCase.execute(command)
+
+            Then("[U-02] DomainService 의 enqueueOrSkip 이 1회 호출되고 예외 없이 완료된다") {
+                verify(exactly = 1) {
+                    notificationDomainService.enqueueOrSkip(
+                        eventId = "payment-dup-456",
+                        userId = 1L,
+                        channel = NotificationChannel.IN_APP,
+                        templateId = "payment-completed",
+                        payload = any(),
+                    )
+                }
+            }
+        }
+    }
+
     Given("[U-03] gateway 발송 실패로 FAILED 상태 Notification 이 반환되는 경우") {
         val command = EnqueueNotificationCommand(
             channel = NotificationChannel.IN_APP,
@@ -66,41 +101,6 @@ class EnqueueNotificationUseCaseTest : BehaviorSpec({
                 verify(exactly = 1) {
                     notificationDomainService.enqueueOrSkip(
                         eventId = "payment-fail-789",
-                        userId = 1L,
-                        channel = NotificationChannel.IN_APP,
-                        templateId = "payment-completed",
-                        payload = any(),
-                    )
-                }
-            }
-        }
-    }
-
-    Given("[U-02] 동일 eventId 의 알림이 이미 존재하는 경우") {
-        val command = EnqueueNotificationCommand(
-            channel = NotificationChannel.IN_APP,
-            templateId = "payment-completed",
-            payload = NotificationPayload(mapOf("amount" to "10000")),
-            recipientUserId = 1L,
-            eventId = "payment-dup-456",
-        )
-        every {
-            notificationDomainService.enqueueOrSkip(
-                eventId = "payment-dup-456",
-                userId = 1L,
-                channel = NotificationChannel.IN_APP,
-                templateId = "payment-completed",
-                payload = NotificationPayload(mapOf("amount" to "10000")),
-            )
-        } returns null
-
-        When("execute 를 호출하면") {
-            useCase.execute(command)
-
-            Then("[U-02] DomainService 의 enqueueOrSkip 이 1회 호출되고 예외 없이 완료된다") {
-                verify(exactly = 1) {
-                    notificationDomainService.enqueueOrSkip(
-                        eventId = "payment-dup-456",
                         userId = 1L,
                         channel = NotificationChannel.IN_APP,
                         templateId = "payment-completed",

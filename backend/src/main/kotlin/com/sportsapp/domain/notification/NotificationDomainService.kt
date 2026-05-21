@@ -24,7 +24,7 @@ class NotificationDomainService(
         payload: NotificationPayload?,
     ): Notification = dispatchNotification(Notification.queue(userId, channel, templateId, payload))
 
-    @Transactional
+    @Transactional(noRollbackFor = [DataIntegrityViolationException::class])
     fun enqueueOrSkip(
         eventId: String,
         userId: Long,
