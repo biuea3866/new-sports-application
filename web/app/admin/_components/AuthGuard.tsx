@@ -15,6 +15,13 @@ type AuthGuardProps = {
  * FE-01b(MCP 토큰 UI), FE-02(감사 로그), FE-03(docs)는 본 가드를 통해 보호됩니다.
  */
 export function AuthGuard({ children, isAuthenticated }: AuthGuardProps): ReactNode {
+  // Phase 1 안전 가드: BFF 세션 통합(FE-01b) 전까지 production 환경에서는
+  // 어드민 라우트 자체를 차단해 미인증 노출을 막습니다.
+  // NEXT_PUBLIC_ADMIN_PREVIEW_ENABLED=true 인 비-prod 환경에서만 placeholder 통과.
+  const allowPreview = process.env["NEXT_PUBLIC_ADMIN_PREVIEW_ENABLED"] === "true";
+  if (process.env.NODE_ENV === "production" && !allowPreview) {
+    redirect("/login?redirect=/admin");
+  }
   if (!isAuthenticated) {
     redirect("/login?redirect=/admin");
   }

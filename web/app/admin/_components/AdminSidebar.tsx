@@ -27,6 +27,7 @@ const MCP_NAV: ReadonlyArray<NavItem> = [
 export function AdminSidebar(): JSX.Element {
   return (
     <aside
+      role="complementary"
       aria-label="어드민 사이드바"
       className="w-64 border-r border-gray-200 bg-white p-4"
     >
