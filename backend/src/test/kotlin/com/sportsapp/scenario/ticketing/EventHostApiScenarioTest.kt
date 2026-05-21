@@ -30,7 +30,7 @@ import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.util.UUID
 
-class B2bEventScenarioTest(
+class EventHostApiScenarioTest(
     @Autowired private val userDomainService: UserDomainService,
     @Autowired private val eventJpaRepository: EventJpaRepository,
     @Autowired private val seatJpaRepository: SeatJpaRepository,
@@ -99,7 +99,7 @@ class B2bEventScenarioTest(
 
             val createBody = buildCreateEventBody(10)
             val createResponse = restTemplate.exchange(
-                "${baseUrl()}/api/b2b/events",
+                "${baseUrl()}/api/event-host/events",
                 HttpMethod.POST,
                 HttpEntity(createBody, authHeaders(token)),
                 String::class.java,
@@ -129,9 +129,9 @@ class B2bEventScenarioTest(
                 )
             )
 
-            When("[S-01] GET /api/b2b/events/{id} 로 판매 현황을 조회하면") {
+            When("[S-01] GET /api/event-host/events/{id} 로 판매 현황을 조회하면") {
                 val getResponse = restTemplate.exchange(
-                    "${baseUrl()}/api/b2b/events/$eventId",
+                    "${baseUrl()}/api/event-host/events/$eventId",
                     HttpMethod.GET,
                     HttpEntity<Void>(authHeaders(token)),
                     String::class.java,
@@ -152,10 +152,10 @@ class B2bEventScenarioTest(
             userDomainService.assignRole(adminId = userId.id, userId = userId.id, roleName = "EVENT_HOST")
             val token = login(hostEmail, eventHostPassword)
 
-            When("[S-02] seats.size=501로 POST /api/b2b/events") {
+            When("[S-02] seats.size=501로 POST /api/event-host/events") {
                 val body = buildCreateEventBody(501)
                 val response = restTemplate.exchange(
-                    "${baseUrl()}/api/b2b/events",
+                    "${baseUrl()}/api/event-host/events",
                     HttpMethod.POST,
                     HttpEntity(body, authHeaders(token)),
                     String::class.java,
@@ -189,7 +189,7 @@ class B2bEventScenarioTest(
                 """.trimIndent()
 
                 val response = restTemplate.exchange(
-                    "${baseUrl()}/api/b2b/events",
+                    "${baseUrl()}/api/event-host/events",
                     HttpMethod.POST,
                     HttpEntity(body, authHeaders(token)),
                     String::class.java,
@@ -217,9 +217,9 @@ class B2bEventScenarioTest(
 
             val otherToken = login(otherOwnerEmail, anotherOwnerPassword)
 
-            When("[S-04] 다른 owner가 POST /api/b2b/events/{id}/open 호출") {
+            When("[S-04] 다른 owner가 POST /api/event-host/events/{id}/open 호출") {
                 val response = restTemplate.exchange(
-                    "${baseUrl()}/api/b2b/events/${ownerEvent.id}/open",
+                    "${baseUrl()}/api/event-host/events/${ownerEvent.id}/open",
                     HttpMethod.POST,
                     HttpEntity<Void>(authHeaders(otherToken)),
                     String::class.java,
@@ -230,14 +230,14 @@ class B2bEventScenarioTest(
                 }
             }
 
-            When("[S-04b] 다른 owner가 POST /api/b2b/events/{id}/close 호출") {
+            When("[S-04b] 다른 owner가 POST /api/event-host/events/{id}/close 호출") {
                 val openedEvent = eventJpaRepository.findByIdAndDeletedAtIsNull(ownerEvent.id)
                 requireNotNull(openedEvent)
                 openedEvent.openSales()
                 eventJpaRepository.save(openedEvent)
 
                 val response = restTemplate.exchange(
-                    "${baseUrl()}/api/b2b/events/${ownerEvent.id}/close",
+                    "${baseUrl()}/api/event-host/events/${ownerEvent.id}/close",
                     HttpMethod.POST,
                     HttpEntity<Void>(authHeaders(otherToken)),
                     String::class.java,
@@ -255,10 +255,10 @@ class B2bEventScenarioTest(
             userDomainService.assignRole(adminId = userId.id, userId = userId.id, roleName = "GOODS_SELLER")
             val token = login(sellerEmail, goodsSellerPassword)
 
-            When("[S-05] GOODS_SELLER가 POST /api/b2b/events") {
+            When("[S-05] GOODS_SELLER가 POST /api/event-host/events") {
                 val body = buildCreateEventBody(1)
                 val response = restTemplate.exchange(
-                    "${baseUrl()}/api/b2b/events",
+                    "${baseUrl()}/api/event-host/events",
                     HttpMethod.POST,
                     HttpEntity(body, authHeaders(token)),
                     String::class.java,

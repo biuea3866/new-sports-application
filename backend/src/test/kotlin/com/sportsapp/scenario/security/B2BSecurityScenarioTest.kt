@@ -51,9 +51,9 @@ class B2BSecurityScenarioTest(
 
     init {
         Given("인증되지 않은 익명 사용자") {
-            When("[S-01] GET /api/b2b/facilities 를 인증 없이 호출하면") {
+            When("[S-01] GET /api/facility-owner/facilities 를 인증 없이 호출하면") {
                 val response = restTemplate.exchange(
-                    "${baseUrl()}/api/b2b/facilities",
+                    "${baseUrl()}/api/facility-owner/facilities",
                     HttpMethod.GET,
                     HttpEntity<Void>(HttpHeaders()),
                     String::class.java,

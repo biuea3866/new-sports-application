@@ -32,7 +32,7 @@ import java.math.BigDecimal
 import java.time.ZonedDateTime
 
 @AutoConfigureMockMvc
-class B2bDashboardScenarioTest(
+class OperatorDashboardScenarioTest(
     @Autowired private val userDomainService: UserDomainService,
     @Autowired private val objectMapper: ObjectMapper,
     @Autowired private val productJpaRepository: ProductJpaRepository,
@@ -70,7 +70,7 @@ class B2bDashboardScenarioTest(
     }
 
     private fun getDashboard(accessToken: String) = restTemplate.exchange(
-        "${baseUrl()}/api/b2b/dashboard/summary",
+        "${baseUrl()}/api/operator/dashboard/summary",
         HttpMethod.GET,
         HttpEntity<Void>(HttpHeaders().apply { setBearerAuth(accessToken) }),
         String::class.java,
@@ -81,7 +81,7 @@ class B2bDashboardScenarioTest(
             val password = "DashUser123"
             userDomainService.register("dashboard-no-role@example.com", password)
 
-            When("[S-03] GET /api/b2b/dashboard/summary 호출 시") {
+            When("[S-03] GET /api/operator/dashboard/summary 호출 시") {
                 val accessToken = login("dashboard-no-role@example.com", password)
                 val response = getDashboard(accessToken)
 
@@ -141,7 +141,7 @@ class B2bDashboardScenarioTest(
 
             stringRedisTemplate.delete("b2b:b2bDashboardSummary::${user.id}")
 
-            When("[S-04] GET /api/b2b/dashboard/summary 첫 번째 호출") {
+            When("[S-04] GET /api/operator/dashboard/summary 첫 번째 호출") {
                 val accessToken = login("dashboard-multi-role@example.com", password)
                 val firstResponse = getDashboard(accessToken)
 
