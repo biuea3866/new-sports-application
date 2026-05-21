@@ -48,7 +48,7 @@ class NotificationApiScenarioTest(
                             .accept(MediaType.APPLICATION_JSON)
                     )
                         .andExpect(status().isOk)
-                        .andExpect(jsonPath("$.count").value(5))
+                        .andExpect(jsonPath("$.unreadCount").value(5))
 
                     val notification = notificationJpaRepository.findAll()
                         .first { it.userId == userId }
@@ -65,7 +65,7 @@ class NotificationApiScenarioTest(
                             .accept(MediaType.APPLICATION_JSON)
                     )
                         .andExpect(status().isOk)
-                        .andExpect(jsonPath("$.count").value(4))
+                        .andExpect(jsonPath("$.unreadCount").value(4))
                 }
             }
         }
