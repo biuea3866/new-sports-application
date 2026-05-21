@@ -8,6 +8,7 @@ import com.sportsapp.domain.ticketing.exception.SeatNotLockOwnerException
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.ZonedDateTime
@@ -23,6 +24,7 @@ class TicketingDomainService(
     private val ticketOrderCustomRepository: TicketOrderCustomRepository,
     private val seatLockStore: SeatLockStore,
     private val ticketOrderRepository: TicketOrderRepository,
+    private val ticketRepository: TicketRepository,
 ) {
     fun createEvent(
         title: String,
@@ -86,6 +88,7 @@ class TicketingDomainService(
         }
     }
 
+    @Transactional
     fun createPendingOrder(lockId: String, userId: Long): TicketOrder {
         val pairs = parseLockId(lockId)
         val eventId = pairs.first().first
@@ -96,6 +99,24 @@ class TicketingDomainService(
             lockedSeatIds = seatIds,
         )
         return ticketOrderRepository.save(order)
+    }
+
+    @Transactional
+    fun confirmOrder(orderId: Long, paymentId: Long): TicketOrder {
+        val order = ticketOrderRepository.findById(orderId)
+            ?: throw ResourceNotFoundException("TicketOrder", orderId)
+        val tickets = order.confirm(paymentId, order.lockedSeatIds)
+        val saved = ticketOrderRepository.save(order)
+        if (tickets.isNotEmpty()) ticketRepository.saveAll(tickets)
+        return saved
+    }
+
+    @Transactional
+    fun cancelOrder(orderId: Long) {
+        val order = ticketOrderRepository.findById(orderId)
+            ?: throw ResourceNotFoundException("TicketOrder", orderId)
+        order.cancel()
+        ticketOrderRepository.save(order)
     }
 
     fun calculateAmount(lockId: String): BigDecimal {
