@@ -1,4 +1,4 @@
-package com.sportsapp.presentation.mcp.confirm
+package com.sportsapp.domain.mcp.confirm
 
 import com.sportsapp.domain.common.BusinessException
 import com.sportsapp.domain.common.ErrorStatus
