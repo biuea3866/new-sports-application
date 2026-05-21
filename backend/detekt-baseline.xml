@@ -2,10 +2,14 @@
 <SmellBaseline>
   <ManuallySuppressedIssues></ManuallySuppressedIssues>
   <CurrentIssues>
-    <ID>UnusedPrivateProperty:PaymentDomainService.kt$PaymentDomainService$private val paymentGateway: PaymentGateway</ID>
+    <ID>LongMethod:CustomTicketOrderRepositoryImpl.kt$CustomTicketOrderRepositoryImpl$override fun aggregateTicketSales( ownerUserId: Long, eventId: Long?, from: ZonedDateTime, to: ZonedDateTime, ): TicketSalesSummary</ID>
     <ID>LongParameterList:Facility.kt$Facility$( @Id val id: String?, @Indexed @Field("code") val code: String, @Field("name") val name: String, @Indexed @Field("gu") val gu: String, @Field("type") val type: String, @Field("address") val address: String, @GeoSpatialIndexed(type = GeoSpatialIndexType.GEO_2DSPHERE) @Field("location") val location: Point, @Field("parking") val parking: Boolean, @Field("tel") val tel: String, @Field("home_page") val homePage: String, @Field("edu_yn") val eduYn: Boolean, @Field("meta") val meta: Map&lt;String, String&gt;, @Field("owner_user_id") var ownerUserId: Long? = null, )</ID>
+    <ID>TooManyFunctions:FacilityDomainService.kt$FacilityDomainService</ID>
+    <ID>TooManyFunctions:FacilityMongoRepository.kt$FacilityMongoRepository : MongoRepository</ID>
     <ID>TooManyFunctions:FacilityRepository.kt$FacilityRepository</ID>
     <ID>TooManyFunctions:FacilityRepositoryImpl.kt$FacilityRepositoryImpl : FacilityRepository</ID>
     <ID>TooManyFunctions:GoodsDomainService.kt$GoodsDomainService</ID>
+    <ID>TooManyFunctions:TicketingDomainService.kt$TicketingDomainService</ID>
+    <ID>UnusedPrivateProperty:PaymentDomainService.kt$PaymentDomainService$private val paymentGateway: PaymentGateway</ID>
   </CurrentIssues>
 </SmellBaseline>

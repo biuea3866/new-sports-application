@@ -222,6 +222,12 @@ class GoodsDomainService(
     fun listMyProducts(ownerUserId: Long, pageable: Pageable): Page<ProductWithStock> =
         customProductRepository.findByOwnerId(ownerUserId, pageable)
 
+    fun countActiveProductsByOwnerId(ownerId: Long): Long =
+        productRepository.countByOwnerIdAndStatus(ownerId, ProductStatus.ACTIVE)
+
+    fun countOutOfStockProductsByOwnerId(ownerId: Long): Long =
+        stockRepository.countOutOfStockByOwnerId(ownerId)
+
     fun restoreProductStock(productId: Long, ownerUserId: Long, quantity: Int) {
         val productEntity = productRepository.findById(productId)
             ?: throw ResourceNotFoundException("Product", productId)

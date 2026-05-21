@@ -13,4 +13,7 @@ class StockRepositoryImpl(
 
     override fun findByProductId(productId: Long): Stock? =
         stockJpaRepository.findByProductId(productId)
+
+    override fun countOutOfStockByOwnerId(ownerId: Long): Long =
+        stockJpaRepository.countOutOfStockByOwnerId(ownerId)
 }

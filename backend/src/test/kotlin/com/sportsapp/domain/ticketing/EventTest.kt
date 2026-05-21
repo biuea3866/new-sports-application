@@ -1,6 +1,7 @@
 package com.sportsapp.domain.ticketing
 
 import com.sportsapp.domain.ticketing.exception.InvalidEventStateException
+import com.sportsapp.domain.ticketing.exception.TooManySeatsException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -70,6 +71,36 @@ class EventTest : BehaviorSpec({
         When("close()를 호출하면") {
             Then("[U-02b] InvalidEventStateException을 던진다") {
                 shouldThrow<InvalidEventStateException> { event.close() }
+            }
+        }
+    }
+
+    Given("좌석 스펙 리스트 500개") {
+        val seats = List(500) { "SEAT-$it" }
+
+        When("validateSeatLimit을 호출하면") {
+            Then("[U-01] 예외 없이 통과한다") {
+                Event.validateSeatLimit(seats)
+            }
+        }
+    }
+
+    Given("좌석 스펙 리스트 501개") {
+        val seats = List(501) { "SEAT-$it" }
+
+        When("validateSeatLimit을 호출하면") {
+            Then("[U-01] TooManySeatsException을 던진다") {
+                shouldThrow<TooManySeatsException> { Event.validateSeatLimit(seats) }
+            }
+        }
+    }
+
+    Given("좌석 스펙 리스트 0개") {
+        val seats = emptyList<String>()
+
+        When("validateSeatLimit을 호출하면") {
+            Then("[U-02] 빈 리스트는 허용된다 (0 < 500 조건 통과)") {
+                Event.validateSeatLimit(seats)
             }
         }
     }

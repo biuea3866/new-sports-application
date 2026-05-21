@@ -34,6 +34,12 @@ class FacilityDomainService(
     fun aggregateGuType(): List<GuTypeCount> =
         facilityRepository.aggregateGuType()
 
+    fun findIdsByOwnerUserId(ownerUserId: Long): List<String> =
+        facilityRepository.findIdsByOwnerUserId(ownerUserId)
+
+    fun countByOwnerUserId(ownerUserId: Long): Long =
+        facilityRepository.countByOwnerUserId(ownerUserId)
+
     fun bulkImport(rows: List<LegacyRow>): BulkImportResult {
         var insertedCount = 0
         var updatedCount = 0

@@ -1,6 +1,7 @@
 package com.sportsapp.domain.ticketing
 
 import com.sportsapp.domain.common.JpaAuditingBase
+import com.sportsapp.domain.ticketing.exception.TooManySeatsException
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -36,6 +37,8 @@ class Event(
 ) : JpaAuditingBase() {
 
     companion object {
+        private const val MAX_SEATS_PER_EVENT = 500
+
         fun create(
             title: String,
             venue: String,
@@ -49,6 +52,16 @@ class Event(
             status = EventStatus.SCHEDULED,
             ownerId = ownerId,
         )
+
+        fun validateSeatLimit(seatSpecs: List<*>) {
+            if (seatSpecs.size > MAX_SEATS_PER_EVENT) {
+                throw TooManySeatsException(seatSpecs.size, MAX_SEATS_PER_EVENT)
+            }
+        }
+    }
+
+    fun requireOwnedBy(userId: Long) {
+        if (ownerId != userId) throw EventOwnershipException(id)
     }
 
     fun openSales() {
