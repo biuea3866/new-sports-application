@@ -42,6 +42,7 @@ class SecurityConfig(
                 auth.requestMatchers("/admin/**").hasRole("ADMIN")
                 auth.requestMatchers("/api/b2b/**").authenticated()
                 // TODO(AUTH-04): SecurityContext 통합 전까지 도메인 API는 X-User-Id 헤더 기반으로 임시 permitAll
+                auth.requestMatchers(HttpMethod.POST, "/images/presigned-upload").authenticated()
                 auth.requestMatchers(
                     "/bookings/**", "/payments/**", "/facilities/**",
                     "/products/**", "/posts/**", "/comments/**", "/rooms/**",
