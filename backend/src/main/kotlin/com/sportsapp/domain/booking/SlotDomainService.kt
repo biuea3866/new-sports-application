@@ -51,4 +51,7 @@ class SlotDomainService(
 
     fun listSlots(facilityId: String): List<Slot> =
         slotRepository.findByFacilityId(facilityId)
+
+    fun hasActiveSlotsByFacilityId(facilityId: String): Boolean =
+        slotRepository.existsActiveByFacilityId(facilityId)
 }

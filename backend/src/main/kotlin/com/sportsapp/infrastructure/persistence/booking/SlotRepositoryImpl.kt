@@ -26,4 +26,7 @@ class SlotRepositoryImpl(
             slotId,
             listOf(BookingStatus.PENDING, BookingStatus.CONFIRMED),
         ) > 0
+
+    override fun existsActiveByFacilityId(facilityId: String): Boolean =
+        slotJpaRepository.existsByFacilityIdAndDeletedAtIsNull(facilityId)
 }

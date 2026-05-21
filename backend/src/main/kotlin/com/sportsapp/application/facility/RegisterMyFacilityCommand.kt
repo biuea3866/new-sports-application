@@ -1,5 +1,7 @@
 package com.sportsapp.application.facility
 
+import com.sportsapp.domain.facility.FacilityAttributes
+
 data class RegisterMyFacilityCommand(
     val code: String,
     val name: String,
@@ -14,4 +16,19 @@ data class RegisterMyFacilityCommand(
     val eduYn: Boolean,
     val meta: Map<String, String>,
     val ownerUserId: Long,
-)
+) {
+    fun toAttributes(): FacilityAttributes = FacilityAttributes(
+        code = code,
+        name = name,
+        gu = gu,
+        type = type,
+        address = address,
+        lat = lat,
+        lng = lng,
+        parking = parking,
+        tel = tel,
+        homePage = homePage,
+        eduYn = eduYn,
+        meta = meta,
+    )
+}

@@ -1,6 +1,5 @@
 package com.sportsapp.domain.facility
 
-import com.sportsapp.domain.booking.SlotRepository
 import org.springframework.context.annotation.Profile
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -10,7 +9,6 @@ import org.springframework.stereotype.Service
 @Profile("!test-jpa")
 class FacilityOwnerDomainService(
     private val facilityRepository: FacilityRepository,
-    private val slotRepository: SlotRepository,
 ) {
     fun registerForOwner(attributes: FacilityAttributes, ownerUserId: Long): Facility {
         val facility = Facility.create(attributes)
@@ -33,8 +31,6 @@ class FacilityOwnerDomainService(
 
     fun deleteForOwner(id: String, ownerUserId: Long) {
         val facility = getByIdAndOwner(id, ownerUserId)
-        val activeSlots = slotRepository.findByFacilityId(id).filter { !it.isDeleted }
-        if (activeSlots.isNotEmpty()) throw FacilityHasActiveSlotException(id)
         facility.softDelete(ownerUserId)
         facilityRepository.save(facility)
     }

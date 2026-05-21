@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
 import com.sportsapp.application.user.LoginResponse
 import com.sportsapp.domain.facility.Facility
+import com.sportsapp.domain.facility.FacilityAttributes
 import com.sportsapp.domain.facility.FacilityRepository
 import com.sportsapp.domain.user.UserDomainService
 import com.sportsapp.presentation.facility.RegisterFacilityRequest
@@ -108,7 +109,7 @@ class B2bFacilityApiScenarioTest(
             When("[S-02] GET /api/b2b/facilities 로 내 시설 목록을 조회하면") {
                 val savedFacility = facilityRepository.save(
                     Facility.create(buildRegisterRequest("B2B-LIST-001").run {
-                        com.sportsapp.domain.facility.FacilityAttributes(
+                        FacilityAttributes(
                             code = code, name = name, gu = gu, type = type,
                             address = address, lat = lat, lng = lng,
                             parking = parking, tel = tel, homePage = homePage,
@@ -136,7 +137,7 @@ class B2bFacilityApiScenarioTest(
             When("[S-03] GET /api/b2b/facilities/{id} 로 내 시설 단건을 조회하면") {
                 val savedFacility = facilityRepository.save(
                     Facility.create(
-                        com.sportsapp.domain.facility.FacilityAttributes(
+                        FacilityAttributes(
                             code = "B2B-GET-001", name = "조회 시설", gu = "강남구", type = "수영장",
                             address = "서울시 강남구", lat = 37.5, lng = 127.0,
                             parking = true, tel = "02-0000-0000", homePage = "", eduYn = false,
@@ -164,7 +165,7 @@ class B2bFacilityApiScenarioTest(
             When("[S-04] PATCH /api/b2b/facilities/{id} 로 내 시설 meta를 수정하면") {
                 val savedFacility = facilityRepository.save(
                     Facility.create(
-                        com.sportsapp.domain.facility.FacilityAttributes(
+                        FacilityAttributes(
                             code = "B2B-UPD-001", name = "수정 시설", gu = "강남구", type = "수영장",
                             address = "서울시 강남구", lat = 37.5, lng = 127.0,
                             parking = true, tel = "02-0000-0000", homePage = "", eduYn = false,
@@ -199,7 +200,7 @@ class B2bFacilityApiScenarioTest(
 
                 val otherFacility = facilityRepository.save(
                     Facility.create(
-                        com.sportsapp.domain.facility.FacilityAttributes(
+                        FacilityAttributes(
                             code = "B2B-OTHER-001", name = "타인 시설", gu = "서초구", type = "헬스장",
                             address = "서울시 서초구", lat = 37.6, lng = 127.1,
                             parking = false, tel = "02-1111-1111", homePage = "", eduYn = false,
