@@ -1,7 +1,7 @@
 package com.sportsapp.infrastructure.persistence.message
 
 import com.querydsl.jpa.impl.JPAQueryFactory
-import com.sportsapp.domain.message.CustomRoomRepository
+import com.sportsapp.domain.message.RoomCustomRepository
 import com.sportsapp.domain.message.QRoom
 import com.sportsapp.domain.message.QRoomParticipant
 import com.sportsapp.domain.message.Room
@@ -9,9 +9,9 @@ import com.sportsapp.domain.message.RoomType
 import org.springframework.stereotype.Component
 
 @Component
-class CustomRoomRepositoryImpl(
+class RoomCustomRepositoryImpl(
     private val queryFactory: JPAQueryFactory,
-) : CustomRoomRepository {
+) : RoomCustomRepository {
 
     override fun findDirectRoomByParticipantIds(userIdA: Long, userIdB: Long): Room? {
         val room = QRoom.room

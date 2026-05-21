@@ -9,17 +9,17 @@ class TicketingDomainServiceParseLockIdTest : BehaviorSpec({
 
     val eventRepository = mockk<EventRepository>(relaxed = true)
     val seatRepository = mockk<SeatRepository>(relaxed = true)
-    val customEventRepository = mockk<CustomEventRepository>(relaxed = true)
-    val customSeatRepository = mockk<CustomSeatRepository>(relaxed = true)
-    val customTicketOrderRepository = mockk<CustomTicketOrderRepository>(relaxed = true)
+    val lEventCustomRepository = mockk<EventCustomRepository>(relaxed = true)
+    val lSeatCustomRepository = mockk<SeatCustomRepository>(relaxed = true)
+    val lTicketOrderCustomRepository = mockk<TicketOrderCustomRepository>(relaxed = true)
     val seatLockStore = mockk<SeatLockStore>(relaxed = true)
     val ticketOrderRepository = mockk<TicketOrderRepository>(relaxed = true)
     val service = TicketingDomainService(
         eventRepository = eventRepository,
         seatRepository = seatRepository,
-        customEventRepository = customEventRepository,
-        customSeatRepository = customSeatRepository,
-        customTicketOrderRepository = customTicketOrderRepository,
+        lEventCustomRepository = lEventCustomRepository,
+        lSeatCustomRepository = lSeatCustomRepository,
+        lTicketOrderCustomRepository = lTicketOrderCustomRepository,
         seatLockStore = seatLockStore,
         ticketOrderRepository = ticketOrderRepository,
     )

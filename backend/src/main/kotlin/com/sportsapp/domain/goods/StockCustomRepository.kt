@@ -1,5 +1,5 @@
 package com.sportsapp.domain.goods
 
-interface CustomStockRepository {
+interface StockCustomRepository {
     fun countOutOfStockByOwnerId(ownerId: Long): Long
 }

@@ -2,7 +2,7 @@ package com.sportsapp.infrastructure.persistence.post
 
 import com.querydsl.core.BooleanBuilder
 import com.querydsl.jpa.impl.JPAQueryFactory
-import com.sportsapp.domain.post.CustomPostRepository
+import com.sportsapp.domain.post.PostCustomRepository
 import com.sportsapp.domain.post.Post
 import com.sportsapp.domain.post.PostSearchCriteria
 import com.sportsapp.domain.post.QPost
@@ -12,9 +12,9 @@ import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Component
 
 @Component
-class CustomPostRepositoryImpl(
+class PostCustomRepositoryImpl(
     private val queryFactory: JPAQueryFactory,
-) : CustomPostRepository {
+) : PostCustomRepository {
 
     override fun findByCriteria(criteria: PostSearchCriteria, pageable: Pageable): Page<Post> {
         val predicate = buildPredicate(criteria)

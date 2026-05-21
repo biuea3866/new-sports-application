@@ -18,9 +18,9 @@ private val SEAT_LOCK_TTL = Duration.ofSeconds(300)
 class TicketingDomainService(
     private val eventRepository: EventRepository,
     private val seatRepository: SeatRepository,
-    private val customEventRepository: CustomEventRepository,
-    private val customSeatRepository: CustomSeatRepository,
-    private val customTicketOrderRepository: CustomTicketOrderRepository,
+    private val lEventCustomRepository: EventCustomRepository,
+    private val lSeatCustomRepository: SeatCustomRepository,
+    private val lTicketOrderCustomRepository: TicketOrderCustomRepository,
     private val seatLockStore: SeatLockStore,
     private val ticketOrderRepository: TicketOrderRepository,
 ) {
@@ -54,7 +54,7 @@ class TicketingDomainService(
     fun getSeats(eventId: Long): List<Seat> = seatRepository.findByEventId(eventId)
 
     fun listEvents(criteria: EventCriteria, pageable: Pageable): Page<Event> =
-        customEventRepository.findByCriteria(criteria, pageable)
+        lEventCustomRepository.findByCriteria(criteria, pageable)
 
     fun tryLockSeats(eventId: Long, seatIds: List<Long>, userId: Long): String {
         val lockedSeatIds = mutableListOf<Long>()
@@ -110,10 +110,10 @@ class TicketingDomainService(
         eventRepository.countByOwnerIdGroupByStatus(ownerId)
 
     fun sumTotalSeatsByOwnerId(ownerId: Long): Long =
-        customSeatRepository.sumTotalSeatsByOwnerId(ownerId)
+        lSeatCustomRepository.sumTotalSeatsByOwnerId(ownerId)
 
     fun sumSoldSeatsByOwnerId(ownerId: Long): Long =
-        customSeatRepository.sumSoldSeatsByOwnerId(ownerId)
+        lSeatCustomRepository.sumSoldSeatsByOwnerId(ownerId)
 
     fun aggregateTicketSales(
         ownerUserId: Long,
@@ -121,7 +121,7 @@ class TicketingDomainService(
         from: ZonedDateTime,
         to: ZonedDateTime,
     ): TicketSalesSummary =
-        customTicketOrderRepository.aggregateTicketSales(ownerUserId, eventId, from, to)
+        lTicketOrderCustomRepository.aggregateTicketSales(ownerUserId, eventId, from, to)
 
     fun findEventsByOwnerId(ownerId: Long, pageable: Pageable, status: EventStatus?): Page<Event> =
         eventRepository.findByOwnerId(ownerId, status, pageable)
@@ -130,7 +130,7 @@ class TicketingDomainService(
         val event = eventRepository.findById(eventId)
             ?: throw ResourceNotFoundException("Event", eventId)
         val seats = seatRepository.findByEventId(eventId)
-        val soldCount = customSeatRepository.countSoldByEventId(eventId)
+        val soldCount = lSeatCustomRepository.countSoldByEventId(eventId)
         return EventSalesInfo(event = event, seats = seats, soldCount = soldCount)
     }
 

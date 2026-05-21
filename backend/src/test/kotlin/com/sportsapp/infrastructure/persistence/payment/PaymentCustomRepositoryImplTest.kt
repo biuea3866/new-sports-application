@@ -15,7 +15,7 @@ import org.springframework.jdbc.core.JdbcTemplate
 import java.math.BigDecimal
 import java.time.ZonedDateTime
 
-class CustomPaymentRepositoryImplTest(
+class PaymentCustomRepositoryImplTest(
     @Autowired private val paymentRepository: PaymentRepository,
     @Autowired private val jdbcTemplate: JdbcTemplate,
 ) : BaseJpaIntegrationTest() {

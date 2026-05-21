@@ -1,16 +1,16 @@
 package com.sportsapp.infrastructure.persistence.message
 
 import com.querydsl.jpa.impl.JPAQueryFactory
-import com.sportsapp.domain.message.CustomMessageRepository
+import com.sportsapp.domain.message.MessageCustomRepository
 import com.sportsapp.domain.message.Message
 import com.sportsapp.domain.message.QMessage
 import org.springframework.stereotype.Component
 import java.time.ZonedDateTime
 
 @Component
-class CustomMessageRepositoryImpl(
+class MessageCustomRepositoryImpl(
     private val queryFactory: JPAQueryFactory,
-) : CustomMessageRepository {
+) : MessageCustomRepository {
 
     override fun findByCursor(roomId: Long, before: ZonedDateTime?, pageSize: Int): List<Message> {
         val message = QMessage.message

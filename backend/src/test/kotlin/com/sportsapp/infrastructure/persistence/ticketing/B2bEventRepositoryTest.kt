@@ -18,7 +18,7 @@ class B2bEventRepositoryTest(
     @Autowired private val eventJpaRepository: EventJpaRepository,
     @Autowired private val seatJpaRepository: SeatJpaRepository,
     @Autowired private val ticketJpaRepository: TicketJpaRepository,
-    @Autowired private val customSeatRepositoryImpl: CustomSeatRepositoryImpl,
+    @Autowired private val lSeatCustomRepositoryImpl: SeatCustomRepositoryImpl,
     @Autowired private val eventRepositoryImpl: EventRepositoryImpl,
 ) : BaseJpaIntegrationTest() {
 
@@ -72,7 +72,7 @@ class B2bEventRepositoryTest(
             ))
 
             When("countSoldByEventId(event.id)를 호출하면") {
-                val soldCount = customSeatRepositoryImpl.countSoldByEventId(event.id)
+                val soldCount = lSeatCustomRepositoryImpl.countSoldByEventId(event.id)
 
                 Then("[R-02] sold count가 2이다") {
                     soldCount shouldBe 2L
@@ -86,7 +86,7 @@ class B2bEventRepositoryTest(
                     status = TicketStatus.REVOKED,
                     code = UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", ""),
                 ))
-                val soldCount = customSeatRepositoryImpl.countSoldByEventId(event.id)
+                val soldCount = lSeatCustomRepositoryImpl.countSoldByEventId(event.id)
 
                 Then("[R-02b] REVOKED 티켓은 sold count에 포함되지 않는다") {
                     soldCount shouldBe 2L

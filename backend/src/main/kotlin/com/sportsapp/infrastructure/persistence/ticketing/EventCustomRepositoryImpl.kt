@@ -3,7 +3,7 @@ package com.sportsapp.infrastructure.persistence.ticketing
 import com.querydsl.core.BooleanBuilder
 import com.querydsl.core.types.OrderSpecifier
 import com.querydsl.jpa.impl.JPAQueryFactory
-import com.sportsapp.domain.ticketing.CustomEventRepository
+import com.sportsapp.domain.ticketing.EventCustomRepository
 import com.sportsapp.domain.ticketing.Event
 import com.sportsapp.domain.ticketing.EventCriteria
 import com.sportsapp.domain.ticketing.EventStatus
@@ -15,9 +15,9 @@ import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Component
 
 @Component
-class CustomEventRepositoryImpl(
+class EventCustomRepositoryImpl(
     private val queryFactory: JPAQueryFactory,
-) : CustomEventRepository {
+) : EventCustomRepository {
 
     override fun countByOwnerIdGroupByStatus(ownerId: Long): Map<EventStatus, Long> {
         val event = QEvent.event
