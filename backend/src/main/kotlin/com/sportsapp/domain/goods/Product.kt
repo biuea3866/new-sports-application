@@ -1,6 +1,7 @@
 package com.sportsapp.domain.goods
 
 import com.sportsapp.domain.common.JpaAuditingBase
+import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -15,20 +16,20 @@ import java.math.BigDecimal
 @Table(name = "products")
 class Product(
     @Column(nullable = false, length = 255)
-    val name: String,
+    var name: String,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
-    val category: ProductCategory,
+    var category: ProductCategory,
 
     @Column(nullable = false, precision = 12, scale = 2)
-    val price: BigDecimal,
+    var price: BigDecimal,
 
     @Column(columnDefinition = "TEXT")
-    val description: String,
+    var description: String,
 
     @Column(length = 2048)
-    val imageUrl: String,
+    var imageUrl: String,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -55,6 +56,30 @@ class Product(
 
     fun requireActive() {
         if (status != ProductStatus.ACTIVE) throw ProductInactiveException(id)
+    }
+
+    fun requireOwnedBy(ownerUserId: Long) {
+        if (ownerId != ownerUserId) throw ResourceNotFoundException("Product", id)
+    }
+
+    fun update(
+        name: String?,
+        category: ProductCategory?,
+        price: BigDecimal?,
+        description: String?,
+        imageUrl: String?,
+    ) {
+        name?.let {
+            require(it.isNotBlank()) { "name must not be blank" }
+            this.name = it
+        }
+        category?.let { this.category = it }
+        price?.let {
+            require(it > BigDecimal.ZERO) { "price must be positive" }
+            this.price = it
+        }
+        description?.let { this.description = it }
+        imageUrl?.let { this.imageUrl = it }
     }
 
     companion object {

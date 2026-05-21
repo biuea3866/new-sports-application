@@ -96,4 +96,39 @@ class ProductTest : BehaviorSpec({
             }
         }
     }
+
+    Given("ownerId=1L 인 Product") {
+        val product = Product(
+            name = "테니스 라켓",
+            category = ProductCategory.EQUIPMENT,
+            price = BigDecimal("50000"),
+            description = "고급 테니스 라켓",
+            imageUrl = "https://example.com/racket.jpg",
+            status = ProductStatus.INACTIVE,
+            ownerId = 1L,
+        )
+
+        When("[B2B-10/U-01] activate() 호출 시") {
+            product.activate()
+            Then("status가 ACTIVE로 전이된다") {
+                product.status shouldBe ProductStatus.ACTIVE
+            }
+        }
+
+        When("[B2B-10/U-ownership-ok] 동일 ownerUserId로 requireOwnedBy 호출하면") {
+            Then("예외 없이 통과한다") {
+                io.kotest.assertions.throwables.shouldNotThrowAny {
+                    product.requireOwnedBy(1L)
+                }
+            }
+        }
+
+        When("[B2B-10/U-ownership-fail] 다른 ownerUserId로 requireOwnedBy 호출하면") {
+            Then("ResourceNotFoundException을 던진다") {
+                shouldThrow<com.sportsapp.domain.common.exceptions.ResourceNotFoundException> {
+                    product.requireOwnedBy(2L)
+                }
+            }
+        }
+    }
 })

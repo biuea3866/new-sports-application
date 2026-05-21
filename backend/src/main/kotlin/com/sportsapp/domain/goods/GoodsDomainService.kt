@@ -141,6 +141,94 @@ class GoodsDomainService(
     fun listMyOrders(userId: Long, pageable: Pageable): Page<GoodsOrder> =
         goodsOrderRepository.findByUserId(userId, pageable)
 
+    fun createProduct(
+        name: String,
+        category: ProductCategory,
+        price: java.math.BigDecimal,
+        description: String,
+        imageUrl: String,
+        ownerUserId: Long,
+    ): Pair<Product, Stock> {
+        val product = productRepository.save(
+            Product.create(
+                name = name,
+                category = category,
+                price = price,
+                description = description,
+                imageUrl = imageUrl,
+                ownerUserId = ownerUserId,
+            )
+        )
+        val stock = stockRepository.save(Stock(productId = product.id, quantity = 0))
+        return product to stock
+    }
+
+    fun getProductByIdAndOwnerId(productId: Long, ownerUserId: Long): ProductWithStock {
+        val productEntity = productRepository.findById(productId)
+            ?: throw ResourceNotFoundException("Product", productId)
+        productEntity.requireOwnedBy(ownerUserId)
+        val stockQuantity = stockRepository.findByProductId(productId)?.quantity ?: 0
+        return ProductWithStock(product = productEntity, stockQuantity = stockQuantity)
+    }
+
+    fun updateProduct(
+        productId: Long,
+        ownerUserId: Long,
+        name: String?,
+        category: ProductCategory?,
+        price: java.math.BigDecimal?,
+        description: String?,
+        imageUrl: String?,
+    ): ProductWithStock {
+        val productEntity = productRepository.findById(productId)
+            ?: throw ResourceNotFoundException("Product", productId)
+        productEntity.requireOwnedBy(ownerUserId)
+        productEntity.update(name, category, price, description, imageUrl)
+        val saved = productRepository.save(productEntity)
+        val stockQuantity = stockRepository.findByProductId(productId)?.quantity ?: 0
+        return ProductWithStock(product = saved, stockQuantity = stockQuantity)
+    }
+
+    @Transactional
+    fun activateProduct(productId: Long, ownerUserId: Long): Product {
+        val productEntity = productRepository.findById(productId)
+            ?: throw ResourceNotFoundException("Product", productId)
+        productEntity.requireOwnedBy(ownerUserId)
+        productEntity.activate()
+        return productRepository.save(productEntity)
+    }
+
+    fun activateProductWithStock(productId: Long, ownerUserId: Long): ProductWithStock {
+        val productEntity = activateProduct(productId, ownerUserId)
+        val stockQuantity = stockRepository.findByProductId(productId)?.quantity ?: 0
+        return ProductWithStock(product = productEntity, stockQuantity = stockQuantity)
+    }
+
+    @Transactional
+    fun deactivateProduct(productId: Long, ownerUserId: Long): Product {
+        val productEntity = productRepository.findById(productId)
+            ?: throw ResourceNotFoundException("Product", productId)
+        productEntity.requireOwnedBy(ownerUserId)
+        productEntity.deactivate()
+        return productRepository.save(productEntity)
+    }
+
+    fun deactivateProductWithStock(productId: Long, ownerUserId: Long): ProductWithStock {
+        val productEntity = deactivateProduct(productId, ownerUserId)
+        val stockQuantity = stockRepository.findByProductId(productId)?.quantity ?: 0
+        return ProductWithStock(product = productEntity, stockQuantity = stockQuantity)
+    }
+
+    fun listMyProducts(ownerUserId: Long, pageable: Pageable): Page<ProductWithStock> =
+        customProductRepository.findByOwnerId(ownerUserId, pageable)
+
+    fun restoreProductStock(productId: Long, ownerUserId: Long, quantity: Int) {
+        val productEntity = productRepository.findById(productId)
+            ?: throw ResourceNotFoundException("Product", productId)
+        productEntity.requireOwnedBy(ownerUserId)
+        restoreStock(productId, quantity)
+    }
+
     companion object {
         private const val POPULAR_LIMIT = 20
     }
