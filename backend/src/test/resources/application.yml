@@ -1,0 +1,76 @@
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: sports-app-test
+      auto-offset-reset: earliest
+      properties:
+        spring.json.trusted.packages: "com.sportsapp.*"
+    producer:
+      acks: all
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/sports}
+      auto-index-creation: true
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/sports?serverTimezone=UTC}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+        physical_naming_strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+storage:
+  image:
+    endpoint: http://localhost:9000
+    region: us-east-1
+    access-key: minioadmin
+    secret-key: minioadmin
+    bucket: sports-app
+    upload-expiry-seconds: 900
+    download-expiry-seconds: 3600
+    max-bytes: 10485760
+    allowed-content-types:
+      - image/jpeg
+      - image/png
+      - image/webp
+
+notification:
+  templates:
+    payment-completed:
+      title: "결제 완료"
+      body: "{amount}원 결제가 완료되었습니다."
+    welcome:
+      title: "가입 완료"
+      body: "{userName}님, 스포츠 앱에 오신 것을 환영합니다."
+
+app:
+  jwt:
+    secret: test-secret-key-for-integration-tests-that-is-at-least-32-chars-long
+
+management:
+  health:
+    mongo:
+      enabled: false
+    redis:
+      enabled: false
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

@@ -52,6 +52,9 @@ mobile/coverage/
 
 # ===== Claude Code 런타임 =====
 .feature-pipeline-state.json
+.claude/cache/
+.analysis/findings/
+.claire/
 
 # ===== Misc =====
 *.tsbuildinfo

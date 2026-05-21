@@ -1,0 +1,89 @@
+package com.sportsapp.scenario.facility
+
+import com.sportsapp.BaseMongoIntegrationTest
+import com.sportsapp.domain.facility.Facility
+import com.sportsapp.domain.facility.FacilityAttributes
+import com.sportsapp.domain.facility.FacilityRepository
+import io.kotest.matchers.shouldBe
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.data.mongodb.core.MongoTemplate
+import org.springframework.data.mongodb.core.query.Query
+import org.springframework.http.MediaType
+import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+
+@AutoConfigureMockMvc
+class FacilityApiScenarioTest(
+    @Autowired private val mockMvc: MockMvc,
+    @Autowired private val facilityRepository: FacilityRepository,
+    @Autowired private val mongoTemplate: MongoTemplate,
+) : BaseMongoIntegrationTest() {
+
+    private fun buildAttributes(code: String, gu: String, type: String) = FacilityAttributes(
+        code = code,
+        name = "시설 $code",
+        gu = gu,
+        type = type,
+        address = "서울시 $gu",
+        lat = 37.5,
+        lng = 127.0,
+        parking = true,
+        tel = "02-0000-0000",
+        homePage = "",
+        eduYn = false,
+        meta = emptyMap(),
+    )
+
+    init {
+        Given("강남구 수영장 2건, 서초구 헬스장 1건이 저장된 상태") {
+            mongoTemplate.remove(Query(), Facility::class.java)
+            val saved1 = facilityRepository.save(Facility.create(buildAttributes("GN-SW-001", "강남구", "수영장")))
+            facilityRepository.save(Facility.create(buildAttributes("GN-SW-002", "강남구", "수영장")))
+            facilityRepository.save(Facility.create(buildAttributes("SC-HL-001", "서초구", "헬스장")))
+
+            When("[S-01] GET /facilities/stats/gu-type 요청 시") {
+                val response = mockMvc.perform(
+                    get("/facilities/stats/gu-type")
+                        .accept(MediaType.APPLICATION_JSON)
+                )
+
+                Then("200 OK와 [{gu, type, count}] 배열이 반환된다") {
+                    response
+                        .andExpect(status().isOk)
+                        .andExpect(jsonPath("$").isArray)
+                        .andExpect(jsonPath("$.length()").value(2))
+                }
+            }
+
+            When("[S-02] 존재하지 않는 시설 ID로 GET /facilities/{id} 요청 시") {
+                val response = mockMvc.perform(
+                    get("/facilities/nonexistent-id-12345")
+                        .accept(MediaType.APPLICATION_JSON)
+                )
+
+                Then("404 응답이 반환된다") {
+                    response.andExpect(status().isNotFound)
+                }
+            }
+
+            When("존재하는 시설 ID로 GET /facilities/{id} 요청 시") {
+                val facilityId = requireNotNull(saved1.id) { "saved facility must have id" }
+                val response = mockMvc.perform(
+                    get("/facilities/$facilityId")
+                        .accept(MediaType.APPLICATION_JSON)
+                )
+
+                Then("200 OK와 시설 단건 응답이 반환된다") {
+                    response
+                        .andExpect(status().isOk)
+                        .andExpect(jsonPath("$.id").value(facilityId))
+                        .andExpect(jsonPath("$.gu").value("강남구"))
+                        .andExpect(jsonPath("$.type").value("수영장"))
+                }
+            }
+        }
+    }
+}

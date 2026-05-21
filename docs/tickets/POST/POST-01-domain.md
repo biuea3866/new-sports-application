@@ -1,19 +1,24 @@
-# [POST-01] Post·Comment Mongo 컬렉션 + 도메인 (분리 모델)
+# [POST-01] Post·Comment 도메인 (MySQL + JPA 단일 모델)
 
 ## 작업 내용 (설계 의도)
 
 ### 변경 사항
 
-`domain.post` 패키지에 `Post`, `Comment` 두 도큐먼트를 별도 컬렉션으로 분리한다. 레거시는 Post 내부에 comments 배열 임베드였지만, 16MB 한계와 부분 갱신 비용 때문에 신규는 분리.
+> **DB 결정 변경 (2026-05-20)**: 당초 MongoDB 였으나 Post–Comment 는 본질적으로 관계형(1:N, 댓글 수 집계, 모더레이션 일관성)이라 **MySQL + JPA 로 통합**한다. Mongo 는 Facility 만 사용. `be-code-convention.md` "JPA Entity = Domain Entity" 단일 모델 + `JpaAuditingBase` 상속.
 
-`Post`: `id`, `type`(NOTICE/FREE/QNA/MATCH), `title`, `content`, `userId`(MySQL User.id 참조), `writer`(닉네임 스냅샷), `createdAt`(ZonedDateTime).
-`Comment`: `id`, `postId`, `content`, `userId`, `writer`, `createdAt`.
+`domain.post` 패키지에 `Post`, `Comment` 를 **JPA `@Entity`(= 도메인 Entity, 단일 모델)** 로 정의한다. 별도 영속화 POJO/매퍼 금지.
 
-인덱스:
-- posts: `userId`, `type`, `createdAt desc`, text index on `title+content`.
-- comments: `(postId, createdAt asc)`, `userId`.
+`Post`: `id`(PK), `type`(NOTICE/FREE/QNA/MATCH — VARCHAR + app enum), `title`, `content`(TEXT), `userId`(User.id FK 컬럼, 연관객체 금지), `writer`(닉네임 스냅샷), audit 6컬럼(JpaAuditingBase).
+`Comment`: `id`(PK), `postId`(FK 컬럼), `content`, `userId`, `writer`, audit 6컬럼.
 
-`PostRepository`, `CommentRepository` interface는 도메인 패키지에 정의, infrastructure에서 Spring Data MongoDB로 구현.
+> Post–Comment 는 별개 aggregate. Comment 는 `@ManyToOne Post` 가 아니라 `postId: Long` 만 보유. Post 의 댓글 목록은 `CommentRepository.findByPostId(postId)` 명시 쿼리.
+
+인덱스 (V*__create_posts_comments.sql, DATETIME(6)/FK·ENUM 금지):
+- posts: `idx_posts_user_id(user_id)`, `idx_posts_type_deleted_at(type, deleted_at)`, `idx_posts_created_at(created_at)`.
+- comments: `idx_comments_post_id_created_at(post_id, created_at)`, `idx_comments_user_id(user_id)`.
+- 전문 검색(title+content)은 후속 티켓(POST-02)에서 검토 — 본 티켓 범위 제외.
+
+`PostRepository`, `CommentRepository` interface 는 도메인 패키지에 정의, infrastructure 에서 Spring Data JPA(`JpaRepository<Post, Long>`) + QueryDSL CustomRepositoryImpl 로 구현.
 
 ## 다이어그램
 

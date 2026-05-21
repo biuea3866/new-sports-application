@@ -1,0 +1,13 @@
+spring:
+  kafka:
+    bootstrap-servers: "localhost:9092"
+    consumer:
+      group-id: notification-test-group
+      auto-offset-reset: earliest
+      properties:
+        spring.json.trusted.packages: "com.sportsapp.*"
+    producer:
+      acks: all
+  flyway:
+    clean-disabled: false
+    clean-on-validation-error: true

@@ -38,6 +38,27 @@
           {
             "type": "command",
             "command": "bash /Users/biuea/sports-application/.claude/hooks/_run.sh /Users/biuea/sports-application/.claude/hooks/workflow-gates/push-test.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash /Users/biuea/sports-application/.claude/hooks/_run.sh /Users/biuea/sports-application/.claude/hooks/workflow-gates/pr-review-gate.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash /Users/biuea/sports-application/.claude/hooks/_run.sh /Users/biuea/sports-application/.claude/hooks/workflow-gates/worktree-isolation-guard.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /Users/biuea/sports-application/.claude/hooks/_run.sh /Users/biuea/sports-application/.claude/hooks/workflow-gates/agent-merge-guard.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash /Users/biuea/sports-application/.claude/hooks/_run.sh /Users/biuea/sports-application/.claude/hooks/workflow-gates/wave-fanout-guard.sh"
           }
         ]
       }
@@ -49,6 +70,10 @@
           {
             "type": "command",
             "command": "bash /Users/biuea/sports-application/.claude/hooks/_run.sh /Users/biuea/sports-application/.claude/hooks/verify/subagent-verify.py"
+          },
+          {
+            "type": "command",
+            "command": "bash /Users/biuea/sports-application/.claude/hooks/_run.sh /Users/biuea/sports-application/.claude/hooks/workflow-gates/pr-review-tracker.sh"
           }
         ]
       }

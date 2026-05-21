@@ -51,7 +51,7 @@ flowchart LR
 |---|---|---|
 | U-01 | `AggregateRoot.pullDomainEvents` | 호출 후 내부 리스트가 비워지고 재호출 시 빈 리스트를 반환한다 |
 | U-02 | `RoutingDomainEventPublisher` | `@KafkaEvent` 어노테이션이 있으면 Kafka, 없으면 Spring으로 라우팅된다 (MockK) |
-| U-03 | `RoutingDomainEventPublisher` | 알 수 없는 이벤트 타입은 `UnknownEventRoutingException`을 던진다 |
+| U-03 | `RoutingDomainEventPublisher` | topic 有/無 이벤트가 혼합된 publishAll 호출 시 Kafka/Spring 각 경로에 정확한 횟수만 위임된다 (topic: String? 이 binary 라 unknown routing 상태 없음) |
 
 ### 레포지토리 테스트 (Repository / Persistence)
 | ID | 대상 | 케이스 |
