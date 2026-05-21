@@ -1,7 +1,7 @@
-package com.sportsapp.presentation.mcp.security
+package com.sportsapp.domain.mcp
 
 interface McpAuthenticatedPrincipal {
     val tokenId: Long
     val userId: Long
-    val grantedScopes: Set<String>
+    val grantedScopes: Set<McpScope>
 }

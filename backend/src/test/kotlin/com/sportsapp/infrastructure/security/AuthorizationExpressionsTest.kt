@@ -1,7 +1,8 @@
 package com.sportsapp.infrastructure.security
 
+import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
+import com.sportsapp.domain.mcp.McpScope
 import com.sportsapp.domain.user.UserPrincipal
-import com.sportsapp.presentation.mcp.security.McpAuthenticatedPrincipal
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
@@ -73,11 +74,14 @@ class AuthorizationExpressionsTest : BehaviorSpec({
         }
     }
 
-    Given("MCP principal 이 BOOKING_READ scope 를 가진 상태") {
+    Given("MCP principal 이 read:booking, read:facility scope 를 가진 상태") {
         val mcpPrincipal = object : McpAuthenticatedPrincipal {
             override val tokenId: Long = 10L
             override val userId: Long = 1L
-            override val grantedScopes: Set<String> = setOf("BOOKING_READ", "FACILITY_READ")
+            override val grantedScopes: Set<McpScope> = setOf(
+                McpScope.of("read:booking"),
+                McpScope.of("read:facility"),
+            )
         }
 
         beforeEach {
@@ -85,33 +89,55 @@ class AuthorizationExpressionsTest : BehaviorSpec({
                 UsernamePasswordAuthenticationToken(mcpPrincipal, null, emptyList())
         }
 
-        When("[U-03] hasMcpScope(\"BOOKING_READ\") 호출 시") {
+        When("[U-03] hasMcpScope(\"read:booking\") 호출 시") {
             Then("grantedScopes 에 포함되므로 true 를 반환한다") {
-                authorizationExpressions.hasMcpScope("BOOKING_READ") shouldBe true
+                authorizationExpressions.hasMcpScope("read:booking") shouldBe true
             }
         }
 
-        When("[U-04] hasMcpScope(\"PAYMENT_WRITE\") 호출 시") {
+        When("[U-04] hasMcpScope(\"write:payment\") 호출 시") {
             Then("grantedScopes 에 없으므로 false 를 반환한다") {
-                authorizationExpressions.hasMcpScope("PAYMENT_WRITE") shouldBe false
+                authorizationExpressions.hasMcpScope("write:payment") shouldBe false
             }
         }
     }
 
     Given("principal 이 일반 UserPrincipal 인 상태") {
-        When("[U-05] hasMcpScope(\"BOOKING_READ\") 호출 시") {
+        beforeEach {
             setAuthentication(1L, "USER")
+        }
+
+        When("[U-05] hasMcpScope(\"read:booking\") 호출 시") {
             Then("McpAuthenticatedPrincipal 이 아니므로 false 를 반환한다") {
-                authorizationExpressions.hasMcpScope("BOOKING_READ") shouldBe false
+                authorizationExpressions.hasMcpScope("read:booking") shouldBe false
             }
         }
     }
 
     Given("SecurityContext 에 인증 정보가 없는 상태") {
-        When("[U-06] hasMcpScope(\"BOOKING_READ\") 호출 시") {
+        When("[U-06] hasMcpScope(\"read:booking\") 호출 시") {
             SecurityContextHolder.clearContext()
             Then("authentication 이 null 이므로 false 를 반환한다") {
-                authorizationExpressions.hasMcpScope("BOOKING_READ") shouldBe false
+                authorizationExpressions.hasMcpScope("read:booking") shouldBe false
+            }
+        }
+    }
+
+    Given("MCP principal 이 grantedScopes = emptySet() 인 상태") {
+        val mcpPrincipalWithNoScopes = object : McpAuthenticatedPrincipal {
+            override val tokenId: Long = 20L
+            override val userId: Long = 2L
+            override val grantedScopes: Set<McpScope> = emptySet()
+        }
+
+        beforeEach {
+            SecurityContextHolder.getContext().authentication =
+                UsernamePasswordAuthenticationToken(mcpPrincipalWithNoScopes, null, emptyList())
+        }
+
+        When("[U-07] hasMcpScope(\"read:booking\") 호출 시") {
+            Then("grantedScopes 가 비어있으므로 false 를 반환한다") {
+                authorizationExpressions.hasMcpScope("read:booking") shouldBe false
             }
         }
     }
