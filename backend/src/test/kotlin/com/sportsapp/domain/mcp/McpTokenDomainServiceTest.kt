@@ -85,7 +85,8 @@ class McpTokenDomainServiceTest : BehaviorSpec({
             Then("[U-01] 평문 토큰이 포함된 결과가 반환되고 저장은 해시로 이루어진다") {
                 result.plainToken.shouldHaveMinLength(10)
                 result.token shouldBe savedToken
-                verify(exactly = 1) { passwordEncoder.encode(any()) }
+                // issueToken은 placeholder해시 + 최종 토큰해시로 2회 encode 호출
+                verify(exactly = 2) { passwordEncoder.encode(any()) }
             }
         }
     }

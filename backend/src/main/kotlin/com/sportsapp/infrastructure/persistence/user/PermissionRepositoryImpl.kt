@@ -11,4 +11,7 @@ class PermissionRepositoryImpl(
 
     override fun findByName(name: String): Permission? =
         permissionJpaRepository.findByNameAndDeletedAtIsNull(name)
+
+    override fun findById(id: Long): Permission? =
+        permissionJpaRepository.findByIdAndDeletedAtIsNull(id)
 }

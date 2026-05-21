@@ -21,8 +21,7 @@ class McpToken(
     @Column(name = "name", nullable = false)
     val name: String,
 
-    @Column(name = "token_hash", nullable = false, unique = true)
-    val tokenHash: String,
+    initialTokenHash: String,
 
     initialStatus: McpTokenStatus,
     initialExpiresAt: ZonedDateTime?,
@@ -37,6 +36,10 @@ class McpToken(
     @Column(name = "version", nullable = false)
     var version: Long = 0
         protected set
+
+    @Column(name = "token_hash", nullable = false, unique = true)
+    var tokenHash: String = initialTokenHash
+        private set
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
@@ -84,6 +87,10 @@ class McpToken(
         lastUsedAt = ZonedDateTime.now()
     }
 
+    fun updateTokenHash(newHash: String) {
+        tokenHash = newHash
+    }
+
     fun requireOwnedBy(userId: Long) {
         if (this.userId != userId) throw McpTokenNotOwnedException(id)
     }
@@ -110,7 +117,7 @@ class McpToken(
         ): McpToken = McpToken(
             userId = userId,
             name = name,
-            tokenHash = tokenHash,
+            initialTokenHash = tokenHash,
             initialStatus = McpTokenStatus.ACTIVE,
             initialExpiresAt = expiresAt,
         )

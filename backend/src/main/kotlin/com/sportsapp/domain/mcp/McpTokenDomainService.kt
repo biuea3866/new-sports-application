@@ -21,16 +21,19 @@ class McpTokenDomainService(
 
     fun issueToken(command: IssueMcpTokenCommand): IssueResult {
         val permissionIds = resolvePermissionIds(command.scopes)
-        val plainToken = generatePlainToken()
-        val tokenHash = passwordEncoder.encode(plainToken)
+        val randomPart = generateRandomPart()
+        val placeholder = "placeholder_${randomPart}"
         val mcpToken = mcpTokenRepository.save(
             McpToken.create(
                 userId = command.userId,
                 name = command.name,
-                tokenHash = tokenHash,
+                tokenHash = passwordEncoder.encode(placeholder),
                 expiresAt = command.expiresAt,
             ),
         )
+        val plainToken = "mcp_${mcpToken.id}_${randomPart}"
+        mcpToken.updateTokenHash(passwordEncoder.encode(plainToken))
+        mcpTokenRepository.save(mcpToken)
         permissionIds.forEach { permissionId ->
             mcpTokenScopeRepository.save(McpTokenScope.create(mcpToken.id, permissionId))
         }
@@ -55,7 +58,7 @@ class McpTokenDomainService(
                 ?: throw McpScopeNotFoundException(permissionName)
         }
 
-    private fun generatePlainToken(): String {
+    private fun generateRandomPart(): String {
         val bytes = ByteArray(32)
         secureRandom.nextBytes(bytes)
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)

@@ -13,18 +13,18 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.core.AuthenticationException
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
-import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.access.AccessDeniedHandler
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+import com.sportsapp.presentation.mcp.security.McpTokenAuthenticationFilter
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
 class SecurityConfig(
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
+    private val mcpTokenAuthenticationFilter: McpTokenAuthenticationFilter,
 ) {
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
@@ -38,6 +38,7 @@ class SecurityConfig(
                 it.accessDeniedHandler(jsonAccessDeniedHandler())
             }
             .authorizeHttpRequests { configureAuthorization(it) }
+            .addFilterBefore(mcpTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
         return http.build()
     }
@@ -54,6 +55,7 @@ class SecurityConfig(
         auth.requestMatchers("/api/operator/**").authenticated()
         auth.requestMatchers("/api/admin/mcp/tokens/**").authenticated()
         auth.requestMatchers("/api/admin/mcp/audit-logs/**").authenticated()
+        auth.requestMatchers("/mcp/**").authenticated()
         // TODO(AUTH-04): SecurityContext 통합 전까지 도메인 API는 X-User-Id 헤더 기반으로 임시 permitAll
         auth.requestMatchers(HttpMethod.POST, "/images/presigned-upload").authenticated()
         auth.requestMatchers(
@@ -79,6 +81,4 @@ class SecurityConfig(
             response.writer.write("""{"status":403,"title":"Forbidden","detail":"Access denied"}""")
         }
 
-    @Bean
-    fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()
 }
