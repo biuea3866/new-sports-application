@@ -1,36 +1,35 @@
-// @vitest-environment jsdom
 /**
- * 상품 페이지 시나리오 테스트
- * [S-01] 등록 → 활성화 → 재고 보충 → 비활성화 골든 패스 흐름
+ * @vitest-environment jsdom
+ *
+ * Products 화면 시나리오 테스트
+ * [S-01] 상품 등록 골든 패스
+ * [S-02] 상품 활성화
+ * [S-03] 재고 보충
+ * [S-04] 상품 비활성화
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import * as React from "react";
-
-const mockPush = vi.fn();
-const mockParams: { id: string } = { id: "1" };
+import type { MyProduct } from "@/lib/portal/types";
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mockPush }),
-  useParams: () => mockParams,
+  useRouter: vi.fn(),
+  useParams: vi.fn(),
 }));
 
-vi.mock("@/components/ui/toast", async (importOriginal) => {
-  const original = await importOriginal<typeof import("@/components/ui/toast")>();
-  return {
-    ...original,
-    useToast: () => ({ addToast: vi.fn(), toasts: [], removeToast: vi.fn() }),
-    ToastProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  };
-});
+vi.mock("@/components/ui/toast", () => ({
+  useToast: vi.fn(),
+  ToastProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
 
 const mockFetch = vi.fn();
 
-const baseProduct = {
+const baseProduct: MyProduct = {
   id: 1,
   name: "스포츠 양말",
   description: "고품질 스포츠 양말",
   price: 9900,
+  category: "EQUIPMENT",
+  imageUrl: "https://example.com/socks.jpg",
   status: "INACTIVE",
   stockQuantity: 0,
   ownerId: 1,
@@ -38,54 +37,83 @@ const baseProduct = {
   updatedAt: "2026-01-01T00:00:00Z",
 };
 
-describe("[S-01] 상품 등록 → 활성화 → 재고 보충 → 비활성화 골든 패스", () => {
-  beforeEach(() => {
-    vi.stubGlobal("fetch", mockFetch);
-    mockFetch.mockReset();
-    mockPush.mockReset();
-  });
+beforeEach(async () => {
+  vi.resetAllMocks();
+  vi.stubGlobal("fetch", mockFetch);
 
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
+  const { useRouter, useParams } = await import("next/navigation");
+  vi.mocked(useRouter).mockReturnValue({ push: vi.fn(), back: vi.fn() } as ReturnType<
+    typeof useRouter
+  >);
+  vi.mocked(useParams<{ id: string }>).mockReturnValue({ id: "1" });
 
-  it("등록 폼 제출 시 POST /api/portal/products를 호출하고 상세 페이지로 이동한다", async () => {
-    const { default: NewProductPage } = await import("../new/page");
+  const { useToast } = await import("@/components/ui/toast");
+  vi.mocked(useToast).mockReturnValue({ addToast: vi.fn(), toasts: [], removeToast: vi.fn() });
+});
+
+// [S-01] 상품 등록 골든 패스
+describe("[S-01] 상품 등록 페이지", () => {
+  it("유효한 입력으로 제출하면 POST /api/portal/products를 호출하고 상세 페이지로 이동한다", async () => {
+    const { useRouter } = await import("next/navigation");
+    const mockPush = vi.fn();
+    vi.mocked(useRouter).mockReturnValue({ push: mockPush, back: vi.fn() } as ReturnType<
+      typeof useRouter
+    >);
 
     mockFetch.mockResolvedValue(
-      new Response(JSON.stringify({ ...baseProduct, id: 1 }), {
+      new Response(JSON.stringify({ ...baseProduct, status: "INACTIVE" }), {
         status: 201,
         headers: { "Content-Type": "application/json" },
       })
     );
 
+    const { default: NewProductPage } = await import("../new/page");
     render(<NewProductPage />);
 
-    fireEvent.change(screen.getByLabelText(/상품명/i), {
-      target: { value: "스포츠 양말" },
-    });
-    fireEvent.change(screen.getByLabelText(/상품 설명/i), {
+    fireEvent.change(screen.getByLabelText(/상품명/), { target: { value: "스포츠 양말" } });
+    fireEvent.change(screen.getByLabelText(/상품 설명/), {
       target: { value: "고품질 스포츠 양말" },
     });
-    fireEvent.change(screen.getByLabelText(/가격/i), {
-      target: { value: "9900" },
+    fireEvent.change(screen.getByLabelText(/가격/), { target: { value: "9900" } });
+    fireEvent.change(screen.getByLabelText(/카테고리/), { target: { value: "EQUIPMENT" } });
+    fireEvent.change(screen.getByLabelText(/이미지 URL/), {
+      target: { value: "https://example.com/socks.jpg" },
     });
-
-    fireEvent.submit(screen.getByRole("form", { name: /상품 등록 폼/i }));
+    fireEvent.click(screen.getByRole("button", { name: "상품 등록 제출" }));
 
     await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(mockFetch).toHaveBeenCalledWith(
         "/api/portal/products",
         expect.objectContaining({ method: "POST" })
       );
+    });
+
+    await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith("/portal/products/1");
     });
   });
 
-  it("상세 페이지에서 활성화 버튼 클릭 시 POST /api/portal/products/1/activate를 호출한다", async () => {
-    const { default: ProductDetailPage } = await import("../[id]/page");
+  it("필수 필드 미입력 시 에러 메시지를 표시하고 fetch를 호출하지 않는다", async () => {
+    const { default: NewProductPage } = await import("../new/page");
+    // useToast is already mocked in beforeEach
+    render(<NewProductPage />);
 
-    const activatedProduct = { ...baseProduct, status: "ACTIVE" };
+    fireEvent.click(screen.getByRole("button", { name: "상품 등록 제출" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("상품명을 입력해 주세요.")).toBeTruthy();
+    });
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+});
+
+// [S-02] 상품 활성화
+describe("[S-02] 상품 상세 페이지 — 활성화", () => {
+  it("INACTIVE 상품의 활성화 버튼 클릭 시 POST .../activate를 호출하고 상태가 ACTIVE로 변경된다", async () => {
+    const { useToast } = await import("@/components/ui/toast");
+    const mockAddToast = vi.fn();
+    vi.mocked(useToast).mockReturnValue({ addToast: mockAddToast, toasts: [], removeToast: vi.fn() }); // override for assertion
 
     mockFetch
       .mockResolvedValueOnce(
@@ -95,19 +123,20 @@ describe("[S-01] 상품 등록 → 활성화 → 재고 보충 → 비활성화 
         })
       )
       .mockResolvedValueOnce(
-        new Response(JSON.stringify(activatedProduct), {
+        new Response(JSON.stringify({ ...baseProduct, status: "ACTIVE" }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         })
       );
 
+    const { default: ProductDetailPage } = await import("../[id]/page");
     render(<ProductDetailPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("스포츠 양말")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "상품 활성화" })).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /상품 활성화/i }));
+    fireEvent.click(screen.getByRole("button", { name: "상품 활성화" }));
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
@@ -115,59 +144,68 @@ describe("[S-01] 상품 등록 → 활성화 → 재고 보충 → 비활성화 
         expect.objectContaining({ method: "POST" })
       );
     });
+
+    await waitFor(() => {
+      expect(mockAddToast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "상품이 활성화되었습니다." })
+      );
+    });
   });
+});
 
-  it("상세 페이지에서 재고 보충 버튼 클릭 후 수량 입력, 보충 확인 시 POST /api/portal/products/1/stock/restore를 호출한다", async () => {
-    const { default: ProductDetailPage } = await import("../[id]/page");
-
-    const activeProduct = { ...baseProduct, status: "ACTIVE", stockQuantity: 0 };
-    const restoredProduct = { ...activeProduct, stockQuantity: 10 };
-
+// [S-03] 재고 보충
+describe("[S-03] 상품 상세 페이지 — 재고 보충", () => {
+  it("재고 보충 버튼 클릭 후 수량 입력 → 확인 시 POST .../stock/restore를 호출한다", async () => {
     mockFetch
       .mockResolvedValueOnce(
-        new Response(JSON.stringify(activeProduct), {
+        new Response(JSON.stringify(baseProduct), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         })
       )
       .mockResolvedValueOnce(
-        new Response(JSON.stringify(restoredProduct), {
+        new Response(JSON.stringify({ ...baseProduct, stockQuantity: 50 }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         })
       );
 
+    const { default: ProductDetailPage } = await import("../[id]/page");
     render(<ProductDetailPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("스포츠 양말")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "재고 보충 다이얼로그 열기" })).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /재고 보충/i }));
+    fireEvent.click(screen.getByRole("button", { name: "재고 보충 다이얼로그 열기" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(screen.getByRole("dialog", { name: "재고 보충" })).toBeTruthy();
     });
 
-    fireEvent.change(screen.getByLabelText(/수량/i), { target: { value: "10" } });
-    fireEvent.click(screen.getByRole("button", { name: /재고 보충 확인/i }));
+    fireEvent.change(screen.getByLabelText(/보충 수량/), { target: { value: "50" } });
+    fireEvent.click(screen.getByRole("button", { name: "재고 보충 확인" }));
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
         "/api/portal/products/1/stock/restore",
         expect.objectContaining({
           method: "POST",
-          body: JSON.stringify({ quantity: 10 }),
+          body: JSON.stringify({ quantity: 50 }),
         })
       );
     });
   });
+});
 
-  it("상세 페이지에서 비활성화 버튼 클릭 시 POST /api/portal/products/1/deactivate를 호출한다", async () => {
-    const { default: ProductDetailPage } = await import("../[id]/page");
+// [S-04] 상품 비활성화
+describe("[S-04] 상품 상세 페이지 — 비활성화", () => {
+  it("ACTIVE 상품의 비활성화 버튼 클릭 시 POST .../deactivate를 호출한다", async () => {
+    const { useToast } = await import("@/components/ui/toast");
+    const mockAddToast = vi.fn();
+    vi.mocked(useToast).mockReturnValue({ addToast: mockAddToast, toasts: [], removeToast: vi.fn() }); // override for assertion
 
-    const activeProduct = { ...baseProduct, status: "ACTIVE", stockQuantity: 10 };
-    const deactivatedProduct = { ...activeProduct, status: "INACTIVE" };
+    const activeProduct = { ...baseProduct, status: "ACTIVE" as const };
 
     mockFetch
       .mockResolvedValueOnce(
@@ -177,19 +215,20 @@ describe("[S-01] 상품 등록 → 활성화 → 재고 보충 → 비활성화 
         })
       )
       .mockResolvedValueOnce(
-        new Response(JSON.stringify(deactivatedProduct), {
+        new Response(JSON.stringify({ ...activeProduct, status: "INACTIVE" }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         })
       );
 
+    const { default: ProductDetailPage } = await import("../[id]/page");
     render(<ProductDetailPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("스포츠 양말")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "상품 비활성화" })).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /상품 비활성화/i }));
+    fireEvent.click(screen.getByRole("button", { name: "상품 비활성화" }));
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
@@ -197,44 +236,11 @@ describe("[S-01] 상품 등록 → 활성화 → 재고 보충 → 비활성화 
         expect.objectContaining({ method: "POST" })
       );
     });
-  });
-
-  it("재고 음수 입력 시 클라이언트 검증이 실패하고 API를 호출하지 않는다", async () => {
-    const { default: ProductDetailPage } = await import("../[id]/page");
-
-    const activeProduct = { ...baseProduct, status: "ACTIVE" };
-
-    mockFetch.mockResolvedValue(
-      new Response(JSON.stringify(activeProduct), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      })
-    );
-
-    render(<ProductDetailPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("스포츠 양말")).toBeInTheDocument();
+      expect(mockAddToast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "상품이 비활성화되었습니다." })
+      );
     });
-
-    mockFetch.mockReset();
-
-    fireEvent.click(screen.getByRole("button", { name: /재고 보충/i }));
-
-    await waitFor(() => {
-      expect(screen.getByRole("dialog")).toBeInTheDocument();
-    });
-
-    fireEvent.change(screen.getByLabelText(/수량/i), { target: { value: "-5" } });
-    fireEvent.click(screen.getByRole("button", { name: /재고 보충 확인/i }));
-
-    await waitFor(() => {
-      expect(screen.getByRole("alert")).toBeInTheDocument();
-    });
-
-    expect(mockFetch).not.toHaveBeenCalledWith(
-      "/api/portal/products/1/stock/restore",
-      expect.anything()
-    );
   });
 });

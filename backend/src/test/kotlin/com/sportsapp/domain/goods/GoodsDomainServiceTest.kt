@@ -153,4 +153,19 @@ class GoodsDomainServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("GoodsDomainService 메서드 시그니처 (B2B-17 fix: @Transactional UseCase 레이어로 이전)") {
+        When("public 메서드 어노테이션을 검사하면") {
+            Then("[U-03] @Transactional 어노테이션은 어느 public 메서드에도 선언돼 있지 않다") {
+                val transactionalAnnotated = GoodsDomainService::class.java.declaredMethods
+                    .filter { java.lang.reflect.Modifier.isPublic(it.modifiers) }
+                    .filter { method ->
+                        method.annotations.any {
+                            it.annotationClass.simpleName == "Transactional"
+                        }
+                    }
+                transactionalAnnotated.size shouldBe 0
+            }
+        }
+    }
 })

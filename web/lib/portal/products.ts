@@ -14,6 +14,13 @@ import type {
   RestoreStockInput,
 } from "./types";
 
+export async function getMyProduct(id: number): Promise<MyProduct> {
+  const response = await beClient(`/api/goods-seller/products/${id}`, { method: "GET" });
+  await throwIfErrorResponse(response);
+  const data: unknown = await response.json();
+  return MyProductSchema.parse(data);
+}
+
 export async function createMyProduct(input: CreateProductInput): Promise<MyProduct> {
   const response = await beClient("/api/goods-seller/products", {
     method: "POST",

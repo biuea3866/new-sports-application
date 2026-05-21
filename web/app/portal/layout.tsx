@@ -14,6 +14,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/portal", label: "대시보드", requiredRole: null },
   { href: "/portal/facilities", label: "시설", requiredRole: "FACILITY_OWNER" },
   { href: "/portal/slots", label: "슬롯", requiredRole: "FACILITY_OWNER" },
+  { href: "/portal/bookings", label: "예약", requiredRole: "FACILITY_OWNER" },
   { href: "/portal/events", label: "경기", requiredRole: "EVENT_HOST" },
   { href: "/portal/products", label: "상품", requiredRole: "GOODS_SELLER" },
 ];
