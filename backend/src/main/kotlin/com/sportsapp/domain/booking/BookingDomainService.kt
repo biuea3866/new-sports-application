@@ -87,15 +87,18 @@ class BookingDomainService(
         return bookingRepository.save(booking)
     }
 
-    fun cancelBooking(bookingId: Long): Booking {
+    fun cancel(bookingId: Long, cancelledByUserId: Long, reason: String?): Booking {
         val booking = bookingRepository.findById(bookingId)
             ?: throw ResourceNotFoundException("Booking", bookingId)
-        booking.cancel()
-        return bookingRepository.save(booking)
+        booking.cancel(cancelledByUserId, reason)
+        val saved = bookingRepository.save(booking)
+        domainEventPublisher.publishAll(saved.pullDomainEvents())
+        return saved
     }
 
     fun findMyBookings(userId: Long, status: BookingStatus?, pageable: Pageable): Page<Booking> =
         bookingRepository.findPageByUserId(userId, status, pageable)
+
 
     fun getBooking(requesterId: Long, bookingId: Long): Booking {
         val booking = bookingRepository.findById(bookingId)
