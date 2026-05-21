@@ -31,6 +31,7 @@ class TicketingDomainService(
         seats: List<SeatSpec>,
         ownerUserId: Long,
     ): Event {
+        Event.validateSeatLimit(seats)
         val event = eventRepository.save(Event.create(title, venue, startsAt, ownerUserId))
         val seatList = seats.map { spec ->
             Seat(

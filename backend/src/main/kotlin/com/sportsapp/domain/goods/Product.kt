@@ -57,6 +57,10 @@ class Product(
         if (status != ProductStatus.ACTIVE) throw ProductInactiveException(id)
     }
 
+    fun requireOwnedBy(userId: Long) {
+        if (ownerId != userId) throw ProductOwnershipException(id)
+    }
+
     fun updateMeta(
         name: String?,
         category: ProductCategory?,

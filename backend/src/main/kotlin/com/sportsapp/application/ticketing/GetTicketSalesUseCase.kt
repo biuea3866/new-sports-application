@@ -1,6 +1,5 @@
 package com.sportsapp.application.ticketing
 
-import com.sportsapp.domain.common.exceptions.UnauthorizedException
 import com.sportsapp.domain.ticketing.TicketingDomainService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -11,7 +10,10 @@ class GetTicketSalesUseCase(
 ) {
     @Transactional(readOnly = true)
     fun execute(command: GetTicketSalesCommand): TicketSalesResponse {
-        requireEventOwnership(command)
+        if (command.eventId != null) {
+            val event = ticketingDomainService.getEvent(command.eventId)
+            event.requireOwnedBy(command.operatorUserId)
+        }
         val summary = ticketingDomainService.aggregateTicketSales(
             ownerUserId = command.operatorUserId,
             eventId = command.eventId,
@@ -19,14 +21,5 @@ class GetTicketSalesUseCase(
             to = command.to,
         )
         return TicketSalesResponse.of(summary)
-    }
-
-    private fun requireEventOwnership(command: GetTicketSalesCommand) {
-        if (command.eventId != null) {
-            val event = ticketingDomainService.getEvent(command.eventId)
-            if (event.ownerId != command.operatorUserId) {
-                throw UnauthorizedException("Event ${command.eventId} is not owned by operator ${command.operatorUserId}")
-            }
-        }
     }
 }

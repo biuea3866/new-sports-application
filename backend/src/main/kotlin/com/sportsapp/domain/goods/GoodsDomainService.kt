@@ -184,6 +184,45 @@ class GoodsDomainService(
     fun findByOwnerId(ownerId: Long, pageable: Pageable): Page<ProductWithStock> =
         customProductRepository.findByOwnerId(ownerId, pageable)
 
+    fun activateProduct(productId: Long, authUserId: Long): Product {
+        val product = productRepository.findById(productId)
+            ?: throw ResourceNotFoundException("Product", productId)
+        product.requireOwnedBy(authUserId)
+        product.activate()
+        return productRepository.save(product)
+    }
+
+    fun deactivateProduct(productId: Long, authUserId: Long): Product {
+        val product = productRepository.findById(productId)
+            ?: throw ResourceNotFoundException("Product", productId)
+        product.requireOwnedBy(authUserId)
+        product.deactivate()
+        return productRepository.save(product)
+    }
+
+    fun updateProductMeta(
+        productId: Long,
+        authUserId: Long,
+        name: String?,
+        category: ProductCategory?,
+        price: BigDecimal?,
+        description: String?,
+        imageUrl: String?,
+    ): Product {
+        val product = productRepository.findById(productId)
+            ?: throw ResourceNotFoundException("Product", productId)
+        product.requireOwnedBy(authUserId)
+        product.updateMeta(name, category, price, description, imageUrl)
+        return productRepository.save(product)
+    }
+
+    fun restoreStockForOwner(productId: Long, authUserId: Long, quantity: Int) {
+        val product = productRepository.findById(productId)
+            ?: throw ResourceNotFoundException("Product", productId)
+        product.requireOwnedBy(authUserId)
+        restoreStock(productId, quantity)
+    }
+
     companion object {
         private const val POPULAR_LIMIT = 20
     }

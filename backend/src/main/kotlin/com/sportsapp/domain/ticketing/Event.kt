@@ -60,6 +60,10 @@ class Event(
         }
     }
 
+    fun requireOwnedBy(userId: Long) {
+        if (ownerId != userId) throw EventOwnershipException(id)
+    }
+
     fun openSales() {
         status.requireCanTransitTo(EventStatus.OPEN)
         status = EventStatus.OPEN

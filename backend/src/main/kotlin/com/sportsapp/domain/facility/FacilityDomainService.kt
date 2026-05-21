@@ -1,8 +1,5 @@
 package com.sportsapp.domain.facility
 
-import com.sportsapp.domain.booking.BookingRepository
-import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
-import java.time.ZonedDateTime
 import org.springframework.context.annotation.Profile
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -12,7 +9,6 @@ import org.springframework.stereotype.Service
 @Profile("!test-jpa")
 class FacilityDomainService(
     private val facilityRepository: FacilityRepository,
-    private val bookingRepository: BookingRepository,
 ) {
 
     fun register(attributes: FacilityAttributes): Facility {
@@ -71,36 +67,14 @@ class FacilityDomainService(
         facilityRepository.save(facility)
     }
 
-    fun aggregateStats(
-        operatorId: Long,
-        facilityId: String?,
-        from: ZonedDateTime,
-        to: ZonedDateTime,
-    ): List<FacilityStats> {
-        val facilities = if (facilityId != null) {
+    fun getFacilitiesForStats(operatorId: Long, facilityId: String?): List<Facility> {
+        return if (facilityId != null) {
             val facility = facilityRepository.findById(facilityId) ?: throw FacilityNotFoundException(facilityId)
             facility.requireOwnedBy(operatorId)
             listOf(facility)
         } else {
             facilityRepository.findIdsByOwnerUserId(operatorId)
                 .mapNotNull { facilityRepository.findById(it) }
-        }
-
-        val facilityIds = facilities.mapNotNull { it.id }
-        val bookingStatsByFacilityId = bookingRepository.aggregateStatsByFacilityIds(facilityIds, from, to)
-            .associateBy { it.facilityId }
-
-        return facilities.map { facility ->
-            val fid = requireNotNull(facility.id) { "facility id must not be null" }
-            val bookingStats = bookingStatsByFacilityId[fid]
-            FacilityStats(
-                facilityId = fid,
-                name = facility.name,
-                totalBookings = bookingStats?.totalBookings ?: 0L,
-                totalRevenue = bookingStats?.totalRevenue ?: 0L,
-                noShowCount = bookingStats?.noShowCount ?: 0L,
-                avgRating = null,
-            )
         }
     }
 

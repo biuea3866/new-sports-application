@@ -117,4 +117,11 @@ class BookingDomainService(
         throw UnauthorizedBookingAccessException(bookingId)
     }
 
+    fun aggregateStatsByFacilityIds(
+        facilityIds: List<String>,
+        from: ZonedDateTime,
+        to: ZonedDateTime,
+    ): List<FacilityBookingStats> =
+        bookingRepository.aggregateStatsByFacilityIds(facilityIds, from, to)
+
 }
