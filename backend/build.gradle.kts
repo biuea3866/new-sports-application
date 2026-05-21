@@ -60,6 +60,9 @@ dependencies {
     // Redis
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
 
+    // AWS SDK v2 (S3 + MinIO Presigned URL)
+    implementation("software.amazon.awssdk:s3:2.31.19")
+
     // JSON Column
     implementation("io.hypersistence:hypersistence-utils-hibernate-63:3.9.0")
 

@@ -13,14 +13,19 @@ import org.testcontainers.containers.MySQLContainer
 import org.testcontainers.junit.jupiter.Container
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@ContextConfiguration(initializers = [BaseIntegrationTest.MongoInitializer::class])
+@ContextConfiguration(initializers = [BaseIntegrationTest.Initializer::class])
 abstract class BaseIntegrationTest : BehaviorSpec() {
 
-    class MongoInitializer : ApplicationContextInitializer<ConfigurableApplicationContext> {
+    class Initializer : ApplicationContextInitializer<ConfigurableApplicationContext> {
         override fun initialize(applicationContext: ConfigurableApplicationContext) {
             TestPropertySourceUtils.addInlinedPropertiesToEnvironment(
                 applicationContext,
                 "spring.data.mongodb.uri=${mongoContainer.replicaSetUrl}",
+                "storage.image.endpoint=http://${minioContainer.host}:${minioContainer.getMappedPort(9000)}",
+                "storage.image.access-key=minioadmin",
+                "storage.image.secret-key=minioadmin",
+                "storage.image.bucket=sports-app",
+                "storage.image.region=us-east-1",
             )
         }
     }
@@ -42,6 +47,14 @@ abstract class BaseIntegrationTest : BehaviorSpec() {
         @ServiceConnection
         val redisContainer: GenericContainer<*> = GenericContainer("redis:7-alpine")
             .withExposedPorts(6379)
+            .also { it.start() }
+
+        val minioContainer: GenericContainer<*> = GenericContainer("minio/minio:latest")
+            .withExposedPorts(9000)
+            .withEnv("MINIO_ROOT_USER", "minioadmin")
+            .withEnv("MINIO_ROOT_PASSWORD", "minioadmin")
+            .withCommand("server", "/data")
+            .withReuse(true)
             .also { it.start() }
     }
 }

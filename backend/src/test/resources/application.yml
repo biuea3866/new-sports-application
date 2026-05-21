@@ -33,6 +33,21 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
+storage:
+  image:
+    endpoint: http://localhost:9000
+    region: us-east-1
+    access-key: minioadmin
+    secret-key: minioadmin
+    bucket: sports-app
+    upload-expiry-seconds: 900
+    download-expiry-seconds: 3600
+    max-bytes: 10485760
+    allowed-content-types:
+      - image/jpeg
+      - image/png
+      - image/webp
+
 notification:
   templates:
     payment-completed:
