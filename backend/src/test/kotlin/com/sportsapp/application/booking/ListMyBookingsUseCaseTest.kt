@@ -48,12 +48,12 @@ class ListMyBookingsUseCaseTest : BehaviorSpec({
             val response = listMyBookingsUseCase.execute(command)
 
             Then("[U-01] 2건이 반환되며 paymentStatus가 올바르게 매핑된다") {
-                response.bookings.size shouldBe 2
+                response.content.size shouldBe 2
                 response.totalElements shouldBe 2L
-                response.bookings[0].status shouldBe BookingStatus.CONFIRMED
-                response.bookings[0].paymentStatus shouldBe PaymentStatus.COMPLETED
-                response.bookings[1].status shouldBe BookingStatus.PENDING
-                response.bookings[1].paymentStatus shouldBe null
+                response.content[0].status shouldBe BookingStatus.CONFIRMED
+                response.content[0].paymentStatus shouldBe PaymentStatus.COMPLETED
+                response.content[1].status shouldBe BookingStatus.PENDING
+                response.content[1].paymentStatus shouldBe null
             }
         }
     }

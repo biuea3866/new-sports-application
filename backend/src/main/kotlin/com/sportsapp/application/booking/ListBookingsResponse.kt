@@ -3,7 +3,7 @@ package com.sportsapp.application.booking
 import org.springframework.data.domain.Page
 
 data class ListBookingsResponse(
-    val bookings: List<BookingResponse>,
+    val content: List<BookingResponse>,
     val totalElements: Long,
     val totalPages: Int,
     val page: Int,
@@ -11,7 +11,7 @@ data class ListBookingsResponse(
 ) {
     companion object {
         fun of(page: Page<BookingResponse>): ListBookingsResponse = ListBookingsResponse(
-            bookings = page.content,
+            content = page.content,
             totalElements = page.totalElements,
             totalPages = page.totalPages,
             page = page.number,

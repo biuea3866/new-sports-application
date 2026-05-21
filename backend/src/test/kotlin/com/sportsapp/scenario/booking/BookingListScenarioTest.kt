@@ -54,10 +54,11 @@ class BookingListScenarioTest(
                     String::class.java,
                 )
 
-                Then("[S-01] 200 응답과 CONFIRMED 상태 bookings가 반환된다") {
+                Then("[S-01][DEF-005] 200 응답과 content 배열 및 totalElements 필드가 반환된다") {
                     response.statusCode shouldBe HttpStatus.OK
-                    response.body shouldContain "CONFIRMED"
+                    response.body shouldContain "\"content\""
                     response.body shouldContain "totalElements"
+                    response.body shouldContain "CONFIRMED"
                 }
             }
         }

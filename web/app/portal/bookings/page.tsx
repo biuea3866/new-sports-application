@@ -60,7 +60,7 @@ export default function BookingsPage() {
       const params: ListBookingsParams = { page, size: PAGE_SIZE };
       if (statusFilter !== "") params.status = statusFilter;
       const data = await fetchMyBookings(params);
-      setBookings(data.bookings);
+      setBookings(data.content);
       setTotalPages(data.totalPages);
       setTotalElements(data.totalElements);
     } catch (err) {

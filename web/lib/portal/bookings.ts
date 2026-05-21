@@ -17,7 +17,7 @@ export interface BookingResponse {
 }
 
 export interface ListBookingsResponse {
-  bookings: BookingResponse[];
+  content: BookingResponse[];
   totalElements: number;
   totalPages: number;
   page: number;
