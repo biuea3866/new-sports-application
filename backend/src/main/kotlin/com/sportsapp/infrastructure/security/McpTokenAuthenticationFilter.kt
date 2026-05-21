@@ -1,7 +1,8 @@
-package com.sportsapp.presentation.mcp.security
+package com.sportsapp.infrastructure.security
 
 import com.sportsapp.domain.common.PermissionRepository
 import com.sportsapp.domain.mcp.McpScope
+import com.sportsapp.domain.mcp.McpTokenDomainService
 import com.sportsapp.domain.mcp.McpTokenRepository
 import com.sportsapp.domain.mcp.McpTokenScopeRepository
 import jakarta.servlet.FilterChain
@@ -21,6 +22,7 @@ class McpTokenAuthenticationFilter(
     private val mcpTokenScopeRepository: McpTokenScopeRepository,
     private val permissionRepository: PermissionRepository,
     private val passwordEncoder: PasswordEncoder,
+    private val mcpTokenDomainService: McpTokenDomainService,
 ) : OncePerRequestFilter() {
 
     override fun doFilterInternal(
@@ -44,7 +46,7 @@ class McpTokenAuthenticationFilter(
             writeUnauthorized(response)
             return false
         }
-        return try {
+        val authenticated = try {
             mcpToken.requireActive()
             mcpToken.requireNotExpired()
             injectSecurityContext(mcpToken.id, mcpToken.userId)
@@ -53,6 +55,10 @@ class McpTokenAuthenticationFilter(
             writeUnauthorized(response)
             false
         }
+        if (authenticated) {
+            mcpTokenDomainService.recordUsage(mcpToken.id)
+        }
+        return authenticated
     }
 
     private fun injectSecurityContext(tokenId: Long, userId: Long) {
@@ -60,7 +66,7 @@ class McpTokenAuthenticationFilter(
         val principal = McpUserPrincipal(tokenId = tokenId, userId = userId, grantedScopes = grantedScopes)
         val authorities = grantedScopes.map { scope ->
             SimpleGrantedAuthority("MCP_SCOPE_${scope.verb.uppercase()}_${scope.domain.uppercase()}")
-        }
+        } + listOf(SimpleGrantedAuthority("ROLE_MCP_TOKEN"))
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(principal, null, authorities)
     }
@@ -81,8 +87,11 @@ class McpTokenAuthenticationFilter(
 
     private fun resolveScopes(tokenId: Long): Set<McpScope> {
         val tokenScopes = mcpTokenScopeRepository.findByTokenId(tokenId)
+        val permissionIds = tokenScopes.map { it.permissionId }
+        val permissions = permissionRepository.findAllByIds(permissionIds)
+        val permissionMap = permissions.associateBy { it.id }
         return tokenScopes.mapNotNull { tokenScope ->
-            val permission = permissionRepository.findById(tokenScope.permissionId) ?: return@mapNotNull null
+            val permission = permissionMap[tokenScope.permissionId] ?: return@mapNotNull null
             parseScopeFromPermissionName(permission.name)
         }.toSet()
     }

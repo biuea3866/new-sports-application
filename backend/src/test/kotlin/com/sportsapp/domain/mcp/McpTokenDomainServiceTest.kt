@@ -176,4 +176,31 @@ class McpTokenDomainServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("[U-08] 존재하는 tokenId로 recordUsage를 호출하면") {
+        val token = makeToken(userId = 1L, id = 5L)
+        every { mcpTokenRepository.findById(5L) } returns token
+        every { mcpTokenRepository.save(any()) } answers { firstArg() }
+
+        When("recordUsage를 호출하면") {
+            domainService.recordUsage(5L)
+
+            Then("[U-08] lastUsedAt이 설정되고 save가 호출된다") {
+                token.lastUsedAt shouldNotBe null
+                verify(exactly = 1) { mcpTokenRepository.save(token) }
+            }
+        }
+    }
+
+    Given("[U-09] 존재하지 않는 tokenId로 recordUsage를 호출하면") {
+        every { mcpTokenRepository.findById(999L) } returns null
+
+        When("recordUsage를 호출하면") {
+            Then("[U-09] ResourceNotFoundException이 발생한다") {
+                shouldThrow<ResourceNotFoundException> {
+                    domainService.recordUsage(999L)
+                }
+            }
+        }
+    }
 })

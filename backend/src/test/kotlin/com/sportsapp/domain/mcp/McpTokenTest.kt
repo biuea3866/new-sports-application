@@ -115,6 +115,26 @@ class McpTokenTest : BehaviorSpec({
         }
     }
 
+    Given("updateTokenHash에 빈 문자열을 전달하면") {
+        val token = createActiveToken()
+
+        Then("[U-07] IllegalArgumentException이 발생한다") {
+            shouldThrow<IllegalArgumentException> {
+                token.updateTokenHash("")
+            }
+        }
+    }
+
+    Given("updateTokenHash에 공백만 있는 문자열을 전달하면") {
+        val token = createActiveToken()
+
+        Then("[U-07] IllegalArgumentException이 발생한다") {
+            shouldThrow<IllegalArgumentException> {
+                token.updateTokenHash("   ")
+            }
+        }
+    }
+
     Given("ACTIVE 상태의 McpToken에 recordUsage() 호출") {
         val token = createActiveToken()
         val before = ZonedDateTime.now()

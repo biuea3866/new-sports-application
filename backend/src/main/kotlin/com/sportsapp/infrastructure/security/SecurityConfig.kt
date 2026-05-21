@@ -17,7 +17,6 @@ import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.access.AccessDeniedHandler
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
-import com.sportsapp.presentation.mcp.security.McpTokenAuthenticationFilter
 
 @Configuration
 @EnableWebSecurity
@@ -53,8 +52,8 @@ class SecurityConfig(
         auth.requestMatchers("/api/event-host/**").authenticated()
         auth.requestMatchers("/api/goods-seller/**").authenticated()
         auth.requestMatchers("/api/operator/**").authenticated()
-        auth.requestMatchers("/api/admin/mcp/tokens/**").authenticated()
-        auth.requestMatchers("/api/admin/mcp/audit-logs/**").authenticated()
+        auth.requestMatchers("/api/admin/mcp/tokens/**").hasRole("ADMIN")
+        auth.requestMatchers("/api/admin/mcp/audit-logs/**").hasRole("ADMIN")
         auth.requestMatchers("/mcp/**").authenticated()
         // TODO(AUTH-04): SecurityContext 통합 전까지 도메인 API는 X-User-Id 헤더 기반으로 임시 permitAll
         auth.requestMatchers(HttpMethod.POST, "/images/presigned-upload").authenticated()

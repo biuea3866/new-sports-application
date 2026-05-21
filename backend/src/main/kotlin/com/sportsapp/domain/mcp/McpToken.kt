@@ -88,6 +88,7 @@ class McpToken(
     }
 
     fun updateTokenHash(newHash: String) {
+        require(newHash.isNotBlank()) { "tokenHash must not be blank" }
         tokenHash = newHash
     }
 

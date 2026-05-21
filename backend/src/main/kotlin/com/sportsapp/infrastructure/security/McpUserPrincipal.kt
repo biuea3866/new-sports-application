@@ -1,4 +1,4 @@
-package com.sportsapp.presentation.mcp.security
+package com.sportsapp.infrastructure.security
 
 import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
 import com.sportsapp.domain.mcp.McpScope

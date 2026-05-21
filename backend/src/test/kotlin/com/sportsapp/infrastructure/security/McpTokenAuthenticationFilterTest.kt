@@ -1,7 +1,8 @@
-package com.sportsapp.presentation.mcp.security
+package com.sportsapp.infrastructure.security
 
 import com.sportsapp.domain.mcp.McpScope
 import com.sportsapp.domain.mcp.McpToken
+import com.sportsapp.domain.mcp.McpTokenDomainService
 import com.sportsapp.domain.mcp.McpTokenRepository
 import com.sportsapp.domain.mcp.McpTokenScopeRepository
 import com.sportsapp.domain.mcp.McpTokenStatus
@@ -13,6 +14,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.mockk.clearMocks
 import io.mockk.every
+import io.mockk.justRun
 import io.mockk.mockk
 import io.mockk.verify
 import jakarta.servlet.FilterChain
@@ -28,12 +30,14 @@ class McpTokenAuthenticationFilterTest : BehaviorSpec({
     val mcpTokenScopeRepository = mockk<McpTokenScopeRepository>()
     val permissionRepository = mockk<PermissionRepository>()
     val passwordEncoder = mockk<PasswordEncoder>()
+    val mcpTokenDomainService = mockk<McpTokenDomainService>(relaxed = true)
 
     val filter = McpTokenAuthenticationFilter(
         mcpTokenRepository = mcpTokenRepository,
         mcpTokenScopeRepository = mcpTokenScopeRepository,
         permissionRepository = permissionRepository,
         passwordEncoder = passwordEncoder,
+        mcpTokenDomainService = mcpTokenDomainService,
     )
 
     fun makeToken(
@@ -79,7 +83,7 @@ class McpTokenAuthenticationFilterTest : BehaviorSpec({
     beforeEach {
         SecurityContextHolder.setStrategyName(SecurityContextHolder.MODE_INHERITABLETHREADLOCAL)
         SecurityContextHolder.clearContext()
-        clearMocks(mcpTokenRepository, mcpTokenScopeRepository, permissionRepository, passwordEncoder)
+        clearMocks(mcpTokenRepository, mcpTokenScopeRepository, permissionRepository, passwordEncoder, mcpTokenDomainService, answers = false)
     }
 
     afterEach {
@@ -103,7 +107,7 @@ class McpTokenAuthenticationFilterTest : BehaviorSpec({
         every { mcpTokenRepository.findById(1L) } returns token
         every { passwordEncoder.matches(plainToken, "bcrypt-hashed") } returns true
         every { mcpTokenScopeRepository.findByTokenId(1L) } returns listOf(scope)
-        every { permissionRepository.findById(100L) } returns permission
+        every { permissionRepository.findAllByIds(listOf(100L)) } returns listOf(permission)
 
         val request = MockHttpServletRequest().apply {
             requestURI = "/mcp/tools/list"
