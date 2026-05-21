@@ -19,13 +19,13 @@ class Event(
     val id: Long,
 
     @Column(nullable = false, length = 200)
-    val title: String,
+    var title: String,
 
     @Column(nullable = false, length = 200)
-    val venue: String,
+    var venue: String,
 
     @Column(name = "starts_at", nullable = false)
-    val startsAt: ZonedDateTime,
+    var startsAt: ZonedDateTime,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -59,5 +59,20 @@ class Event(
     fun close() {
         status.requireCanTransitTo(EventStatus.CLOSED)
         status = EventStatus.CLOSED
+    }
+
+    fun update(newTitle: String, newVenue: String, newStartsAt: ZonedDateTime) {
+        requireScheduled()
+        title = newTitle
+        venue = newVenue
+        startsAt = newStartsAt
+    }
+
+    fun requireScheduled() {
+        if (status != EventStatus.SCHEDULED) {
+            throw com.sportsapp.domain.ticketing.exception.InvalidEventStateException(
+                "Event $id is not in SCHEDULED state"
+            )
+        }
     }
 }

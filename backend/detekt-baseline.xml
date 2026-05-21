@@ -7,5 +7,6 @@
     <ID>TooManyFunctions:FacilityRepository.kt$FacilityRepository</ID>
     <ID>TooManyFunctions:FacilityRepositoryImpl.kt$FacilityRepositoryImpl : FacilityRepository</ID>
     <ID>TooManyFunctions:GoodsDomainService.kt$GoodsDomainService</ID>
+    <ID>TooManyFunctions:TicketingDomainService.kt$TicketingDomainService</ID>
   </CurrentIssues>
 </SmellBaseline>

@@ -41,6 +41,7 @@ class SecurityConfig(
                 auth.requestMatchers("/actuator/health", "/actuator/info").permitAll()
                 auth.requestMatchers("/admin/**").hasRole("ADMIN")
                 auth.requestMatchers("/api/b2b/**").authenticated()
+                auth.requestMatchers("/b2b/**").authenticated()
                 // TODO(AUTH-04): SecurityContext 통합 전까지 도메인 API는 X-User-Id 헤더 기반으로 임시 permitAll
                 auth.requestMatchers(
                     "/bookings/**", "/payments/**", "/facilities/**",

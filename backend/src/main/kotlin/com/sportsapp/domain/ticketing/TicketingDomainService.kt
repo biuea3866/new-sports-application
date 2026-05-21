@@ -103,6 +103,34 @@ class TicketingDomainService(
         return seats.filter { it.id in seatIds }.sumOf { it.price }
     }
 
+    fun getMyEvent(eventId: Long, ownerUserId: Long): Event =
+        eventRepository.findByIdAndOwnerId(eventId, ownerUserId)
+            ?: throw ResourceNotFoundException("Event", eventId)
+
+    fun listMyEvents(ownerUserId: Long, pageable: Pageable): Page<Event> =
+        eventRepository.findByOwnerId(ownerUserId, pageable)
+
+    fun updateMyEvent(
+        eventId: Long,
+        ownerUserId: Long,
+        title: String,
+        venue: String,
+        startsAt: ZonedDateTime,
+    ): Event {
+        val event = getMyEvent(eventId, ownerUserId)
+        event.update(title, venue, startsAt)
+        return eventRepository.save(event)
+    }
+
+    fun closeMyEvent(eventId: Long, ownerUserId: Long): Event {
+        val event = getMyEvent(eventId, ownerUserId)
+        event.close()
+        return eventRepository.save(event)
+    }
+
+    fun countConfirmedSeatsByEventId(eventId: Long): Long =
+        ticketOrderRepository.countConfirmedSeatsByEventId(eventId)
+
     private fun parseLockId(lockId: String): List<Pair<Long, Long>> =
         lockId.split(",").map { token ->
             val parts = token.split(":")
