@@ -24,37 +24,35 @@ class GetMyDashboardSummaryUseCase(
     @Cacheable(value = ["b2bDashboardSummary"], key = "#userId")
     fun execute(userId: Long): DashboardSummaryResponse {
         val roleNames = userDomainService.getRolesForUser(userId).map { it.name }.toSet()
-
-        val facilities = if (roleNames.contains("FACILITY_OWNER")) {
-            val facilityIds = facilityDomainService.findIdsByOwnerUserId(userId)
-            DashboardSummaryResponse.FacilitiesSummary(
-                count = facilityDomainService.countByOwnerUserId(userId),
-                activeSlotsToday = slotDomainService.countTodayByFacilityIds(facilityIds),
-            )
-        } else null
-
-        val events = if (roleNames.contains("EVENT_HOST")) {
-            val statusCounts = ticketingDomainService.countEventsByOwnerIdGroupByStatus(userId)
-            DashboardSummaryResponse.EventsSummary(
-                scheduled = statusCounts[EventStatus.SCHEDULED] ?: 0L,
-                open = statusCounts[EventStatus.OPEN] ?: 0L,
-                closed = statusCounts[EventStatus.CLOSED] ?: 0L,
-                totalSeats = ticketingDomainService.sumTotalSeatsByOwnerId(userId),
-                soldSeats = ticketingDomainService.sumSoldSeatsByOwnerId(userId),
-            )
-        } else null
-
-        val products = if (roleNames.contains("GOODS_SELLER")) {
-            DashboardSummaryResponse.ProductsSummary(
-                active = goodsDomainService.countActiveProductsByOwnerId(userId),
-                outOfStock = goodsDomainService.countOutOfStockProductsByOwnerId(userId),
-            )
-        } else null
-
         return DashboardSummaryResponse(
-            facilities = facilities,
-            events = events,
-            products = products,
+            facilities = if (roleNames.contains("FACILITY_OWNER")) buildFacilitiesSummary(userId) else null,
+            events = if (roleNames.contains("EVENT_HOST")) buildEventsSummary(userId) else null,
+            products = if (roleNames.contains("GOODS_SELLER")) buildProductsSummary(userId) else null,
         )
     }
+
+    private fun buildFacilitiesSummary(userId: Long): DashboardSummaryResponse.FacilitiesSummary {
+        val facilityIds = facilityDomainService.findIdsByOwnerUserId(userId)
+        return DashboardSummaryResponse.FacilitiesSummary(
+            count = facilityDomainService.countByOwnerUserId(userId),
+            activeSlotsToday = slotDomainService.countTodayByFacilityIds(facilityIds),
+        )
+    }
+
+    private fun buildEventsSummary(userId: Long): DashboardSummaryResponse.EventsSummary {
+        val statusCounts = ticketingDomainService.countEventsByOwnerIdGroupByStatus(userId)
+        return DashboardSummaryResponse.EventsSummary(
+            scheduled = statusCounts[EventStatus.SCHEDULED] ?: 0L,
+            open = statusCounts[EventStatus.OPEN] ?: 0L,
+            closed = statusCounts[EventStatus.CLOSED] ?: 0L,
+            totalSeats = ticketingDomainService.sumTotalSeatsByOwnerId(userId),
+            soldSeats = ticketingDomainService.sumSoldSeatsByOwnerId(userId),
+        )
+    }
+
+    private fun buildProductsSummary(userId: Long): DashboardSummaryResponse.ProductsSummary =
+        DashboardSummaryResponse.ProductsSummary(
+            active = goodsDomainService.countActiveProductsByOwnerId(userId),
+            outOfStock = goodsDomainService.countOutOfStockProductsByOwnerId(userId),
+        )
 }

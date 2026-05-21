@@ -139,7 +139,7 @@ class B2bDashboardScenarioTest(
                 )
             )
 
-            stringRedisTemplate.delete("b2b:dashboard:summary::${user.id}")
+            stringRedisTemplate.delete("b2b:b2bDashboardSummary::${user.id}")
 
             When("[S-04] GET /api/b2b/dashboard/summary 첫 번째 호출") {
                 val accessToken = login("dashboard-multi-role@example.com", password)
@@ -172,25 +172,19 @@ class B2bDashboardScenarioTest(
             jdbcTemplate.execute("DELETE FROM stocks WHERE product_id IN (SELECT id FROM products WHERE owner_id = ${user.id})")
             jdbcTemplate.execute("DELETE FROM products WHERE owner_id = ${user.id}")
 
-            stringRedisTemplate.delete("b2b:dashboard:summary::${user.id}")
+            stringRedisTemplate.delete("b2b:b2bDashboardSummary::${user.id}")
 
             When("[S-01] 같은 userId로 2회 호출 시 두 번째는 캐시 히트") {
                 val accessToken = login("dashboard-cache@example.com", password)
+                val cacheKey = "b2b:b2bDashboardSummary::${user.id}"
 
                 val firstResponse = getDashboard(accessToken)
-                val cacheKey = "b2b:dashboard:summary::${user.id}"
-                val cachedValue = stringRedisTemplate.opsForValue().get(cacheKey)
-
                 val secondResponse = getDashboard(accessToken)
 
-                Then("[S-01] 두 응답 모두 200 OK이고 캐시에 값이 저장된다") {
+                Then("[S-01] 두 응답 모두 200 OK이고 첫 번째 호출 후 캐시에 값이 저장된다") {
                     firstResponse.statusCode shouldBe HttpStatus.OK
                     secondResponse.statusCode shouldBe HttpStatus.OK
-                    cachedValue shouldBe null.also {
-                        // 첫 번째 호출 후 캐시 키가 Redis에 존재하는지 확인
-                        val afterFirstCall = stringRedisTemplate.hasKey(cacheKey)
-                        afterFirstCall shouldBe true
-                    }
+                    stringRedisTemplate.hasKey(cacheKey) shouldBe true
                 }
             }
         }
