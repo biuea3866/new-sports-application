@@ -14,6 +14,7 @@ CREATE TABLE mcp_tokens (
     pii_unmask_granted TINYINT(1)   NOT NULL DEFAULT 0       COMMENT 'PII 평문 노출 권한 (Phase 1 항상 0, Phase 2 자격 검증 후 활성)',
     expires_at         DATETIME(6)  NULL                     COMMENT '토큰 만료 시각 (NULL=무기한, ADR-005)',
     last_used_at       DATETIME(6)  NULL                     COMMENT '마지막 tool 호출 시각',
+    version            BIGINT       NOT NULL DEFAULT 0       COMMENT '낙관락(@Version) — 동시 suspend/revoke race lost-update 방지',
     created_at         DATETIME(6)  NOT NULL                 COMMENT '생성 시각 (UTC)',
     created_by         BIGINT       NULL                     COMMENT '생성자 user_id',
     updated_at         DATETIME(6)  NOT NULL                 COMMENT '마지막 수정 시각 (UTC)',
