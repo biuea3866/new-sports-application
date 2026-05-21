@@ -1,7 +1,8 @@
 package com.sportsapp.application.image
 
 import com.sportsapp.domain.common.exceptions.UnsupportedContentTypeException
-import com.sportsapp.domain.common.storage.ImageStorageGateway
+import com.sportsapp.domain.common.storage.ImageDomainService
+import com.sportsapp.domain.common.storage.ImageKeyGenerator
 import com.sportsapp.domain.common.storage.PresignedUpload
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
@@ -14,9 +15,8 @@ import java.time.ZonedDateTime
 
 class CreatePresignedUploadUrlUseCaseTest : BehaviorSpec({
 
-    val imageStorageGateway = mockk<ImageStorageGateway>()
-    val imageKeyGenerator = ImageKeyGenerator()
-    val useCase = CreatePresignedUploadUrlUseCase(imageStorageGateway, imageKeyGenerator)
+    val imageDomainService = mockk<ImageDomainService>()
+    val useCase = CreatePresignedUploadUrlUseCase(imageDomainService)
 
     Given("유효한 Command") {
         val command = CreatePresignedUploadUrlCommand(
@@ -32,19 +32,18 @@ class CreatePresignedUploadUrlUseCaseTest : BehaviorSpec({
         )
 
         every {
-            imageStorageGateway.createPresignedUpload(any(), any(), any(), any())
+            imageDomainService.createUploadUrl(any(), any(), any())
         } returns expectedPresignedUpload
 
         When("execute를 호출하면") {
             val response = useCase.execute(command)
 
-            Then("[U-01] ImageStorageGateway.createPresignedUpload가 호출되고 URL이 반환된다") {
+            Then("[U-01] ImageDomainService.createUploadUrl이 호출되고 URL이 반환된다") {
                 verify(exactly = 1) {
-                    imageStorageGateway.createPresignedUpload(
-                        key = any(),
+                    imageDomainService.createUploadUrl(
+                        filename = "profile.jpg",
                         contentType = "image/jpeg",
-                        maxBytes = 10_485_760L,
-                        expirySeconds = any(),
+                        domain = "user",
                     )
                 }
                 response.url shouldBe expectedPresignedUpload.url
@@ -67,21 +66,29 @@ class CreatePresignedUploadUrlUseCaseTest : BehaviorSpec({
         }
     }
 
-    Given("contentType이 허용 목록 외인 Command") {
-        When("Command를 생성하면") {
+    Given("contentType이 허용 목록 외인 경우") {
+        val command = CreatePresignedUploadUrlCommand(
+            filename = "doc.pdf",
+            contentType = "text/plain",
+            domain = "user",
+        )
+
+        every {
+            imageDomainService.createUploadUrl("doc.pdf", "text/plain", "user")
+        } throws UnsupportedContentTypeException("text/plain")
+
+        When("execute를 호출하면") {
             Then("[U-03] UnsupportedContentTypeException이 발생한다") {
                 shouldThrow<UnsupportedContentTypeException> {
-                    CreatePresignedUploadUrlCommand(
-                        filename = "doc.pdf",
-                        contentType = "text/plain",
-                        domain = "user",
-                    )
+                    useCase.execute(command)
                 }
             }
         }
     }
 
-    Given("domain이 'user'이고 filename이 'avatar.png'인 Command") {
+    Given("domain이 'user'이고 filename이 'avatar.png'인 경우") {
+        val imageKeyGenerator = ImageKeyGenerator()
+
         When("ImageKeyGenerator.generate를 호출하면") {
             val key = imageKeyGenerator.generate("user", "avatar.png")
 

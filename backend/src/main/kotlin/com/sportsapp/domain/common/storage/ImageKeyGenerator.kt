@@ -1,4 +1,4 @@
-package com.sportsapp.application.image
+package com.sportsapp.domain.common.storage
 
 import org.springframework.stereotype.Component
 import java.util.UUID

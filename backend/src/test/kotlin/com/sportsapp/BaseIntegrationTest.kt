@@ -54,6 +54,7 @@ abstract class BaseIntegrationTest : BehaviorSpec() {
             .withEnv("MINIO_ROOT_USER", "minioadmin")
             .withEnv("MINIO_ROOT_PASSWORD", "minioadmin")
             .withCommand("server", "/data")
+            .withReuse(true)
             .also { it.start() }
     }
 }

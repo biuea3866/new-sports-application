@@ -1,24 +1,20 @@
 package com.sportsapp.application.image
 
-import com.sportsapp.domain.common.storage.ImageStorageGateway
+import com.sportsapp.domain.common.storage.ImageDomainService
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class CreatePresignedUploadUrlUseCase(
-    private val imageStorageGateway: ImageStorageGateway,
-    private val imageKeyGenerator: ImageKeyGenerator,
+    private val imageDomainService: ImageDomainService,
 ) {
+    @Transactional(readOnly = true)
     fun execute(command: CreatePresignedUploadUrlCommand): CreatePresignedUploadUrlResponse {
-        val key = imageKeyGenerator.generate(command.domain, command.filename)
-        val presignedUpload = imageStorageGateway.createPresignedUpload(
-            key = key,
+        val presignedUpload = imageDomainService.createUploadUrl(
+            filename = command.filename,
             contentType = command.contentType,
-            maxBytes = MAX_BYTES,
+            domain = command.domain,
         )
         return CreatePresignedUploadUrlResponse.of(presignedUpload)
-    }
-
-    companion object {
-        private const val MAX_BYTES = 10_485_760L
     }
 }
