@@ -65,11 +65,14 @@ object PiiMasker {
     fun email(value: String?): String? {
         if (value.isNullOrBlank()) return value
         val atIdx = value.indexOf('@')
-        if (atIdx <= 0 || atIdx == value.length - 1) return REDACTED
-        val local = value.substring(0, atIdx)
-        val domain = value.substring(atIdx + 1)
-        val tld = domain.substringAfterLast('.', missingDelimiterValue = "")
-        return "${local.first()}***@***${if (tld.isNotEmpty()) ".$tld" else ""}"
+        val masked = if (atIdx <= 0 || atIdx == value.length - 1) {
+            REDACTED
+        } else {
+            val local = value.substring(0, atIdx)
+            val tld = value.substring(atIdx + 1).substringAfterLast('.', missingDelimiterValue = "")
+            "${local.first()}***@***${if (tld.isNotEmpty()) ".$tld" else ""}"
+        }
+        return masked
     }
 
     /**
