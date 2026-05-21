@@ -9,7 +9,6 @@ import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.support.TestPropertySourceUtils
 import org.testcontainers.containers.MongoDBContainer
 import org.testcontainers.containers.MySQLContainer
-import org.testcontainers.junit.jupiter.Container
 
 /**
  * Mongo + MySQL 통합 테스트 베이스.
@@ -23,22 +22,17 @@ abstract class BaseMongoIntegrationTest : BehaviorSpec() {
         override fun initialize(applicationContext: ConfigurableApplicationContext) {
             TestPropertySourceUtils.addInlinedPropertiesToEnvironment(
                 applicationContext,
-                "spring.data.mongodb.uri=${mongoContainer.replicaSetUrl}",
+                "spring.data.mongodb.uri=${SportsTestContainers.mongo.replicaSetUrl}",
             )
         }
     }
 
     companion object {
-        @Container
+        @JvmStatic
         @ServiceConnection
-        val mysqlContainer: MySQLContainer<*> = MySQLContainer("mysql:8.0")
-            .withDatabaseName("sports")
-            .withUsername("test")
-            .withPassword("test")
-            .also { it.start() }
+        val mysqlContainer: MySQLContainer<*> = SportsTestContainers.mysql
 
-        val mongoContainer: MongoDBContainer = MongoDBContainer("mongo:7.0")
-            .withReuse(true)
-            .also { it.start() }
+        @JvmStatic
+        val mongoContainer: MongoDBContainer = SportsTestContainers.mongo
     }
 }

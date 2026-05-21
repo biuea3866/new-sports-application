@@ -5,4 +5,5 @@ import org.springframework.data.domain.Pageable
 
 interface CustomEventRepository {
     fun findByCriteria(criteria: EventCriteria, pageable: Pageable): Page<Event>
+    fun countByOwnerIdGroupByStatus(ownerId: Long): Map<EventStatus, Long>
 }

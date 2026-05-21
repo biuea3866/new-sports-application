@@ -6,6 +6,7 @@ import com.querydsl.jpa.impl.JPAQueryFactory
 import com.sportsapp.domain.ticketing.CustomEventRepository
 import com.sportsapp.domain.ticketing.Event
 import com.sportsapp.domain.ticketing.EventCriteria
+import com.sportsapp.domain.ticketing.EventStatus
 import com.sportsapp.domain.ticketing.QEvent
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
@@ -63,5 +64,19 @@ class CustomEventRepositoryImpl(
     private fun fetchCount(predicate: BooleanBuilder): Long {
         val event = QEvent.event
         return queryFactory.select(event.count()).from(event).where(predicate).fetchOne() ?: 0L
+    }
+
+    override fun countByOwnerIdGroupByStatus(ownerId: Long): Map<EventStatus, Long> {
+        val event = QEvent.event
+        val rows = queryFactory.select(event.status, event.count())
+            .from(event)
+            .where(event.ownerId.eq(ownerId), event.deletedAt.isNull)
+            .groupBy(event.status)
+            .fetch()
+        return rows.associate { tuple ->
+            val status = requireNotNull(tuple.get(event.status)) { "status must not be null" }
+            val count = tuple.get(event.count()) ?: 0L
+            status to count
+        }
     }
 }

@@ -16,8 +16,7 @@ import org.springframework.kafka.listener.KafkaMessageListenerContainer
 import org.springframework.kafka.listener.MessageListener
 import org.springframework.kafka.support.serializer.JsonDeserializer
 import org.springframework.kafka.support.serializer.JsonSerializer
-import org.testcontainers.containers.KafkaContainer
-import org.testcontainers.utility.DockerImageName
+import com.sportsapp.SportsTestContainers
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
@@ -34,10 +33,7 @@ class KafkaDomainEventPublisherTest : BehaviorSpec({
         override val occurredAt: java.time.ZonedDateTime,
     ) : com.sportsapp.domain.common.DomainEvent
 
-    val kafkaContainer = KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.6.1"))
-        .withReuse(true)
-
-    beforeSpec { kafkaContainer.start() }
+    val kafkaContainer = SportsTestContainers.kafka
 
     val topicName = "order.placed.v1"
 

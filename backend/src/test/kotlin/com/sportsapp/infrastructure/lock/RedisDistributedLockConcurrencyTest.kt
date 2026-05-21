@@ -13,8 +13,7 @@ import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.containers.GenericContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
+import com.sportsapp.SportsTestContainers
 
 /**
  * R-01 + R-03: Redis Testcontainers 기반 동시성 + Lua compare-and-del 통합 검증.
@@ -23,7 +22,6 @@ import org.testcontainers.junit.jupiter.Testcontainers
  * 보유자 일치 시에만 unlock 성공.
  */
 @SpringBootTest(classes = [RedisDistributedLockConcurrencyTest.TestApp::class])
-@Testcontainers
 class RedisDistributedLockConcurrencyTest @Autowired constructor(
     private val redisTemplate: StringRedisTemplate,
 ) : BehaviorSpec({
@@ -79,19 +77,15 @@ class RedisDistributedLockConcurrencyTest @Autowired constructor(
     companion object {
         const val THREAD_COUNT = 100
         const val WAIT_SECONDS = 10L
-        private const val REDIS_PORT = 6379
 
-        @Container
         @JvmStatic
-        val redis: GenericContainer<*> = GenericContainer("redis:7-alpine")
-            .withExposedPorts(REDIS_PORT)
-            .withReuse(true)
+        val redis: GenericContainer<*> = SportsTestContainers.redis
 
         @DynamicPropertySource
         @JvmStatic
         fun props(registry: DynamicPropertyRegistry) {
             registry.add("spring.data.redis.host") { redis.host }
-            registry.add("spring.data.redis.port") { redis.getMappedPort(REDIS_PORT) }
+            registry.add("spring.data.redis.port") { redis.getMappedPort(SportsTestContainers.REDIS_PORT) }
         }
     }
 }

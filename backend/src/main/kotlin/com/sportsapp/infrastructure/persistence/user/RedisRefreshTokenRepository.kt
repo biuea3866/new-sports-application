@@ -32,4 +32,9 @@ class RedisRefreshTokenRepository(
         stringRedisTemplate.unlink(tokenKey(refreshToken))
         stringRedisTemplate.unlink(userKey(userId))
     }
+
+    override fun countActiveByUserId(userId: Long): Long {
+        val hasToken = stringRedisTemplate.opsForValue().get(userKey(userId)) != null
+        return if (hasToken) 1L else 0L
+    }
 }

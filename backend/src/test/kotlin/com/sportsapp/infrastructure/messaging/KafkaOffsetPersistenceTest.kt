@@ -9,8 +9,7 @@ import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
-import org.testcontainers.containers.KafkaContainer
-import org.testcontainers.utility.DockerImageName
+import com.sportsapp.SportsTestContainers
 import java.time.Duration
 import java.util.UUID
 
@@ -22,11 +21,7 @@ import java.util.UUID
  */
 class KafkaOffsetPersistenceTest : BehaviorSpec({
 
-    val kafkaContainer = KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.6.1"))
-        .withReuse(true)
-
-    beforeSpec { kafkaContainer.start() }
-    afterSpec { /* reuse — stop 은 testcontainers Ryuk 에 위임 */ }
+    val kafkaContainer = SportsTestContainers.kafka
 
     val topicName = "offset-persistence.v1"
     val groupId = "offset-test-${UUID.randomUUID()}"

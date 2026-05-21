@@ -10,14 +10,12 @@ import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.containers.GenericContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
+import com.sportsapp.SportsTestContainers
 
 /**
  * [R-02] TTL 자동 해제 — TTL 만료 후 다음 tryLock 이 성공한다.
  */
 @SpringBootTest(classes = [RedisDistributedLockTtlTest.TestApp::class])
-@Testcontainers
 class RedisDistributedLockTtlTest @Autowired constructor(
     private val redisTemplate: StringRedisTemplate,
 ) : BehaviorSpec({
@@ -44,19 +42,15 @@ class RedisDistributedLockTtlTest @Autowired constructor(
 
     companion object {
         const val WAIT_AFTER_EXPIRE_MS = 1500L
-        private const val REDIS_PORT = 6379
 
-        @Container
         @JvmStatic
-        val redis: GenericContainer<*> = GenericContainer("redis:7-alpine")
-            .withExposedPorts(REDIS_PORT)
-            .withReuse(true)
+        val redis: GenericContainer<*> = SportsTestContainers.redis
 
         @DynamicPropertySource
         @JvmStatic
         fun props(registry: DynamicPropertyRegistry) {
             registry.add("spring.data.redis.host") { redis.host }
-            registry.add("spring.data.redis.port") { redis.getMappedPort(REDIS_PORT) }
+            registry.add("spring.data.redis.port") { redis.getMappedPort(SportsTestContainers.REDIS_PORT) }
         }
     }
 }

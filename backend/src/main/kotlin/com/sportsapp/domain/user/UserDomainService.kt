@@ -10,6 +10,7 @@ class UserDomainService(
     private val userRepository: UserRepository,
     private val roleRepository: RoleRepository,
     private val userRoleRepository: UserRoleRepository,
+    private val refreshTokenRepository: RefreshTokenRepository,
     private val passwordEncoder: PasswordEncoder,
 ) {
     fun register(email: String, rawPassword: String): User {
@@ -59,6 +60,9 @@ class UserDomainService(
             ?: throw ResourceNotFoundException("UserRole", "$userId/$roleName")
         userRoleRepository.softDeleteByUserIdAndRoleId(userId, role.id, adminId)
     }
+
+    fun countActiveTokensByUserId(userId: Long): Long =
+        refreshTokenRepository.countActiveByUserId(userId)
 
     private fun getUser(userId: Long): User =
         userRepository.findById(userId) ?: throw ResourceNotFoundException("User", userId)

@@ -3,6 +3,7 @@ package com.sportsapp.infrastructure.persistence.booking
 import com.sportsapp.domain.booking.Booking
 import com.sportsapp.domain.booking.BookingRepository
 import com.sportsapp.domain.booking.BookingStatus
+import com.sportsapp.domain.booking.FacilityBookingStats
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.repository.findByIdOrNull
@@ -40,4 +41,20 @@ class BookingRepositoryImpl(
 
     override fun countBySlotIdAndStatusIn(slotId: Long, statuses: List<BookingStatus>): Long =
         bookingJpaRepository.countBySlotIdAndStatusIn(slotId, statuses)
+
+    override fun findNoShowsByOwnerAndPeriod(
+        ownerUserId: Long,
+        facilityId: String?,
+        from: ZonedDateTime,
+        to: ZonedDateTime,
+        pageable: Pageable,
+    ): Page<Booking> =
+        bookingJpaRepository.findNoShowsByOwnerAndPeriod(ownerUserId, facilityId, from, to, pageable)
+
+    override fun aggregateStatsByFacilityIds(
+        facilityIds: List<String>,
+        from: ZonedDateTime,
+        to: ZonedDateTime,
+    ): List<FacilityBookingStats> =
+        bookingJpaRepository.aggregateStatsByFacilityIds(facilityIds, from, to)
 }

@@ -15,12 +15,14 @@ class UserDomainServiceTest : BehaviorSpec({
     val userRepository = mockk<UserRepository>()
     val roleRepository = mockk<RoleRepository>()
     val userRoleRepository = mockk<UserRoleRepository>()
+    val refreshTokenRepository = mockk<RefreshTokenRepository>()
     val passwordEncoder = BCryptPasswordEncoder()
 
     val userDomainService = UserDomainService(
         userRepository = userRepository,
         roleRepository = roleRepository,
         userRoleRepository = userRoleRepository,
+        refreshTokenRepository = refreshTokenRepository,
         passwordEncoder = passwordEncoder,
     )
 

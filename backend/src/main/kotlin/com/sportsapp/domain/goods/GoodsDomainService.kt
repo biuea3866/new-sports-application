@@ -6,6 +6,7 @@ import com.sportsapp.domain.payment.PaymentDomainService
 import com.sportsapp.domain.payment.PaymentMethod
 import com.sportsapp.domain.payment.PaymentStatus
 import java.math.BigDecimal
+import java.time.ZonedDateTime
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
@@ -23,6 +24,7 @@ class GoodsDomainService(
     private val productRepository: ProductRepository,
     private val stockRepository: StockRepository,
     private val customProductRepository: CustomProductRepository,
+    private val customGoodsRepository: CustomGoodsRepository,
     private val popularProductsCache: PopularProductsCache,
     private val goodsOrderRepository: GoodsOrderRepository,
     private val goodsOrderItemRepository: GoodsOrderItemRepository,
@@ -140,6 +142,47 @@ class GoodsDomainService(
 
     fun listMyOrders(userId: Long, pageable: Pageable): Page<GoodsOrder> =
         goodsOrderRepository.findByUserId(userId, pageable)
+
+    @Transactional(readOnly = true)
+    fun aggregateSales(
+        ownerUserId: Long,
+        productId: Long?,
+        from: ZonedDateTime,
+        to: ZonedDateTime,
+    ): List<GoodsSalesSummary> =
+        customGoodsRepository.aggregateSales(ownerUserId, productId, from, to)
+
+    @Transactional(readOnly = true)
+    fun findInventory(ownerUserId: Long, lowStockOnly: Boolean): List<InventoryItem> =
+        customGoodsRepository.findInventory(ownerUserId, lowStockOnly)
+
+    fun countActiveProductsByOwnerId(ownerId: Long): Long =
+        productRepository.countByOwnerIdAndStatus(ownerId, ProductStatus.ACTIVE)
+
+    fun countOutOfStockProductsByOwnerId(ownerId: Long): Long =
+        stockRepository.countOutOfStockByOwnerId(ownerId)
+
+    fun createProduct(
+        name: String,
+        category: ProductCategory,
+        price: BigDecimal,
+        description: String,
+        imageUrl: String,
+        ownerUserId: Long,
+    ): Product {
+        val product = Product.create(
+            name = name,
+            category = category,
+            price = price,
+            description = description,
+            imageUrl = imageUrl,
+            ownerUserId = ownerUserId,
+        )
+        return productRepository.save(product)
+    }
+
+    fun findByOwnerId(ownerId: Long, pageable: Pageable): Page<ProductWithStock> =
+        customProductRepository.findByOwnerId(ownerId, pageable)
 
     companion object {
         private const val POPULAR_LIMIT = 20

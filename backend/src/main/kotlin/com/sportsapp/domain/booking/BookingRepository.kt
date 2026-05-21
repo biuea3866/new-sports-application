@@ -20,4 +20,17 @@ interface BookingRepository {
         pageable: Pageable,
     ): Page<Booking>
     fun countBySlotIdAndStatusIn(slotId: Long, statuses: List<BookingStatus>): Long
+    fun findNoShowsByOwnerAndPeriod(
+        ownerUserId: Long,
+        facilityId: String?,
+        from: ZonedDateTime,
+        to: ZonedDateTime,
+        pageable: Pageable,
+    ): Page<Booking>
+
+    fun aggregateStatsByFacilityIds(
+        facilityIds: List<String>,
+        from: ZonedDateTime,
+        to: ZonedDateTime,
+    ): List<FacilityBookingStats>
 }

@@ -16,4 +16,7 @@ interface FacilityRepository {
     fun upsertByCode(facility: Facility): Facility
     fun findByOwnerUserId(ownerUserId: Long, pageable: Pageable): Page<Facility>
     fun findByIdAndOwnerUserId(id: String, ownerUserId: Long): Facility?
+    fun countByOwnerUserId(ownerUserId: Long): Long
+    fun findIdsByOwnerUserId(ownerUserId: Long): List<String>
+    fun delete(id: String)
 }

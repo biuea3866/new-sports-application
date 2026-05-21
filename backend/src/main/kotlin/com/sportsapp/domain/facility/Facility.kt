@@ -55,6 +55,40 @@ class Facility(
         ownerUserId = userId
     }
 
+    fun requireOwnedBy(userId: Long) {
+        if (ownerUserId != userId) throw FacilityNotOwnedByException(requireNotNull(id) { "facility id must not be null" }, userId)
+    }
+
+    fun updateInfo(
+        name: String? = null,
+        address: String? = null,
+        operatingHours: String? = null,
+        basePrice: Long? = null,
+    ): Facility {
+        if (basePrice != null) require(basePrice > 0) { "basePrice must be positive" }
+        return Facility(
+            id = id,
+            code = code,
+            name = name ?: this.name,
+            gu = gu,
+            type = type,
+            address = address ?: this.address,
+            location = location,
+            parking = parking,
+            tel = tel,
+            homePage = homePage,
+            eduYn = eduYn,
+            meta = if (operatingHours != null || basePrice != null) {
+                meta +
+                    (if (operatingHours != null) mapOf("operating_hours" to operatingHours) else emptyMap()) +
+                    (if (basePrice != null) mapOf("base_price" to basePrice.toString()) else emptyMap())
+            } else {
+                meta
+            },
+            ownerUserId = ownerUserId,
+        )
+    }
+
     fun updateMeta(patch: Map<String, String>): Facility =
         Facility(
             id = id,

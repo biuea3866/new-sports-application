@@ -12,24 +12,19 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.testcontainers.containers.MySQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
+import com.sportsapp.SportsTestContainers
 
 /**
  * S-01: SpringBootTest 컨텍스트 로드 후 GET /actuator/health 가 200 + {"status":"UP"} 을 반환한다.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
-@Testcontainers
 class HealthEndpointIntegrationTest {
 
     companion object {
-        @Container
+        @JvmStatic
         @ServiceConnection
-        val mysqlContainer: MySQLContainer<*> = MySQLContainer("mysql:8.0")
-            .withDatabaseName("sports")
-            .withUsername("test")
-            .withPassword("test")
+        val mysqlContainer: MySQLContainer<*> = SportsTestContainers.mysql
     }
 
     @Autowired

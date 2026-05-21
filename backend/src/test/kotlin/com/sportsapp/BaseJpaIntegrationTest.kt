@@ -6,7 +6,6 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.TestPropertySource
 import org.testcontainers.containers.MySQLContainer
-import org.testcontainers.junit.jupiter.Container
 
 /**
  * MySQL 전용 통합 테스트 베이스.
@@ -25,12 +24,8 @@ import org.testcontainers.junit.jupiter.Container
 abstract class BaseJpaIntegrationTest : BehaviorSpec() {
 
     companion object {
-        @Container
+        @JvmStatic
         @ServiceConnection
-        val mysqlContainer: MySQLContainer<*> = MySQLContainer("mysql:8.0")
-            .withDatabaseName("sports")
-            .withUsername("test")
-            .withPassword("test")
-            .also { it.start() }
+        val mysqlContainer: MySQLContainer<*> = SportsTestContainers.mysql
     }
 }

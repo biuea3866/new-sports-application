@@ -5,6 +5,7 @@ import com.querydsl.core.types.OrderSpecifier
 import com.querydsl.jpa.impl.JPAQueryFactory
 import com.sportsapp.domain.goods.CustomProductRepository
 import com.sportsapp.domain.goods.ProductCategory
+import com.sportsapp.domain.goods.ProductStatus
 import com.sportsapp.domain.goods.ProductWithStock
 import com.sportsapp.domain.goods.QProduct.product
 import com.sportsapp.domain.goods.QStock.stock
@@ -116,5 +117,27 @@ class CustomProductRepositoryImpl : CustomProductRepository {
         queryFactory.select(product.count())
                     .from(product)
                     .where(condition)
+                    .fetchOne() ?: 0L
+
+    override fun countActiveProductsByOwnerId(ownerId: Long): Long =
+        queryFactory.select(product.count())
+                    .from(product)
+                    .where(
+                        product.ownerId.eq(ownerId),
+                        product.status.eq(ProductStatus.ACTIVE),
+                        product.deletedAt.isNull,
+                    )
+                    .fetchOne() ?: 0L
+
+    override fun countOutOfStockProductsByOwnerId(ownerId: Long): Long =
+        queryFactory.select(product.count())
+                    .from(product)
+                    .leftJoin(stock).on(stock.productId.eq(product.id))
+                    .where(
+                        product.ownerId.eq(ownerId),
+                        product.status.eq(ProductStatus.ACTIVE),
+                        product.deletedAt.isNull,
+                        stock.quantity.eq(0).or(stock.isNull),
+                    )
                     .fetchOne() ?: 0L
 }

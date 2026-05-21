@@ -2,6 +2,7 @@ package com.sportsapp.infrastructure.persistence.ticketing
 
 import com.sportsapp.domain.ticketing.Event
 import com.sportsapp.domain.ticketing.EventRepository
+import com.sportsapp.domain.ticketing.EventStatus
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.repository.findByIdOrNull
@@ -27,6 +28,16 @@ class EventRepositoryImpl(
     override fun findByOwnerId(ownerId: Long, pageable: Pageable): Page<Event> =
         eventJpaRepository.findByOwnerIdAndDeletedAtIsNull(ownerId, pageable)
 
+    override fun findByOwnerId(ownerId: Long, status: EventStatus?, pageable: Pageable): Page<Event> =
+        if (status != null) {
+            eventJpaRepository.findByOwnerIdAndStatusAndDeletedAtIsNull(ownerId, status, pageable)
+        } else {
+            eventJpaRepository.findByOwnerIdAndDeletedAtIsNull(ownerId, pageable)
+        }
+
     override fun findByIdAndOwnerId(id: Long, ownerId: Long): Event? =
         eventJpaRepository.findByIdAndOwnerIdAndDeletedAtIsNull(id, ownerId)
+
+    override fun countByOwnerIdGroupByStatus(ownerId: Long): Map<EventStatus, Long> =
+        eventJpaRepository.countByOwnerIdGroupByStatus(ownerId)
 }

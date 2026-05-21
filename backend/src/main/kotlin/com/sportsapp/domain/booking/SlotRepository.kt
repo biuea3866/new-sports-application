@@ -5,4 +5,6 @@ interface SlotRepository {
     fun findById(id: Long): Slot?
     fun findByFacilityId(facilityId: String): List<Slot>
     fun hasPendingOrConfirmedBooking(slotId: Long): Boolean
+    fun existsActiveByFacilityId(facilityId: String): Boolean
+    fun countTodayByFacilityIds(facilityIds: List<String>): Long
 }

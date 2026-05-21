@@ -16,8 +16,7 @@ import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.containers.KafkaContainer
 import org.testcontainers.containers.MySQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.utility.DockerImageName
+import com.sportsapp.SportsTestContainers
 import org.springframework.beans.factory.annotation.Autowired
 import java.util.concurrent.TimeUnit
 
@@ -39,18 +38,11 @@ class NotificationKafkaScenarioTest(
 ) : BehaviorSpec() {
 
     companion object {
-        @Container
+        @JvmStatic
         @ServiceConnection
-        val mysqlContainer: MySQLContainer<*> = MySQLContainer("mysql:8.0")
-            .withDatabaseName("sports")
-            .withUsername("test")
-            .withPassword("test")
-            .withReuse(true)
-            .also { it.start() }
+        val mysqlContainer: MySQLContainer<*> = SportsTestContainers.mysql
 
-        val kafkaContainer: KafkaContainer = KafkaContainer(
-            DockerImageName.parse("confluentinc/cp-kafka:7.6.1")
-        ).also { it.start() }
+        val kafkaContainer: KafkaContainer = SportsTestContainers.kafka
 
         @JvmStatic
         @DynamicPropertySource

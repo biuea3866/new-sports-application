@@ -10,7 +10,6 @@ import org.springframework.test.context.support.TestPropertySourceUtils
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.MongoDBContainer
 import org.testcontainers.containers.MySQLContainer
-import org.testcontainers.junit.jupiter.Container
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ContextConfiguration(initializers = [BaseIntegrationTest.MongoInitializer::class])
@@ -20,28 +19,21 @@ abstract class BaseIntegrationTest : BehaviorSpec() {
         override fun initialize(applicationContext: ConfigurableApplicationContext) {
             TestPropertySourceUtils.addInlinedPropertiesToEnvironment(
                 applicationContext,
-                "spring.data.mongodb.uri=${mongoContainer.replicaSetUrl}",
+                "spring.data.mongodb.uri=${SportsTestContainers.mongo.replicaSetUrl}",
             )
         }
     }
 
     companion object {
-        @Container
+        @JvmStatic
         @ServiceConnection
-        val mysqlContainer: MySQLContainer<*> = MySQLContainer("mysql:8.0")
-            .withDatabaseName("sports")
-            .withUsername("test")
-            .withPassword("test")
-            .also { it.start() }
+        val mysqlContainer: MySQLContainer<*> = SportsTestContainers.mysql
 
-        val mongoContainer: MongoDBContainer = MongoDBContainer("mongo:7.0")
-            .withReuse(true)
-            .also { it.start() }
+        @JvmStatic
+        val mongoContainer: MongoDBContainer = SportsTestContainers.mongo
 
-        @Container
+        @JvmStatic
         @ServiceConnection
-        val redisContainer: GenericContainer<*> = GenericContainer("redis:7-alpine")
-            .withExposedPorts(6379)
-            .also { it.start() }
+        val redisContainer: GenericContainer<*> = SportsTestContainers.redis
     }
 }

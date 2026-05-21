@@ -14,4 +14,6 @@ interface CustomProductRepository {
     ): Page<ProductWithStock>
 
     fun findByOwnerId(ownerId: Long, pageable: Pageable): Page<ProductWithStock>
+    fun countActiveProductsByOwnerId(ownerId: Long): Long
+    fun countOutOfStockProductsByOwnerId(ownerId: Long): Long
 }

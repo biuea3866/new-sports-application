@@ -19,6 +19,8 @@ class TicketingDomainService(
     private val eventRepository: EventRepository,
     private val seatRepository: SeatRepository,
     private val customEventRepository: CustomEventRepository,
+    private val customSeatRepository: CustomSeatRepository,
+    private val customTicketOrderRepository: CustomTicketOrderRepository,
     private val seatLockStore: SeatLockStore,
     private val ticketOrderRepository: TicketOrderRepository,
 ) {
@@ -101,6 +103,48 @@ class TicketingDomainService(
         val seatIds = pairs.map { it.second }
         val seats = seatRepository.findByEventId(eventId)
         return seats.filter { it.id in seatIds }.sumOf { it.price }
+    }
+
+    fun countEventsByOwnerIdGroupByStatus(ownerId: Long): Map<EventStatus, Long> =
+        eventRepository.countByOwnerIdGroupByStatus(ownerId)
+
+    fun sumTotalSeatsByOwnerId(ownerId: Long): Long =
+        customSeatRepository.sumTotalSeatsByOwnerId(ownerId)
+
+    fun sumSoldSeatsByOwnerId(ownerId: Long): Long =
+        customSeatRepository.sumSoldSeatsByOwnerId(ownerId)
+
+    fun aggregateTicketSales(
+        ownerUserId: Long,
+        eventId: Long?,
+        from: ZonedDateTime,
+        to: ZonedDateTime,
+    ): TicketSalesSummary =
+        customTicketOrderRepository.aggregateTicketSales(ownerUserId, eventId, from, to)
+
+    fun findEventsByOwnerId(ownerId: Long, pageable: Pageable, status: EventStatus?): Page<Event> =
+        eventRepository.findByOwnerId(ownerId, status, pageable)
+
+    fun getEventSalesInfo(eventId: Long): EventSalesInfo {
+        val event = eventRepository.findById(eventId)
+            ?: throw ResourceNotFoundException("Event", eventId)
+        val seats = seatRepository.findByEventId(eventId)
+        val soldCount = customSeatRepository.countSoldByEventId(eventId)
+        return EventSalesInfo(event = event, seats = seats, soldCount = soldCount)
+    }
+
+    fun openEvent(eventId: Long) {
+        val event = eventRepository.findById(eventId)
+            ?: throw ResourceNotFoundException("Event", eventId)
+        event.openSales()
+        eventRepository.save(event)
+    }
+
+    fun closeEvent(eventId: Long) {
+        val event = eventRepository.findById(eventId)
+            ?: throw ResourceNotFoundException("Event", eventId)
+        event.close()
+        eventRepository.save(event)
     }
 
     private fun parseLockId(lockId: String): List<Pair<Long, Long>> =

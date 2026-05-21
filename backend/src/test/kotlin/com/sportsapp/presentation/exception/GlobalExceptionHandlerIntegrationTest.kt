@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.testcontainers.containers.MySQLContainer
-import org.testcontainers.junit.jupiter.Container
+import com.sportsapp.SportsTestContainers
 
 /**
  * S-01: 의도적 BusinessException 발생 시 Controller가 정확한 ProblemDetail + 매핑된 HTTP 상태를 반환한다.
@@ -36,13 +36,9 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
     override fun extensions() = listOf(SpringExtension)
 
     companion object {
-        @Container
+        @JvmStatic
         @ServiceConnection
-        val mysqlContainer: MySQLContainer<*> = MySQLContainer("mysql:8.0")
-            .withDatabaseName("sports")
-            .withUsername("test")
-            .withPassword("test")
-            .also { it.start() }
+        val mysqlContainer: MySQLContainer<*> = SportsTestContainers.mysql
     }
 
     @Autowired

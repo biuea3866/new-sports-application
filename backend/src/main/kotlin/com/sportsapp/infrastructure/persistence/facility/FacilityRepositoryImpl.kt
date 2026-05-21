@@ -82,6 +82,19 @@ class FacilityRepositoryImpl(
     override fun findByIdAndOwnerUserId(id: String, ownerUserId: Long): Facility? =
         facilityMongoRepository.findByIdAndOwnerUserIdAndDeletedAtIsNull(id, ownerUserId)
 
+    override fun countByOwnerUserId(ownerUserId: Long): Long =
+        facilityMongoRepository.countByOwnerUserIdAndDeletedAtIsNull(ownerUserId)
+
+    override fun findIdsByOwnerUserId(ownerUserId: Long): List<String> =
+        facilityMongoRepository.findAllByOwnerUserIdAndDeletedAtIsNull(ownerUserId)
+            .mapNotNull { it.id }
+
+    override fun delete(id: String) {
+        val facility = facilityMongoRepository.findByIdOrNull(id) ?: return
+        facility.softDelete(null)
+        facilityMongoRepository.save(facility)
+    }
+
     override fun aggregateGuType(): List<GuTypeCount> {
         val aggregation = Aggregation.newAggregation(
             Aggregation.match(Criteria.where("deletedAt").isNull),

@@ -5,4 +5,5 @@ interface RefreshTokenRepository {
     fun findUserIdByToken(refreshToken: String): Long?
     fun invalidate(refreshToken: String)
     fun invalidateByUserId(userId: Long)
+    fun countActiveByUserId(userId: Long): Long
 }

@@ -14,8 +14,7 @@ import org.springframework.kafka.listener.KafkaMessageListenerContainer
 import org.springframework.kafka.listener.MessageListener
 import org.springframework.kafka.support.serializer.JsonDeserializer
 import org.springframework.kafka.support.serializer.JsonSerializer
-import org.testcontainers.containers.KafkaContainer
-import org.testcontainers.utility.DockerImageName
+import com.sportsapp.SportsTestContainers
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.util.concurrent.LinkedBlockingQueue
@@ -26,11 +25,7 @@ import java.util.concurrent.TimeUnit
  */
 class KafkaRoundtripTest : BehaviorSpec({
 
-    val kafkaContainer = KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.6.1"))
-        .withReuse(true)
-
-    beforeSpec { kafkaContainer.start() }
-    afterSpec { /* reuse — stop 은 testcontainers Ryuk 에 위임 */ }
+    val kafkaContainer = SportsTestContainers.kafka
 
     data class TestEvent(val id: Long, val occurredAt: ZonedDateTime)
 

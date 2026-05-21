@@ -18,5 +18,7 @@ interface FacilityMongoRepository : MongoRepository<Facility, String> {
     fun findAllByTypeAndDeletedAtIsNull(type: String, pageable: Pageable): Page<Facility>
     fun findAllByGuAndTypeAndDeletedAtIsNull(gu: String, type: String, pageable: Pageable): Page<Facility>
     fun findAllByOwnerUserIdAndDeletedAtIsNull(ownerUserId: Long, pageable: Pageable): Page<Facility>
+    fun findAllByOwnerUserIdAndDeletedAtIsNull(ownerUserId: Long): List<Facility>
+    fun countByOwnerUserIdAndDeletedAtIsNull(ownerUserId: Long): Long
     fun findByIdAndOwnerUserIdAndDeletedAtIsNull(id: String, ownerUserId: Long): Facility?
 }
