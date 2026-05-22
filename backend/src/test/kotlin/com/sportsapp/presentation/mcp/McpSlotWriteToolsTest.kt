@@ -11,6 +11,7 @@ import com.sportsapp.domain.mcp.confirm.ConfirmationTokenAlreadyConsumedExceptio
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenContext
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenExpiredException
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenGateway
+import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.confirm.McpParamsHasher
 import com.sportsapp.presentation.mcp.response.McpResponseStatus
 import com.sportsapp.presentation.mcp.toolregistry.McpSlotWriteTools
@@ -18,6 +19,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -32,11 +34,13 @@ class McpSlotWriteToolsTest : BehaviorSpec({
     val updateSlotUseCase = mockk<UpdateSlotUseCase>()
     val deleteSlotUseCase = mockk<DeleteSlotUseCase>()
     val confirmationTokenGateway = mockk<ConfirmationTokenGateway>()
+    val mcpAuditLogAsyncRecorder = mockk<McpAuditLogAsyncRecorder>(relaxed = true)
     val mcpSlotWriteTools = McpSlotWriteTools(
         createSlotUseCase,
         updateSlotUseCase,
         deleteSlotUseCase,
         confirmationTokenGateway,
+        mcpAuditLogAsyncRecorder,
     )
 
     val callerUserId = 42L
@@ -53,6 +57,7 @@ class McpSlotWriteToolsTest : BehaviorSpec({
 
     afterEach {
         SecurityContextHolder.clearContext()
+        clearMocks(mcpAuditLogAsyncRecorder)
     }
 
     val slotResponse = SlotResponse(
@@ -269,6 +274,50 @@ class McpSlotWriteToolsTest : BehaviorSpec({
             Then("[U-14] ConfirmationTokenAlreadyConsumedException 이 전파된다") {
                 shouldThrow<ConfirmationTokenAlreadyConsumedException> {
                     mcpSlotWriteTools.updateSlot(10L, null, null, consumedToken)
+                }
+            }
+        }
+    }
+
+    Given("[U-audit-09] createSlot 1차 호출(confirmationToken=null) 시 audit recorder가 1회 호출된다") {
+        every { confirmationTokenGateway.issue(any()) } returns "audit-create-token"
+
+        When("createSlot 을 confirmationToken 없이 호출하면") {
+            setSecurityContext()
+            mcpSlotWriteTools.createSlot(
+                facilityId = "FAC-01",
+                date = "2026-06-01T09:00:00+09:00",
+                timeRange = "09:00-10:00",
+                capacity = 5,
+                confirmationToken = null,
+            )
+
+            Then("[U-audit-09] mcpAuditLogAsyncRecorder.record가 정확히 1회 호출된다") {
+                verify(exactly = 1) {
+                    mcpAuditLogAsyncRecorder.record(any(), any(), any(), any(), any(), any(), any(), any(), any())
+                }
+            }
+        }
+    }
+
+    Given("[U-audit-10] deleteSlot 2차 호출(실행) 시 audit recorder가 1회 호출된다") {
+        val token = "valid-delete-token-for-audit"
+        val expectedHash = McpParamsHasher.hash("deleteSlot", callerUserId, 10L)
+        val storedContext = ConfirmationTokenContext(
+            toolName = "deleteSlot",
+            userId = callerUserId,
+            paramsHash = expectedHash,
+        )
+        every { confirmationTokenGateway.consume(token) } returns storedContext
+        every { deleteSlotUseCase.execute(any()) } returns Unit
+
+        When("deleteSlot 을 confirmationToken 포함해 호출하면") {
+            setSecurityContext()
+            mcpSlotWriteTools.deleteSlot(slotId = 10L, confirmationToken = token)
+
+            Then("[U-audit-10] mcpAuditLogAsyncRecorder.record가 정확히 1회 호출된다") {
+                verify(exactly = 1) {
+                    mcpAuditLogAsyncRecorder.record(any(), any(), any(), any(), any(), any(), any(), any(), any())
                 }
             }
         }

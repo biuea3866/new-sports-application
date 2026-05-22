@@ -4,12 +4,14 @@ import com.sportsapp.application.goods.GetGoodsSalesUseCase
 import com.sportsapp.application.goods.GoodsSalesResponse
 import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
 import com.sportsapp.domain.mcp.McpScope
+import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.response.McpResponseStatus
 import com.sportsapp.presentation.mcp.toolregistry.McpGoodsSalesTools
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -21,7 +23,8 @@ import java.math.BigDecimal
 class McpGoodsSalesToolsTest : BehaviorSpec({
 
     val getGoodsSalesUseCase = mockk<GetGoodsSalesUseCase>()
-    val mcpGoodsSalesTools = McpGoodsSalesTools(getGoodsSalesUseCase)
+    val mcpAuditLogAsyncRecorder = mockk<McpAuditLogAsyncRecorder>(relaxed = true)
+    val mcpGoodsSalesTools = McpGoodsSalesTools(getGoodsSalesUseCase, mcpAuditLogAsyncRecorder)
 
     fun setupPrincipal(userId: Long) {
         val principal = object : McpAuthenticatedPrincipal {
@@ -33,7 +36,10 @@ class McpGoodsSalesToolsTest : BehaviorSpec({
             UsernamePasswordAuthenticationToken(principal, null, emptyList())
     }
 
-    afterEach { SecurityContextHolder.clearContext() }
+    afterEach {
+        SecurityContextHolder.clearContext()
+        clearMocks(mcpAuditLogAsyncRecorder)
+    }
 
     Given("getGoodsSales tool") {
         val salesResponse = GoodsSalesResponse(
@@ -95,13 +101,27 @@ class McpGoodsSalesToolsTest : BehaviorSpec({
         When("[U-04] IDOR — principal이 없으면 (SecurityContext 비어있음)") {
             SecurityContextHolder.clearContext()
             val localUseCase = mockk<GetGoodsSalesUseCase>()
-            val localTools = McpGoodsSalesTools(localUseCase)
+            val localRecorder = mockk<McpAuditLogAsyncRecorder>(relaxed = true)
+            val localTools = McpGoodsSalesTools(localUseCase, localRecorder)
 
             Then("[U-04] AccessDeniedException이 발생하고 UseCase는 호출되지 않는다") {
                 shouldThrow<AccessDeniedException> {
                     localTools.getGoodsSales()
                 }
                 verify(exactly = 0) { localUseCase.execute(any()) }
+            }
+        }
+
+        When("[U-audit-04] getGoodsSales 호출 시 audit recorder가 1회 호출된다") {
+            setupPrincipal(10L)
+            every { getGoodsSalesUseCase.execute(10L) } returns salesResponse
+
+            mcpGoodsSalesTools.getGoodsSales()
+
+            Then("[U-audit-04] mcpAuditLogAsyncRecorder.record가 정확히 1회 호출된다") {
+                verify(exactly = 1) {
+                    mcpAuditLogAsyncRecorder.record(any(), any(), any(), any(), any(), any(), any(), any(), any())
+                }
             }
         }
     }

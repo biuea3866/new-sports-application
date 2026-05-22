@@ -2,11 +2,13 @@ package com.sportsapp.presentation.mcp
 
 import com.sportsapp.application.facility.GetGuTypeStatsUseCase
 import com.sportsapp.application.facility.GuTypeCountResponse
+import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.response.McpResponseStatus
 import com.sportsapp.presentation.mcp.toolregistry.McpFacilityStatsTools
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -14,7 +16,10 @@ import io.mockk.verify
 class McpFacilityStatsToolsTest : BehaviorSpec({
 
     val getGuTypeStatsUseCase = mockk<GetGuTypeStatsUseCase>()
-    val mcpFacilityStatsTools = McpFacilityStatsTools(getGuTypeStatsUseCase)
+    val mcpAuditLogAsyncRecorder = mockk<McpAuditLogAsyncRecorder>(relaxed = true)
+    val mcpFacilityStatsTools = McpFacilityStatsTools(getGuTypeStatsUseCase, mcpAuditLogAsyncRecorder)
+
+    afterEach { clearMocks(mcpAuditLogAsyncRecorder) }
 
     Given("getFacilityStats tool") {
         val statsList = listOf(
@@ -53,13 +58,26 @@ class McpFacilityStatsToolsTest : BehaviorSpec({
 
         When("[U-09] getFacilityStats를 호출하면 UseCase가 호출된다") {
             val localUseCase = mockk<GetGuTypeStatsUseCase>()
-            val localTools = McpFacilityStatsTools(localUseCase)
+            val localRecorder = mockk<McpAuditLogAsyncRecorder>(relaxed = true)
+            val localTools = McpFacilityStatsTools(localUseCase, localRecorder)
             every { localUseCase.execute() } returns statsList
 
             localTools.getFacilityStats()
 
             Then("[U-09] GetGuTypeStatsUseCase.execute()가 정확히 1회 호출된다") {
                 verify(exactly = 1) { localUseCase.execute() }
+            }
+        }
+
+        When("[U-audit-01] getFacilityStats 호출 시 audit recorder가 1회 호출된다") {
+            every { getGuTypeStatsUseCase.execute() } returns statsList
+
+            mcpFacilityStatsTools.getFacilityStats()
+
+            Then("[U-audit-01] mcpAuditLogAsyncRecorder.record가 정확히 1회 호출된다") {
+                verify(exactly = 1) {
+                    mcpAuditLogAsyncRecorder.record(any(), any(), any(), any(), any(), any(), any(), any(), any())
+                }
             }
         }
     }
