@@ -84,9 +84,12 @@ test.describe("E2E-03 booking create · list", () => {
 
   test("E2E-03-R02 booking 생성 직후 status 는 PENDING (CONFIRMED 가 아님)", async () => {
     const api = await playwrightRequest.newContext();
+    // BE PaymentMethod enum 은 CREDIT_CARD/BANK_TRANSFER/VIRTUAL_ACCOUNT/MOBILE_PAY.
+    // slotId 7 은 seed.sql 에 capacity 100000 으로 시드됨 — 회귀 반복으로 PENDING 이
+    // 누적돼도 SlotFull 이 되지 않아 매번 202 PENDING 응답을 받는다.
     const res = await api.post(`${API_URL}/bookings`, {
       headers: { "X-User-Id": "1", "Content-Type": "application/json" },
-      data: { slotId: 1, paymentMethod: "CARD", amount: 10000, currency: "KRW" },
+      data: { slotId: 7, paymentMethod: "CREDIT_CARD", amount: 10000, currency: "KRW" },
       failOnStatusCode: false,
     });
     if (res.status() === 202) {

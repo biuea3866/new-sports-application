@@ -36,10 +36,15 @@ description: E2E(Playwright) + 사용자 시나리오 + 부하(k6) 테스트를 
 [Step 4] 결함 단위로 be-implementer / fe-implementer 자동 호출 (병렬, wave 스케줄러)
    │      각 에이전트는 결함 md 1건을 받아 TDD 사이클로 수정 → push → PR 생성
    ▼
-[Step 5] 환경 정리 (docker-compose down -v)
+[Step 5] fix 리뷰 + 재검증 (필수)
+   │      5-A code-reviewer로 fix 리뷰
+   │      5-B fix 통합 브랜치에서 Step 1~3 재실행 → 결함 해결·회귀 확인
+   │      미해결 시 Step 4로 루프 (최대 3회). 산출: reverify-report.md
+   ▼
+[Step 6] 환경 정리 (docker-compose down -v) ← qa-reverify-gate.sh hook이 reverify-report.md 검사
    │
    ▼
-[Step 6] QA 리포트 요약 출력 — 통과/실패/생성된 결함 수, 자동 수정 PR 링크 목록
+[Step 7] QA 리포트 요약 출력 — 1차 회귀 + 재검증 결과 + 자동 수정 PR 링크
 ```
 
 산출물 루트: `.analysis/outputs/qa/{YYYYMMDD}_{topic}/`
@@ -50,17 +55,57 @@ description: E2E(Playwright) + 사용자 시나리오 + 부하(k6) 테스트를 
 
 QA 회귀 스위트는 `qa/` 디렉토리에 위치한다. docker-compose로 인프라(DB/Kafka/Redis/MongoDB)를 띄우고 BE/FE는 호스트에서 실행한다.
 
+### 0-A — 인프라 기동
+
 ```bash
 docker-compose -f qa/e2e/docker-compose.qa.yml up -d
 qa/e2e/wait-for-healthy.sh   # 모든 컨테이너 healthy 대기 (최대 120s)
 ```
 
-환경 변수:
+### 0-B — FE 환경 변수(`.env.local`) 생성·검증 (필수 — 생략 시 회귀 전체 왜곡)
+
+Next.js FE의 `web/lib/server/be-client.ts`는 `BACKEND_URL`을 **모듈 로드 시점**에 요구한다.
+`.env.local`이 없으면 `/portal/*` 전 페이지가 SSR 500을 반환하고, **portal 화면 시나리오가 무더기로 거짓 fail**한다.
+
+> 회고: 1차 `/qa --full-regression` 에서 `.env.local` 누락으로 portal-dashboard 9건이 거짓 fail →
+> Critical 결함(DEF-002)으로 과대 분류 → 불필요한 fix PR 생성. 환경 결함을 코드 결함으로 오인한 사고.
+
+FE 기동 **전에** 다음을 수행한다:
+
+```bash
+# .env.local 없으면 생성
+if [ ! -f web/.env.local ]; then
+  cat > web/.env.local <<'EOF'
+BACKEND_URL=http://localhost:8080
+NEXT_PUBLIC_APP_NAME=Sports Application
+EOF
+fi
+# BACKEND_URL 존재 검증 — 없으면 즉시 중단
+grep -q '^BACKEND_URL=' web/.env.local || { echo "FATAL: web/.env.local에 BACKEND_URL 없음"; exit 1; }
+```
+
+`qa-env-gate.sh` hook이 Playwright 실행 직전 `.env.local`의 `BACKEND_URL`을 강제 검증한다 — 누락 시 E2E 실행을 차단한다.
+
+### 0-C — BE/FE/Mobile 호스트 기동
+
+`.next` 캐시는 환경 변수 변경을 반영하지 못할 수 있으므로 회귀 시작 시 1회 삭제한다:
+
+```bash
+rm -rf web/.next                                  # stale 캐시 제거
+cd backend && APP_JWT_SECRET=<qa-secret> ./gradlew bootRun &   # :8080
+cd web && npx next dev -p 3000 &                  # :3000 — .env.local 자동 로드
+cd mobile && npx expo start --web --port 8081 &   # :8081
+```
+
+BE는 startup에 30~120s 소요. `/actuator/health` 200 + FE `/portal` 비-500 + Mobile 200을 **모두 확인**한 뒤 Step 1로 진행한다. 한 서버라도 비정상이면 중단.
+
+### 환경 변수
+
 - `QA_BASE_URL` — FE base URL (기본 `http://localhost:3000`)
 - `QA_API_URL` — BE base URL (기본 `http://localhost:8080`)
 - `QA_TOPIC` — `$ARGUMENTS`에서 추출한 기능명·티켓번호 (산출물 경로 슬러그)
 
-기동 실패 시 즉시 중단. `docker-compose logs`를 산출물 루트에 캡처.
+기동 실패 시 즉시 중단. `docker-compose logs` + BE/FE 로그를 산출물 루트에 캡처.
 
 ---
 
@@ -183,11 +228,55 @@ PROMPT
 
 `/qa` 종료 시 worktree 상태를 요약:
 - 변경 없이 종료된 worktree → 자동 cleanup 확인
-- 변경 있는 worktree → path·branch·PR URL을 Step 6 리포트에 명시. 사람이 검토 후 worktree 제거(`git worktree remove`).
+- 변경 있는 worktree → path·branch·PR URL을 Step 7 리포트에 명시. 사람이 검토 후 worktree 제거(`git worktree remove`).
 
 ---
 
-## Step 5 — 환경 정리
+## Step 5 — fix 리뷰 + 재검증 (필수 — 생략 불가)
+
+Step 4에서 결함 fix PR이 생성된 것으로 끝이 아니다. **fix가 실제로 결함을 해결했는지, 새 회귀를 만들지 않았는지 재검증**해야 한다. 이 단계를 건너뛰면 `qa-reverify-gate.sh` hook이 Step 6(환경 정리)을 차단한다.
+
+> "결함 fix PR 생성 = QA 완료"는 거짓 완전성이다. 코드가 실제로 정상 동작하는지 확인하기 전까지 `/qa`는 `in-progress`다 ([COMPLETION-RULE.md](../rules/COMPLETION-RULE.md) §1).
+
+### Step 5-A — fix 리뷰
+
+Step 4에서 호출된 각 fix(브랜치 또는 PR)에 대해 `code-reviewer` 에이전트를 호출한다.
+
+- 입력: fix 브랜치명 또는 PR 번호
+- 검수: harness-rules 위반, 결함 범위 일탈(인접 리팩토링), 재현 테스트 누락, fix가 결함 md의 기대 동작과 일치하는지
+- 산출: `.analysis/outputs/qa/{YYYYMMDD}_{topic}/review/{def-id}.md`
+- Must Fix 발견 시 해당 fix 에이전트를 재호출(SendMessage 또는 신규 spawn)해 보강 후 재리뷰
+
+### Step 5-B — 재검증 (re-verification)
+
+모든 fix를 통합한 상태에서 회귀를 **다시 실행**한다.
+
+1. 검증 브랜치 생성: `qa-reverify/{YYYYMMDD}` ← origin/dev + Step 4의 모든 fix 브랜치 머지
+2. BE/FE/Mobile을 fix 적용 상태로 재기동 (Step 0과 동일 절차, 단 코드는 검증 브랜치)
+3. **Step 1~3 재실행** — qa-e2e-runner + qa-load-tester로 동일 시나리오 회귀, qa-defect-router로 결과 분류
+4. 직전 회귀와 결과 비교:
+
+| 직전 결과 | 재검증 결과 | 판정 |
+|---|---|---|
+| Fail | Pass | ✅ 해결됨 |
+| Fail | Fail | ❌ fix 불충분 — 결함 md 갱신 후 Step 4 재호출 (루프) |
+| Pass | Fail | 🔴 fix가 회귀 유발 — 신규 결함으로 즉시 등록 + Step 4 재호출 |
+| Pass | Pass | ✅ 회귀 없음 |
+
+5. 산출: `.analysis/outputs/qa/{YYYYMMDD}_{topic}/reverify-report.md`
+
+### 재검증 통과 기준
+
+- auto-fix 대상 결함이 **모두 재검증에서 Pass**
+- 신규 회귀(직전 Pass → 재검증 Fail) **0건**
+- 미달 시 Step 4로 돌아가 루프. **최대 3회**. 3회 후에도 미해결이면 사람 검토 큐로 이관하고 `reverify-report.md`에 명시
+- auto-fix 대상 결함이 0건(INFRA/Minor만 발견)인 경우에도 `reverify-report.md`에 "재검증 대상 0건 — 생략" 사유를 명시적으로 기록한다 (빈 산출물 금지)
+
+> `reverify-report.md`가 없거나 통과 기준 미달이면 `qa-reverify-gate.sh` hook이 docker-compose down(Step 6)을 차단한다.
+
+---
+
+## Step 6 — 환경 정리
 
 ```bash
 docker-compose -f qa/e2e/docker-compose.qa.yml down -v
@@ -195,23 +284,29 @@ docker-compose -f qa/e2e/docker-compose.qa.yml down -v
 
 `-v`로 볼륨 제거. 다음 회귀가 깨끗한 시드로 시작하도록 보장.
 
+> 이 명령은 `qa-reverify-gate.sh` hook의 검사를 받는다. Step 5 재검증 산출물(`reverify-report.md`)이 없으면 차단된다.
+
 ---
 
-## Step 6 — 리포트 요약
+## Step 7 — 리포트 요약
 
 표준 출력에 다음 요약을 표시:
 
 | 항목 | 값 |
 |---|---|
-| E2E 시나리오 | pass/fail/skip |
-| 부하 시나리오 | pass/fail (p95·error rate 임계 기준) |
+| E2E 시나리오 (1차) | pass/fail/skip |
+| 부하 시나리오 (1차) | pass/fail (p95·error rate 임계 기준) |
 | 생성된 결함 md | 개수, layer별 분포 |
 | 자동 호출된 에이전트 | be-implementer N건 / fe-implementer M건 |
 | 자동 수정 PR | URL 목록 |
+| **fix 리뷰 결과** | PR별 approve / request-changes |
+| **재검증 결과** | 해결 N건 / 미해결 M건 / 회귀유발 K건 (reverify-report.md 기준) |
 | 사람 검토 필요 결함 | `AMBIGUOUS` / `INFRA` / `Minor` md 경로 목록 |
 | 다음 액션 | "결함 md 검토 → `/jira-ticket {defect.md}`로 Jira 등록" |
 
-> 완료 단언은 [`rules/COMPLETION-RULE.md`](../rules/COMPLETION-RULE.md)의 §1~4를 모두 충족해야 한다.
+리포트에는 **1차 회귀와 재검증을 모두 표기**한다. 재검증 없이 1차 결과만으로 "완료"를 단언하지 않는다.
+
+> 완료 단언은 [`rules/COMPLETION-RULE.md`](../rules/COMPLETION-RULE.md)의 §1~4를 모두 충족해야 한다. "정상 동작" 단언은 `reverify-report.md`의 Pass 판정을 아티팩트로 첨부해야 인정된다.
 
 ---
 

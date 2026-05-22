@@ -49,6 +49,14 @@
           },
           {
             "type": "command",
+            "command": "bash /Users/biuea/sports-application/.claude/hooks/_run.sh /Users/biuea/sports-application/.claude/hooks/workflow-gates/qa-reverify-gate.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash /Users/biuea/sports-application/.claude/hooks/_run.sh /Users/biuea/sports-application/.claude/hooks/workflow-gates/qa-env-gate.sh"
+          },
+          {
+            "type": "command",
             "command": "bash /Users/biuea/sports-application/.claude/hooks/_run.sh /Users/biuea/sports-application/.claude/hooks/workflow-gates/worktree-isolation-guard.sh"
           }
         ]

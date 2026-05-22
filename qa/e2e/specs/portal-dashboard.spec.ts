@@ -42,17 +42,48 @@ test.describe("E2E-07 portal dashboard · role visibility", () => {
     expect(response?.status()).toBeLessThan(500);
   });
 
-  test("E2E-07-R01 숫자 표시 — toLocaleString 사용 (페이지 텍스트 검증)", async ({ page }) => {
+  test("E2E-07-R01 숫자 표시 — toLocaleString 사용 (페이지 텍스트 검증)", async ({
+    page,
+    context,
+  }) => {
+    // /portal 은 PortalLayout 가드로 미인증 시 /login·/ 으로 리다이렉트되어
+    // 대시보드 숫자가 렌더되지 않는다. seed.sql 의 fixture 계정(3개 B2B 역할 보유)으로
+    // 로그인해 access_token 쿠키를 심은 뒤 진입한다.
+    const api = await playwrightRequest.newContext();
+    const login = await api.post(`${API_URL}/auth/login`, {
+      data: { email: "qa-portal-fixture@test.local", password: "Passw0rd!" },
+      failOnStatusCode: false,
+    });
+    if (login.status() !== 200) {
+      test.info().annotations.push({
+        type: "skip-reason",
+        description: `fixture 계정 로그인 실패 — 응답 ${login.status()} (seed.sql users id=100 확인)`,
+      });
+      test.skip();
+      await api.dispose();
+      return;
+    }
+    const accessToken = (await login.json()).accessToken as string;
+    await api.dispose();
+    await context.addCookies([
+      {
+        name: "access_token",
+        value: accessToken,
+        url: BASE_URL,
+      },
+    ]);
+
     const response = await page.goto(`${BASE_URL}/portal`, { waitUntil: "load" });
     expect(response?.status()).toBeLessThan(500);
-    // 페이지 텍스트에 콤마 표기 숫자(`1,234`)가 보이면 통과 — 없으면 시드 부재
     const text = await page.locator("body").innerText();
+    // StatCard 숫자는 toLocaleString('ko-KR') 으로 렌더된다. 4자리 이상이면 천 단위 콤마.
     if (/\d{1,3},\d{3}/.test(text)) {
       expect(text).toMatch(/\d{1,3},\d{3}/);
     } else {
       test.info().annotations.push({
         type: "skip-reason",
-        description: "포털에 천 단위 콤마 숫자가 표시되지 않아 검증 보류 (시드 부재)",
+        description:
+          "대시보드에 천 단위 콤마 숫자가 렌더되지 않음 — 인증/스키마/시드 중 하나가 충족되지 않음",
       });
       test.skip();
     }

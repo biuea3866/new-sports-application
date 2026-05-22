@@ -35,10 +35,13 @@ test.describe("E2E-04 payment create · idempotency · list", () => {
   test("E2E-04-02 같은 Idempotency-Key 재호출 시 동일 payment id (멱등)", async () => {
     const api = await playwrightRequest.newContext();
     const key = uniqueKey("e2e04-02");
+    // BE PaymentMethod enum 은 CREDIT_CARD/BANK_TRANSFER/VIRTUAL_ACCOUNT/MOBILE_PAY.
+    // POST /payments 는 booking 존재 여부와 무관 — Payment 가 orderType/orderId 만 저장하고
+    // mock 게이트웨이 success-rate 1.0 -> 201. 멱등은 idempotency_key unique 제약 기반.
     const payload = {
       orderType: "BOOKING",
       orderId: 1,
-      method: "CARD",
+      method: "CREDIT_CARD",
       amount: 50000,
       currency: "KRW",
     };

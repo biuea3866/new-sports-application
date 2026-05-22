@@ -107,26 +107,45 @@ test.describe("E2E-05 ticket event · seat · purchase", () => {
 
   test("E2E-05-R02 같은 Idempotency-Key 로 ticket-orders 재호출 시 동일 order id", async () => {
     const api = await playwrightRequest.newContext();
+    // lockId 는 eventId:seatId 형식 (콤마 구분) — POST /events/{id}/seats/select 가 발급.
+    // seed.sql 의 event 2 좌석 7,8 을 잠가 유효 lockId 를 동적으로 확보한다.
+    const userId = "1";
+    const select = await api.post(`${API_URL}/events/2/seats/select`, {
+      headers: { "X-User-Id": userId, "Content-Type": "application/json" },
+      data: { seatIds: [7, 8] },
+      failOnStatusCode: false,
+    });
+    if (select.status() !== 200) {
+      test.info().annotations.push({
+        type: "skip-reason",
+        description: `좌석 select 실패 — 응답 ${select.status()} (좌석 시드 또는 Redis 상태 확인 필요)`,
+      });
+      test.skip();
+      await api.dispose();
+      return;
+    }
+    const lockId = (await select.json()).lockId as string;
     const key = uniqueKey("e2e05-r02");
-    const payload = { lockId: "lock-001", method: "CARD", currency: "KRW" };
+    const payload = { lockId, method: "CREDIT_CARD", currency: "KRW" };
     const r1 = await api.post(`${API_URL}/ticket-orders`, {
-      headers: { "X-User-Id": "1", "Idempotency-Key": key, "Content-Type": "application/json" },
+      headers: { "X-User-Id": userId, "Idempotency-Key": key, "Content-Type": "application/json" },
       data: payload,
       failOnStatusCode: false,
     });
     const r2 = await api.post(`${API_URL}/ticket-orders`, {
-      headers: { "X-User-Id": "1", "Idempotency-Key": key, "Content-Type": "application/json" },
+      headers: { "X-User-Id": userId, "Idempotency-Key": key, "Content-Type": "application/json" },
       data: payload,
       failOnStatusCode: false,
     });
     if (r1.status() === 202 && r2.status() === 202) {
       const b1 = await r1.json();
       const b2 = await r2.json();
-      expect(b2.id).toBe(b1.id);
+      // TicketOrderResponse 의 식별자는 ticketOrderId.
+      expect(b2.ticketOrderId).toBe(b1.ticketOrderId);
     } else {
       test.info().annotations.push({
         type: "skip-reason",
-        description: `시드 미주입 — 응답 ${r1.status()}, ${r2.status()}`,
+        description: `ticket-orders 응답 ${r1.status()}, ${r2.status()} — 재호출이 동일 결과를 내지 못함`,
       });
       test.skip();
     }

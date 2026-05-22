@@ -131,7 +131,14 @@ test.describe("E2E-06 goods search · cart · order", () => {
   test("E2E-06-R02 같은 Idempotency-Key 로 /goods-orders 재호출 시 동일 order id", async () => {
     const api = await playwrightRequest.newContext();
     const key = uniqueKey("e2e06-r02");
-    const payload = { method: "CARD", fromCart: true, items: [] };
+    // BE CreateGoodsOrderRequest 는 fromCart=false 일 때 items 필수.
+    // items 가 비면 EmptyOrderException -> 4xx. seed.sql 의 product 5 로 유효 주문 구성.
+    // method 는 PaymentMethod enum (CREDIT_CARD).
+    const payload = {
+      method: "CREDIT_CARD",
+      fromCart: false,
+      items: [{ productId: 5, quantity: 1 }],
+    };
     const r1 = await api.post(`${API_URL}/goods-orders`, {
       headers: {
         "X-User-Id": "1",
