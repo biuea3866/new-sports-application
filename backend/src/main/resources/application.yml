@@ -104,6 +104,10 @@ management:
   endpoint:
     health:
       show-details: always
+  prometheus:
+    metrics:
+      export:
+        enabled: true
   metrics:
     export:
       datadog:
@@ -116,3 +120,14 @@ management:
       application: ${spring.application.name}
       env: ${APP_ENV:local}
       service: mcp
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLE_RATE:1.0}
+    propagation:
+      type: ${TRACING_PROPAGATION:W3C}
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}

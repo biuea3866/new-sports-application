@@ -8,6 +8,8 @@ const withBundleAnalyzer = bundleAnalyzer({
 const nextConfig = {
   experimental: {
     turbo: {},
+    // instrumentation.ts 활성화 (Next.js 14 — 서버 사이드 OpenTelemetry)
+    instrumentationHook: true,
   },
 };
 

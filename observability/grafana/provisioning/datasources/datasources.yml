@@ -1,0 +1,41 @@
+apiVersion: 1
+
+# Grafana 기동 시 데이터소스 3종을 자동 등록합니다.
+# trace <-> log 상호 점프:
+#   - Loki  derivedFields  : 로그 라인의 traceId 를 추출해 Zipkin 트레이스로 링크
+#   - Zipkin tracesToLogsV2: 트레이스 스팬에서 같은 traceId 의 Loki 로그로 점프
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    jsonData:
+      httpMethod: POST
+
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    jsonData:
+      derivedFields:
+        - name: TraceID
+          # logback-spring.xml 의 로그 패턴 [sports-application,<traceId>,<spanId>] 에서 traceId 추출
+          matcherRegex: '\[sports-application,(\w+),'
+          url: '$${__value.raw}'
+          datasourceUid: zipkin
+
+  - name: Zipkin
+    uid: zipkin
+    type: zipkin
+    access: proxy
+    url: http://zipkin:9411
+    jsonData:
+      tracesToLogsV2:
+        datasourceUid: loki
+        spanStartTimeShift: '-5m'
+        spanEndTimeShift: '5m'
+        filterByTraceID: true

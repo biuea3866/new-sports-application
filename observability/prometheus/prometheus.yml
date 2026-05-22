@@ -1,0 +1,18 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # 호스트에서 ./gradlew bootRun 으로 도는 sports-application 백엔드.
+  # 앱이 컨테이너로 전환되면 target 을 'app:8080' 같은 서비스명으로 교체합니다.
+  - job_name: sports-application
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["host.docker.internal:8080"]
+        labels:
+          application: sports-application
+
+  # Prometheus 자체 메트릭
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

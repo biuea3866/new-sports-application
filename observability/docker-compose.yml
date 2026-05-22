@@ -1,0 +1,105 @@
+name: sports-observability
+
+# 메트릭(Prometheus) · 로그(Loki) · 트레이스(Zipkin)를 Grafana 한 화면에서 보는 자체 호스팅 스택.
+# 앱 docker-compose 와 분리되어 독립 기동합니다.
+#   기동:  docker compose -f observability/docker-compose.yml up -d
+#   종료:  docker compose -f observability/docker-compose.yml down
+#   초기화: docker compose -f observability/docker-compose.yml down -v   (영속 볼륨까지 삭제)
+
+services:
+  # Zipkin 트레이스 영속 저장소 (전용 MySQL — 앱 DB 와 분리)
+  zipkin-mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: zipkin
+      MYSQL_DATABASE: zipkin
+      MYSQL_USER: zipkin
+      MYSQL_PASSWORD: zipkin
+    volumes:
+      - zipkin-mysql-data:/var/lib/mysql
+      - ./zipkin/mysql-schema.sql:/docker-entrypoint-initdb.d/01-zipkin-schema.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uzipkin", "-pzipkin"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  # 트레이스 수집 + Zipkin 자체 UI (http://localhost:9411)
+  zipkin:
+    image: openzipkin/zipkin:3
+    depends_on:
+      zipkin-mysql:
+        condition: service_healthy
+    environment:
+      STORAGE_TYPE: mysql
+      MYSQL_HOST: zipkin-mysql
+      MYSQL_TCP_PORT: 3306
+      MYSQL_DB: zipkin
+      MYSQL_USER: zipkin
+      MYSQL_PASS: zipkin
+    ports:
+      - "9411:9411"
+
+  # web/mobile 트레이스 수신 허브 — OTLP 를 받아 Zipkin 으로 전달
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.116.0
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    depends_on:
+      - zipkin
+    volumes:
+      - ./otel-collector/config.yaml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "4317:4317"  # OTLP gRPC
+      - "4318:4318"  # OTLP HTTP
+
+  # 메트릭 저장 + scrape (http://localhost:9090)
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
+    ports:
+      - "9090:9090"
+    # 호스트에서 ./gradlew bootRun 으로 도는 앱을 scrape 하기 위함 (Linux 호환)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # 로그 저장 (http://localhost:3100)
+  loki:
+    image: grafana/loki:3.3.2
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki-data:/loki
+    ports:
+      - "3100:3100"
+
+  # 통합 UI — 메트릭·로그·트레이스 한 곳 (http://localhost:3001, 익명 Admin)
+  grafana:
+    image: grafana/grafana:11.4.0
+    depends_on:
+      - prometheus
+      - loki
+      - zipkin
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_FEATURE_TOGGLES_ENABLE: traceToMetrics
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    # web(Next.js) dev 서버가 3000 을 쓰므로 Grafana 는 3001 로 노출
+    ports:
+      - "3001:3000"
+
+volumes:
+  zipkin-mysql-data:
+  prometheus-data:
+  loki-data:
+  grafana-data:

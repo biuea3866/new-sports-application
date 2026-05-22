@@ -16,6 +16,7 @@ import * as SecureStore from 'expo-secure-store';
 import { router } from 'expo-router';
 
 import { getRefreshToken, useAuthStore } from '../lib/auth';
+import { attachTracingInterceptors } from '../lib/observability/tracing-interceptor';
 
 const REFRESH_TOKEN_KEY = 'refreshToken';
 
@@ -126,6 +127,9 @@ export function createBeClient(baseURL: string): AxiosInstance {
       }
     }
   );
+
+  // OpenTelemetry 트레이싱 인터셉터 부착 (자체 호스팅, dev 한정)
+  attachTracingInterceptors(instance);
 
   return instance;
 }

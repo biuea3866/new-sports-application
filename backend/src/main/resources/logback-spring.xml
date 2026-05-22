@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Spring Boot 기본 로깅 설정 (콘솔 색상, 기본 로거 레벨 등) -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="sports-application"/>
+    <property name="LOKI_URL" value="${LOKI_URL:-http://localhost:3100/loki/api/v1/push}"/>
+
+    <!-- traceId/spanId 는 Micrometer Tracing 이 MDC 에 자동 주입.
+         Grafana Loki derivedFields 가 [appName,traceId,spanId] 패턴에서 traceId 를 추출해 Zipkin 으로 링크 -->
+    <property name="LOG_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %5p [${appName},%X{traceId:-},%X{spanId:-}] %-40.40logger{39} : %m%n"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Loki 로그 전송. Loki 가 떠 있지 않아도 앱은 정상 동작 (전송 실패는 무시) -->
+    <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+        <http>
+            <url>${LOKI_URL}</url>
+        </http>
+        <format>
+            <label>
+                <pattern>app=${appName},host=${HOSTNAME},level=%level</pattern>
+            </label>
+            <message>
+                <pattern>${LOG_PATTERN}</pattern>
+            </message>
+        </format>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="LOKI"/>
+    </root>
+</configuration>
