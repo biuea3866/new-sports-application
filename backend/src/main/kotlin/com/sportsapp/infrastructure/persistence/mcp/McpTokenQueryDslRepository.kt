@@ -4,4 +4,5 @@ import com.sportsapp.domain.mcp.McpToken
 
 interface McpTokenQueryDslRepository {
     fun findActiveByUserId(userId: Long): List<McpToken>
+    fun findAllActive(): List<McpToken>
 }

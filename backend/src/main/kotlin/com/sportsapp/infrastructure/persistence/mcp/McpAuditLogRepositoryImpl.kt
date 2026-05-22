@@ -1,9 +1,10 @@
 package com.sportsapp.infrastructure.persistence.mcp
 
+import com.sportsapp.domain.mcp.DailyCallCount
 import com.sportsapp.domain.mcp.McpAuditLog
+import com.sportsapp.domain.mcp.McpAuditLogCustomRepository
 import com.sportsapp.domain.mcp.McpAuditLogRepository
 import com.sportsapp.domain.mcp.TokenCallStats
-import com.sportsapp.domain.mcp.McpAuditLogCustomRepository
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Repository
@@ -30,4 +31,17 @@ class McpAuditLogRepositoryImpl(
         from: ZonedDateTime,
     ): List<TokenCallStats> =
         mcpAuditLogJpaRepository.findCallStatsByTokenIdIn(tokenIds, from)
+
+    override fun findDailyCallCountsForBaseline(
+        tokenId: Long,
+        from: ZonedDateTime,
+        to: ZonedDateTime,
+    ): List<DailyCallCount> =
+        mcpAuditLogJpaRepository.findDailyCallCountsForBaseline(tokenId, from, to)
+
+    override fun findCurrentHourCallCount(
+        tokenId: Long,
+        from: ZonedDateTime,
+    ): Long =
+        mcpAuditLogJpaRepository.findCurrentHourCallCount(tokenId, from)
 }
