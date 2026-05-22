@@ -10,6 +10,7 @@ import com.sportsapp.domain.mcp.confirm.ConfirmationTokenAlreadyConsumedExceptio
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenContext
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenExpiredException
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenGateway
+import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.confirm.McpParamsHasher
 import com.sportsapp.presentation.mcp.response.McpResponseStatus
 import com.sportsapp.presentation.mcp.toolregistry.McpBookingWriteTools
@@ -17,6 +18,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -29,7 +31,8 @@ class McpBookingWriteToolsTest : BehaviorSpec({
 
     val cancelBookingUseCase = mockk<CancelBookingUseCase>()
     val confirmationTokenGateway = mockk<ConfirmationTokenGateway>()
-    val mcpBookingWriteTools = McpBookingWriteTools(cancelBookingUseCase, confirmationTokenGateway)
+    val mcpAuditLogAsyncRecorder = mockk<McpAuditLogAsyncRecorder>(relaxed = true)
+    val mcpBookingWriteTools = McpBookingWriteTools(cancelBookingUseCase, confirmationTokenGateway, mcpAuditLogAsyncRecorder)
 
     val callerUserId = 42L
     val mockPrincipal = object : McpAuthenticatedPrincipal {
@@ -45,6 +48,7 @@ class McpBookingWriteToolsTest : BehaviorSpec({
 
     afterEach {
         SecurityContextHolder.clearContext()
+        clearMocks(mcpAuditLogAsyncRecorder)
     }
 
     val bookingResponse = BookingResponse(
@@ -161,6 +165,45 @@ class McpBookingWriteToolsTest : BehaviorSpec({
                 tokenSlot.captured.toolName shouldBe "cancelBooking"
                 tokenSlot.captured.userId shouldBe callerUserId
                 tokenSlot.captured.paramsHash shouldNotBe null
+            }
+        }
+    }
+
+    Given("[U-audit-07] cancelBooking 1차 호출(confirmationToken=null) 시 audit recorder가 1회 호출된다") {
+        val issuedToken = "audit-test-token"
+        every { confirmationTokenGateway.issue(any()) } returns issuedToken
+
+        When("cancelBooking 을 confirmationToken 없이 호출하면") {
+            setSecurityContext()
+            mcpBookingWriteTools.cancelBooking(bookingId = 1L, reason = null, confirmationToken = null)
+
+            Then("[U-audit-07] mcpAuditLogAsyncRecorder.record가 정확히 1회 호출된다") {
+                verify(exactly = 1) {
+                    mcpAuditLogAsyncRecorder.record(any(), any(), any(), any(), any(), any(), any(), any(), any())
+                }
+            }
+        }
+    }
+
+    Given("[U-audit-08] cancelBooking 2차 호출(실행) 시 audit recorder가 1회 호출된다") {
+        val token = "valid-token-for-audit"
+        val expectedHash = McpParamsHasher.hash("cancelBooking", 1L, callerUserId)
+        val storedContext = ConfirmationTokenContext(
+            toolName = "cancelBooking",
+            userId = callerUserId,
+            paramsHash = expectedHash,
+        )
+        every { confirmationTokenGateway.consume(token) } returns storedContext
+        every { cancelBookingUseCase.execute(any()) } returns bookingResponse
+
+        When("cancelBooking 을 confirmationToken 포함해 호출하면") {
+            setSecurityContext()
+            mcpBookingWriteTools.cancelBooking(bookingId = 1L, reason = null, confirmationToken = token)
+
+            Then("[U-audit-08] mcpAuditLogAsyncRecorder.record가 정확히 1회 호출된다") {
+                verify(exactly = 1) {
+                    mcpAuditLogAsyncRecorder.record(any(), any(), any(), any(), any(), any(), any(), any(), any())
+                }
             }
         }
     }

@@ -4,6 +4,8 @@ import com.sportsapp.application.ticketing.GetTicketSalesCommand
 import com.sportsapp.application.ticketing.GetTicketSalesUseCase
 import com.sportsapp.application.ticketing.TicketSalesResponse
 import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
+import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
+import com.sportsapp.presentation.mcp.audit.McpToolAuditHelper.withAudit
 import com.sportsapp.presentation.mcp.response.McpResponse
 import org.springframework.ai.tool.annotation.Tool
 import org.springframework.context.annotation.Profile
@@ -19,11 +21,15 @@ import java.time.ZonedDateTime
  *
  * presentation layer 에 위치. UseCase 를 호출하고 McpResponse 로 래핑.
  * IDOR 방지: ownerUserId 를 LLM 파라미터로 받지 않고 SecurityContext 의 McpAuthenticatedPrincipal.userId 사용.
+ *
+ * Pattern B: Spring AI MethodToolCallback 은 CGLIB proxy 를 우회하므로
+ * McpAuditLogAsyncRecorder 를 생성자로 직접 주입하여 audit log 를 적재합니다.
  */
 @Component
 @Profile("!test-jpa")
 class McpTicketSalesTools(
     private val getTicketSalesUseCase: GetTicketSalesUseCase,
+    private val mcpAuditLogAsyncRecorder: McpAuditLogAsyncRecorder,
 ) {
     @PreAuthorize("@authz.hasMcpScope('read:ticket:sales')")
     @Tool(
@@ -35,21 +41,20 @@ class McpTicketSalesTools(
         eventId: Long?,
         from: String,
         to: String,
-    ): McpResponse<TicketSalesResponse> {
-        val callerUserId = resolveCallerUserId()
-        val command = GetTicketSalesCommand(
-            ownerUserId = callerUserId,
-            eventId = eventId,
-            from = ZonedDateTime.parse(from),
-            to = ZonedDateTime.parse(to),
-        )
-        val result = getTicketSalesUseCase.execute(command)
-        return McpResponse.ok(data = result)
-    }
-
-    private fun resolveCallerUserId(): Long {
-        val principal = SecurityContextHolder.getContext().authentication?.principal as? McpAuthenticatedPrincipal
-            ?: throw AccessDeniedException("MCP authentication required")
-        return principal.userId
-    }
+    ): McpResponse<TicketSalesResponse> =
+        mcpAuditLogAsyncRecorder.withAudit(
+            toolName = "getTicketSales",
+            namedParams = mapOf("eventId" to eventId, "from" to from, "to" to to),
+        ) {
+            val principal = SecurityContextHolder.getContext().authentication?.principal as? McpAuthenticatedPrincipal
+                ?: throw AccessDeniedException("MCP authentication required")
+            val command = GetTicketSalesCommand(
+                ownerUserId = principal.userId,
+                eventId = eventId,
+                from = ZonedDateTime.parse(from),
+                to = ZonedDateTime.parse(to),
+            )
+            val result = getTicketSalesUseCase.execute(command)
+            McpResponse.ok(data = result)
+        }
 }

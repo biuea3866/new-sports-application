@@ -5,12 +5,14 @@ import com.sportsapp.application.ticketing.GetTicketSalesUseCase
 import com.sportsapp.application.ticketing.TicketSalesResponse
 import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
 import com.sportsapp.domain.mcp.McpScope
+import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.response.McpResponseStatus
 import com.sportsapp.presentation.mcp.toolregistry.McpTicketSalesTools
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -24,7 +26,8 @@ import java.time.ZonedDateTime
 class McpTicketSalesToolsTest : BehaviorSpec({
 
     val getTicketSalesUseCase = mockk<GetTicketSalesUseCase>()
-    val mcpTicketSalesTools = McpTicketSalesTools(getTicketSalesUseCase)
+    val mcpAuditLogAsyncRecorder = mockk<McpAuditLogAsyncRecorder>(relaxed = true)
+    val mcpTicketSalesTools = McpTicketSalesTools(getTicketSalesUseCase, mcpAuditLogAsyncRecorder)
 
     fun setupPrincipal(userId: Long) {
         val principal = object : McpAuthenticatedPrincipal {
@@ -36,7 +39,10 @@ class McpTicketSalesToolsTest : BehaviorSpec({
             UsernamePasswordAuthenticationToken(principal, null, emptyList())
     }
 
-    afterEach { SecurityContextHolder.clearContext() }
+    afterEach {
+        SecurityContextHolder.clearContext()
+        clearMocks(mcpAuditLogAsyncRecorder)
+    }
 
     Given("getTicketSales tool") {
         val from = ZonedDateTime.now().minusDays(30)
@@ -128,7 +134,8 @@ class McpTicketSalesToolsTest : BehaviorSpec({
         When("[U-13] IDOR — principal이 없으면 (SecurityContext 비어있음)") {
             SecurityContextHolder.clearContext()
             val localUseCase = mockk<GetTicketSalesUseCase>()
-            val localTools = McpTicketSalesTools(localUseCase)
+            val localRecorder = mockk<McpAuditLogAsyncRecorder>(relaxed = true)
+            val localTools = McpTicketSalesTools(localUseCase, localRecorder)
 
             Then("[U-13] AccessDeniedException이 발생하고 UseCase는 호출되지 않는다") {
                 shouldThrow<AccessDeniedException> {
@@ -139,6 +146,23 @@ class McpTicketSalesToolsTest : BehaviorSpec({
                     )
                 }
                 verify(exactly = 0) { localUseCase.execute(any()) }
+            }
+        }
+
+        When("[U-audit-06] getTicketSales 호출 시 audit recorder가 1회 호출된다") {
+            setupPrincipal(10L)
+            every { getTicketSalesUseCase.execute(any()) } returns salesResponse
+
+            mcpTicketSalesTools.getTicketSales(
+                eventId = null,
+                from = from.toString(),
+                to = to.toString(),
+            )
+
+            Then("[U-audit-06] mcpAuditLogAsyncRecorder.record가 정확히 1회 호출된다") {
+                verify(exactly = 1) {
+                    mcpAuditLogAsyncRecorder.record(any(), any(), any(), any(), any(), any(), any(), any(), any())
+                }
             }
         }
     }

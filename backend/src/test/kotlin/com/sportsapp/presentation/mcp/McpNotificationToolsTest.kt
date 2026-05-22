@@ -8,12 +8,14 @@ import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
 import com.sportsapp.domain.mcp.McpScope
 import com.sportsapp.domain.notification.NotificationChannel
 import com.sportsapp.domain.notification.NotificationStatus
+import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.response.McpResponseStatus
 import com.sportsapp.presentation.mcp.toolregistry.McpNotificationTools
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -26,7 +28,8 @@ import java.time.ZonedDateTime
 class McpNotificationToolsTest : BehaviorSpec({
 
     val listMyNotificationsUseCase = mockk<ListMyNotificationsUseCase>()
-    val mcpNotificationTools = McpNotificationTools(listMyNotificationsUseCase)
+    val mcpAuditLogAsyncRecorder = mockk<McpAuditLogAsyncRecorder>(relaxed = true)
+    val mcpNotificationTools = McpNotificationTools(listMyNotificationsUseCase, mcpAuditLogAsyncRecorder)
 
     val notificationResponse = NotificationResponse(
         id = 1L,
@@ -56,7 +59,10 @@ class McpNotificationToolsTest : BehaviorSpec({
             UsernamePasswordAuthenticationToken(principal, null, emptyList())
     }
 
-    afterEach { SecurityContextHolder.clearContext() }
+    afterEach {
+        SecurityContextHolder.clearContext()
+        clearMocks(mcpAuditLogAsyncRecorder)
+    }
 
     Given("getNotifications tool") {
         When("[U-13] 인증된 사용자(userId=42)로 getNotifications를 호출하면") {
@@ -124,7 +130,8 @@ class McpNotificationToolsTest : BehaviorSpec({
         When("[U-17] IDOR — principal이 없으면 (SecurityContext 비어있음)") {
             SecurityContextHolder.clearContext()
             val localUseCase = mockk<ListMyNotificationsUseCase>()
-            val localTools = McpNotificationTools(localUseCase)
+            val localRecorder = mockk<McpAuditLogAsyncRecorder>(relaxed = true)
+            val localTools = McpNotificationTools(localUseCase, localRecorder)
 
             Then("[U-17] AccessDeniedException이 발생하고 UseCase는 호출되지 않는다") {
                 shouldThrow<AccessDeniedException> {
@@ -143,6 +150,19 @@ class McpNotificationToolsTest : BehaviorSpec({
 
             Then("[U-18] UseCase에 전달되는 userId는 principal.userId(42)이다") {
                 commandSlot.captured.userId shouldBe 42L
+            }
+        }
+
+        When("[U-audit-03] getNotifications 호출 시 audit recorder가 1회 호출된다") {
+            setupPrincipal(42L)
+            every { listMyNotificationsUseCase.execute(any()) } returns pageResponse
+
+            mcpNotificationTools.getNotifications(onlyUnread = false)
+
+            Then("[U-audit-03] mcpAuditLogAsyncRecorder.record가 정확히 1회 호출된다") {
+                verify(exactly = 1) {
+                    mcpAuditLogAsyncRecorder.record(any(), any(), any(), any(), any(), any(), any(), any(), any())
+                }
             }
         }
     }

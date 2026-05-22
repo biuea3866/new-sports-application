@@ -4,12 +4,14 @@ import com.sportsapp.application.dashboard.DashboardSummaryResponse
 import com.sportsapp.application.dashboard.GetMyDashboardSummaryUseCase
 import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
 import com.sportsapp.domain.mcp.McpScope
+import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.response.McpResponseStatus
 import com.sportsapp.presentation.mcp.toolregistry.McpOperatorProfileTools
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -20,7 +22,8 @@ import org.springframework.security.core.context.SecurityContextHolder
 class McpOperatorProfileToolsTest : BehaviorSpec({
 
     val getMyDashboardSummaryUseCase = mockk<GetMyDashboardSummaryUseCase>()
-    val mcpOperatorProfileTools = McpOperatorProfileTools(getMyDashboardSummaryUseCase)
+    val mcpAuditLogAsyncRecorder = mockk<McpAuditLogAsyncRecorder>(relaxed = true)
+    val mcpOperatorProfileTools = McpOperatorProfileTools(getMyDashboardSummaryUseCase, mcpAuditLogAsyncRecorder)
 
     val dashboardResponse = DashboardSummaryResponse(
         facilities = DashboardSummaryResponse.FacilitiesSummary(
@@ -41,7 +44,10 @@ class McpOperatorProfileToolsTest : BehaviorSpec({
             UsernamePasswordAuthenticationToken(principal, null, emptyList())
     }
 
-    afterEach { SecurityContextHolder.clearContext() }
+    afterEach {
+        SecurityContextHolder.clearContext()
+        clearMocks(mcpAuditLogAsyncRecorder)
+    }
 
     Given("getOperatorProfile tool") {
         When("[U-10] 인증된 운영자(userId=42)로 getOperatorProfile을 호출하면") {
@@ -102,13 +108,27 @@ class McpOperatorProfileToolsTest : BehaviorSpec({
         When("[U-17] IDOR — principal이 없으면 (SecurityContext 비어있음)") {
             SecurityContextHolder.clearContext()
             val localUseCase = mockk<GetMyDashboardSummaryUseCase>()
-            val localTools = McpOperatorProfileTools(localUseCase)
+            val localRecorder = mockk<McpAuditLogAsyncRecorder>(relaxed = true)
+            val localTools = McpOperatorProfileTools(localUseCase, localRecorder)
 
             Then("[U-17] AccessDeniedException이 발생하고 UseCase는 호출되지 않는다") {
                 shouldThrow<AccessDeniedException> {
                     localTools.getOperatorProfile()
                 }
                 verify(exactly = 0) { localUseCase.execute(any()) }
+            }
+        }
+
+        When("[U-audit-02] getOperatorProfile 호출 시 audit recorder가 1회 호출된다") {
+            setupPrincipal(42L)
+            every { getMyDashboardSummaryUseCase.execute(42L) } returns dashboardResponse
+
+            mcpOperatorProfileTools.getOperatorProfile()
+
+            Then("[U-audit-02] mcpAuditLogAsyncRecorder.record가 정확히 1회 호출된다") {
+                verify(exactly = 1) {
+                    mcpAuditLogAsyncRecorder.record(any(), any(), any(), any(), any(), any(), any(), any(), any())
+                }
             }
         }
     }
