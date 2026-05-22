@@ -86,18 +86,22 @@ grep -q '^BACKEND_URL=' web/.env.local || { echo "FATAL: web/.env.local에 BACKE
 
 `qa-env-gate.sh` hook이 Playwright 실행 직전 `.env.local`의 `BACKEND_URL`을 강제 검증한다 — 누락 시 E2E 실행을 차단한다.
 
-### 0-C — BE/FE/Mobile 호스트 기동
+### 0-C — BE/FE/Mobile 호스트 기동 (FE는 production 빌드 필수)
 
-`.next` 캐시는 환경 변수 변경을 반영하지 못할 수 있으므로 회귀 시작 시 1회 삭제한다:
+`.next` 캐시는 환경 변수 변경을 반영하지 못할 수 있으므로 회귀 시작 시 1회 삭제한다.
+
+**FE는 반드시 `next build && next start` (production 모드)로 기동한다.** `next dev`는 hydration 타이밍 비결정성으로 Playwright E2E가 거짓 실패할 수 있다 — 폼이 hydration 전에 제출돼 네이티브 submit으로 페이지가 리로드되는 현상이 관측됐다 (`/login` 회귀 사례, dev 모드에서 4건 중 3건 거짓 fail → production 빌드에서 4/4 통과로 확정). `qa-fe-mode-gate.sh` hook이 Playwright 실행 시 `next dev` 프로세스를 감지하면 차단한다.
 
 ```bash
-rm -rf web/.next                                  # stale 캐시 제거
-cd backend && APP_JWT_SECRET=<qa-secret> ./gradlew bootRun &   # :8080
-cd web && npx next dev -p 3000 &                  # :3000 — .env.local 자동 로드
-cd mobile && npx expo start --web --port 8081 &   # :8081
+rm -rf web/.next                                                       # stale 캐시 제거
+cd backend && APP_JWT_SECRET=<qa-secret> ./gradlew bootRun &           # :8080
+cd web && npx next build && nohup npx next start -p 3000 &             # :3000 — production 빌드 + start
+cd mobile && npx expo start --web --port 8081 &                        # :8081
 ```
 
-BE는 startup에 30~120s 소요. `/actuator/health` 200 + FE `/portal` 비-500 + Mobile 200을 **모두 확인**한 뒤 Step 1로 진행한다. 한 서버라도 비정상이면 중단.
+BE는 startup에 30~120s 소요. FE는 빌드 1~2분 + start 수 초. `/actuator/health` 200 + FE `/portal` 비-500 + Mobile 200을 **모두 확인**한 뒤 Step 1로 진행한다. 한 서버라도 비정상이면 중단.
+
+> 개발 단계 hot-reload(`next dev`)는 `/qa`의 회귀 대상이 아니다. `/qa`는 "실제 배포되는 동일 산출물"을 검증하므로 production 빌드가 정답이다.
 
 ### 환경 변수
 
