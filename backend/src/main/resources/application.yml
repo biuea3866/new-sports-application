@@ -86,6 +86,16 @@ storage:
       - image/png
       - image/webp
 
+spring:
+  ai:
+    mcp:
+      server:
+        enabled: true
+        name: sports-mcp-server
+        version: 1.0.0
+        sse-endpoint: /mcp/sse
+        sse-message-endpoint: /mcp/message
+
 management:
   endpoints:
     web:
