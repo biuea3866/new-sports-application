@@ -1,10 +1,12 @@
 package com.sportsapp.infrastructure.config
 
 import com.sportsapp.presentation.mcp.toolregistry.McpBookingTools
+import com.sportsapp.presentation.mcp.toolregistry.McpBookingWriteTools
 import com.sportsapp.presentation.mcp.toolregistry.McpFacilityStatsTools
 import com.sportsapp.presentation.mcp.toolregistry.McpFacilityTools
 import com.sportsapp.presentation.mcp.toolregistry.McpNotificationTools
 import com.sportsapp.presentation.mcp.toolregistry.McpOperatorProfileTools
+import com.sportsapp.presentation.mcp.toolregistry.McpSlotWriteTools
 import org.springframework.ai.tool.ToolCallbackProvider
 import org.springframework.ai.tool.method.MethodToolCallbackProvider
 import org.springframework.context.annotation.Bean
@@ -14,12 +16,16 @@ import org.springframework.context.annotation.Profile
 /**
  * MCP tool registry 설정.
  *
- * Spring AI MCP Server 에 read tool 을 등록한다.
+ * Spring AI MCP Server 에 read/write tool 을 등록한다.
  * - getFacilities: read:facility scope
  * - getBookings: read:booking scope
  * - getFacilityStats: read:facility:stats scope
  * - getOperatorProfile: read:operator:profile scope
  * - getNotifications: read:notification scope
+ * - cancelBooking: write:booking scope (2-step confirm flow)
+ * - createSlot: write:slot scope (2-step confirm flow)
+ * - updateSlot: write:slot scope (2-step confirm flow)
+ * - deleteSlot: write:slot scope (2-step confirm flow)
  */
 @Configuration
 @Profile("!test-jpa")
@@ -41,5 +47,14 @@ class McpToolRegistryConfig {
                 mcpOperatorProfileTools,
                 mcpNotificationTools,
             )
+            .build()
+
+    @Bean
+    fun mcpWriteToolCallbackProvider(
+        mcpBookingWriteTools: McpBookingWriteTools,
+        mcpSlotWriteTools: McpSlotWriteTools,
+    ): ToolCallbackProvider =
+        MethodToolCallbackProvider.builder()
+            .toolObjects(mcpBookingWriteTools, mcpSlotWriteTools)
             .build()
 }
