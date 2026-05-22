@@ -155,6 +155,32 @@ describe("Admin MCP Audit Logs Route Handler", () => {
     });
   });
 
+  describe("[S-04] BE 403 응답 시 403 + 사용자 친화 메시지 반환", () => {
+    it("BE가 403을 반환하면 403 + 권한 부족 메시지를 반환한다", async () => {
+      const { cookies } = await import("next/headers");
+      vi.mocked(cookies).mockReturnValue({
+        get: vi.fn().mockReturnValue({ value: "test-token" }),
+      } as unknown as ReturnType<typeof cookies>);
+
+      mockFetch.mockResolvedValue(
+        new Response(JSON.stringify({ title: "Forbidden", status: 403 }), {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+
+      const { GET } = await import("../route");
+      const request = new NextRequest(
+        "http://localhost:3000/api/admin/mcp/audit-logs?from=2026-05-14T00:00:00Z&to=2026-05-20T23:59:59Z"
+      );
+      const response = await GET(request);
+
+      expect(response.status).toBe(403);
+      const body = (await response.json()) as { message: string };
+      expect(body.message).toBe("해당 작업을 수행할 권한이 없습니다.");
+    });
+  });
+
   describe("[S-03] BACKEND_URL 미설정 시 503 반환", () => {
     it("BACKEND_URL이 없으면 503을 반환한다", async () => {
       delete process.env["BACKEND_URL"];

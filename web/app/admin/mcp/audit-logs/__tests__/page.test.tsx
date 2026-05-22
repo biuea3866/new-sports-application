@@ -72,17 +72,17 @@ describe("AuditLogsPage", () => {
     vi.clearAllMocks();
   });
 
-  it("[U-01] 페이지 제목이 렌더링된다", async () => {
+  it("[U-01] 페이지 제목이 렌더링된다", () => {
     mockFetchAuditLogs.mockResolvedValue(EMPTY_RESPONSE);
     render(<AuditLogsPage />);
     expect(screen.getByRole("heading", { name: "감사 로그" })).toBeInTheDocument();
   });
 
-  it("[U-02] 시작일·종료일 입력 필드와 조회 버튼이 렌더링된다", async () => {
+  it("[U-02] 시작일·종료일 입력 필드와 조회 버튼이 렌더링된다", () => {
     mockFetchAuditLogs.mockResolvedValue(EMPTY_RESPONSE);
     render(<AuditLogsPage />);
-    expect(screen.getByLabelText("조회 시작일")).toBeInTheDocument();
-    expect(screen.getByLabelText("조회 종료일")).toBeInTheDocument();
+    expect(screen.getByLabelText("시작일")).toBeInTheDocument();
+    expect(screen.getByLabelText("종료일")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "감사 로그 검색" })).toBeInTheDocument();
   });
 
@@ -160,7 +160,7 @@ describe("AuditLogsPage", () => {
       expect(mockFetchAuditLogs).toHaveBeenCalledTimes(1);
     });
 
-    const fromInput = screen.getByLabelText("조회 시작일");
+    const fromInput = screen.getByLabelText("시작일");
     fireEvent.change(fromInput, { target: { value: "2026-05-01" } });
 
     await waitFor(() => {

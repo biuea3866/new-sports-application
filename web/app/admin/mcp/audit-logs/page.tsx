@@ -9,7 +9,8 @@ import {
 } from "@/lib/admin/auditLogs";
 
 function toIsoString(dateStr: string, endOfDay = false): string {
-  // dateStr은 "YYYY-MM-DD" 형식. 로컬 시간대 영향 없이 UTC 기준으로 변환한다.
+  // dateStr은 "YYYY-MM-DD" 형식. UTC 자정 기준으로 변환한다.
+  // KST(UTC+9) 사용자 기준: 2026-05-14 입력 시 실제 필터는 UTC 2026-05-14T00:00:00Z(KST 09:00)부터 시작함에 유의.
   const suffix = endOfDay ? "T23:59:59.999Z" : "T00:00:00.000Z";
   return `${dateStr}${suffix}`;
 }
@@ -38,6 +39,8 @@ export default function AuditLogsPage(): JSX.Element {
 
   const loadLogs = useCallback(async () => {
     setLoading(true);
+    setTotalElements(0);
+    setLogs([]);
     setError(null);
     try {
       const params: FetchAuditLogsParams = {
@@ -65,8 +68,7 @@ export default function AuditLogsPage(): JSX.Element {
 
   function handleSearch(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setPage(0);
-    void loadLogs();
+    setPage(0); // page 변경 → useEffect deps 변경 → loadLogs 재실행
   }
 
   return (
@@ -96,7 +98,6 @@ export default function AuditLogsPage(): JSX.Element {
               }}
               max={toDate}
               className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              aria-label="조회 시작일"
             />
           </div>
           <div>
@@ -117,7 +118,6 @@ export default function AuditLogsPage(): JSX.Element {
               min={fromDate}
               max={todayStr()}
               className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              aria-label="조회 종료일"
             />
           </div>
           <Button type="submit" size="sm" aria-label="감사 로그 검색">
@@ -215,37 +215,37 @@ export default function AuditLogsPage(): JSX.Element {
               </tbody>
             </table>
           </div>
-
-          {/* 페이지네이션 */}
-          {totalPages > 1 && (
-            <nav
-              aria-label="감사 로그 페이지 이동"
-              className="mt-4 flex items-center justify-center gap-2"
-            >
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page === 0}
-                onClick={() => setPage((p) => p - 1)}
-                aria-label="이전 페이지"
-              >
-                이전
-              </Button>
-              <span aria-current="page" className="text-sm">
-                {page + 1} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages - 1}
-                onClick={() => setPage((p) => p + 1)}
-                aria-label="다음 페이지"
-              >
-                다음
-              </Button>
-            </nav>
-          )}
         </section>
+      )}
+
+      {/* 페이지네이션 — 로딩 중에도 표시 유지 */}
+      {totalPages > 1 && (
+        <nav
+          aria-label="감사 로그 페이지 이동"
+          className="mt-4 flex items-center justify-center gap-2"
+        >
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={loading || page === 0}
+            onClick={() => setPage((p) => p - 1)}
+            aria-label="이전 페이지"
+          >
+            이전
+          </Button>
+          <span aria-current="page" className="text-sm">
+            {page + 1} / {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={loading || page >= totalPages - 1}
+            onClick={() => setPage((p) => p + 1)}
+            aria-label="다음 페이지"
+          >
+            다음
+          </Button>
+        </nav>
       )}
     </main>
   );
