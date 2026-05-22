@@ -46,7 +46,9 @@ class SecurityConfig(
         auth: AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry,
     ) {
         auth.requestMatchers(HttpMethod.POST, "/auth/login", "/auth/refresh", "/users/register").permitAll()
-        auth.requestMatchers("/actuator/health", "/actuator/info").permitAll()
+        auth.requestMatchers(
+            "/actuator/health", "/actuator/info", "/actuator/prometheus", "/actuator/metrics",
+        ).permitAll()
         auth.requestMatchers("/admin/**").hasRole("ADMIN")
         auth.requestMatchers("/api/facility-owner/**").authenticated()
         auth.requestMatchers("/api/event-host/**").authenticated()

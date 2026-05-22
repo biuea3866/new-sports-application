@@ -1,3 +1,10 @@
+name: sports-app
+
+# observability 스택(Grafana·Prometheus·Loki·Zipkin·zipkin-mysql·otel-collector)을 함께 기동.
+# `docker compose up` 한 번으로 minio + observability 전체가 올라옵니다.
+include:
+  - ./observability/docker-compose.yml
+
 services:
   minio:
     image: minio/minio:latest
