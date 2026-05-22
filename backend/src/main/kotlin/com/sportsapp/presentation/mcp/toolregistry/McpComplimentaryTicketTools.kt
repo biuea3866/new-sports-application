@@ -2,9 +2,6 @@ package com.sportsapp.presentation.mcp.toolregistry
 
 import com.sportsapp.application.ticketing.IssueComplimentaryTicketCommand
 import com.sportsapp.application.ticketing.IssueComplimentaryTicketUseCase
-import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
-import com.sportsapp.domain.mcp.confirm.ConfirmationParamsMismatchException
-import com.sportsapp.domain.mcp.confirm.ConfirmationTokenContext
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenGateway
 import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.audit.McpToolAuditHelper.withAudit
@@ -12,9 +9,7 @@ import com.sportsapp.presentation.mcp.confirm.McpParamsHasher
 import com.sportsapp.presentation.mcp.response.McpResponse
 import org.springframework.ai.tool.annotation.Tool
 import org.springframework.context.annotation.Profile
-import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.access.prepost.PreAuthorize
-import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
 
 /**
@@ -30,9 +25,9 @@ import org.springframework.stereotype.Component
 @Profile("!test-jpa")
 class McpComplimentaryTicketTools(
     private val issueComplimentaryTicketUseCase: IssueComplimentaryTicketUseCase,
-    private val confirmationTokenGateway: ConfirmationTokenGateway,
+    confirmationTokenGateway: ConfirmationTokenGateway,
     private val mcpAuditLogAsyncRecorder: McpAuditLogAsyncRecorder,
-) {
+) : McpWriteToolBase(confirmationTokenGateway) {
 
     @PreAuthorize("@authz.hasMcpScope('write:ticket:complimentary')")
     @Tool(
@@ -73,26 +68,4 @@ class McpComplimentaryTicketTools(
             McpResponse.ok(data = result)
         }
 
-    private fun issueConfirmation(
-        toolName: String,
-        userId: Long,
-        paramsHash: String,
-        metadata: Map<String, Any>,
-    ): McpResponse<Map<String, Any>> {
-        val token = confirmationTokenGateway.issue(
-            ConfirmationTokenContext(toolName = toolName, userId = userId, paramsHash = paramsHash)
-        )
-        return McpResponse.confirmRequired(data = metadata + ("confirmationToken" to token))
-    }
-
-    private fun validateHashAndConsume(confirmationToken: String, expectedHash: String) {
-        val context = confirmationTokenGateway.consume(confirmationToken)
-        if (context.paramsHash != expectedHash) throw ConfirmationParamsMismatchException(confirmationToken)
-    }
-
-    private fun resolveCallerUserId(): Long {
-        val principal = SecurityContextHolder.getContext().authentication?.principal as? McpAuthenticatedPrincipal
-            ?: throw AccessDeniedException("MCP authentication required")
-        return principal.userId
-    }
 }

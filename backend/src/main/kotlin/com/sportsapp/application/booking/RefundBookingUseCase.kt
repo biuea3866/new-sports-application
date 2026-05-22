@@ -12,6 +12,7 @@ class RefundBookingUseCase(
     fun execute(command: RefundBookingCommand): BookingResponse {
         val booking = bookingDomainService.refundBooking(
             bookingId = command.bookingId,
+            callerUserId = command.callerUserId,
             refundAmount = command.refundAmount,
             reason = command.reason,
         )

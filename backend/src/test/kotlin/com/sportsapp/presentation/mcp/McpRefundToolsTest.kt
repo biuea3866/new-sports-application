@@ -18,6 +18,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import com.sportsapp.application.booking.RefundBookingCommand
 import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
@@ -94,8 +95,9 @@ class McpRefundToolsTest : BehaviorSpec({
             userId = callerUserId,
             paramsHash = expectedHash,
         )
+        val commandSlot = slot<RefundBookingCommand>()
         every { confirmationTokenGateway.consume(token) } returns storedContext
-        every { refundBookingUseCase.execute(any()) } returns bookingResponse
+        every { refundBookingUseCase.execute(capture(commandSlot)) } returns bookingResponse
 
         When("refundBooking 을 호출하면") {
             setSecurityContext()
@@ -106,10 +108,12 @@ class McpRefundToolsTest : BehaviorSpec({
                 confirmationToken = token,
             )
 
-            Then("[U-02] OK 상태와 REFUNDED BookingResponse 가 반환된다") {
+            Then("[U-02] OK 상태와 REFUNDED BookingResponse 가 반환되고 Command 에 callerUserId 가 포함된다") {
                 result.status shouldBe McpResponseStatus.OK
                 val data = requireNotNull(result.data) as BookingResponse
                 data.status shouldBe BookingStatus.REFUNDED
+                commandSlot.captured.callerUserId shouldBe callerUserId
+                commandSlot.captured.bookingId shouldBe 1L
                 verify(exactly = 1) { refundBookingUseCase.execute(any()) }
             }
         }

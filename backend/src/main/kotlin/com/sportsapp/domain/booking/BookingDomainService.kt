@@ -110,9 +110,10 @@ class BookingDomainService(
         throw UnauthorizedBookingAccessException(bookingId)
     }
 
-    fun refundBooking(bookingId: Long, refundAmount: BigDecimal, reason: String): Booking {
+    fun refundBooking(bookingId: Long, callerUserId: Long, refundAmount: BigDecimal, reason: String): Booking {
         val booking = bookingRepository.findById(bookingId)
             ?: throw ResourceNotFoundException("Booking", bookingId)
+        booking.requireOwnedBy(callerUserId)
         val paymentId = booking.requireHasPayment()
         paymentRefundGateway.requestRefund(paymentId.toString(), refundAmount, reason)
         booking.refund()

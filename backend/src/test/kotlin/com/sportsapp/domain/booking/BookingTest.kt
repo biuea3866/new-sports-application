@@ -104,6 +104,51 @@ class BookingTest : BehaviorSpec({
         }
     }
 
+    Given("CONFIRMED 상태의 Booking (userId=1L)") {
+        val booking = Booking.createPending(userId = 1L, slotId = 10L)
+        booking.confirm(paymentId = 10L)
+
+        When("소유자가 아닌 userId=99L 로 requireOwnedBy 를 호출하면") {
+            Then("[U-refund-04] UnauthorizedBookingAccessException 이 발생한다") {
+                shouldThrow<UnauthorizedBookingAccessException> {
+                    booking.requireOwnedBy(99L)
+                }
+            }
+        }
+
+        When("소유자 userId=1L 로 requireOwnedBy 를 호출하면") {
+            Then("[U-refund-05] 예외 없이 통과한다") {
+                booking.requireOwnedBy(1L) // 예외 없음
+            }
+        }
+    }
+
+    Given("이미 REFUNDED 상태의 Booking") {
+        val booking = Booking.createPending(userId = 1L, slotId = 10L)
+        booking.confirm(paymentId = 10L)
+        booking.refund()
+
+        When("refund() 를 다시 호출하면") {
+            Then("[U-refund-06] RefundPolicyViolationException 이 발생한다") {
+                shouldThrow<RefundPolicyViolationException> {
+                    booking.refund()
+                }
+            }
+        }
+    }
+
+    Given("PENDING 상태의 Booking") {
+        val booking = Booking.createPending(userId = 1L, slotId = 10L)
+
+        When("refund() 를 호출하면") {
+            Then("[U-refund-07] PENDING → REFUNDED 전이 불가로 RefundPolicyViolationException 이 발생한다") {
+                shouldThrow<RefundPolicyViolationException> {
+                    booking.refund()
+                }
+            }
+        }
+    }
+
     Given("잘못된 timeRange 형식") {
         Then("[U-05] InvalidSlotException을 던진다") {
             shouldThrow<InvalidSlotException> {

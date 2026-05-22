@@ -22,6 +22,7 @@ class RefundBookingUseCaseTest : BehaviorSpec({
     Given("[U-01] 정상 환불 가능한 CONFIRMED 예약") {
         val command = RefundBookingCommand(
             bookingId = 1L,
+            callerUserId = 42L,
             refundAmount = BigDecimal("50000"),
             reason = "고객 요청",
         )
@@ -35,7 +36,7 @@ class RefundBookingUseCaseTest : BehaviorSpec({
             every { updatedAt } returns ZonedDateTime.now()
         }
         every {
-            bookingDomainService.refundBooking(1L, BigDecimal("50000"), "고객 요청")
+            bookingDomainService.refundBooking(1L, 42L, BigDecimal("50000"), "고객 요청")
         } returns booking
 
         When("execute 를 호출하면") {
@@ -44,7 +45,7 @@ class RefundBookingUseCaseTest : BehaviorSpec({
             Then("[U-01] BookingResponse 가 반환되고 status 가 REFUNDED 이다") {
                 result.id shouldBe 1L
                 result.status shouldBe BookingStatus.REFUNDED
-                verify(exactly = 1) { bookingDomainService.refundBooking(1L, BigDecimal("50000"), "고객 요청") }
+                verify(exactly = 1) { bookingDomainService.refundBooking(1L, 42L, BigDecimal("50000"), "고객 요청") }
             }
         }
     }
@@ -52,11 +53,12 @@ class RefundBookingUseCaseTest : BehaviorSpec({
     Given("[U-02] 이미 취소된 예약에 환불 시도 시") {
         val command = RefundBookingCommand(
             bookingId = 2L,
+            callerUserId = 42L,
             refundAmount = BigDecimal("30000"),
             reason = "중복 요청",
         )
         every {
-            bookingDomainService.refundBooking(2L, BigDecimal("30000"), "중복 요청")
+            bookingDomainService.refundBooking(2L, 42L, BigDecimal("30000"), "중복 요청")
         } throws RefundPolicyViolationException(2L, BookingStatus.CANCELLED)
 
         When("execute 를 호출하면") {
@@ -71,11 +73,12 @@ class RefundBookingUseCaseTest : BehaviorSpec({
     Given("[U-03] 결제 정보가 없는 예약에 환불 시도 시") {
         val command = RefundBookingCommand(
             bookingId = 3L,
+            callerUserId = 42L,
             refundAmount = BigDecimal("10000"),
             reason = "테스트",
         )
         every {
-            bookingDomainService.refundBooking(3L, BigDecimal("10000"), "테스트")
+            bookingDomainService.refundBooking(3L, 42L, BigDecimal("10000"), "테스트")
         } throws RefundBookingException(3L, "결제 정보가 없는 예약은 환불할 수 없습니다.")
 
         When("execute 를 호출하면") {

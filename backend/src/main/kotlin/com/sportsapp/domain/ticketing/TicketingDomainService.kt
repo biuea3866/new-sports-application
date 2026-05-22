@@ -175,7 +175,6 @@ class TicketingDomainService(
         eventRepository.save(event)
     }
 
-    @Transactional
     fun issueComplimentary(eventId: Long, seatId: Long, operatorUserId: Long): Ticket {
         val event = eventRepository.findById(eventId)
             ?: throw ResourceNotFoundException("Event", eventId)
