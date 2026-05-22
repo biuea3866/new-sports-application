@@ -3,6 +3,7 @@ package com.sportsapp.presentation.mcp
 import com.sportsapp.application.facility.FacilityCriteria
 import com.sportsapp.application.facility.FacilityResponse
 import com.sportsapp.application.facility.ListFacilitiesUseCase
+import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.response.McpResponseStatus
 import com.sportsapp.presentation.mcp.toolregistry.McpFacilityTools
 import io.kotest.core.spec.style.BehaviorSpec
@@ -17,7 +18,8 @@ import org.springframework.data.domain.PageRequest
 class McpFacilityToolsTest : BehaviorSpec({
 
     val listFacilitiesUseCase = mockk<ListFacilitiesUseCase>()
-    val mcpFacilityTools = McpFacilityTools(listFacilitiesUseCase)
+    val mcpAuditLogAsyncRecorder = mockk<McpAuditLogAsyncRecorder>(relaxed = true)
+    val mcpFacilityTools = McpFacilityTools(listFacilitiesUseCase, mcpAuditLogAsyncRecorder)
 
     Given("getFacilities tool") {
         val facility = FacilityResponse(

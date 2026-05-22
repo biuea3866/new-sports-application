@@ -16,4 +16,8 @@ class McpAuditLogDomainService(
         pageable: Pageable,
     ): Page<McpAuditLog> =
         mcpAuditLogRepository.findByUserIdAndCalledAtBetween(userId, from, to, pageable)
+
+    fun recordToolInvocation(auditLog: McpAuditLog) {
+        mcpAuditLogRepository.save(auditLog)
+    }
 }

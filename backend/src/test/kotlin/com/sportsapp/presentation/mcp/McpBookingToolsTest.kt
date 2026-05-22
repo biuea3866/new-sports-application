@@ -5,6 +5,7 @@ import com.sportsapp.application.booking.ListBookingsCommand
 import com.sportsapp.application.booking.ListBookingsResponse
 import com.sportsapp.application.booking.ListMyBookingsUseCase
 import com.sportsapp.domain.booking.BookingStatus
+import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.response.McpResponseStatus
 import com.sportsapp.presentation.mcp.toolregistry.McpBookingTools
 import io.kotest.core.spec.style.BehaviorSpec
@@ -18,7 +19,8 @@ import java.time.ZonedDateTime
 class McpBookingToolsTest : BehaviorSpec({
 
     val listMyBookingsUseCase = mockk<ListMyBookingsUseCase>()
-    val mcpBookingTools = McpBookingTools(listMyBookingsUseCase)
+    val mcpAuditLogAsyncRecorder = mockk<McpAuditLogAsyncRecorder>(relaxed = true)
+    val mcpBookingTools = McpBookingTools(listMyBookingsUseCase, mcpAuditLogAsyncRecorder)
 
     Given("getBookings tool") {
         val bookingResponse = BookingResponse(
