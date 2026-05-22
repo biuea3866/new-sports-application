@@ -1,0 +1,77 @@
+name: MCP 부하 시험 (수동 트리거)
+
+# 절대 자동 트리거 금지 — staging 환경에 예기치 않은 부하를 유발합니다.
+on:
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: "실행할 시나리오 (read / write / all)"
+        required: true
+        default: "read"
+        type: choice
+        options:
+          - read
+          - write
+          - all
+      target_url:
+        description: "대상 서버 URL (staging URL 입력)"
+        required: true
+        default: "https://staging.example.com"
+        type: string
+
+jobs:
+  load-test:
+    name: MCP 부하 시험 — ${{ inputs.scenario }}
+    runs-on: ubuntu-latest
+    # staging 환경 승인 gate가 있을 경우 environment: staging 으로 설정
+    # environment: staging
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: k6 설치
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring \
+            --keyring /usr/share/keyrings/k6-archive-keyring.gpg \
+            --keyserver hkp://keyserver.ubuntu.com:80 \
+            --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" \
+            | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install -y k6
+
+      - name: read tool 부하 시험
+        if: inputs.scenario == 'read' || inputs.scenario == 'all'
+        env:
+          QA_API_URL: ${{ inputs.target_url }}
+          MCP_TOKEN: ${{ secrets.STAGING_MCP_TOKEN }}
+        run: |
+          mkdir -p test/load/results
+          k6 run \
+            --summary-export=test/load/results/read-summary.json \
+            test/load/mcp-read-load.js \
+            2>&1 | tee test/load/results/read-raw.log
+          echo "k6 exit code: $?"
+
+      - name: write tool 부하 시험
+        if: inputs.scenario == 'write' || inputs.scenario == 'all'
+        env:
+          QA_API_URL: ${{ inputs.target_url }}
+          MCP_TOKEN: ${{ secrets.STAGING_MCP_TOKEN }}
+        run: |
+          mkdir -p test/load/results
+          k6 run \
+            --summary-export=test/load/results/write-summary.json \
+            test/load/mcp-write-load.js \
+            2>&1 | tee test/load/results/write-raw.log
+          echo "k6 exit code: $?"
+
+      - name: 결과 업로드
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-results-${{ github.run_id }}
+          path: test/load/results/
+          retention-days: 30
