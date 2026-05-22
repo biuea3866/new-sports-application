@@ -2,34 +2,53 @@ package com.sportsapp.presentation.mcp
 
 import com.sportsapp.application.dashboard.DashboardSummaryResponse
 import com.sportsapp.application.dashboard.GetMyDashboardSummaryUseCase
+import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
+import com.sportsapp.domain.mcp.McpScope
 import com.sportsapp.presentation.mcp.response.McpResponseStatus
 import com.sportsapp.presentation.mcp.toolregistry.McpOperatorProfileTools
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import org.springframework.security.access.AccessDeniedException
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.context.SecurityContextHolder
 
 class McpOperatorProfileToolsTest : BehaviorSpec({
 
     val getMyDashboardSummaryUseCase = mockk<GetMyDashboardSummaryUseCase>()
     val mcpOperatorProfileTools = McpOperatorProfileTools(getMyDashboardSummaryUseCase)
 
-    Given("getOperatorProfile tool") {
-        val dashboardResponse = DashboardSummaryResponse(
-            facilities = DashboardSummaryResponse.FacilitiesSummary(
-                count = 3L,
-                activeSlotsToday = 12L,
-            ),
-            events = null,
-            products = null,
-        )
+    val dashboardResponse = DashboardSummaryResponse(
+        facilities = DashboardSummaryResponse.FacilitiesSummary(
+            count = 3L,
+            activeSlotsToday = 12L,
+        ),
+        events = null,
+        products = null,
+    )
 
-        When("[U-10] userId로 getOperatorProfile을 호출하면") {
+    fun setupPrincipal(userId: Long) {
+        val principal = object : McpAuthenticatedPrincipal {
+            override val tokenId = 100L
+            override val userId = userId
+            override val grantedScopes = setOf<McpScope>()
+        }
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(principal, null, emptyList())
+    }
+
+    afterEach { SecurityContextHolder.clearContext() }
+
+    Given("getOperatorProfile tool") {
+        When("[U-10] 인증된 운영자(userId=42)로 getOperatorProfile을 호출하면") {
+            setupPrincipal(42L)
             every { getMyDashboardSummaryUseCase.execute(42L) } returns dashboardResponse
 
-            val result = mcpOperatorProfileTools.getOperatorProfile(userId = 42L)
+            val result = mcpOperatorProfileTools.getOperatorProfile()
 
             Then("[U-10] OK 상태와 운영자 대시보드 요약이 반환된다") {
                 result.status shouldBe McpResponseStatus.OK
@@ -44,6 +63,7 @@ class McpOperatorProfileToolsTest : BehaviorSpec({
         }
 
         When("[U-11] 모든 역할을 보유한 운영자의 getOperatorProfile을 호출하면") {
+            setupPrincipal(99L)
             val fullResponse = DashboardSummaryResponse(
                 facilities = DashboardSummaryResponse.FacilitiesSummary(count = 1L, activeSlotsToday = 5L),
                 events = DashboardSummaryResponse.EventsSummary(
@@ -57,7 +77,7 @@ class McpOperatorProfileToolsTest : BehaviorSpec({
             )
             every { getMyDashboardSummaryUseCase.execute(99L) } returns fullResponse
 
-            val result = mcpOperatorProfileTools.getOperatorProfile(userId = 99L)
+            val result = mcpOperatorProfileTools.getOperatorProfile()
 
             Then("[U-11] facilities, events, products 요약이 모두 포함된다") {
                 result.status shouldBe McpResponseStatus.OK
@@ -68,15 +88,27 @@ class McpOperatorProfileToolsTest : BehaviorSpec({
             }
         }
 
-        When("[U-12] getOperatorProfile을 호출하면 UseCase가 userId를 인자로 호출된다") {
-            val localUseCase = mockk<GetMyDashboardSummaryUseCase>()
-            val localTools = McpOperatorProfileTools(localUseCase)
-            every { localUseCase.execute(42L) } returns dashboardResponse
+        When("[U-12] getOperatorProfile을 호출하면 UseCase가 principal.userId를 인자로 호출된다") {
+            setupPrincipal(42L)
+            every { getMyDashboardSummaryUseCase.execute(42L) } returns dashboardResponse
 
-            localTools.getOperatorProfile(userId = 42L)
+            mcpOperatorProfileTools.getOperatorProfile()
 
             Then("[U-12] GetMyDashboardSummaryUseCase.execute(42L)가 호출된다") {
-                verify { localUseCase.execute(42L) }
+                verify { getMyDashboardSummaryUseCase.execute(42L) }
+            }
+        }
+
+        When("[U-17] IDOR — principal이 없으면 (SecurityContext 비어있음)") {
+            SecurityContextHolder.clearContext()
+            val localUseCase = mockk<GetMyDashboardSummaryUseCase>()
+            val localTools = McpOperatorProfileTools(localUseCase)
+
+            Then("[U-17] AccessDeniedException이 발생하고 UseCase는 호출되지 않는다") {
+                shouldThrow<AccessDeniedException> {
+                    localTools.getOperatorProfile()
+                }
+                verify(exactly = 0) { localUseCase.execute(any()) }
             }
         }
     }

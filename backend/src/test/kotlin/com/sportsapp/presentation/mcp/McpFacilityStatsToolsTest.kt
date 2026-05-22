@@ -58,8 +58,8 @@ class McpFacilityStatsToolsTest : BehaviorSpec({
 
             localTools.getFacilityStats()
 
-            Then("[U-09] GetGuTypeStatsUseCase.execute()가 호출된다") {
-                verify { localUseCase.execute() }
+            Then("[U-09] GetGuTypeStatsUseCase.execute()가 정확히 1회 호출된다") {
+                verify(exactly = 1) { localUseCase.execute() }
             }
         }
     }
