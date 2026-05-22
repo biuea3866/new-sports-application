@@ -41,8 +41,9 @@ services:
       - "9411:9411"
 
   # web/mobile 트레이스 수신 허브 — OTLP 를 받아 Zipkin 으로 전달
+  # NOTE: :0.116.0 arm64 layer 의 binary exec 결함으로 :latest 사용. 추후 동작 확인된 특정 버전으로 핀.
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.116.0
+    image: otel/opentelemetry-collector-contrib:latest
     command: ["--config=/etc/otelcol-contrib/config.yaml"]
     depends_on:
       - zipkin
