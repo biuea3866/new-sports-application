@@ -6,9 +6,6 @@ import com.sportsapp.application.booking.DeleteSlotCommand
 import com.sportsapp.application.booking.DeleteSlotUseCase
 import com.sportsapp.application.booking.UpdateSlotCommand
 import com.sportsapp.application.booking.UpdateSlotUseCase
-import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
-import com.sportsapp.domain.mcp.confirm.ConfirmationParamsMismatchException
-import com.sportsapp.domain.mcp.confirm.ConfirmationTokenContext
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenGateway
 import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.audit.McpToolAuditHelper.withAudit
@@ -16,9 +13,7 @@ import com.sportsapp.presentation.mcp.confirm.McpParamsHasher
 import com.sportsapp.presentation.mcp.response.McpResponse
 import org.springframework.ai.tool.annotation.Tool
 import org.springframework.context.annotation.Profile
-import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.access.prepost.PreAuthorize
-import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
 import java.time.ZonedDateTime
 
@@ -38,9 +33,9 @@ class McpSlotWriteTools(
     private val createSlotUseCase: CreateSlotUseCase,
     private val updateSlotUseCase: UpdateSlotUseCase,
     private val deleteSlotUseCase: DeleteSlotUseCase,
-    private val confirmationTokenGateway: ConfirmationTokenGateway,
+    confirmationTokenGateway: ConfirmationTokenGateway,
     private val mcpAuditLogAsyncRecorder: McpAuditLogAsyncRecorder,
-) {
+) : McpWriteToolBase(confirmationTokenGateway) {
 
     @PreAuthorize("@authz.hasMcpScope('write:slot')")
     @Tool(
@@ -119,26 +114,4 @@ class McpSlotWriteTools(
             McpResponse.ok(data = mapOf("deletedSlotId" to slotId, "message" to "슬롯 $slotId 가 삭제되었습니다."))
         }
 
-    private fun issueConfirmation(
-        toolName: String,
-        userId: Long,
-        paramsHash: String,
-        metadata: Map<String, Any>,
-    ): McpResponse<Map<String, Any>> {
-        val token = confirmationTokenGateway.issue(
-            ConfirmationTokenContext(toolName = toolName, userId = userId, paramsHash = paramsHash)
-        )
-        return McpResponse.confirmRequired(data = metadata + ("confirmationToken" to token))
-    }
-
-    private fun validateHashAndConsume(confirmationToken: String, expectedHash: String) {
-        val context = confirmationTokenGateway.consume(confirmationToken)
-        if (context.paramsHash != expectedHash) throw ConfirmationParamsMismatchException(confirmationToken)
-    }
-
-    private fun resolveCallerUserId(): Long {
-        val principal = SecurityContextHolder.getContext().authentication?.principal as? McpAuthenticatedPrincipal
-            ?: throw AccessDeniedException("MCP authentication required")
-        return principal.userId
-    }
 }

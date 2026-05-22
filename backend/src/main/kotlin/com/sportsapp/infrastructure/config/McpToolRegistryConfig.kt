@@ -2,12 +2,14 @@ package com.sportsapp.infrastructure.config
 
 import com.sportsapp.presentation.mcp.toolregistry.McpBookingTools
 import com.sportsapp.presentation.mcp.toolregistry.McpBookingWriteTools
+import com.sportsapp.presentation.mcp.toolregistry.McpComplimentaryTicketTools
 import com.sportsapp.presentation.mcp.toolregistry.McpFacilityStatsTools
 import com.sportsapp.presentation.mcp.toolregistry.McpFacilityTools
 import com.sportsapp.presentation.mcp.toolregistry.McpGoodsSalesTools
 import com.sportsapp.presentation.mcp.toolregistry.McpInventoryTools
 import com.sportsapp.presentation.mcp.toolregistry.McpNotificationTools
 import com.sportsapp.presentation.mcp.toolregistry.McpOperatorProfileTools
+import com.sportsapp.presentation.mcp.toolregistry.McpRefundTools
 import com.sportsapp.presentation.mcp.toolregistry.McpSlotWriteTools
 import com.sportsapp.presentation.mcp.toolregistry.McpTicketSalesTools
 import org.springframework.ai.tool.ToolCallbackProvider
@@ -32,6 +34,8 @@ import org.springframework.context.annotation.Profile
  * - createSlot: write:slot scope (2-step confirm flow)
  * - updateSlot: write:slot scope (2-step confirm flow)
  * - deleteSlot: write:slot scope (2-step confirm flow)
+ * - refundBooking: write:booking:refund scope (2-step confirm flow, Phase 2)
+ * - issueComplimentaryTicket: write:ticket:complimentary scope (2-step confirm flow, Phase 2)
  */
 @Configuration
 @Profile("!test-jpa")
@@ -65,8 +69,10 @@ class McpToolRegistryConfig {
     fun mcpWriteToolCallbackProvider(
         mcpBookingWriteTools: McpBookingWriteTools,
         mcpSlotWriteTools: McpSlotWriteTools,
+        mcpRefundTools: McpRefundTools,
+        mcpComplimentaryTicketTools: McpComplimentaryTicketTools,
     ): ToolCallbackProvider =
         MethodToolCallbackProvider.builder()
-            .toolObjects(mcpBookingWriteTools, mcpSlotWriteTools)
+            .toolObjects(mcpBookingWriteTools, mcpSlotWriteTools, mcpRefundTools, mcpComplimentaryTicketTools)
             .build()
 }
