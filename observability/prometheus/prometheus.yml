@@ -1,6 +1,9 @@
 global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
+  scrape_interval: 30s
+  evaluation_interval: 30s
+  # 백엔드의 /actuator/prometheus 응답이 74KB 가량이라 cold JVM 환경에서 기본 10s 가 부족.
+  # scrape_timeout 은 반드시 scrape_interval 이하여야 함.
+  scrape_timeout: 30s
 
 scrape_configs:
   # 호스트에서 ./gradlew bootRun 으로 도는 sports-application 백엔드.
