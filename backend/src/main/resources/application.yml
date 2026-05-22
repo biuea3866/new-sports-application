@@ -1,5 +1,21 @@
 server:
   port: 8080
+  tomcat:
+    # SSE 동시 연결 대응: 기본 200 스레드로는 장기 연결 소진 위험
+    # SSE 는 비동기(DeferredResult/WebFlux) 구현 시 스레드를 점유하지 않으나,
+    # 동기 서블릿 SSE(SseEmitter) 사용 시 연결 1개당 스레드 1개 소비.
+    # 운영 환경에서는 MCP_TOMCAT_MAX_THREADS 로 override.
+    threads:
+      max: ${MCP_TOMCAT_MAX_THREADS:400}
+      min-spare: ${MCP_TOMCAT_MIN_SPARE_THREADS:20}
+    max-connections: ${MCP_TOMCAT_MAX_CONNECTIONS:8192}
+    accept-count: ${MCP_TOMCAT_ACCEPT_COUNT:100}
+    connection-timeout: ${MCP_TOMCAT_CONNECTION_TIMEOUT:20000}
+
+mcp:
+  # 외부 노출 URL placeholder — DevOps Open Issue #B 결정 후 환경변수로 변경
+  # 예: MCP_EXTERNAL_URL=https://mcp-api.sportsapp.com
+  external-url: ${MCP_EXTERNAL_URL:https://mcp-api.sportsapp.com}
 
 spring:
   application:
