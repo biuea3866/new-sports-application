@@ -54,6 +54,7 @@ mobile/coverage/
 .feature-pipeline-state.json
 .claude/cache/
 .analysis/findings/
+.analysis/outputs/
 .claire/
 
 # ===== Misc =====
