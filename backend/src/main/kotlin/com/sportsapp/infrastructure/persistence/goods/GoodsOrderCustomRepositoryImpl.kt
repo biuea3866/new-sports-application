@@ -6,19 +6,13 @@ import com.sportsapp.domain.goods.GoodsOrderStatus
 import com.sportsapp.domain.goods.QGoodsOrder.goodsOrder
 import com.sportsapp.domain.goods.QGoodsOrderItem.goodsOrderItem
 import com.sportsapp.domain.goods.QProduct.product
-import jakarta.persistence.EntityManager
-import jakarta.persistence.PersistenceContext
 import java.math.BigDecimal
 import org.springframework.stereotype.Repository
 
 @Repository
-class GoodsOrderCustomRepositoryImpl : GoodsOrderCustomRepository {
-
-    @PersistenceContext
-    private lateinit var entityManager: EntityManager
-
-    private val queryFactory: JPAQueryFactory
-        get() = JPAQueryFactory(entityManager)
+class GoodsOrderCustomRepositoryImpl(
+    private val queryFactory: JPAQueryFactory,
+) : GoodsOrderCustomRepository {
 
     override fun countConfirmedByProductOwnerUserId(ownerUserId: Long): Long =
         queryFactory.select(goodsOrder.id.countDistinct())

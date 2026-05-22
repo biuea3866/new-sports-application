@@ -213,7 +213,7 @@ class GoodsDomainService(
     fun countConfirmedOrdersByOwnerUserId(ownerUserId: Long): Long =
         goodsOrderCustomRepository.countConfirmedByProductOwnerUserId(ownerUserId)
 
-    fun sumRevenueByOwnerUserId(ownerUserId: Long): java.math.BigDecimal =
+    fun sumRevenueByOwnerUserId(ownerUserId: Long): BigDecimal =
         goodsOrderCustomRepository.sumRevenueByProductOwnerUserId(ownerUserId)
 
     companion object {
