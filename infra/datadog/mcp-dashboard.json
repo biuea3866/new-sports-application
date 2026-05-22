@@ -1,0 +1,260 @@
+{
+  "title": "MCP Server — Tool Metrics",
+  "description": "MCP tool 호출 수·에러율·P95 응답 시간·throttling 도달률·토큰별/운영자별 사용량",
+  "layout_type": "ordered",
+  "reflow_type": "fixed",
+  "tags": ["service:mcp", "team:platform"],
+  "widgets": [
+    {
+      "id": 1,
+      "definition": {
+        "type": "timeseries",
+        "title": "Tool 호출 수 (mcp_tool_invocations_total)",
+        "show_legend": true,
+        "legend_layout": "auto",
+        "requests": [
+          {
+            "formulas": [
+              {
+                "alias": "호출 수 (per min)",
+                "formula": "per_minute(query1)"
+              }
+            ],
+            "queries": [
+              {
+                "name": "query1",
+                "data_source": "metrics",
+                "query": "sum:mcp_tool_invocations_total{$env,$service} by {tool_name}.as_rate()"
+              }
+            ],
+            "response_format": "timeseries",
+            "style": {
+              "palette": "dog_classic",
+              "line_type": "solid",
+              "line_width": "normal"
+            },
+            "display_type": "line"
+          }
+        ],
+        "yaxis": {
+          "include_zero": true,
+          "min": "auto"
+        },
+        "markers": []
+      },
+      "layout": {"x": 0, "y": 0, "width": 6, "height": 3}
+    },
+    {
+      "id": 2,
+      "definition": {
+        "type": "timeseries",
+        "title": "Tool 에러율 (status=error / total)",
+        "show_legend": true,
+        "legend_layout": "auto",
+        "requests": [
+          {
+            "formulas": [
+              {
+                "alias": "에러율",
+                "formula": "query_error / query_total * 100"
+              }
+            ],
+            "queries": [
+              {
+                "name": "query_error",
+                "data_source": "metrics",
+                "query": "sum:mcp_tool_invocations_total{$env,$service,status:error} by {tool_name}.as_rate()"
+              },
+              {
+                "name": "query_total",
+                "data_source": "metrics",
+                "query": "sum:mcp_tool_invocations_total{$env,$service} by {tool_name}.as_rate()"
+              }
+            ],
+            "response_format": "timeseries",
+            "style": {
+              "palette": "warm",
+              "line_type": "solid",
+              "line_width": "normal"
+            },
+            "display_type": "line"
+          }
+        ],
+        "yaxis": {
+          "include_zero": true,
+          "min": "0",
+          "max": "100",
+          "label": "%"
+        },
+        "markers": [
+          {
+            "value": "y = 5",
+            "display_type": "error dashed",
+            "label": "에러율 5% 임계"
+          }
+        ]
+      },
+      "layout": {"x": 6, "y": 0, "width": 6, "height": 3}
+    },
+    {
+      "id": 3,
+      "definition": {
+        "type": "timeseries",
+        "title": "P95 응답 시간 (mcp_tool_latency_seconds)",
+        "show_legend": true,
+        "legend_layout": "auto",
+        "requests": [
+          {
+            "formulas": [
+              {
+                "alias": "P95 (ms)",
+                "formula": "query1 * 1000"
+              }
+            ],
+            "queries": [
+              {
+                "name": "query1",
+                "data_source": "metrics",
+                "query": "p95:mcp_tool_latency_seconds{$env,$service} by {tool_name}"
+              }
+            ],
+            "response_format": "timeseries",
+            "style": {
+              "palette": "purple",
+              "line_type": "solid",
+              "line_width": "normal"
+            },
+            "display_type": "line"
+          }
+        ],
+        "yaxis": {
+          "include_zero": true,
+          "min": "0",
+          "label": "ms"
+        },
+        "markers": [
+          {
+            "value": "y = 2000",
+            "display_type": "warning dashed",
+            "label": "P95 2 s 임계"
+          }
+        ]
+      },
+      "layout": {"x": 0, "y": 3, "width": 6, "height": 3}
+    },
+    {
+      "id": 4,
+      "definition": {
+        "type": "timeseries",
+        "title": "Throttling 도달률 (mcp_throttle_rejected_total)",
+        "show_legend": true,
+        "legend_layout": "auto",
+        "requests": [
+          {
+            "formulas": [
+              {
+                "alias": "throttle 거부 수 (per min)",
+                "formula": "per_minute(query1)"
+              }
+            ],
+            "queries": [
+              {
+                "name": "query1",
+                "data_source": "metrics",
+                "query": "sum:mcp_throttle_rejected_total{$env,$service} by {token_id}.as_rate()"
+              }
+            ],
+            "response_format": "timeseries",
+            "style": {
+              "palette": "orange",
+              "line_type": "solid",
+              "line_width": "normal"
+            },
+            "display_type": "bars"
+          }
+        ],
+        "yaxis": {
+          "include_zero": true,
+          "min": "0"
+        },
+        "markers": []
+      },
+      "layout": {"x": 6, "y": 3, "width": 6, "height": 3}
+    },
+    {
+      "id": 5,
+      "definition": {
+        "type": "toplist",
+        "title": "토큰별 호출 수 TOP 20 (mcp_tool_invocations_total by token_id)",
+        "requests": [
+          {
+            "formulas": [
+              {
+                "alias": "호출 수",
+                "formula": "query1",
+                "limit": {
+                  "count": 20,
+                  "order": "desc"
+                }
+              }
+            ],
+            "queries": [
+              {
+                "name": "query1",
+                "data_source": "metrics",
+                "query": "sum:mcp_tool_invocations_total{$env,$service} by {token_id}.as_count()"
+              }
+            ],
+            "response_format": "scalar"
+          }
+        ]
+      },
+      "layout": {"x": 0, "y": 6, "width": 6, "height": 3}
+    },
+    {
+      "id": 6,
+      "definition": {
+        "type": "toplist",
+        "title": "운영자(user_id)별 호출 수 TOP 20 (mcp_tool_invocations_total by user_id)",
+        "requests": [
+          {
+            "formulas": [
+              {
+                "alias": "호출 수",
+                "formula": "query1",
+                "limit": {
+                  "count": 20,
+                  "order": "desc"
+                }
+              }
+            ],
+            "queries": [
+              {
+                "name": "query1",
+                "data_source": "metrics",
+                "query": "sum:mcp_tool_invocations_total{$env,$service} by {user_id}.as_count()"
+              }
+            ],
+            "response_format": "scalar"
+          }
+        ]
+      },
+      "layout": {"x": 6, "y": 6, "width": 6, "height": 3}
+    }
+  ],
+  "template_variables": [
+    {
+      "name": "env",
+      "prefix": "env",
+      "available_values": ["prod", "staging", "local"],
+      "default": "*"
+    },
+    {
+      "name": "service",
+      "prefix": "service",
+      "available_values": ["mcp"],
+      "default": "mcp"
+    }
+  ],
+  "notify_list": []
+}
