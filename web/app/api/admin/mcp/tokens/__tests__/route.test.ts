@@ -13,19 +13,19 @@ const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
 describe("Admin MCP Tokens Route Handler", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.resetModules();
     mockFetch.mockReset();
     process.env["BACKEND_URL"] = "http://localhost:8080";
+
+    const { cookies } = await import("next/headers");
+    vi.mocked(cookies).mockReturnValue({
+      get: vi.fn().mockReturnValue({ value: "test-token" }),
+    } as unknown as ReturnType<typeof cookies>);
   });
 
   describe("GET 목록 조회", () => {
     it("[U-01] GET 요청을 BE /api/admin/mcp/tokens 에 forward하고 200을 반환한다", async () => {
-      const { cookies } = await import("next/headers");
-      vi.mocked(cookies).mockReturnValue({
-        get: vi.fn().mockReturnValue({ value: "test-token" }),
-      } as unknown as ReturnType<typeof cookies>);
-
       const listBody = {
         tokens: [
           {
@@ -57,11 +57,6 @@ describe("Admin MCP Tokens Route Handler", () => {
 
   describe("POST 입력 검증", () => {
     it("[U-02] 유효한 body이면 BE에 forward하고 201을 반환한다", async () => {
-      const { cookies } = await import("next/headers");
-      vi.mocked(cookies).mockReturnValue({
-        get: vi.fn().mockReturnValue({ value: "test-token" }),
-      } as unknown as ReturnType<typeof cookies>);
-
       const beResponseBody = {
         tokenId: 1,
         name: "테스트 토큰",
@@ -94,11 +89,6 @@ describe("Admin MCP Tokens Route Handler", () => {
     });
 
     it("[U-03] name 누락 시 zod 거부 → 400을 반환하고 BE를 호출하지 않는다", async () => {
-      const { cookies } = await import("next/headers");
-      vi.mocked(cookies).mockReturnValue({
-        get: vi.fn().mockReturnValue({ value: "test-token" }),
-      } as unknown as ReturnType<typeof cookies>);
-
       const { POST } = await import("../route");
       const request = new NextRequest("http://localhost:3000/api/admin/mcp/tokens", {
         method: "POST",
@@ -112,11 +102,6 @@ describe("Admin MCP Tokens Route Handler", () => {
     });
 
     it("[U-04] scopes 빈 배열이면 zod 거부 → 400을 반환하고 BE를 호출하지 않는다", async () => {
-      const { cookies } = await import("next/headers");
-      vi.mocked(cookies).mockReturnValue({
-        get: vi.fn().mockReturnValue({ value: "test-token" }),
-      } as unknown as ReturnType<typeof cookies>);
-
       const { POST } = await import("../route");
       const request = new NextRequest("http://localhost:3000/api/admin/mcp/tokens", {
         method: "POST",
@@ -130,11 +115,6 @@ describe("Admin MCP Tokens Route Handler", () => {
     });
 
     it("[U-05] scopes 누락 시 zod 거부 → 400을 반환하고 BE를 호출하지 않는다", async () => {
-      const { cookies } = await import("next/headers");
-      vi.mocked(cookies).mockReturnValue({
-        get: vi.fn().mockReturnValue({ value: "test-token" }),
-      } as unknown as ReturnType<typeof cookies>);
-
       const { POST } = await import("../route");
       const request = new NextRequest("http://localhost:3000/api/admin/mcp/tokens", {
         method: "POST",
@@ -175,11 +155,6 @@ describe("Admin MCP Tokens Route Handler", () => {
     });
 
     it("[U-07] BE 500 시 500 + 사용자 친화 메시지를 반환한다", async () => {
-      const { cookies } = await import("next/headers");
-      vi.mocked(cookies).mockReturnValue({
-        get: vi.fn().mockReturnValue({ value: "test-token" }),
-      } as unknown as ReturnType<typeof cookies>);
-
       mockFetch.mockResolvedValue(
         new Response(JSON.stringify({ title: "Internal Server Error" }), {
           status: 500,

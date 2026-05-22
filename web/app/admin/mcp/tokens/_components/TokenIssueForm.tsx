@@ -12,6 +12,7 @@ export function TokenIssueForm({ onIssued }: TokenIssueFormProps): JSX.Element {
   const [selectedScopes, setSelectedScopes] = useState<Set<AvailableScope>>(new Set());
   const [includePii, setIncludePii] = useState(false);
   const [nonInteractive, setNonInteractive] = useState(false);
+  const [expiresAt, setExpiresAt] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -49,7 +50,11 @@ export function TokenIssueForm({ onIssued }: TokenIssueFormProps): JSX.Element {
       const response = await fetch("/api/admin/mcp/tokens", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), scopes, expiresAt: null }),
+        body: JSON.stringify({
+          name: name.trim(),
+          scopes,
+          expiresAt: expiresAt !== "" ? new Date(expiresAt).toISOString() : null,
+        }),
       });
       if (!response.ok) {
         const body = (await response.json()) as { message?: string };
@@ -62,6 +67,7 @@ export function TokenIssueForm({ onIssued }: TokenIssueFormProps): JSX.Element {
       setSelectedScopes(new Set());
       setIncludePii(false);
       setNonInteractive(false);
+      setExpiresAt("");
     } catch {
       setErrorMessage("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
@@ -106,6 +112,20 @@ export function TokenIssueForm({ onIssued }: TokenIssueFormProps): JSX.Element {
           ))}
         </div>
       </fieldset>
+
+      <div>
+        <label htmlFor="token-expires-at" className="block text-sm font-medium text-gray-700">
+          만료일 <span className="text-xs text-gray-500">(선택 — 미입력 시 무기한)</span>
+        </label>
+        <input
+          id="token-expires-at"
+          type="date"
+          value={expiresAt}
+          onChange={(e) => setExpiresAt(e.target.value)}
+          className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          aria-label="토큰 만료일 (선택)"
+        />
+      </div>
 
       <fieldset>
         <legend className="text-sm font-medium text-gray-700">추가 권한</legend>

@@ -10,6 +10,7 @@ export default function McpTokensPage(): JSX.Element {
   const [tokens, setTokens] = useState<McpTokenSummary[]>([]);
   const [isLoadingTokens, setIsLoadingTokens] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [revokeError, setRevokeError] = useState<string | null>(null);
   const [issuedToken, setIssuedToken] = useState<IssueMcpTokenResponse | null>(null);
 
   const fetchTokens = useCallback(async () => {
@@ -41,18 +42,19 @@ export default function McpTokensPage(): JSX.Element {
   }
 
   async function handleRevoke(tokenId: number): Promise<void> {
+    setRevokeError(null);
     try {
       const response = await fetch(`/api/admin/mcp/tokens/${tokenId}`, {
         method: "DELETE",
       });
       if (!response.ok) {
         const body = (await response.json()) as { message?: string };
-        alert(body.message ?? "토큰 폐기에 실패했습니다.");
+        setRevokeError(body.message ?? "토큰 폐기에 실패했습니다.");
         return;
       }
       await fetchTokens();
     } catch {
-      alert("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+      setRevokeError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
     }
   }
 
@@ -83,6 +85,9 @@ export default function McpTokensPage(): JSX.Element {
         {isLoadingTokens && <p className="text-sm text-gray-500">로딩 중...</p>}
         {!isLoadingTokens && loadError !== null && (
           <p role="alert" className="text-sm text-red-600">{loadError}</p>
+        )}
+        {revokeError !== null && (
+          <p role="alert" className="text-sm text-red-600">{revokeError}</p>
         )}
         {!isLoadingTokens && loadError === null && (
           <TokenList
