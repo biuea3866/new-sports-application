@@ -14,26 +14,38 @@ import com.sportsapp.domain.booking.BookingRepository
 import com.sportsapp.domain.booking.BookingStatus
 import com.sportsapp.domain.booking.Slot
 import com.sportsapp.domain.booking.SlotRepository
+import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
+import com.sportsapp.domain.mcp.McpScope
+import com.sportsapp.domain.mcp.confirm.ConfirmationParamsMismatchException
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenAlreadyConsumedException
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenContext
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenExpiredException
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenGateway
+import com.sportsapp.presentation.mcp.confirm.McpParamsHasher
+import com.sportsapp.presentation.mcp.toolregistry.McpBookingWriteTools
+import com.sportsapp.presentation.mcp.toolregistry.McpSlotWriteTools
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import org.awaitility.Awaitility.await
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.security.access.AccessDeniedException
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.context.SecurityContextHolder
 import java.time.Duration
 import java.time.ZonedDateTime
+import java.util.concurrent.TimeUnit
 
 /**
  * BE-15 confirm flow E2E 시나리오 테스트.
  *
- * @PreAuthorize AOP 는 HTTP 인증 컨텍스트에 의존하므로,
- * 시나리오 레이어에서는 UseCase + ConfirmationTokenGateway 를 직접 호출해
- * confirm flow 를 end-to-end 로 검증한다.
- * scope 가드 검증은 단위 테스트(McpBookingWriteToolsTest 등) 에서 담당한다.
+ * scope 가드(@PreAuthorize AOP) 검증은 Spring 컨텍스트 + AOP proxy 를 거치도록
+ * McpBookingWriteTools / McpSlotWriteTools bean 을 @Autowired 로 주입받아 호출한다.
+ *
+ * confirm flow paramsHash 검증은 UseCase + ConfirmationTokenGateway 직접 호출로도
+ * 별도 검증한다.
  */
 class McpWriteToolsConfirmFlowScenarioTest(
     @Autowired private val cancelBookingUseCase: CancelBookingUseCase,
@@ -44,10 +56,26 @@ class McpWriteToolsConfirmFlowScenarioTest(
     @Autowired private val bookingRepository: BookingRepository,
     @Autowired private val stringRedisTemplate: StringRedisTemplate,
     @Autowired private val jdbcTemplate: JdbcTemplate,
+    @Autowired private val mcpBookingWriteTools: McpBookingWriteTools,
+    @Autowired private val mcpSlotWriteTools: McpSlotWriteTools,
 ) : BaseIntegrationTest() {
+
+    private val writeBookingScope = McpScope.of("write:booking")
+    private val writeSlotScope = McpScope.of("write:slot")
+
+    private fun setSecurityContext(userId: Long, vararg scopes: McpScope) {
+        val principal = object : McpAuthenticatedPrincipal {
+            override val tokenId: Long = 1L
+            override val userId: Long = userId
+            override val grantedScopes: Set<McpScope> = scopes.toSet()
+        }
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(principal, null, emptyList())
+    }
 
     init {
         afterEach {
+            SecurityContextHolder.clearContext()
             jdbcTemplate.execute("TRUNCATE TABLE bookings")
             jdbcTemplate.execute("TRUNCATE TABLE slots")
             stringRedisTemplate.keys("mcp:confirm:*").forEach { key ->
@@ -100,9 +128,11 @@ class McpWriteToolsConfirmFlowScenarioTest(
                 ConfirmationTokenContext(toolName = "cancelBooking", userId = 1L, paramsHash = "ttl-hash"),
                 Duration.ofSeconds(1),
             )
-            Thread.sleep(1_500)
 
-            When("만료된 토큰으로 소진 시도 시") {
+            When("토큰이 만료된 후 소진 시도 시") {
+                await().atMost(3, TimeUnit.SECONDS).until {
+                    stringRedisTemplate.opsForValue().get("mcp:confirm:$expiredToken") == null
+                }
                 Then("[S-03] ConfirmationTokenExpiredException 이 발생한다") {
                     shouldThrow<ConfirmationTokenExpiredException> {
                         confirmationTokenGateway.consume(expiredToken)
@@ -151,6 +181,70 @@ class McpWriteToolsConfirmFlowScenarioTest(
 
                 Then("[S-05] context.toolName 이 deleteSlot 이다") {
                     context.toolName shouldBe "deleteSlot"
+                }
+            }
+        }
+
+        // ─── scope 가드 (@PreAuthorize AOP) ───────────────────────────
+
+        Given("[S-06] write:booking scope 없는 principal 로 cancelBooking 1차 호출 시") {
+            When("cancelBooking 을 호출하면") {
+                setSecurityContext(userId = 99L) // scope 없음
+                Then("[S-06] AccessDeniedException 이 발생한다 (403)") {
+                    shouldThrow<AccessDeniedException> {
+                        mcpBookingWriteTools.cancelBooking(
+                            bookingId = 1L,
+                            reason = null,
+                            confirmationToken = null,
+                        )
+                    }
+                }
+            }
+        }
+
+        Given("[S-07] write:slot scope 없는 principal 로 createSlot 1차 호출 시") {
+            When("createSlot 을 호출하면") {
+                setSecurityContext(userId = 99L) // scope 없음
+                Then("[S-07] AccessDeniedException 이 발생한다 (403)") {
+                    shouldThrow<AccessDeniedException> {
+                        mcpSlotWriteTools.createSlot(
+                            facilityId = "FAC-01",
+                            date = "2026-07-01T09:00:00+09:00",
+                            timeRange = "09:00-10:00",
+                            capacity = 5,
+                            confirmationToken = null,
+                        )
+                    }
+                }
+            }
+        }
+
+        // ─── paramsHash 변조 시나리오 ─────────────────────────────────
+
+        Given("[S-08] cancelBooking 2차 호출 시 bookingId 가 변조된 경우") {
+            val scenarioCallerId = 10L
+            val originalBookingId = 1L
+            val tamperedBookingId = 999L
+
+            // 1차: originalBookingId=1 로 토큰 발급
+            val token = confirmationTokenGateway.issue(
+                ConfirmationTokenContext(
+                    toolName = "cancelBooking",
+                    userId = scenarioCallerId,
+                    paramsHash = McpParamsHasher.hash("cancelBooking", originalBookingId, scenarioCallerId),
+                )
+            )
+
+            When("변조된 bookingId=999 로 2차 호출하면") {
+                setSecurityContext(userId = scenarioCallerId, writeBookingScope)
+                Then("[S-08] ConfirmationParamsMismatchException 이 발생한다") {
+                    shouldThrow<ConfirmationParamsMismatchException> {
+                        mcpBookingWriteTools.cancelBooking(
+                            bookingId = tamperedBookingId,
+                            reason = null,
+                            confirmationToken = token,
+                        )
+                    }
                 }
             }
         }

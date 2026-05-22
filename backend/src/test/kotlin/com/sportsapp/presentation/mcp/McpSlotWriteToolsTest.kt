@@ -4,10 +4,14 @@ import com.sportsapp.application.booking.CreateSlotUseCase
 import com.sportsapp.application.booking.DeleteSlotUseCase
 import com.sportsapp.application.booking.SlotResponse
 import com.sportsapp.application.booking.UpdateSlotUseCase
+import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
+import com.sportsapp.domain.mcp.McpScope
+import com.sportsapp.domain.mcp.confirm.ConfirmationParamsMismatchException
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenAlreadyConsumedException
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenContext
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenExpiredException
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenGateway
+import com.sportsapp.presentation.mcp.confirm.McpParamsHasher
 import com.sportsapp.presentation.mcp.response.McpResponseStatus
 import com.sportsapp.presentation.mcp.toolregistry.McpSlotWriteTools
 import io.kotest.assertions.throwables.shouldThrow
@@ -18,6 +22,8 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.context.SecurityContextHolder
 import java.time.ZonedDateTime
 
 class McpSlotWriteToolsTest : BehaviorSpec({
@@ -33,13 +39,29 @@ class McpSlotWriteToolsTest : BehaviorSpec({
         confirmationTokenGateway,
     )
 
+    val callerUserId = 42L
+    val mockPrincipal = object : McpAuthenticatedPrincipal {
+        override val tokenId: Long = 1L
+        override val userId: Long = callerUserId
+        override val grantedScopes: Set<McpScope> = emptySet()
+    }
+
+    fun setSecurityContext() {
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(mockPrincipal, null, emptyList())
+    }
+
+    afterEach {
+        SecurityContextHolder.clearContext()
+    }
+
     val slotResponse = SlotResponse(
         id = 10L,
         facilityId = "FAC-01",
         date = ZonedDateTime.now(),
         timeRange = "09:00-10:00",
         capacity = 5,
-        ownerId = 42L,
+        ownerId = callerUserId,
     )
 
     @Suppress("UNCHECKED_CAST")
@@ -53,8 +75,8 @@ class McpSlotWriteToolsTest : BehaviorSpec({
         every { confirmationTokenGateway.issue(capture(tokenSlot)) } returns issuedToken
 
         When("createSlot 을 호출하면") {
+            setSecurityContext()
             val result = mcpSlotWriteTools.createSlot(
-                ownerId = 42L,
                 facilityId = "FAC-01",
                 date = "2026-06-01T09:00:00+09:00",
                 timeRange = "09:00-10:00",
@@ -70,21 +92,23 @@ class McpSlotWriteToolsTest : BehaviorSpec({
         }
     }
 
-    Given("[U-07] 유효한 confirmationToken 으로 createSlot 2차 호출 시") {
+    Given("[U-07] 유효한 confirmationToken 과 일치하는 paramsHash 로 createSlot 2차 호출 시") {
         val token = "valid-create-token"
+        val dateStr = "2026-06-01T09:00:00+09:00"
+        val expectedHash = McpParamsHasher.hash("createSlot", callerUserId, "FAC-01", dateStr, "09:00-10:00", 5)
         val storedContext = ConfirmationTokenContext(
             toolName = "createSlot",
-            userId = 42L,
-            paramsHash = "any-hash",
+            userId = callerUserId,
+            paramsHash = expectedHash,
         )
         every { confirmationTokenGateway.consume(token) } returns storedContext
         every { createSlotUseCase.execute(any()) } returns slotResponse
 
         When("createSlot 을 호출하면") {
+            setSecurityContext()
             val result = mcpSlotWriteTools.createSlot(
-                ownerId = 42L,
                 facilityId = "FAC-01",
-                date = "2026-06-01T09:00:00+09:00",
+                date = dateStr,
                 timeRange = "09:00-10:00",
                 capacity = 5,
                 confirmationToken = token,
@@ -104,8 +128,8 @@ class McpSlotWriteToolsTest : BehaviorSpec({
         every { confirmationTokenGateway.issue(capture(tokenSlot)) } returns "any-token"
 
         When("createSlot 을 confirmationToken 없이 호출하면") {
+            setSecurityContext()
             mcpSlotWriteTools.createSlot(
-                ownerId = 10L,
                 facilityId = "FAC-02",
                 date = "2026-06-01T09:00:00+09:00",
                 timeRange = "10:00-11:00",
@@ -113,9 +137,9 @@ class McpSlotWriteToolsTest : BehaviorSpec({
                 confirmationToken = null,
             )
 
-            Then("[U-08] toolName 이 createSlot 이다") {
+            Then("[U-08] toolName 이 createSlot 이고 userId 가 SecurityContext 에서 추출된다") {
                 tokenSlot.captured.toolName shouldBe "createSlot"
-                tokenSlot.captured.userId shouldBe 10L
+                tokenSlot.captured.userId shouldBe callerUserId
                 tokenSlot.captured.paramsHash shouldNotBe null
             }
         }
@@ -128,8 +152,8 @@ class McpSlotWriteToolsTest : BehaviorSpec({
         every { confirmationTokenGateway.issue(any()) } returns issuedToken
 
         When("updateSlot 을 호출하면") {
+            setSecurityContext()
             val result = mcpSlotWriteTools.updateSlot(
-                requesterId = 42L,
                 slotId = 10L,
                 timeRange = "10:00-11:00",
                 capacity = 8,
@@ -144,19 +168,20 @@ class McpSlotWriteToolsTest : BehaviorSpec({
         }
     }
 
-    Given("[U-10] 유효한 confirmationToken 으로 updateSlot 2차 호출 시") {
+    Given("[U-10] 유효한 confirmationToken 과 일치하는 paramsHash 로 updateSlot 2차 호출 시") {
         val token = "valid-update-token"
+        val expectedHash = McpParamsHasher.hash("updateSlot", callerUserId, 10L, "10:00-11:00", 8)
         val storedContext = ConfirmationTokenContext(
             toolName = "updateSlot",
-            userId = 42L,
-            paramsHash = "any-hash",
+            userId = callerUserId,
+            paramsHash = expectedHash,
         )
         every { confirmationTokenGateway.consume(token) } returns storedContext
         every { updateSlotUseCase.execute(any()) } returns slotResponse
 
         When("updateSlot 을 호출하면") {
+            setSecurityContext()
             val result = mcpSlotWriteTools.updateSlot(
-                requesterId = 42L,
                 slotId = 10L,
                 timeRange = "10:00-11:00",
                 capacity = 8,
@@ -179,8 +204,8 @@ class McpSlotWriteToolsTest : BehaviorSpec({
         every { confirmationTokenGateway.issue(any()) } returns issuedToken
 
         When("deleteSlot 을 호출하면") {
+            setSecurityContext()
             val result = mcpSlotWriteTools.deleteSlot(
-                requesterId = 42L,
                 slotId = 10L,
                 confirmationToken = null,
             )
@@ -193,19 +218,20 @@ class McpSlotWriteToolsTest : BehaviorSpec({
         }
     }
 
-    Given("[U-12] 유효한 confirmationToken 으로 deleteSlot 2차 호출 시") {
+    Given("[U-12] 유효한 confirmationToken 과 일치하는 paramsHash 로 deleteSlot 2차 호출 시") {
         val token = "valid-delete-token"
+        val expectedHash = McpParamsHasher.hash("deleteSlot", callerUserId, 10L)
         val storedContext = ConfirmationTokenContext(
             toolName = "deleteSlot",
-            userId = 42L,
-            paramsHash = "any-hash",
+            userId = callerUserId,
+            paramsHash = expectedHash,
         )
         every { confirmationTokenGateway.consume(token) } returns storedContext
         every { deleteSlotUseCase.execute(any()) } returns Unit
 
         When("deleteSlot 을 호출하면") {
+            setSecurityContext()
             val result = mcpSlotWriteTools.deleteSlot(
-                requesterId = 42L,
                 slotId = 10L,
                 confirmationToken = token,
             )
@@ -225,9 +251,10 @@ class McpSlotWriteToolsTest : BehaviorSpec({
         every { confirmationTokenGateway.consume(expiredToken) } throws ConfirmationTokenExpiredException(expiredToken)
 
         When("deleteSlot 을 호출하면") {
+            setSecurityContext()
             Then("[U-13] ConfirmationTokenExpiredException 이 전파된다") {
                 shouldThrow<ConfirmationTokenExpiredException> {
-                    mcpSlotWriteTools.deleteSlot(42L, 10L, expiredToken)
+                    mcpSlotWriteTools.deleteSlot(10L, expiredToken)
                 }
             }
         }
@@ -238,9 +265,54 @@ class McpSlotWriteToolsTest : BehaviorSpec({
         every { confirmationTokenGateway.consume(consumedToken) } throws ConfirmationTokenAlreadyConsumedException(consumedToken)
 
         When("updateSlot 을 호출하면") {
+            setSecurityContext()
             Then("[U-14] ConfirmationTokenAlreadyConsumedException 이 전파된다") {
                 shouldThrow<ConfirmationTokenAlreadyConsumedException> {
-                    mcpSlotWriteTools.updateSlot(42L, 10L, null, null, consumedToken)
+                    mcpSlotWriteTools.updateSlot(10L, null, null, consumedToken)
+                }
+            }
+        }
+    }
+
+    Given("[U-16] 2차 호출 시 deleteSlot paramsHash 가 변조된 경우") {
+        val token = "tampered-delete-token"
+        val storedContext = ConfirmationTokenContext(
+            toolName = "deleteSlot",
+            userId = callerUserId,
+            paramsHash = McpParamsHasher.hash("deleteSlot", callerUserId, 999L), // 다른 slotId 로 발급
+        )
+        every { confirmationTokenGateway.consume(token) } returns storedContext
+
+        When("실제로는 slotId=10 으로 deleteSlot 을 호출하면") {
+            setSecurityContext()
+            Then("[U-16] ConfirmationParamsMismatchException 이 발생한다") {
+                shouldThrow<ConfirmationParamsMismatchException> {
+                    mcpSlotWriteTools.deleteSlot(10L, token)
+                }
+            }
+        }
+    }
+
+    Given("[U-17] 2차 호출 시 createSlot paramsHash 가 변조된 경우") {
+        val token = "tampered-create-token"
+        val storedContext = ConfirmationTokenContext(
+            toolName = "createSlot",
+            userId = callerUserId,
+            paramsHash = McpParamsHasher.hash("createSlot", callerUserId, "OTHER-FAC", "2026-06-01T09:00:00+09:00", "09:00-10:00", 5),
+        )
+        every { confirmationTokenGateway.consume(token) } returns storedContext
+
+        When("실제로는 facilityId=FAC-01 로 createSlot 을 호출하면") {
+            setSecurityContext()
+            Then("[U-17] ConfirmationParamsMismatchException 이 발생한다") {
+                shouldThrow<ConfirmationParamsMismatchException> {
+                    mcpSlotWriteTools.createSlot(
+                        facilityId = "FAC-01",
+                        date = "2026-06-01T09:00:00+09:00",
+                        timeRange = "09:00-10:00",
+                        capacity = 5,
+                        confirmationToken = token,
+                    )
                 }
             }
         }

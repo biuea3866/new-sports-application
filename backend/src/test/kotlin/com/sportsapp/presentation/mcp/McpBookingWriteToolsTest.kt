@@ -3,10 +3,14 @@ package com.sportsapp.presentation.mcp
 import com.sportsapp.application.booking.BookingResponse
 import com.sportsapp.application.booking.CancelBookingUseCase
 import com.sportsapp.domain.booking.BookingStatus
+import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
+import com.sportsapp.domain.mcp.McpScope
+import com.sportsapp.domain.mcp.confirm.ConfirmationParamsMismatchException
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenAlreadyConsumedException
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenContext
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenExpiredException
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenGateway
+import com.sportsapp.presentation.mcp.confirm.McpParamsHasher
 import com.sportsapp.presentation.mcp.response.McpResponseStatus
 import com.sportsapp.presentation.mcp.toolregistry.McpBookingWriteTools
 import io.kotest.assertions.throwables.shouldThrow
@@ -17,6 +21,8 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.context.SecurityContextHolder
 import java.time.ZonedDateTime
 
 class McpBookingWriteToolsTest : BehaviorSpec({
@@ -25,10 +31,26 @@ class McpBookingWriteToolsTest : BehaviorSpec({
     val confirmationTokenGateway = mockk<ConfirmationTokenGateway>()
     val mcpBookingWriteTools = McpBookingWriteTools(cancelBookingUseCase, confirmationTokenGateway)
 
+    val callerUserId = 42L
+    val mockPrincipal = object : McpAuthenticatedPrincipal {
+        override val tokenId: Long = 1L
+        override val userId: Long = callerUserId
+        override val grantedScopes: Set<McpScope> = emptySet()
+    }
+
+    fun setSecurityContext() {
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(mockPrincipal, null, emptyList())
+    }
+
+    afterEach {
+        SecurityContextHolder.clearContext()
+    }
+
     val bookingResponse = BookingResponse(
         id = 1L,
         slotId = 100L,
-        userId = 42L,
+        userId = callerUserId,
         status = BookingStatus.CANCELLED,
         paymentId = null,
         paymentStatus = null,
@@ -42,9 +64,9 @@ class McpBookingWriteToolsTest : BehaviorSpec({
         every { confirmationTokenGateway.issue(capture(tokenSlot)) } returns issuedToken
 
         When("cancelBooking 을 호출하면") {
+            setSecurityContext()
             val result = mcpBookingWriteTools.cancelBooking(
                 bookingId = 1L,
-                userId = 42L,
                 reason = "테스트 취소",
                 confirmationToken = null,
             )
@@ -59,20 +81,21 @@ class McpBookingWriteToolsTest : BehaviorSpec({
         }
     }
 
-    Given("[U-02] 유효한 confirmationToken 으로 cancelBooking 2차 호출 시") {
+    Given("[U-02] 유효한 confirmationToken 과 일치하는 paramsHash 로 cancelBooking 2차 호출 시") {
         val token = "valid-token"
+        val expectedHash = McpParamsHasher.hash("cancelBooking", 1L, callerUserId)
         val storedContext = ConfirmationTokenContext(
             toolName = "cancelBooking",
-            userId = 42L,
-            paramsHash = "expected-hash",
+            userId = callerUserId,
+            paramsHash = expectedHash,
         )
         every { confirmationTokenGateway.consume(token) } returns storedContext
         every { cancelBookingUseCase.execute(any()) } returns bookingResponse
 
         When("cancelBooking 을 호출하면") {
+            setSecurityContext()
             val result = mcpBookingWriteTools.cancelBooking(
                 bookingId = 1L,
-                userId = 42L,
                 reason = "테스트 취소",
                 confirmationToken = token,
             )
@@ -91,11 +114,11 @@ class McpBookingWriteToolsTest : BehaviorSpec({
         every { confirmationTokenGateway.consume(expiredToken) } throws ConfirmationTokenExpiredException(expiredToken)
 
         When("cancelBooking 을 호출하면") {
+            setSecurityContext()
             Then("[U-03] ConfirmationTokenExpiredException 이 전파된다") {
                 shouldThrow<ConfirmationTokenExpiredException> {
                     mcpBookingWriteTools.cancelBooking(
                         bookingId = 1L,
-                        userId = 42L,
                         reason = null,
                         confirmationToken = expiredToken,
                     )
@@ -109,11 +132,11 @@ class McpBookingWriteToolsTest : BehaviorSpec({
         every { confirmationTokenGateway.consume(consumedToken) } throws ConfirmationTokenAlreadyConsumedException(consumedToken)
 
         When("cancelBooking 을 호출하면") {
+            setSecurityContext()
             Then("[U-04] ConfirmationTokenAlreadyConsumedException 이 전파된다") {
                 shouldThrow<ConfirmationTokenAlreadyConsumedException> {
                     mcpBookingWriteTools.cancelBooking(
                         bookingId = 1L,
-                        userId = 42L,
                         reason = null,
                         confirmationToken = consumedToken,
                     )
@@ -127,17 +150,40 @@ class McpBookingWriteToolsTest : BehaviorSpec({
         every { confirmationTokenGateway.issue(capture(tokenSlot)) } returns "any-token"
 
         When("cancelBooking 을 confirmationToken 없이 호출하면") {
+            setSecurityContext()
             mcpBookingWriteTools.cancelBooking(
                 bookingId = 99L,
-                userId = 7L,
                 reason = null,
                 confirmationToken = null,
             )
 
-            Then("[U-05] 발급 context 의 toolName 이 cancelBooking 이고 userId 가 전달된다") {
+            Then("[U-05] 발급 context 의 toolName 이 cancelBooking 이고 userId 가 SecurityContext 에서 추출된다") {
                 tokenSlot.captured.toolName shouldBe "cancelBooking"
-                tokenSlot.captured.userId shouldBe 7L
+                tokenSlot.captured.userId shouldBe callerUserId
                 tokenSlot.captured.paramsHash shouldNotBe null
+            }
+        }
+    }
+
+    Given("[U-15] 2차 호출 시 paramsHash 가 변조된 경우") {
+        val token = "tampered-token"
+        val storedContext = ConfirmationTokenContext(
+            toolName = "cancelBooking",
+            userId = callerUserId,
+            paramsHash = McpParamsHasher.hash("cancelBooking", 999L, callerUserId), // 다른 bookingId 로 발급
+        )
+        every { confirmationTokenGateway.consume(token) } returns storedContext
+
+        When("실제로는 bookingId=1 로 cancelBooking 을 호출하면") {
+            setSecurityContext()
+            Then("[U-15] ConfirmationParamsMismatchException 이 발생한다") {
+                shouldThrow<ConfirmationParamsMismatchException> {
+                    mcpBookingWriteTools.cancelBooking(
+                        bookingId = 1L,
+                        reason = null,
+                        confirmationToken = token,
+                    )
+                }
             }
         }
     }
