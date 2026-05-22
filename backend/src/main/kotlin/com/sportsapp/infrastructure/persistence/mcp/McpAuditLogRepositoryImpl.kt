@@ -1,6 +1,6 @@
 package com.sportsapp.infrastructure.persistence.mcp
 
-import com.sportsapp.domain.mcp.HourlyCallCount
+import com.sportsapp.domain.mcp.DailyCallCount
 import com.sportsapp.domain.mcp.McpAuditLog
 import com.sportsapp.domain.mcp.McpAuditLogCustomRepository
 import com.sportsapp.domain.mcp.McpAuditLogRepository
@@ -32,12 +32,12 @@ class McpAuditLogRepositoryImpl(
     ): List<TokenCallStats> =
         mcpAuditLogJpaRepository.findCallStatsByTokenIdIn(tokenIds, from)
 
-    override fun findHourlyCallCountsForBaseline(
+    override fun findDailyCallCountsForBaseline(
         tokenId: Long,
         from: ZonedDateTime,
         to: ZonedDateTime,
-    ): List<HourlyCallCount> =
-        mcpAuditLogJpaRepository.findHourlyCallCountsForBaseline(tokenId, from, to)
+    ): List<DailyCallCount> =
+        mcpAuditLogJpaRepository.findDailyCallCountsForBaseline(tokenId, from, to)
 
     override fun findCurrentHourCallCount(
         tokenId: Long,

@@ -1,6 +1,6 @@
 package com.sportsapp.infrastructure.persistence.mcp
 
-import com.sportsapp.domain.mcp.HourlyCallCount
+import com.sportsapp.domain.mcp.DailyCallCount
 import com.sportsapp.domain.mcp.TokenCallStats
 import java.time.ZonedDateTime
 
@@ -10,11 +10,11 @@ interface McpAuditLogQueryDslRepository {
         from: ZonedDateTime,
     ): List<TokenCallStats>
 
-    fun findHourlyCallCountsForBaseline(
+    fun findDailyCallCountsForBaseline(
         tokenId: Long,
         from: ZonedDateTime,
         to: ZonedDateTime,
-    ): List<HourlyCallCount>
+    ): List<DailyCallCount>
 
     fun findCurrentHourCallCount(
         tokenId: Long,

@@ -98,7 +98,8 @@ class McpAnomalyDetectionScenarioTest(
         )
         jdbcTemplate.update(
             "UPDATE mcp_tokens SET created_at = ? WHERE id = ?",
-            createdAt.toInstant().toString().replace("T", " ").replace("Z", ""),
+            createdAt.withZoneSameInstant(java.time.ZoneOffset.UTC)
+                .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS")),
             token.id,
         )
         return token

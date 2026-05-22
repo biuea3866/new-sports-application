@@ -100,8 +100,10 @@ class McpAnomalyDetectorTest : BehaviorSpec({
         }
     }
 
-    Given("[U-07] cold-start 경계값 — 토큰 생성 정확히 14일") {
-        val createdAt = ZonedDateTime.now().minusDays(14)
+    Given("[U-07] cold-start 경계값 — 토큰 생성 정확히 14일 + 1초 전") {
+        // ZonedDateTime.now()를 두 번 호출하면 나노초 차이로 경계 역전 위험이 있으므로
+        // 명확한 마진(1초)을 추가해 flakiness 제거
+        val createdAt = ZonedDateTime.now().minusDays(14).minusSeconds(1)
 
         When("isColdStart를 호출하면") {
             val result = detector.isColdStart(tokenCreatedAt = createdAt)

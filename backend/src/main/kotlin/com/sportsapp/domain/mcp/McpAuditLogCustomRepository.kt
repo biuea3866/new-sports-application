@@ -14,13 +14,14 @@ interface McpAuditLogCustomRepository {
     ): List<TokenCallStats>
 
     /**
-     * 7일 베이스라인 계산용: 특정 토큰의 [from]..[to] 기간 시간대별 호출 수 집계.
+     * 7일 베이스라인 계산용: 특정 토큰의 [from]..[to] 기간 일별 호출 수 집계.
+     * 반환 결과는 날짜(day) 단위 row — computeBaselineAverage 에서 일평균 산출.
      */
-    fun findHourlyCallCountsForBaseline(
+    fun findDailyCallCountsForBaseline(
         tokenId: Long,
         from: ZonedDateTime,
         to: ZonedDateTime,
-    ): List<HourlyCallCount>
+    ): List<DailyCallCount>
 
     /**
      * 현재 1시간 호출 수 조회: [from] 이후 호출 수.

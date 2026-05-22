@@ -2,7 +2,7 @@ package com.sportsapp.infrastructure.persistence.mcp
 
 import com.querydsl.core.types.Projections
 import com.querydsl.jpa.impl.JPAQueryFactory
-import com.sportsapp.domain.mcp.HourlyCallCount
+import com.sportsapp.domain.mcp.DailyCallCount
 import com.sportsapp.domain.mcp.QMcpAuditLog.mcpAuditLog
 import com.sportsapp.domain.mcp.TokenCallStats
 import jakarta.persistence.EntityManager
@@ -39,15 +39,15 @@ class McpAuditLogJpaRepositoryImpl : McpAuditLogQueryDslRepository {
             .fetch()
     }
 
-    override fun findHourlyCallCountsForBaseline(
+    override fun findDailyCallCountsForBaseline(
         tokenId: Long,
         from: ZonedDateTime,
         to: ZonedDateTime,
-    ): List<HourlyCallCount> {
+    ): List<DailyCallCount> {
         return queryFactory.select(
             Projections.constructor(
-                HourlyCallCount::class.java,
-                mcpAuditLog.calledAt.hour(),
+                DailyCallCount::class.java,
+                mcpAuditLog.calledAt.dayOfMonth(),
                 mcpAuditLog.id.count(),
             )
         )
@@ -57,7 +57,7 @@ class McpAuditLogJpaRepositoryImpl : McpAuditLogQueryDslRepository {
                 mcpAuditLog.calledAt.goe(from),
                 mcpAuditLog.calledAt.lt(to),
             )
-            .groupBy(mcpAuditLog.calledAt.hour())
+            .groupBy(mcpAuditLog.calledAt.dayOfMonth())
             .fetch()
     }
 

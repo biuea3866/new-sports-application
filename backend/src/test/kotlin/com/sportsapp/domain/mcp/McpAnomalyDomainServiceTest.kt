@@ -11,8 +11,6 @@ import java.time.ZonedDateTime
 
 class McpAnomalyDomainServiceTest : BehaviorSpec({
 
-    val anomalyDetector = McpAnomalyDetector()
-
     fun makeToken(
         id: Long,
         userId: Long = 1L,
@@ -40,7 +38,6 @@ class McpAnomalyDomainServiceTest : BehaviorSpec({
         mcpTokenRepository = tokenRepo,
         mcpAuditLogCustomRepository = auditRepo,
         domainEventPublisher = eventPublisher,
-        anomalyDetector = anomalyDetector,
     )
 
     Given("[U-11] cold-start 토큰은 탐지를 건너뛴다") {
@@ -57,7 +54,7 @@ class McpAnomalyDomainServiceTest : BehaviorSpec({
 
             Then("[U-11] auditLog 집계 쿼리가 호출되지 않는다") {
                 verify(exactly = 0) {
-                    auditRepo.findHourlyCallCountsForBaseline(any(), any(), any())
+                    auditRepo.findDailyCallCountsForBaseline(any(), any(), any())
                 }
             }
 
@@ -75,22 +72,23 @@ class McpAnomalyDomainServiceTest : BehaviorSpec({
 
         val token = makeToken(id = 2L, userId = 20L, createdDaysAgo = 30L)
         every { tokenRepo.findById(2L) } returns token
+        // 실제 쿼리는 dayOfMonth 단위 row 7개 반환 (일별 집계)
         every {
-            auditRepo.findHourlyCallCountsForBaseline(tokenId = 2L, from = any(), to = any())
+            auditRepo.findDailyCallCountsForBaseline(tokenId = 2L, from = any(), to = any())
         } returns listOf(
-            HourlyCallCount(hour = 10, callCount = 5L),
-            HourlyCallCount(hour = 10, callCount = 6L),
-            HourlyCallCount(hour = 10, callCount = 4L),
-            HourlyCallCount(hour = 10, callCount = 5L),
-            HourlyCallCount(hour = 10, callCount = 5L),
-            HourlyCallCount(hour = 10, callCount = 5L),
-            HourlyCallCount(hour = 10, callCount = 5L),
+            DailyCallCount(dayOfMonth = 1, callCount = 5L),
+            DailyCallCount(dayOfMonth = 2, callCount = 6L),
+            DailyCallCount(dayOfMonth = 3, callCount = 4L),
+            DailyCallCount(dayOfMonth = 4, callCount = 5L),
+            DailyCallCount(dayOfMonth = 5, callCount = 5L),
+            DailyCallCount(dayOfMonth = 6, callCount = 5L),
+            DailyCallCount(dayOfMonth = 7, callCount = 5L),
         )
         every {
             auditRepo.findCurrentHourCallCount(tokenId = 2L, from = any())
         } returns 8L
 
-        When("detectForToken을 호출하면 (현재 8, 베이스라인 평균 5.0 → 비율 1.6)") {
+        When("detectForToken을 호출하면 (현재 8, 일평균 5.0 → 비율 1.6)") {
             service.detectForToken(tokenId = 2L)
 
             Then("[U-12] 이벤트가 발행되지 않는다") {
@@ -107,22 +105,23 @@ class McpAnomalyDomainServiceTest : BehaviorSpec({
 
         val token = makeToken(id = 3L, userId = 30L, createdDaysAgo = 30L)
         every { tokenRepo.findById(3L) } returns token
+        // 실제 쿼리는 dayOfMonth 단위 row 7개 반환 (일별 집계)
         every {
-            auditRepo.findHourlyCallCountsForBaseline(tokenId = 3L, from = any(), to = any())
+            auditRepo.findDailyCallCountsForBaseline(tokenId = 3L, from = any(), to = any())
         } returns listOf(
-            HourlyCallCount(hour = 10, callCount = 10L),
-            HourlyCallCount(hour = 10, callCount = 10L),
-            HourlyCallCount(hour = 10, callCount = 10L),
-            HourlyCallCount(hour = 10, callCount = 10L),
-            HourlyCallCount(hour = 10, callCount = 10L),
-            HourlyCallCount(hour = 10, callCount = 10L),
-            HourlyCallCount(hour = 10, callCount = 10L),
+            DailyCallCount(dayOfMonth = 1, callCount = 10L),
+            DailyCallCount(dayOfMonth = 2, callCount = 10L),
+            DailyCallCount(dayOfMonth = 3, callCount = 10L),
+            DailyCallCount(dayOfMonth = 4, callCount = 10L),
+            DailyCallCount(dayOfMonth = 5, callCount = 10L),
+            DailyCallCount(dayOfMonth = 6, callCount = 10L),
+            DailyCallCount(dayOfMonth = 7, callCount = 10L),
         )
         every {
             auditRepo.findCurrentHourCallCount(tokenId = 3L, from = any())
         } returns 25L
 
-        When("detectForToken을 호출하면 (현재 25, 베이스라인 평균 10.0 → 비율 2.5)") {
+        When("detectForToken을 호출하면 (현재 25, 일평균 10.0 → 비율 2.5)") {
             val publishedEvents = mutableListOf<McpAnomalyDetectedEvent>()
             every { eventPublisher.publish(any()) } answers {
                 val event = firstArg<Any>()
@@ -154,35 +153,32 @@ class McpAnomalyDomainServiceTest : BehaviorSpec({
 
             Then("[U-14] 집계 쿼리 및 이벤트 발행 없이 종료된다") {
                 verify(exactly = 0) {
-                    auditRepo.findHourlyCallCountsForBaseline(any(), any(), any())
+                    auditRepo.findDailyCallCountsForBaseline(any(), any(), any())
                 }
                 verify(exactly = 0) { eventPublisher.publish(any()) }
             }
         }
     }
 
-    Given("[U-15] detectAll은 모든 ACTIVE 토큰에 대해 detectForToken을 수행한다") {
+    Given("[U-15] detectAll은 모든 ACTIVE 토큰에 대해 탐지를 수행한다") {
         val tokenRepo = mockk<McpTokenRepository>(relaxed = true)
         val auditRepo = mockk<McpAuditLogCustomRepository>(relaxed = true)
         val eventPublisher = mockk<DomainEventPublisher>(relaxed = true)
         val service = makeService(tokenRepo, auditRepo, eventPublisher)
 
-        val activeTokenIds = listOf(10L, 11L, 12L)
-        every { tokenRepo.findAllActiveIds() } returns activeTokenIds
-
-        activeTokenIds.forEach { tokenId ->
-            val token = makeToken(id = tokenId, userId = tokenId * 10, createdDaysAgo = 5L)
-            every { tokenRepo.findById(tokenId) } returns token
-        }
+        val activeTokens = listOf(
+            makeToken(id = 10L, userId = 100L, createdDaysAgo = 5L),
+            makeToken(id = 11L, userId = 110L, createdDaysAgo = 5L),
+            makeToken(id = 12L, userId = 120L, createdDaysAgo = 5L),
+        )
+        every { tokenRepo.findAllActive() } returns activeTokens
 
         When("detectAll을 호출하면") {
             service.detectAll()
 
-            Then("[U-15] 각 토큰에 대해 findById가 호출된다") {
-                verify(exactly = 1) { tokenRepo.findAllActiveIds() }
-                activeTokenIds.forEach { tokenId ->
-                    verify(exactly = 1) { tokenRepo.findById(tokenId) }
-                }
+            Then("[U-15] findAllActive가 1회 호출되고 개별 findById는 호출되지 않는다") {
+                verify(exactly = 1) { tokenRepo.findAllActive() }
+                verify(exactly = 0) { tokenRepo.findById(any()) }
             }
         }
     }

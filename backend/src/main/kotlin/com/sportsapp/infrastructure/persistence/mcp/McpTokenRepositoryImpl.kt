@@ -18,6 +18,6 @@ class McpTokenRepositoryImpl(
     override fun findByTokenHash(tokenHash: String): McpToken? =
         mcpTokenJpaRepository.findByTokenHashAndDeletedAtIsNull(tokenHash)
 
-    override fun findAllActiveIds(): List<Long> =
-        mcpTokenJpaRepository.findAllActiveIds()
+    override fun findAllActive(): List<McpToken> =
+        mcpTokenJpaRepository.findAllActive()
 }

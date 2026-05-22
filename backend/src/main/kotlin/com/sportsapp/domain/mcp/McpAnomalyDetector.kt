@@ -1,22 +1,21 @@
 package com.sportsapp.domain.mcp
 
-import org.springframework.stereotype.Component
 import java.time.ZonedDateTime
 
 /**
- * MCP tool 호출 패턴의 비정상 여부를 판정하는 순수 도메인 컴포넌트.
+ * MCP tool 호출 패턴의 비정상 여부를 판정하는 순수 도메인 클래스.
  *
  * 판정 기준:
  * - 현재 1시간 호출 수가 7일 베이스라인 평균의 [SPIKE_RATIO]배 이상이면 비정상
  * - 베이스라인 평균이 0이더라도 [MIN_ABSOLUTE_THRESHOLD] 이상이면 비정상 (절대값 임계)
  */
-@Component
 class McpAnomalyDetector {
 
     companion object {
         const val SPIKE_RATIO = 2.0
         const val MIN_ABSOLUTE_THRESHOLD = 50
         const val COLD_START_DAYS = 14L
+        const val BASELINE_WINDOW_DAYS = 7L
     }
 
     /**

@@ -50,8 +50,8 @@ class McpAnomalyRepositoryQueryTest(
             saveLog(tokenId = 10L, calledAt = now.minusDays(8).withHour(10))
             saveLog(tokenId = 99L, calledAt = now.minusDays(1).withHour(10))
 
-            When("findHourlyCallCountsForBaseline(tokenId=10, from=7일전, to=현재)를 호출하면") {
-                val result = auditLogCustomRepository.findHourlyCallCountsForBaseline(
+            When("findDailyCallCountsForBaseline(tokenId=10, from=7일전, to=현재)를 호출하면") {
+                val result = auditLogCustomRepository.findDailyCallCountsForBaseline(
                     tokenId = 10L,
                     from = from,
                     to = to,
@@ -101,8 +101,8 @@ class McpAnomalyRepositoryQueryTest(
         Given("[R-08] 7일 베이스라인 집계 — tokenId=30 로그 없음") {
             val now = ZonedDateTime.now()
 
-            When("findHourlyCallCountsForBaseline(tokenId=30)를 호출하면") {
-                val result = auditLogCustomRepository.findHourlyCallCountsForBaseline(
+            When("findDailyCallCountsForBaseline(tokenId=30)를 호출하면") {
+                val result = auditLogCustomRepository.findDailyCallCountsForBaseline(
                     tokenId = 30L,
                     from = now.minusDays(7),
                     to = now,
