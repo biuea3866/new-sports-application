@@ -23,11 +23,15 @@ export function assertSafeTarget() {
 /**
  * 인증 토큰 발급. setup() 단계에서 1회 호출하고 모든 VU가 공유.
  * 매 VU마다 발급하면 인증 서버에도 부하가 가서 측정 대상이 분리되지 않음.
+ *
+ * BE 계약: POST /auth/login, body { email, password } (AuthApiController + LoginRequest).
+ * fixture 사용자 시드가 필요한 시나리오에서만 사용. /bookings·/events 처럼
+ * X-User-Id 헤더 기반 엔드포인트는 headerAuth() 를 사용한다.
  */
-export function issueToken(username = "qa-user", password = "qa-pass") {
+export function issueToken(email = "qa@example.com", password = "qa-pass") {
   const res = http.post(
-    `${API_URL}/api/v1/auth/login`,
-    JSON.stringify({ username, password }),
+    `${API_URL}/auth/login`,
+    JSON.stringify({ email, password }),
     { headers: { "Content-Type": "application/json" } }
   );
   check(res, { "token issued": (r) => r.status === 200 }) ||
@@ -43,6 +47,18 @@ export function issueToken(username = "qa-user", password = "qa-pass") {
 export function authHeaders(token) {
   return {
     Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+}
+
+/**
+ * X-User-Id 헤더 기반 권한 헤더.
+ * /bookings·/events 등은 permitAll + X-User-Id 모델이라 Bearer 토큰이 불필요하다.
+ * 부하 측정에서 인증 서버 노이즈를 제거하고 VU별 독립 사용자를 단순 표현한다.
+ */
+export function headerAuth(userId) {
+  return {
+    "X-User-Id": String(userId),
     "Content-Type": "application/json",
   };
 }
