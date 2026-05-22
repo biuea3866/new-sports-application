@@ -46,6 +46,13 @@ class Ticket(
             code = generateCode(),
         )
 
+        fun issueComplimentary(seatId: Long): Ticket = Ticket(
+            ticketOrderId = 0L,
+            seatId = seatId,
+            status = TicketStatus.ISSUED,
+            code = generateCode(),
+        )
+
         private fun generateCode(): String =
             UUID.randomUUID().toString().replace("-", "") +
                 UUID.randomUUID().toString().replace("-", "")

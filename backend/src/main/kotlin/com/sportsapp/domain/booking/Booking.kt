@@ -90,6 +90,17 @@ class Booking(
         }
     }
 
+    fun refund() {
+        if (!status.canTransitTo(BookingStatus.REFUNDED)) {
+            throw RefundPolicyViolationException(id, status)
+        }
+        this.status = BookingStatus.REFUNDED
+    }
+
+    fun requireHasPayment(): Long {
+        return paymentId ?: throw RefundBookingException(id, "결제 정보가 없는 예약은 환불할 수 없습니다.")
+    }
+
     fun expire() {
         if (!status.canTransitTo(BookingStatus.EXPIRED)) {
             throw InvalidBookingStateException(status, BookingStatus.EXPIRED)

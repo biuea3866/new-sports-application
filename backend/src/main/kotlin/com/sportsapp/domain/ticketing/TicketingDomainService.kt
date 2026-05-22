@@ -175,6 +175,15 @@ class TicketingDomainService(
         eventRepository.save(event)
     }
 
+    @Transactional
+    fun issueComplimentary(eventId: Long, seatId: Long, operatorUserId: Long): Ticket {
+        val event = eventRepository.findById(eventId)
+            ?: throw ResourceNotFoundException("Event", eventId)
+        event.requireOwnedBy(operatorUserId)
+        val ticket = Ticket.issueComplimentary(seatId)
+        return ticketRepository.save(ticket)
+    }
+
     private fun parseLockId(lockId: String): List<Pair<Long, Long>> =
         lockId.split(",").map { token ->
             val parts = token.split(":")
