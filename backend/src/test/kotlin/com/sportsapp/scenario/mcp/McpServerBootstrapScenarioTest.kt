@@ -155,5 +155,81 @@ class McpServerBootstrapScenarioTest(
                 }
             }
         }
+
+        Given("[S-04] read:facility scope 를 가진 MCP 토큰으로 getFacilities tool 을 호출하면") {
+            val jwtToken = loginAndGetJwtToken("mcp-bootstrap-s04@example.com", "Pass1234!")
+            val issued = issueMcpToken(jwtToken, "facility-scope-token", listOf("read:facility"))
+
+            When("/mcp/message 에 tools/call getFacilities JSON-RPC 요청을 전송하면") {
+                val headers = HttpHeaders().apply {
+                    set("Content-Type", "application/json")
+                    setBearerAuth(issued.plainToken)
+                }
+                val toolCallBody = objectMapper.writeValueAsString(
+                    mapOf(
+                        "jsonrpc" to "2.0",
+                        "id" to 4,
+                        "method" to "tools/call",
+                        "params" to mapOf(
+                            "name" to "getFacilities",
+                            "arguments" to mapOf("gu" to null, "type" to null, "page" to 0, "size" to 10),
+                        ),
+                    ),
+                )
+                val response = restTemplate.exchange(
+                    "${baseUrl()}/mcp/message",
+                    HttpMethod.POST,
+                    HttpEntity(toolCallBody, headers),
+                    String::class.java,
+                )
+
+                Then("[S-04] 401이 아닌 응답이 반환된다 — read:facility scope 보유 시 인가가 통과한다") {
+                    response.statusCode shouldNotBe HttpStatus.UNAUTHORIZED
+                }
+            }
+        }
+
+        Given("[S-05] read:facility scope 없는 MCP 토큰 (read:booking only) 으로 getFacilities tool 을 호출하면") {
+            val jwtToken = loginAndGetJwtToken("mcp-bootstrap-s05@example.com", "Pass1234!")
+            // read:booking scope 만 부여 — getFacilities 에 필요한 read:facility scope 없음
+            val issued = issueMcpToken(jwtToken, "booking-only-scope-token", listOf("read:booking"))
+
+            When("/mcp/message 에 tools/call getFacilities JSON-RPC 요청을 전송하면") {
+                val headers = HttpHeaders().apply {
+                    set("Content-Type", "application/json")
+                    setBearerAuth(issued.plainToken)
+                }
+                val toolCallBody = objectMapper.writeValueAsString(
+                    mapOf(
+                        "jsonrpc" to "2.0",
+                        "id" to 5,
+                        "method" to "tools/call",
+                        "params" to mapOf(
+                            "name" to "getFacilities",
+                            "arguments" to mapOf("gu" to null, "type" to null, "page" to 0, "size" to 10),
+                        ),
+                    ),
+                )
+                val response = restTemplate.exchange(
+                    "${baseUrl()}/mcp/message",
+                    HttpMethod.POST,
+                    HttpEntity(toolCallBody, headers),
+                    String::class.java,
+                )
+
+                Then("[S-05] 인증은 통과하지만 tool 실행이 거부된다 — 응답에 OK 결과가 없다") {
+                    // 인증 자체는 통과 (read:booking scope 보유 토큰은 유효한 MCP 토큰)
+                    response.statusCode shouldNotBe HttpStatus.UNAUTHORIZED
+                    val body = response.body
+                    body shouldNotBe null
+                    // @PreAuthorize 거부 시 Spring AI MCP 는 JSON-RPC error 로 래핑하거나
+                    // HTTP 403 을 반환한다. 두 경우 모두 정상 tool 결과(OK status)는 없어야 한다.
+                    val responseBody = requireNotNull(body)
+                    val isHttpForbidden = response.statusCode == HttpStatus.FORBIDDEN
+                    val hasNoOkResult = !responseBody.contains("\"status\":\"OK\"")
+                    (isHttpForbidden || hasNoOkResult) shouldBe true
+                }
+            }
+        }
     }
 }

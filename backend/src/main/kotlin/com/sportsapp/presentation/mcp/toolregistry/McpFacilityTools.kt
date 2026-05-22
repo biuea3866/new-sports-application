@@ -7,6 +7,7 @@ import com.sportsapp.presentation.mcp.response.McpPagination
 import com.sportsapp.presentation.mcp.response.McpResponse
 import org.springframework.ai.tool.annotation.Tool
 import org.springframework.context.annotation.Profile
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.stereotype.Component
 
 /**
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Component
 class McpFacilityTools(
     private val listFacilitiesUseCase: ListFacilitiesUseCase,
 ) {
+    @PreAuthorize("@authz.hasMcpScope('read:facility')")
     @Tool(
         name = "getFacilities",
         description = "B2B 운영자가 등록한 스포츠 시설 목록을 조회합니다. gu(구 이름)와 type(시설 유형)으로 필터링할 수 있습니다.",

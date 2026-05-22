@@ -7,7 +7,9 @@ import com.sportsapp.domain.booking.BookingStatus
 import com.sportsapp.presentation.mcp.response.McpPagination
 import com.sportsapp.presentation.mcp.response.McpResponse
 import org.springframework.ai.tool.annotation.Tool
+import org.springframework.context.annotation.Profile
 import org.springframework.data.domain.PageRequest
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.stereotype.Component
 
 /**
@@ -17,9 +19,11 @@ import org.springframework.stereotype.Component
  * presentation layer 에 위치. UseCase 를 호출하고 McpResponse 로 래핑.
  */
 @Component
+@Profile("!test-jpa")
 class McpBookingTools(
     private val listMyBookingsUseCase: ListMyBookingsUseCase,
 ) {
+    @PreAuthorize("@authz.hasMcpScope('read:booking')")
     @Tool(
         name = "getBookings",
         description = "특정 사용자의 예약 목록을 조회합니다. userId는 필수이며, status(PENDING/CONFIRMED/CANCELLED)로 필터링할 수 있습니다.",

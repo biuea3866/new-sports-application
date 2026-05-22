@@ -90,6 +90,7 @@ spring:
   ai:
     mcp:
       server:
+        enabled: true
         name: sports-mcp-server
         version: 1.0.0
         sse-endpoint: /mcp/sse
