@@ -14,6 +14,7 @@ class GoodsDomainService(
     private val popularProductsCache: PopularProductsCache,
     private val goodsOrderRepository: GoodsOrderRepository,
     private val goodsOrderItemRepository: GoodsOrderItemRepository,
+    private val goodsOrderCustomRepository: GoodsOrderCustomRepository,
 ) {
     fun search(
         category: ProductCategory?,
@@ -208,6 +209,12 @@ class GoodsDomainService(
         productEntity.requireOwnedBy(ownerUserId)
         restoreStock(productId, quantity)
     }
+
+    fun countConfirmedOrdersByOwnerUserId(ownerUserId: Long): Long =
+        goodsOrderCustomRepository.countConfirmedByProductOwnerUserId(ownerUserId)
+
+    fun sumRevenueByOwnerUserId(ownerUserId: Long): java.math.BigDecimal =
+        goodsOrderCustomRepository.sumRevenueByProductOwnerUserId(ownerUserId)
 
     companion object {
         private const val POPULAR_LIMIT = 20
