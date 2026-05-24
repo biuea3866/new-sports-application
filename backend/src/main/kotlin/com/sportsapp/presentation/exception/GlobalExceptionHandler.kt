@@ -11,6 +11,7 @@ import org.springframework.security.authorization.AuthorizationDeniedException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
@@ -36,6 +37,16 @@ class GlobalExceptionHandler {
             detail = "Access denied"
         )
         return ResponseEntity.status(ErrorStatus.FORBIDDEN.httpStatus).body(problemDetail)
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException::class)
+    fun handleTypeMismatchException(exception: MethodArgumentTypeMismatchException): ResponseEntity<ProblemDetail> {
+        val problemDetail = ProblemDetailBuilder.build(
+            status = ErrorStatus.BAD_REQUEST,
+            code = "INVALID_PARAMETER",
+            detail = "Invalid value '${exception.value}' for parameter '${exception.name}'"
+        )
+        return ResponseEntity.status(ErrorStatus.BAD_REQUEST.httpStatus).body(problemDetail)
     }
 
     @ExceptionHandler(MethodArgumentNotValidException::class)

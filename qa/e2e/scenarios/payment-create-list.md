@@ -17,11 +17,11 @@
 ## 시나리오 (Given/When/Then 한 줄)
 | ID | Given | When | Then |
 |---|---|---|---|
-| E2E-04-01 | user-A + 신규 `Idempotency-Key: idem-001` | `POST /payments`에 정상 페이로드를 보낼 때 | 201 Created와 payment id·status=PENDING/PAID가 반환된다 |
+| E2E-04-01 | user-A + 신규 `Idempotency-Key: idem-001` | `POST /payments`에 정상 페이로드를 보낼 때 | 201 Created와 payment id·status=PENDING/COMPLETED가 반환된다 |
 | E2E-04-02 | E2E-04-01과 동일한 `Idempotency-Key: idem-001` | `POST /payments`를 같은 페이로드로 재호출할 때 | 새 결제가 생기지 않고 E2E-04-01과 같은 payment id가 반환된다 |
 | E2E-04-03 | E2E-04-01의 payment id | `GET /payments/{id}`를 호출할 때 | 200과 해당 payment 상세가 반환된다 |
 | E2E-04-04 | user-A의 payment 1건 존재 | `GET /payments/me`를 호출할 때 | totalElements=1, createdAt DESC 정렬로 반환된다 |
-| E2E-04-05 | `status=PAID` 필터 | `GET /payments/me?status=PAID`를 호출할 때 | PAID 상태만 필터링되어 반환된다 |
+| E2E-04-05 | `status=COMPLETED` 필터 | `GET /payments/me?status=COMPLETED`를 호출할 때 | COMPLETED 상태만 필터링되어 반환된다 |
 
 ## 회귀 케이스 (변경 후에도 깨지면 안 되는 기존 동작)
 | ID | 케이스 |
