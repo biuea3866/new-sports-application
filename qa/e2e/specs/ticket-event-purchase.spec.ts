@@ -178,7 +178,7 @@ test.describe("E2E-05 ticket event · seat · purchase", () => {
     const api = await playwrightRequest.newContext();
     const res = await api.post(`${API_URL}/ticket-orders`, {
       headers: { "X-User-Id": "1", "Content-Type": "application/json" },
-      data: { lockId: "lock-001", method: "CARD", currency: "KRW" },
+      data: { lockId: "lock-001", method: "CREDIT_CARD", currency: "KRW" },
       failOnStatusCode: false,
     });
     expect(res.status()).toBe(400);

@@ -162,7 +162,7 @@ test.describe("E2E-04 payment create · idempotency · list", () => {
       data: {
         orderType: "BOOKING",
         orderId: 1,
-        method: "CARD",
+        method: "CREDIT_CARD",
         amount: 50000,
         currency: "KRW",
       },
