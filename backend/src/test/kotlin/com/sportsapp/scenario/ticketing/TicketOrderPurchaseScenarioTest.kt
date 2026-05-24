@@ -106,6 +106,29 @@ class TicketOrderPurchaseScenarioTest(
             }
         }
 
+        Given("[E2E-05-E02] Idempotency-Key 헤더 없이 POST /ticket-orders 요청") {
+            When("Idempotency-Key 헤더를 포함하지 않고 POST /ticket-orders 호출") {
+                val requestBody = """
+                    {
+                        "lockId": "1:1",
+                        "method": "CREDIT_CARD",
+                        "currency": "KRW"
+                    }
+                """.trimIndent()
+
+                val result = mockMvc.post("/ticket-orders") {
+                    contentType = MediaType.APPLICATION_JSON
+                    header("X-User-Id", userId.toString())
+                    content = requestBody
+                }.andReturn()
+
+                Then("[E2E-05-E02] 400 Bad Request 와 MISSING_IDEMPOTENCY_KEY 코드를 반환한다") {
+                    result.response.status shouldBe 400
+                    result.response.contentAsString.contains("MISSING_IDEMPOTENCY_KEY") shouldBe true
+                }
+            }
+        }
+
         Given("[S-03] 다른 사용자의 lockId로 구매 시도") {
             val event = eventJpaRepository.save(
                 Event(0L, "Other User Lock Concert", "Incheon", baseTime.plusDays(2), EventStatus.OPEN, 1L)
