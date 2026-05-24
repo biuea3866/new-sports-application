@@ -61,7 +61,7 @@ export default function () {
     const slotId = Math.floor(Math.random() * SLOT_POOL_SIZE) + 1;
     const payload = JSON.stringify({
       slotId: slotId,
-      paymentMethod: "CARD",
+      paymentMethod: "CREDIT_CARD",
       amount: 10000,
       currency: "KRW",
     });
