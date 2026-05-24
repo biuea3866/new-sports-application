@@ -19,6 +19,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
@@ -62,7 +63,7 @@ class EventApiController(
     fun selectSeats(
         @PathVariable id: Long,
         @RequestHeader("X-User-Id") userId: Long,
-        @RequestBody request: SelectSeatsRequest,
+        @Valid @RequestBody request: SelectSeatsRequest,
     ): ResponseEntity<SelectSeatsResponse> {
         val command = SelectSeatsCommand(eventId = id, seatIds = request.seatIds, userId = userId)
         return ResponseEntity.ok(selectSeatsUseCase.execute(command))
