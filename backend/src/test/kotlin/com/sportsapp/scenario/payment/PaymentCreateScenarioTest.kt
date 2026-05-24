@@ -97,6 +97,20 @@ class PaymentCreateScenarioTest(
             }
         }
 
+        Given("Idempotency-Key 헤더 없이 POST /payments 를 호출하면") {
+            When("헤더를 누락하고 정상 body 로 요청하면") {
+                val result = mockMvc.post("/payments") {
+                    contentType = MediaType.APPLICATION_JSON
+                    content = baseRequestBody
+                }.andReturn()
+
+                Then("[E2E-04-E01] 400 Bad Request 와 MISSING_IDEMPOTENCY_KEY 코드를 반환한다") {
+                    result.response.status shouldBe 400
+                    result.response.contentAsString.contains("MISSING_IDEMPOTENCY_KEY") shouldBe true
+                }
+            }
+        }
+
         Given("음수 amount 로 POST /payments 를 호출하면") {
             val invalidBody = """
                 {

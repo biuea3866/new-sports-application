@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository
 @Repository
 class StockRepositoryImpl(
     private val stockJpaRepository: StockJpaRepository,
+    private val stockCustomRepositoryImpl: StockCustomRepositoryImpl,
 ) : StockRepository {
 
     override fun save(stock: Stock): Stock = stockJpaRepository.save(stock)
@@ -15,5 +16,5 @@ class StockRepositoryImpl(
         stockJpaRepository.findByProductId(productId)
 
     override fun countOutOfStockByOwnerId(ownerId: Long): Long =
-        stockJpaRepository.countOutOfStockByOwnerId(ownerId)
+        stockCustomRepositoryImpl.countOutOfStockByOwnerId(ownerId)
 }
