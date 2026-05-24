@@ -97,9 +97,9 @@ test.describe("E2E-04 payment create · idempotency · list", () => {
     await api.dispose();
   });
 
-  test("E2E-04-05 GET /payments/me?status=PAID — 결과는 모두 PAID", async () => {
+  test("E2E-04-05 GET /payments/me?status=COMPLETED — 결과는 모두 COMPLETED", async () => {
     const api = await playwrightRequest.newContext();
-    const res = await api.get(`${API_URL}/payments/me?status=PAID`, {
+    const res = await api.get(`${API_URL}/payments/me?status=COMPLETED`, {
       headers: { "X-User-Id": "1" },
       failOnStatusCode: false,
     });
@@ -107,7 +107,7 @@ test.describe("E2E-04 payment create · idempotency · list", () => {
     const body = await res.json();
     for (const p of body.content ?? []) {
       if (p.status !== undefined) {
-        expect(p.status).toBe("PAID");
+        expect(p.status).toBe("COMPLETED");
       }
     }
     await api.dispose();

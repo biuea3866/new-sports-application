@@ -5,7 +5,6 @@ import com.sportsapp.domain.payment.OrderType
 import com.sportsapp.domain.payment.Payment
 import com.sportsapp.domain.payment.PaymentRepository
 import com.sportsapp.domain.payment.PaymentMethod
-import com.sportsapp.domain.payment.PaymentStatus
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -91,6 +90,44 @@ class PaymentQueryScenarioTest(
                     response.response.status shouldBe 200
                     val body = response.response.contentAsString
                     body.contains("\"status\":\"COMPLETED\"") shouldBe true
+                }
+            }
+        }
+
+        Given("userId = 7 의 COMPLETED 결제가 2건 존재하는 상태") {
+            val userId = 7L
+            saveCompletedPayment(userId, "idem-s04-1")
+            saveCompletedPayment(userId, "idem-s04-2")
+
+            When("[DEF-002] GET /payments/me?status=COMPLETED 필터 요청 시") {
+                val response = mockMvc.get("/payments/me") {
+                    header("X-User-Id", userId.toString())
+                    param("status", "COMPLETED")
+                    accept = MediaType.APPLICATION_JSON
+                }.andReturn()
+
+                Then("[DEF-002] 200 응답과 모든 항목이 COMPLETED 상태로 반환된다") {
+                    response.response.status shouldBe 200
+                    val body = response.response.contentAsString
+                    body.contains("\"totalElements\":2") shouldBe true
+                    body.contains("\"status\":\"COMPLETED\"") shouldBe true
+                }
+            }
+        }
+
+        Given("userId = 8 의 결제가 존재하는 상태") {
+            val userId = 8L
+            saveCompletedPayment(userId, "idem-s05-1")
+
+            When("[DEF-002] GET /payments/me?status=PAID (존재하지 않는 enum 값) 요청 시") {
+                val response = mockMvc.get("/payments/me") {
+                    header("X-User-Id", userId.toString())
+                    param("status", "PAID")
+                    accept = MediaType.APPLICATION_JSON
+                }.andReturn()
+
+                Then("[DEF-002] 500이 아닌 400 Bad Request가 반환된다") {
+                    response.response.status shouldBe 400
                 }
             }
         }
