@@ -18,6 +18,9 @@ class GoodsOrderRepositoryImpl(
     override fun findById(id: Long): GoodsOrder? =
         goodsOrderJpaRepository.findByIdOrNull(id)
 
+    override fun findByIdempotencyKey(idempotencyKey: String): GoodsOrder? =
+        goodsOrderJpaRepository.findByIdempotencyKey(idempotencyKey)
+
     override fun findByUserId(userId: Long, pageable: Pageable): Page<GoodsOrder> =
         goodsOrderJpaRepository.findAllByUserIdAndDeletedAtIsNull(userId, pageable)
 }
