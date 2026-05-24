@@ -56,6 +56,9 @@ mobile/coverage/
 .analysis/findings/
 .claire/
 
+# ===== ops 스크립트 산출물 =====
+scripts/ops/admin-click-baseline/results/
+
 # ===== Misc =====
 *.tsbuildinfo
 .npm/
