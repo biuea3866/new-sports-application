@@ -88,10 +88,12 @@ class GoodsDomainServiceTest : BehaviorSpec({
     }
 
     Given("빈 items 목록으로 createPendingOrder를 호출할 때") {
+        every { goodsOrderRepository.findByIdempotencyKey("idem-empty") } returns null
+
         When("execute하면") {
             Then("[U-01] EmptyOrderException이 발생한다") {
                 shouldThrow<EmptyOrderException> {
-                    service.createPendingOrder(userId = 1L, items = emptyList())
+                    service.createPendingOrder(userId = 1L, items = emptyList(), idempotencyKey = "idem-empty")
                 }
             }
         }
@@ -108,6 +110,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
             ownerId = 1L,
         )
         every { productRepository.findById(50L) } returns inactiveProduct
+        every { goodsOrderRepository.findByIdempotencyKey("idem-inactive") } returns null
 
         When("execute하면") {
             Then("[U-03] ProductInactiveException이 발생한다") {
@@ -115,6 +118,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
                     service.createPendingOrder(
                         userId = 1L,
                         items = listOf(OrderItemInput(productId = 50L, quantity = 1)),
+                        idempotencyKey = "idem-inactive",
                     )
                 }
             }
@@ -132,8 +136,9 @@ class GoodsDomainServiceTest : BehaviorSpec({
             ownerId = 1L,
         )
         val stock = Stock(productId = 10L, quantity = 5)
-        val savedOrder = GoodsOrder.create(userId = 1L, totalAmount = BigDecimal("160000"))
+        val savedOrder = GoodsOrder.create(userId = 1L, totalAmount = BigDecimal("160000"), idempotencyKey = "idem-create")
 
+        every { goodsOrderRepository.findByIdempotencyKey("idem-create") } returns null
         every { productRepository.findById(10L) } returns activeProduct
         every { stockRepository.findByProductId(10L) } returns stock
         every { stockRepository.save(any()) } returns stock
@@ -145,6 +150,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
                 val order = service.createPendingOrder(
                     userId = 1L,
                     items = listOf(OrderItemInput(productId = 10L, quantity = 2)),
+                    idempotencyKey = "idem-create",
                 )
                 order.totalAmount.compareTo(BigDecimal("160000")) shouldBe 0
                 verify(exactly = 1) { goodsOrderRepository.save(any()) }

@@ -2,6 +2,8 @@ package com.sportsapp.application.goods
 
 import com.sportsapp.domain.goods.CartDomainService
 import com.sportsapp.domain.goods.GoodsDomainService
+import com.sportsapp.domain.goods.GoodsOrder
+import com.sportsapp.domain.goods.GoodsOrderStatus
 import com.sportsapp.domain.payment.OrderType
 import com.sportsapp.domain.payment.Payment
 import com.sportsapp.domain.payment.PaymentDomainService
@@ -16,8 +18,12 @@ class CreateGoodsOrderUseCase(
     private val cartDomainService: CartDomainService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
+
     fun execute(command: CreateGoodsOrderCommand): GoodsOrderResponse {
-        val order = goodsDomainService.createPendingOrder(command.userId, command.items)
+        val order = goodsDomainService.createPendingOrder(command.userId, command.items, command.idempotencyKey)
+        if (order.status != GoodsOrderStatus.PENDING) {
+            return buildIdempotentResponse(order)
+        }
         val payment = paymentDomainService.create(
             userId = command.userId,
             idempotencyKey = command.idempotencyKey,
@@ -33,6 +39,18 @@ class CreateGoodsOrderUseCase(
                 orderId = order.id,
                 paymentId = payment.id,
                 paymentStatus = payment.status,
+                totalAmount = order.totalAmount,
+            )
+        )
+    }
+
+    private fun buildIdempotentResponse(order: GoodsOrder): GoodsOrderResponse {
+        val paymentStatusMap = order.paymentId?.let { paymentDomainService.findStatuses(listOf(it)) }
+        return GoodsOrderResponse.ofCreated(
+            OrderWithPayment(
+                orderId = order.id,
+                paymentId = order.paymentId,
+                paymentStatus = paymentStatusMap?.values?.firstOrNull(),
                 totalAmount = order.totalAmount,
             )
         )

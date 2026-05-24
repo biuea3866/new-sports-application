@@ -162,7 +162,7 @@ export default function SlotsPage() {
     try {
       if (modalState.mode === "create") {
         const input: CreateSlotInput = {
-          date: new Date(`${form.date}T00:00:00`).toISOString(),
+          date: new Date(`${form.date}T00:00:00Z`).toISOString(),
           timeRange: form.timeRange.trim(),
           capacity: capacityNum,
         };
