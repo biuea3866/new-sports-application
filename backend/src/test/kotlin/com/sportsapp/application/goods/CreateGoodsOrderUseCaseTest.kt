@@ -23,10 +23,11 @@ import java.math.BigDecimal
 class CreateGoodsOrderUseCaseTest : BehaviorSpec({
 
     val baseItems = listOf(OrderItemInput(productId = 1L, quantity = 2))
+    val idempotencyKey = "idem-key-1"
 
     fun command(items: List<OrderItemInput> = baseItems, fromCart: Boolean = false) = CreateGoodsOrderCommand(
         userId = 1L,
-        idempotencyKey = "idem-key-1",
+        idempotencyKey = idempotencyKey,
         method = PaymentMethod.CREDIT_CARD,
         fromCart = fromCart,
         items = items,
@@ -62,7 +63,7 @@ class CreateGoodsOrderUseCaseTest : BehaviorSpec({
         val useCase = CreateGoodsOrderUseCase(goodsDomainService, paymentDomainService, cartDomainService)
         val emptyCommand = command(emptyList())
 
-        every { goodsDomainService.createPendingOrder(1L, emptyList()) } throws EmptyOrderException()
+        every { goodsDomainService.createPendingOrder(1L, emptyList(), idempotencyKey) } throws EmptyOrderException()
 
         When("execute를 호출하면") {
             Then("[U-01] EmptyOrderException이 발생한다") {
@@ -79,7 +80,7 @@ class CreateGoodsOrderUseCaseTest : BehaviorSpec({
         val inactiveItems = listOf(OrderItemInput(productId = 99L, quantity = 1))
         val inactiveCommand = command(inactiveItems)
 
-        every { goodsDomainService.createPendingOrder(1L, inactiveItems) } throws ProductInactiveException(99L)
+        every { goodsDomainService.createPendingOrder(1L, inactiveItems, idempotencyKey) } throws ProductInactiveException(99L)
 
         When("execute를 호출하면") {
             Then("[U-03] ProductInactiveException이 발생한다") {
@@ -98,11 +99,11 @@ class CreateGoodsOrderUseCaseTest : BehaviorSpec({
         val payment = buildPayment()
         val confirmedOrder = buildConfirmedOrder()
 
-        every { goodsDomainService.createPendingOrder(1L, baseItems) } returns pendingOrder
+        every { goodsDomainService.createPendingOrder(1L, baseItems, idempotencyKey) } returns pendingOrder
         every {
             paymentDomainService.create(
                 userId = 1L,
-                idempotencyKey = "idem-key-1",
+                idempotencyKey = idempotencyKey,
                 orderType = any(),
                 orderId = 1L,
                 method = PaymentMethod.CREDIT_CARD,
@@ -133,7 +134,7 @@ class CreateGoodsOrderUseCaseTest : BehaviorSpec({
         val pendingOrder = buildPendingOrder()
         val failedPayment = buildPayment(status = PaymentStatus.FAILED)
 
-        every { goodsDomainService.createPendingOrder(1L, baseItems) } returns pendingOrder
+        every { goodsDomainService.createPendingOrder(1L, baseItems, idempotencyKey) } returns pendingOrder
         every {
             paymentDomainService.create(any(), any(), any(), any(), any(), any(), any())
         } returns failedPayment
@@ -158,7 +159,7 @@ class CreateGoodsOrderUseCaseTest : BehaviorSpec({
         val payment = buildPayment()
         val confirmedOrder = buildConfirmedOrder()
 
-        every { goodsDomainService.createPendingOrder(1L, baseItems) } returns pendingOrder
+        every { goodsDomainService.createPendingOrder(1L, baseItems, idempotencyKey) } returns pendingOrder
         every {
             paymentDomainService.create(any(), any(), any(), any(), any(), any(), any())
         } returns payment
