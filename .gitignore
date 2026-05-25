@@ -56,6 +56,11 @@ mobile/coverage/
 .analysis/findings/
 .claire/
 
+# ===== ops 스크립트 산출물 =====
+scripts/ops/admin-click-baseline/results/
+# fixtures/*.log 는 dry-run 검증용이므로 *.log 패턴에서 예외 처리
+!scripts/ops/admin-click-baseline/fixtures/*.log
+
 # ===== Misc =====
 *.tsbuildinfo
 .npm/
