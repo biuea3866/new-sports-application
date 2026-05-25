@@ -15,11 +15,15 @@
 --
 -- expected 산정 방법:
 --   mcp_audit_logs WHERE tool_name = 'issueComplimentaryTicket' AND status_code = 200 의 COUNT(*)
+--   ※ T07 (Ticket nullable 전환) + v1.1 Complimentary 발급 코드 머지 이후에 비교 의미 발생.
+--      v1.1 코드 미배포 상태에서 zero_count > 0 이면 의도되지 않은 데이터 가능성 — BE+DBA 추가 분석 필수.
 --
--- [롤백 — 단계 2 코드 배포 전이라면 가능]
+-- [롤백 — 단계 2 코드 배포 전에만 가능. 상세 절차는 docs/migration/V25-rollback.md 참조]
 -- UPDATE tickets SET ticket_order_id = 0 WHERE ticket_order_id IS NULL;
 -- ALTER TABLE tickets MODIFY COLUMN ticket_order_id BIGINT NOT NULL COMMENT '티켓 주문 ID (NULL = 무료 증정 티켓)';
--- 단 단계 2 코드 배포 후에는 신규 NULL row가 추가될 수 있어 backfill 추가 필요.
+--
+-- ※ 단계 2 배포 후 발생한 NULL row 는 0L sentinel 로 되돌릴 수 없습니다 (sentinel 재생성).
+--    soft-delete 또는 별도 정책 결정 필요 — 단계 2 배포 후에는 forward-only 로 간주.
 
 -- 1. 컬럼 NOT NULL → NULL 전환
 --    COMMENT: NULL = 무료 증정(complimentary) 티켓, NOT NULL = 정상 주문 티켓
