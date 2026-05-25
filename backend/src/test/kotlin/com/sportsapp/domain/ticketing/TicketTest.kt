@@ -62,4 +62,37 @@ class TicketTest : BehaviorSpec({
             }
         }
     }
+
+    Given("[U-01] Ticket.issueComplimentary 팩토리 메서드") {
+        When("issueComplimentary(seatId)를 호출하면") {
+            val ticket = Ticket.issueComplimentary(seatId = 300L)
+
+            Then("[U-01] ticketOrderId 가 null 이다") {
+                ticket.ticketOrderId shouldBe null
+            }
+
+            Then("[U-01] seatId 와 status 가 올바르게 설정된다") {
+                ticket.seatId shouldBe 300L
+                ticket.status shouldBe TicketStatus.ISSUED
+            }
+
+            Then("[U-01] isComplimentary 가 true 를 반환한다") {
+                ticket.isComplimentary shouldBe true
+            }
+        }
+    }
+
+    Given("[U-02] Ticket.issue 팩토리 메서드 — 정상 주문 발권 경로") {
+        When("issue(ticketOrderId = 42, seatId)를 호출하면") {
+            val ticket = Ticket.issue(ticketOrderId = 42L, seatId = 400L)
+
+            Then("[U-02] ticketOrderId 가 42 로 보존된다") {
+                ticket.ticketOrderId shouldBe 42L
+            }
+
+            Then("[U-02] isComplimentary 가 false 를 반환한다") {
+                ticket.isComplimentary shouldBe false
+            }
+        }
+    }
 })
