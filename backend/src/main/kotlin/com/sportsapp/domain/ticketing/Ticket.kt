@@ -14,8 +14,8 @@ import java.util.UUID
 @Entity
 @Table(name = "tickets")
 class Ticket(
-    @Column(name = "ticket_order_id", nullable = false)
-    val ticketOrderId: Long,
+    @Column(name = "ticket_order_id", nullable = true)
+    val ticketOrderId: Long?,
 
     @Column(name = "seat_id", nullable = false)
     val seatId: Long,
@@ -33,6 +33,8 @@ class Ticket(
     @Column(name = "id")
     val id: Long = 0
 
+    val isComplimentary: Boolean get() = ticketOrderId == null
+
     fun revoke() {
         status.requireCanTransitTo(TicketStatus.REVOKED)
         status = TicketStatus.REVOKED
@@ -47,7 +49,7 @@ class Ticket(
         )
 
         fun issueComplimentary(seatId: Long): Ticket = Ticket(
-            ticketOrderId = 0L,
+            ticketOrderId = null,
             seatId = seatId,
             status = TicketStatus.ISSUED,
             code = generateCode(),
