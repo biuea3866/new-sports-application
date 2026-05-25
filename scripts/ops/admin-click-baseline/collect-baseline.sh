@@ -8,7 +8,6 @@
 # 환경변수:
 #   LOG_SOURCE           - nginx_local | datadog (필수)
 #   NGINX_LOG_PATH       - nginx_local 모드 시 로그 경로 (기본: /var/log/nginx/access.log)
-#   SPRING_LOG_PATH      - spring 모드 시 로그 경로 (기본: backend/logs/access.log)
 #   DATADOG_API_KEY      - datadog 모드 필수 (평문 커밋 금지)
 #   DATADOG_APP_KEY      - datadog 모드 필수 (평문 커밋 금지)
 #   DATADOG_SITE         - datadog 모드 (기본: datadoghq.com)
@@ -21,7 +20,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RESULTS_DIR="${SCRIPT_DIR}/results"
 LOG_SOURCE="${LOG_SOURCE:-nginx_local}"
 NGINX_LOG_PATH="${NGINX_LOG_PATH:-/var/log/nginx/access.log}"
-SPRING_LOG_PATH="${SPRING_LOG_PATH:-backend/logs/access.log}"
 DATADOG_SITE="${DATADOG_SITE:-datadoghq.com}"
 LOG_INDEX="${LOG_INDEX:-main}"
 
@@ -45,6 +43,20 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -z "${USERS_INPUT}" || -z "${START_DATE}" || -z "${END_DATE}" ]] && usage
+
+# ---------- 입력 검증 ----------
+if ! [[ "${START_DATE}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+  echo "오류: --start 는 YYYY-MM-DD 형식이어야 합니다 (입력: ${START_DATE})" >&2
+  exit 2
+fi
+if ! [[ "${END_DATE}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+  echo "오류: --end 는 YYYY-MM-DD 형식이어야 합니다 (입력: ${END_DATE})" >&2
+  exit 2
+fi
+if [[ "${START_DATE}" > "${END_DATE}" ]]; then
+  echo "오류: --start (${START_DATE}) 가 --end (${END_DATE}) 보다 늦습니다" >&2
+  exit 2
+fi
 
 # ---------- user_id 목록 로드 ----------
 load_user_ids() {
@@ -104,25 +116,35 @@ collect_nginx_local() {
   fi
 
   # GET /api/admin/* 요청 + 해당 user_id + 해당 날짜 필터
-  # \b(word boundary)는 macOS BSD grep에서 지원하지 않으므로 정확한 패턴 사용
+  # word boundary (macOS BSD grep -P 미지원 → 명시적 공백/경계 매칭):
+  #   앞: " user_id=" (공백 prefix) — related_user_id 같은 다른 필드 매칭 차단
+  #   뒤: user_id=42 뒤에 숫자 안 오기 — user_id=420 차단
   local matched
   matched=$(grep -h "${date_pattern}" "${log_files[@]}" 2>/dev/null \
     | grep '"GET /api/admin/' \
-    | grep "user_id=${user_id}" \
+    | grep " user_id=${user_id}" \
     | grep -v "user_id=${user_id}[0-9]" \
     || true)
 
+  # 0건 매칭 시 awk NR 사용 — grep -c || echo 0 패턴은 stdout 멀티라인 손상 위험
   local total_clicks
-  total_clicks=$(echo "${matched}" | grep -c '"GET /api/admin/' || echo 0)
+  if [[ -z "${matched}" ]]; then
+    total_clicks=0
+  else
+    total_clicks=$(echo "${matched}" | awk 'END {print NR}')
+  fi
 
   # macOS BSD grep은 -P 미지원 → -oE + 후처리로 경로 추출
   local distinct_paths
-  distinct_paths=$(echo "${matched}" \
-    | grep -oE '"GET /api/admin/[^?"[:space:]]+' \
-    | sed 's/"GET //' \
-    | sort -u \
-    | wc -l \
-    | tr -d ' ')
+  if [[ -z "${matched}" ]]; then
+    distinct_paths=0
+  else
+    distinct_paths=$(echo "${matched}" \
+      | grep -oE '"GET /api/admin/[^?"[:space:]]+' \
+      | sed 's/"GET //' \
+      | sort -u \
+      | awk 'END {print NR}')
+  fi
 
   echo "${total_clicks} ${distinct_paths}"
 }

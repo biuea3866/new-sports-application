@@ -70,9 +70,12 @@ echo "42" > /tmp/test_ids.csv
 
 ```csv
 user_id,date,total_clicks,distinct_paths
-42,2026-05-24,4,3
+42,2026-05-24,5,4
 99,2026-05-24,0,0
 ```
+
+> fixture (`fixtures/sample-access.log`) 로 dry-run 시 user_id=42 에 대해 위 1행이 생성됩니다.
+> total_clicks=5 / distinct_paths=4 — 정상 매칭. 다른 값이 나오면 word-boundary 또는 GET 필터 회귀.
 
 | 컬럼 | 설명 |
 |---|---|
@@ -93,7 +96,6 @@ user_id,date,total_clicks,distinct_paths
 |---|---|---|---|
 | `LOG_SOURCE` | ✅ | — | `nginx_local` 또는 `datadog` |
 | `NGINX_LOG_PATH` | — | `/var/log/nginx/access.log` | nginx_local 모드 로그 경로 |
-| `SPRING_LOG_PATH` | — | `backend/logs/access.log` | Spring 로그 경로 (예비) |
 | `DATADOG_API_KEY` | datadog 모드 필수 | — | Datadog API 키 |
 | `DATADOG_APP_KEY` | datadog 모드 필수 | — | Datadog App 키 |
 | `DATADOG_SITE` | — | `datadoghq.com` | Datadog 사이트 |
