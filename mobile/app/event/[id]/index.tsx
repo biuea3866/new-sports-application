@@ -1,19 +1,13 @@
 /**
- * 이벤트 상세 화면 — read-only
- * GET /events/{id} : 기본 정보 + 섹션별 좌석 수
- * 좌석 선택/발권은 후행 티켓에서 구현
+ * 이벤트 상세 화면
+ * GET /events/{id} : 기본 정보 + 섹션별 좌석 수 + 개별 좌석 목록
+ * 좌석 선택 후 order 화면으로 진입
  */
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEvent } from '../../../lib/useEvent';
-import type { SectionAvailability } from '../../../api/types';
+import type { SeatInfo, SectionAvailability } from '../../../api/types';
 
 function formatDate(iso: string): string {
   const date = new Date(iso);
@@ -42,10 +36,43 @@ interface SectionRowProps {
 
 function SectionRow({ section }: SectionRowProps) {
   return (
-    <View style={styles.sectionRow} accessible={true} accessibilityLabel={`${section.section} 구역 총 ${section.totalSeats}석`}>
+    <View
+      style={styles.sectionRow}
+      accessible={true}
+      accessibilityLabel={`${section.section} 구역 총 ${section.totalSeats}석`}
+    >
       <Text style={styles.sectionName}>{section.section}</Text>
       <Text style={styles.sectionSeats}>{section.totalSeats}석</Text>
     </View>
+  );
+}
+
+interface SeatItemProps {
+  seat: SeatInfo;
+  selected: boolean;
+  onToggle: (seatId: number) => void;
+}
+
+function SeatItem({ seat, selected, onToggle }: SeatItemProps) {
+  const isUnavailable = !seat.available;
+  return (
+    <Pressable
+      style={[
+        styles.seatItem,
+        selected && styles.seatItemSelected,
+        isUnavailable && styles.seatItemUnavailable,
+      ]}
+      accessible={true}
+      accessibilityRole="checkbox"
+      accessibilityLabel={`${seat.section}구역 ${seat.rowNo}열 ${seat.seatNo}번${isUnavailable ? ' 선점중' : ''}`}
+      accessibilityState={{ checked: selected, disabled: isUnavailable }}
+      disabled={isUnavailable}
+      onPress={() => onToggle(seat.id)}
+    >
+      <Text style={[styles.seatItemText, selected && styles.seatItemTextSelected, isUnavailable && styles.seatItemTextUnavailable]}>
+        {isUnavailable ? '선점중' : `${seat.section}-${seat.rowNo}-${seat.seatNo}`}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -53,6 +80,20 @@ export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const eventId = Number(id);
   const { data, isLoading, isError, refetch } = useEvent(eventId);
+  const [selectedSeatIds, setSelectedSeatIds] = useState<number[]>([]);
+
+  const toggleSeat = useCallback((seatId: number) => {
+    setSelectedSeatIds((prev) =>
+      prev.includes(seatId) ? prev.filter((s) => s !== seatId) : [...prev, seatId]
+    );
+  }, []);
+
+  const hasSeats = useMemo(() => (data?.seats?.length ?? 0) > 0, [data]);
+
+  const handleOrderPress = useCallback(() => {
+    if (selectedSeatIds.length === 0) return;
+    router.push(`/event/${eventId}/order?seatIds=${selectedSeatIds.join(',')}`);
+  }, [eventId, selectedSeatIds]);
 
   return (
     <View style={styles.container} accessible={false}>
@@ -136,6 +177,42 @@ export default function EventDetailScreen() {
                 <SectionRow key={section.section} section={section} />
               ))}
             </View>
+          )}
+
+          {/* 개별 좌석 선택 */}
+          {hasSeats && data.status === 'OPEN' && (
+            <>
+              <Text style={styles.sectionHeading} accessibilityRole="header">
+                좌석 선택
+              </Text>
+              <View style={styles.seatGrid} accessibilityLabel="좌석 목록">
+                {data.seats.map((seat) => (
+                  <SeatItem
+                    key={seat.id}
+                    seat={seat}
+                    selected={selectedSeatIds.includes(seat.id)}
+                    onToggle={toggleSeat}
+                  />
+                ))}
+              </View>
+              <Pressable
+                style={[
+                  styles.orderButton,
+                  selectedSeatIds.length === 0 && styles.orderButtonDisabled,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={`티켓 구매 ${selectedSeatIds.length > 0 ? `${selectedSeatIds.length}석 선택됨` : ''}`}
+                accessibilityState={{ disabled: selectedSeatIds.length === 0 }}
+                disabled={selectedSeatIds.length === 0}
+                onPress={handleOrderPress}
+              >
+                <Text style={styles.orderButtonText}>
+                  {selectedSeatIds.length > 0
+                    ? `티켓 구매 (${selectedSeatIds.length}석)`
+                    : '좌석을 선택하세요'}
+                </Text>
+              </Pressable>
+            </>
           )}
         </ScrollView>
       )}
@@ -263,5 +340,55 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     fontSize: 15,
     marginTop: 16,
+  },
+  seatGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 20,
+  },
+  seatItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: '#C7C7CC',
+    backgroundColor: '#FFFFFF',
+  },
+  seatItemSelected: {
+    borderColor: '#007AFF',
+    backgroundColor: '#E5F0FF',
+  },
+  seatItemText: {
+    fontSize: 13,
+    color: '#1C1C1E',
+    fontWeight: '500',
+  },
+  seatItemTextSelected: {
+    color: '#007AFF',
+    fontWeight: '700',
+  },
+  seatItemUnavailable: {
+    borderColor: '#E5E5EA',
+    backgroundColor: '#F2F2F7',
+    opacity: 0.5,
+  },
+  seatItemTextUnavailable: {
+    color: '#8E8E93',
+  },
+  orderButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  orderButtonDisabled: {
+    backgroundColor: '#C7C7CC',
+  },
+  orderButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

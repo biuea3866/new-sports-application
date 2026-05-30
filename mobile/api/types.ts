@@ -165,6 +165,15 @@ export interface SectionAvailability {
   totalSeats: number;
 }
 
+export interface SeatInfo {
+  id: number;
+  section: string;
+  rowNo: string;
+  seatNo: string;
+  price: string; // BigDecimal → string
+  available: boolean;
+}
+
 export interface EventDetailResponse {
   id: number;
   title: string;
@@ -172,6 +181,26 @@ export interface EventDetailResponse {
   startsAt: string; // ISO 8601
   status: EventStatus;
   sections: SectionAvailability[];
+  seats: SeatInfo[];
+}
+
+// --- TicketOrder ---
+export type TicketOrderStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED';
+
+export interface SelectSeatsResponse {
+  lockId: string;
+  expiresAt: string; // ISO 8601
+}
+
+export interface PurchaseTicketOrderRequest {
+  lockId: string;
+  method: PaymentMethod;
+  currency: string;
+}
+
+export interface TicketOrderResponse {
+  ticketOrderId: number;
+  status: TicketOrderStatus;
 }
 
 export interface ListEventsResponse {
@@ -316,12 +345,7 @@ export interface CreateGoodsOrderRequest {
 }
 
 // --- Notification ---
-export type NotificationType =
-  | 'BOOKING'
-  | 'PAYMENT'
-  | 'EVENT'
-  | 'SYSTEM'
-  | 'PROMOTION';
+export type NotificationType = 'BOOKING' | 'PAYMENT' | 'EVENT' | 'SYSTEM' | 'PROMOTION';
 
 export interface NotificationResponse {
   id: number;

@@ -6,11 +6,7 @@
  */
 import MockAdapter from 'axios-mock-adapter';
 import { createBeClient } from '../be-client';
-import type {
-  EventDetailResponse,
-  EventResponse,
-  ListEventsResponse,
-} from '../types';
+import type { EventDetailResponse, EventResponse, ListEventsResponse } from '../types';
 
 describe('Event API', () => {
   const client = createBeClient('http://localhost:8080');
@@ -43,6 +39,10 @@ describe('Event API', () => {
     sections: [
       { section: 'A', totalSeats: 100 },
       { section: 'B', totalSeats: 80 },
+    ],
+    seats: [
+      { id: 10, section: 'A', rowNo: '1', seatNo: '1', price: '30000', available: true },
+      { id: 11, section: 'A', rowNo: '1', seatNo: '2', price: '30000', available: false },
     ],
   };
 
