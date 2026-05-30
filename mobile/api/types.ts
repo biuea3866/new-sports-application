@@ -314,3 +314,38 @@ export interface GoodsOrderListResponse {
 export interface CreateGoodsOrderRequest {
   cartId: number;
 }
+
+// --- Payment History ---
+export type PaymentHistoryStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
+
+export type PaymentHistoryMethod =
+  | 'KAKAO'
+  | 'TOSS'
+  | 'NAVER'
+  | 'DANAL'
+  | 'CREDIT_CARD'
+  | 'BANK_TRANSFER';
+
+export type PaymentOrderType = 'BOOKING' | 'TICKETING' | 'GOODS';
+
+export interface PaymentHistoryItem {
+  id: number;
+  orderType: PaymentOrderType;
+  orderId: number;
+  method: PaymentHistoryMethod;
+  provider: string | null;
+  pgTransactionId: string | null;
+  amount: number;
+  currency: string;
+  status: PaymentHistoryStatus;
+  paidAt: string | null;
+  createdAt: string;
+}
+
+export interface PaymentHistoryListResponse {
+  content: PaymentHistoryItem[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+}

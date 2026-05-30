@@ -7,6 +7,7 @@
  * PaymentStatus: PENDING | COMPLETED | FAILED | REFUNDED
  */
 import { getBeClient } from './be-client';
+import type { PaymentHistoryListResponse } from './types';
 
 export type OrderType = 'BOOKING' | 'TICKETING' | 'GOODS';
 
@@ -41,5 +42,19 @@ export async function createPayment(
   const response = await client.post<PaymentResponse>('/payments', body, {
     headers: { 'Idempotency-Key': idempotencyKey },
   });
+  return response.data;
+}
+
+export async function getMyPayments(
+  page = 0,
+  size = 20,
+  status?: PaymentStatus
+): Promise<PaymentHistoryListResponse> {
+  const client = getBeClient();
+  const params: Record<string, string | number> = { page, size };
+  if (status !== undefined) {
+    params.status = status;
+  }
+  const response = await client.get<PaymentHistoryListResponse>('/payments/me', { params });
   return response.data;
 }

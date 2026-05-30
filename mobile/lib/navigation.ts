@@ -43,7 +43,7 @@ export const ROUTES = {
 
   // 결제
   payment: {
-    list: '/payment',
+    list: '/payment/history',
     new: '/payment/new',
     detail: (id: string) => `/payment/${id}` as const,
   },
