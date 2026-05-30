@@ -170,33 +170,30 @@ export const AdminUserSchema = z.object({
 
 export const AdminUserPageSchema = PageSchema(AdminUserSchema);
 
-// ─── Payment ─────────────────────────────────────────────────────────────────
 
-export const PaymentStatusSchema = z.enum(["PENDING", "COMPLETED", "FAILED", "REFUNDED"]);
-export const PaymentMethodSchema = z.enum([
-  "CREDIT_CARD",
-  "BANK_TRANSFER",
-  "KAKAO",
-  "TOSS",
-  "NAVER",
-  "DANAL",
-]);
-export const OrderTypeSchema = z.enum(["BOOKING", "TICKETING", "GOODS"]);
+// ─── Notification ────────────────────────────────────────────────────────────
 
-export const PaymentSummarySchema = z.object({
+const NotificationChannelSchema = z.enum(["IN_APP", "EMAIL", "SMS", "PUSH"]);
+const NotificationStatusSchema = z.enum(["QUEUED", "SENT", "FAILED", "DELIVERED"]);
+
+export const NotificationSchema = z.object({
   id: z.number().int().positive(),
-  orderType: OrderTypeSchema,
-  orderId: z.number().int().positive(),
-  method: PaymentMethodSchema,
-  amount: z.number(),
-  status: PaymentStatusSchema,
+  userId: z.number().int().positive(),
+  channel: NotificationChannelSchema,
+  templateId: z.string(),
+  status: NotificationStatusSchema,
+  sentAt: z.string().nullable(),
+  readAt: z.string().nullable(),
   createdAt: z.string(),
-  paidAt: z.string().nullable(),
-  pgTransactionId: z.string().nullable().optional(),
-  provider: z.string().nullable().optional(),
 });
 
-export const PaymentSummaryPageSchema = PageSchema(PaymentSummarySchema);
+export const NotificationPageSchema = z.object({
+  content: z.array(NotificationSchema),
+  totalElements: z.number().int().nonnegative(),
+  totalPages: z.number().int().nonnegative(),
+  page: z.number().int().nonnegative(),
+  size: z.number().int().positive(),
+});
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
