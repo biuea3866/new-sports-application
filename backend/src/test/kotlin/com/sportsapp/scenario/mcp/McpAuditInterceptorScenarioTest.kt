@@ -77,7 +77,6 @@ class McpAuditInterceptorScenarioTest(
             .also { it.start() }
 
         val mongoContainer: MongoDBContainer = MongoDBContainer("mongo:7.0")
-            .withReuse(true)
             .also { it.start() }
 
         @Container
