@@ -122,7 +122,7 @@ class GoodsOrderFromCartScenarioTest(
                     payment.get().idempotencyKey shouldBe idempotencyKey
 
                     // Cart 비워짐 확인 (soft-delete: deletedAt IS NULL 기준)
-                    val cart = cartJpaRepository.findByUserId(userId)
+                    val cart = cartJpaRepository.findByUserIdAndDeletedAtIsNull(userId)
                     cart shouldNotBe null
                     val activeCartId = requireNotNull(cart).id
                     val activeItems = cartItemJpaRepository.findAllByCartIdAndDeletedAtIsNull(activeCartId)
