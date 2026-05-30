@@ -7,6 +7,7 @@ import com.sportsapp.domain.goods.QGoodsOrder.goodsOrder
 import com.sportsapp.domain.goods.QGoodsOrderItem.goodsOrderItem
 import com.sportsapp.domain.goods.QProduct.product
 import java.math.BigDecimal
+import java.time.ZonedDateTime
 import org.springframework.stereotype.Repository
 
 @Repository
@@ -38,6 +39,30 @@ class GoodsOrderCustomRepositoryImpl(
                     .where(
                         product.ownerId.eq(ownerUserId),
                         goodsOrder.status.eq(GoodsOrderStatus.CONFIRMED),
+                        goodsOrder.deletedAt.isNull,
+                        goodsOrderItem.deletedAt.isNull,
+                        product.deletedAt.isNull,
+                    )
+                    .fetchOne()
+        return result ?: BigDecimal.ZERO
+    }
+
+    override fun sumRevenueByProductOwnerUserIdAndDateRange(
+        ownerUserId: Long,
+        from: ZonedDateTime,
+        to: ZonedDateTime,
+    ): BigDecimal {
+        val result = queryFactory.select(
+            goodsOrderItem.unitPrice.multiply(goodsOrderItem.quantity.castToNum(BigDecimal::class.java)).sum()
+        )
+                    .from(goodsOrderItem)
+                    .join(goodsOrder).on(goodsOrder.id.eq(goodsOrderItem.orderId))
+                    .join(product).on(product.id.eq(goodsOrderItem.productId))
+                    .where(
+                        product.ownerId.eq(ownerUserId),
+                        goodsOrder.status.eq(GoodsOrderStatus.CONFIRMED),
+                        goodsOrder.createdAt.goe(from),
+                        goodsOrder.createdAt.loe(to),
                         goodsOrder.deletedAt.isNull,
                         goodsOrderItem.deletedAt.isNull,
                         product.deletedAt.isNull,

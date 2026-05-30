@@ -4,7 +4,9 @@ import com.sportsapp.domain.common.DistributedLock
 import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.Duration
+import java.time.ZonedDateTime
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
@@ -13,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
 
+private const val TOP_FACILITY_LIMIT = 5
 private val LOCK_TTL = Duration.ofSeconds(10)
 private val LOCK_WAIT_TIMEOUT = Duration.ofSeconds(5)
 private val LOCK_RETRY_INTERVAL = Duration.ofMillis(50)
@@ -100,6 +103,37 @@ class BookingDomainService(
 
     fun findMyBookings(userId: Long, status: BookingStatus?, pageable: Pageable): Page<Booking> =
         bookingRepository.findPageByUserId(userId, status, pageable)
+
+    /**
+     * 시설 KPI를 집계합니다.
+     *
+     * **노쇼율 산정 기준**: 현재 스키마에 NO_SHOW 전용 상태가 없으므로
+     * REFUNDED(결제 완료 후 환불된 예약)를 노쇼 proxy로 사용합니다.
+     * 향후 NO_SHOW 상태가 추가되면 [countRefundedByOwnerUserIdAndDateRange] 호출을 대체해야 합니다.
+     */
+    fun aggregateFacilityKpi(ownerUserId: Long, from: ZonedDateTime, to: ZonedDateTime): FacilityKpiSummary {
+        val confirmedCount = bookingRepository.countConfirmedByOwnerUserIdAndDateRange(ownerUserId, from, to)
+        val totalCapacity = bookingRepository.sumSlotCapacityByOwnerUserIdAndDateRange(ownerUserId, from, to)
+        val noShowCount = bookingRepository.countRefundedByOwnerUserIdAndDateRange(ownerUserId, from, to)
+        val topFacilityIds = bookingRepository.findTopFacilityIdsByOwnerUserIdAndDateRange(ownerUserId, from, to, TOP_FACILITY_LIMIT)
+
+        val utilizationRate = if (totalCapacity > 0) {
+            BigDecimal(confirmedCount).multiply(BigDecimal(100))
+                .divide(BigDecimal(totalCapacity), 2, RoundingMode.HALF_UP)
+        } else BigDecimal.ZERO
+
+        val totalBookings = confirmedCount + noShowCount
+        val noShowRate = if (totalBookings > 0) {
+            BigDecimal(noShowCount).multiply(BigDecimal(100))
+                .divide(BigDecimal(totalBookings), 2, RoundingMode.HALF_UP)
+        } else BigDecimal.ZERO
+
+        return FacilityKpiSummary(
+            utilizationRate = utilizationRate,
+            noShowRate = noShowRate,
+            topFacilityIds = topFacilityIds,
+        )
+    }
 
 
     fun getBooking(requesterId: Long, bookingId: Long): Booking {

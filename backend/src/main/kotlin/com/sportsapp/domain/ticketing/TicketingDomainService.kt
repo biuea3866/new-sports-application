@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.Duration
 import java.time.ZonedDateTime
 
@@ -193,6 +194,23 @@ class TicketingDomainService(
         event.requireOwnedBy(operatorUserId)
         val ticket = Ticket.issueComplimentary(seatId)
         return ticketRepository.save(ticket)
+    }
+
+    fun aggregateTicketKpi(ownerUserId: Long, from: ZonedDateTime, to: ZonedDateTime): TicketKpiSummary {
+        val summary = ticketOrderCustomRepository.aggregateTicketSales(ownerUserId, null, from, to)
+        val complimentaryCount = ticketOrderCustomRepository.countComplimentaryByOwnerUserIdAndDateRange(ownerUserId, from, to)
+
+        val totalCount = summary.totalTicketCount + summary.cancelledCount
+        val refundRate = if (totalCount > 0) {
+            BigDecimal(summary.cancelledCount).multiply(BigDecimal(100))
+                .divide(BigDecimal(totalCount), 2, RoundingMode.HALF_UP)
+        } else BigDecimal.ZERO
+
+        return TicketKpiSummary(
+            totalSoldCount = summary.totalTicketCount,
+            refundRate = refundRate,
+            complimentaryCount = complimentaryCount,
+        )
     }
 
     private fun parseLockId(lockId: String): List<Pair<Long, Long>> =
