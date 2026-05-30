@@ -48,4 +48,4 @@ data class NotificationPageResponse(
     }
 }
 
-data class UnreadCountResponse(val count: Long)
+data class UnreadCountResponse(val unreadCount: Long)
