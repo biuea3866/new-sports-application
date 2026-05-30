@@ -189,6 +189,12 @@ export const NotificationSchema = z.object({
 
 export const NotificationPageSchema = z.object({
   content: z.array(NotificationSchema),
+  totalElements: z.number().int().nonnegative(),
+  totalPages: z.number().int().nonnegative(),
+  page: z.number().int().nonnegative(),
+  size: z.number().int().positive(),
+});
+
 // ─── Booking ─────────────────────────────────────────────────────────────────
 
 const BookingStatusSchema = z.enum(["PENDING", "CONFIRMED", "CANCELLED", "EXPIRED"]);
@@ -268,17 +274,3 @@ export const DashboardSummarySchema = z.object({
   events: EventSummarySchema.nullable(),
   products: ProductSummarySchema.nullable(),
 });
-
-// ─── AdminUser ───────────────────────────────────────────────────────────────
-
-const UserStatusSchema = z.enum(["ACTIVE", "INACTIVE", "SUSPENDED"]);
-
-export const AdminUserSchema = z.object({
-  userId: z.number().int().positive(),
-  email: z.string().email(),
-  status: UserStatusSchema,
-  roleNames: z.array(z.string()),
-  joinedAt: z.string(),
-});
-
-export const AdminUserPageSchema = PageSchema(AdminUserSchema);
