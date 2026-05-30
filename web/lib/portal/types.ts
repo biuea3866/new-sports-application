@@ -144,6 +144,94 @@ export interface RestoreStockInput {
   quantity: number;
 }
 
+// ─── Payment ─────────────────────────────────────────────────────────────────
+
+export type PaymentStatus = "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED";
+export type PaymentMethod = "CREDIT_CARD" | "BANK_TRANSFER" | "VIRTUAL_ACCOUNT" | "MOBILE_PAY";
+export type OrderType = "BOOKING" | "TICKETING" | "GOODS";
+
+export interface PaymentResponse {
+  id: number;
+  orderType: OrderType;
+  orderId: number;
+  method: PaymentMethod;
+  amount: string;
+  status: PaymentStatus;
+  createdAt: string;
+  paidAt: string | null;
+}
+
+// ─── User ─────────────────────────────────────────────────────────────────────
+
+export type UserStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
+
+export interface AdminUser {
+  userId: number;
+  email: string;
+  status: UserStatus;
+  roleNames: string[];
+  joinedAt: string;
+}
+
+export interface ListUsersParams {
+  emailKeyword?: string;
+  roleName?: string;
+  page?: number;
+  size?: number;
+}
+
+// ─── Notification ─────────────────────────────────────────────────────────────
+
+export type NotificationChannel = "IN_APP" | "PUSH" | "EMAIL" | "SMS";
+export type NotificationStatus = "QUEUED" | "SENT" | "FAILED";
+
+export interface SendNotificationInput {
+  userId: number;
+  channel: NotificationChannel;
+  templateId: string;
+  payload?: Record<string, unknown>;
+}
+
+export interface NotificationResult {
+  id: number;
+  userId: number;
+  channel: NotificationChannel;
+  templateId: string;
+  status: NotificationStatus;
+  sentAt: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
+// ─── Facility Import ──────────────────────────────────────────────────────────
+
+export interface LegacyRowInput {
+  legacyId: string;
+  name: string;
+  gu: string;
+  type: string;
+  address: string;
+  ycode: string;
+  xcode: string;
+  parking: boolean;
+  tel: string;
+  homePage: string;
+  eduYn: boolean;
+  extraFields?: Record<string, string>;
+}
+
+export interface ImportFacilitiesInput {
+  rows: LegacyRowInput[];
+  dryRun?: boolean;
+}
+
+export interface ImportFacilitiesResult {
+  insertedCount: number;
+  updatedCount: number;
+  skippedCount: number;
+  dryRun: boolean;
+}
+
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
 export interface FacilitySummary {
