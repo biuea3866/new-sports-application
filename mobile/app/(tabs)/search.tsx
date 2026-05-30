@@ -57,7 +57,9 @@ export default function SearchScreen() {
           <Text style={styles.weatherText}>
             {slot.temperature != null ? `${slot.temperature}℃` : '-'}
             {slot.sky ? `  ${SKY_LABEL[slot.sky] ?? slot.sky}` : ''}
-            {slot.precipitationProbability != null ? `  강수 ${slot.precipitationProbability}%` : ''}
+            {slot.precipitationProbability != null
+              ? `  강수 ${slot.precipitationProbability}%`
+              : ''}
           </Text>
         ) : (
           <Text style={styles.weatherText}>날씨 정보 없음</Text>
