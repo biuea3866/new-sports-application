@@ -45,8 +45,8 @@ app.post('/pg/:provider/ready', requireProvider, (req, res) => {
   const { provider } = req.params;
   const { partner_order_id, partner_user_id, item_name, amount, return_url, fail_url } = req.body;
 
-  if (!partner_order_id || !amount) {
-    return res.status(400).json({ error: 'partner_order_id and amount are required' });
+  if (!partner_order_id || !amount || Number(amount) <= 0) {
+    return res.status(400).json({ error: 'partner_order_id and amount(>0) are required' });
   }
 
   const tid = `MOCK_${provider.toUpperCase()}_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
