@@ -11,6 +11,8 @@ interface FormFields {
   venue: string;
   startsAt: string;
   seatsText: string;
+  price: string;
+  section: string;
 }
 
 interface FieldErrors {
@@ -18,6 +20,7 @@ interface FieldErrors {
   venue?: string;
   startsAt?: string;
   seats?: string;
+  price?: string;
   _form?: string;
 }
 
@@ -37,6 +40,8 @@ export default function EventCreateForm() {
     venue: "",
     startsAt: "",
     seatsText: "",
+    price: "",
+    section: "GENERAL",
   });
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,6 +59,8 @@ export default function EventCreateForm() {
       venue: fields.venue,
       startsAt: startsAtIso,
       seats,
+      price: Number(fields.price),
+      section: fields.section || "GENERAL",
     });
 
     if (parsed.success) {
@@ -67,6 +74,7 @@ export default function EventCreateForm() {
       venue: fieldErrors["venue"]?.[0],
       startsAt: fieldErrors["startsAt"]?.[0],
       seats: fieldErrors["seats"]?.[0],
+      price: fieldErrors["price"]?.[0],
     });
     return false;
   }
@@ -88,6 +96,8 @@ export default function EventCreateForm() {
           venue: fields.venue,
           startsAt: new Date(fields.startsAt).toISOString(),
           seats,
+          price: Number(fields.price),
+          section: fields.section || "GENERAL",
         }),
       });
 
@@ -223,6 +233,44 @@ export default function EventCreateForm() {
               {seatCountOver && " — 500개를 초과했습니다"}
             </p>
           </div>
+        </div>
+
+        <div>
+          <label htmlFor="event-price" className="block text-sm font-medium mb-1">
+            좌석 가격 <span aria-hidden="true" className="text-destructive">*</span>
+          </label>
+          <p className="text-xs text-muted-foreground mb-2">
+            모든 좌석에 동일하게 적용됩니다. (원)
+          </p>
+          <Input
+            id="event-price"
+            type="number"
+            min="1"
+            value={fields.price}
+            onChange={(e) => setField("price", e.target.value)}
+            placeholder="30000"
+            aria-required="true"
+            aria-describedby={errors.price !== undefined ? "event-price-error" : undefined}
+            aria-invalid={errors.price !== undefined}
+          />
+          {errors.price !== undefined && (
+            <p id="event-price-error" className="text-xs text-destructive mt-1" role="alert">
+              {errors.price}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label htmlFor="event-section" className="block text-sm font-medium mb-1">
+            섹션
+          </label>
+          <Input
+            id="event-section"
+            type="text"
+            value={fields.section}
+            onChange={(e) => setField("section", e.target.value)}
+            placeholder="GENERAL"
+          />
         </div>
       </div>
 
