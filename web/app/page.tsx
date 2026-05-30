@@ -10,6 +10,23 @@ export default function Home() {
         </p>
 
         <section
+          aria-label="운영자 포털"
+          className="rounded-lg border border-gray-200 p-6 text-left space-y-3"
+        >
+          <h2 className="text-lg font-semibold">운영자 포털 (데모)</h2>
+          <p className="text-sm text-gray-500">
+            로컬 데모용 자동 로그인입니다. 아래 버튼을 누르면 demo 운영자 계정으로 로그인해 포털
+            대시보드로 이동합니다.
+          </p>
+          <a
+            href="/dev-login"
+            className="inline-block rounded-md bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            포털 들어가기 (데모 로그인)
+          </a>
+        </section>
+
+        <section
           aria-label="헬스 체크"
           className="rounded-lg border border-gray-200 p-6 text-left space-y-2"
         >

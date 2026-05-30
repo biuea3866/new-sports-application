@@ -32,8 +32,8 @@ function FacilitySection({ data }: { data: NonNullable<DashboardSummary["facilit
         시설 / 슬롯
       </h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <StatCard label="내 시설 수" value={data.totalFacilities} unit="개" />
-        <StatCard label="전체 슬롯 수" value={data.totalSlots} unit="개" />
+        <StatCard label="내 시설 수" value={data.count} unit="개" />
+        <StatCard label="오늘 활성 슬롯" value={data.activeSlotsToday} unit="개" />
       </div>
     </section>
   );
@@ -46,9 +46,11 @@ function EventSection({ data }: { data: NonNullable<DashboardSummary["events"]> 
         경기
       </h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <StatCard label="전체 경기 수" value={data.totalEvents} unit="건" />
-        <StatCard label="예정" value={data.scheduledEvents} unit="건" />
-        <StatCard label="오픈" value={data.openEvents} unit="건" />
+        <StatCard label="예정" value={data.scheduled} unit="건" />
+        <StatCard label="오픈" value={data.open} unit="건" />
+        <StatCard label="종료" value={data.closed} unit="건" />
+        <StatCard label="전체 좌석" value={data.totalSeats} unit="석" />
+        <StatCard label="판매 좌석" value={data.soldSeats} unit="석" />
       </div>
     </section>
   );
@@ -61,9 +63,8 @@ function ProductSection({ data }: { data: NonNullable<DashboardSummary["products
         상품
       </h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <StatCard label="전체 상품 수" value={data.totalProducts} unit="개" />
-        <StatCard label="판매 중" value={data.activeProducts} unit="개" />
-        <StatCard label="품절" value={data.outOfStockProducts} unit="개" />
+        <StatCard label="판매 중" value={data.active} unit="개" />
+        <StatCard label="품절" value={data.outOfStock} unit="개" />
       </div>
     </section>
   );
