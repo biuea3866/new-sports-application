@@ -27,5 +27,16 @@ services:
       mc mb --ignore-existing local/sports-app;
       "
 
+  mock-pg:
+    build:
+      context: ./mock-pg
+      dockerfile: Dockerfile
+    ports:
+      - "9090:9090"
+    environment:
+      PORT: 9090
+      BE_WEBHOOK_URL: ${BE_WEBHOOK_URL:-http://host.docker.internal:8080/payments/webhook}
+    restart: unless-stopped
+
 volumes:
   minio-data:
