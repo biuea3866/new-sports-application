@@ -170,6 +170,30 @@ export const AdminUserSchema = z.object({
 
 export const AdminUserPageSchema = PageSchema(AdminUserSchema);
 
+// ─── Notification ────────────────────────────────────────────────────────────
+
+const NotificationChannelSchema = z.enum(["IN_APP", "EMAIL", "SMS", "PUSH"]);
+const NotificationStatusSchema = z.enum(["QUEUED", "SENT", "FAILED", "DELIVERED"]);
+
+export const NotificationSchema = z.object({
+  id: z.number().int().positive(),
+  userId: z.number().int().positive(),
+  channel: NotificationChannelSchema,
+  templateId: z.string(),
+  status: NotificationStatusSchema,
+  sentAt: z.string().nullable(),
+  readAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+export const NotificationPageSchema = z.object({
+  content: z.array(NotificationSchema),
+  totalElements: z.number().int().nonnegative(),
+  totalPages: z.number().int().nonnegative(),
+  page: z.number().int().nonnegative(),
+  size: z.number().int().positive(),
+});
+
 // ─── Payment ─────────────────────────────────────────────────────────────────
 
 export const PaymentStatusSchema = z.enum(["PENDING", "COMPLETED", "FAILED", "REFUNDED"]);

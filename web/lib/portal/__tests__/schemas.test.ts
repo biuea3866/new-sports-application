@@ -15,6 +15,8 @@ import {
   CreateEventInputSchema,
   CreateProductInputSchema,
   RestoreStockInputSchema,
+  NotificationSchema,
+  NotificationPageSchema,
   PaymentSummarySchema,
   PaymentSummaryPageSchema,
 } from "../schemas";
@@ -362,6 +364,69 @@ describe("입력 스키마 검증", () => {
 
     it("quantity 음수이면 실패한다", () => {
       expect(RestoreStockInputSchema.safeParse({ quantity: -5 }).success).toBe(false);
+    });
+  });
+});
+
+describe("[U-02] NotificationSchema 검증", () => {
+  const baseNotification = {
+    id: 1,
+    userId: 10,
+    channel: "IN_APP",
+    templateId: "booking.confirmed",
+    status: "SENT",
+    sentAt: "2026-05-30T09:00:00Z",
+    readAt: null,
+    createdAt: "2026-05-30T09:00:00Z",
+  };
+
+  describe("NotificationSchema", () => {
+    it("유효한 Notification 응답을 파싱한다", () => {
+      expect(NotificationSchema.safeParse(baseNotification).success).toBe(true);
+    });
+
+    it("readAt이 null인 미읽음 알림을 파싱한다", () => {
+      const data = { ...baseNotification, readAt: null };
+      expect(NotificationSchema.safeParse(data).success).toBe(true);
+    });
+
+    it("readAt이 있는 읽음 알림을 파싱한다", () => {
+      const data = { ...baseNotification, readAt: "2026-05-30T10:00:00Z" };
+      expect(NotificationSchema.safeParse(data).success).toBe(true);
+    });
+
+    it("channel이 유효하지 않으면 파싱에 실패한다", () => {
+      const data = { ...baseNotification, channel: "UNKNOWN" };
+      expect(NotificationSchema.safeParse(data).success).toBe(false);
+    });
+
+    it("status가 유효하지 않으면 파싱에 실패한다", () => {
+      const data = { ...baseNotification, status: "READ" };
+      expect(NotificationSchema.safeParse(data).success).toBe(false);
+    });
+  });
+
+  describe("NotificationPageSchema", () => {
+    it("content 배열이 있는 페이지 응답을 파싱한다", () => {
+      const data = {
+        content: [baseNotification],
+        totalElements: 1,
+        totalPages: 1,
+        page: 0,
+        size: 20,
+      };
+      expect(NotificationPageSchema.safeParse(data).success).toBe(true);
+    });
+
+    it("content가 빈 배열인 페이지 응답을 파싱한다", () => {
+      const data = {
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        page: 0,
+        size: 20,
+      };
+      expect(NotificationPageSchema.safeParse(data).success).toBe(true);
     });
   });
 });
