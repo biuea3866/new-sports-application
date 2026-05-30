@@ -3,8 +3,12 @@ package com.sportsapp.infrastructure.persistence.mcp
 import com.querydsl.core.types.Projections
 import com.querydsl.jpa.impl.JPAQueryFactory
 import com.sportsapp.domain.mcp.DailyCallCount
+import com.sportsapp.domain.mcp.DailyUsageStat
+import com.sportsapp.domain.mcp.ErrorRateStat
 import com.sportsapp.domain.mcp.QMcpAuditLog.mcpAuditLog
 import com.sportsapp.domain.mcp.TokenCallStats
+import com.sportsapp.domain.mcp.TokenUsageStat
+import com.sportsapp.domain.mcp.ToolCallStat
 import jakarta.persistence.EntityManager
 import jakarta.persistence.PersistenceContext
 import java.time.ZonedDateTime
@@ -73,4 +77,188 @@ class McpAuditLogJpaRepositoryImpl : McpAuditLogQueryDslRepository {
                            )
                            .fetchOne() ?: 0L
     }
+
+    override fun findDailyUsageStats(
+        userId: Long,
+        from: ZonedDateTime,
+        to: ZonedDateTime,
+    ): List<DailyUsageStat> {
+        val tuples = queryFactory.select(
+            mcpAuditLog.calledAt.year(),
+            mcpAuditLog.calledAt.month(),
+            mcpAuditLog.calledAt.dayOfMonth(),
+            mcpAuditLog.toolName,
+            mcpAuditLog.id.count(),
+        )
+            .from(mcpAuditLog)
+            .where(
+                mcpAuditLog.userId.eq(userId),
+                mcpAuditLog.calledAt.goe(from),
+                mcpAuditLog.calledAt.lt(to),
+            )
+            .groupBy(
+                mcpAuditLog.calledAt.year(),
+                mcpAuditLog.calledAt.month(),
+                mcpAuditLog.calledAt.dayOfMonth(),
+                mcpAuditLog.toolName,
+            )
+            .orderBy(
+                mcpAuditLog.calledAt.year().asc(),
+                mcpAuditLog.calledAt.month().asc(),
+                mcpAuditLog.calledAt.dayOfMonth().asc(),
+            )
+            .fetch()
+        return tuples.map { toDailyUsageStat(it) }
+    }
+
+    private fun toDailyUsageStat(tuple: com.querydsl.core.Tuple): DailyUsageStat {
+        val year = requireNotNull(tuple.get(mcpAuditLog.calledAt.year()))
+        val month = requireNotNull(tuple.get(mcpAuditLog.calledAt.month()))
+        val day = requireNotNull(tuple.get(mcpAuditLog.calledAt.dayOfMonth()))
+        return DailyUsageStat(
+            date = "%04d-%02d-%02d".format(year, month, day),
+            toolName = requireNotNull(tuple.get(mcpAuditLog.toolName)),
+            callCount = tuple.get(mcpAuditLog.id.count()) ?: 0L,
+        )
+    }
+
+    override fun findToolCallStats(
+        userId: Long,
+        from: ZonedDateTime,
+        to: ZonedDateTime,
+    ): List<ToolCallStat> {
+        return queryFactory.select(
+            Projections.constructor(
+                ToolCallStat::class.java,
+                mcpAuditLog.toolName,
+                mcpAuditLog.id.count(),
+            )
+        )
+            .from(mcpAuditLog)
+            .where(
+                mcpAuditLog.userId.eq(userId),
+                mcpAuditLog.calledAt.goe(from),
+                mcpAuditLog.calledAt.lt(to),
+            )
+            .groupBy(mcpAuditLog.toolName)
+            .orderBy(mcpAuditLog.id.count().desc())
+            .fetch()
+    }
+
+    override fun findErrorRateStat(
+        userId: Long,
+        from: ZonedDateTime,
+        to: ZonedDateTime,
+    ): ErrorRateStat {
+        val totalCount = queryFactory.select(mcpAuditLog.id.count())
+                                     .from(mcpAuditLog)
+                                     .where(
+                                         mcpAuditLog.userId.eq(userId),
+                                         mcpAuditLog.calledAt.goe(from),
+                                         mcpAuditLog.calledAt.lt(to),
+                                     )
+                                     .fetchOne() ?: 0L
+
+        val errorCount = queryFactory.select(mcpAuditLog.id.count())
+                                     .from(mcpAuditLog)
+                                     .where(
+                                         mcpAuditLog.userId.eq(userId),
+                                         mcpAuditLog.calledAt.goe(from),
+                                         mcpAuditLog.calledAt.lt(to),
+                                         mcpAuditLog.statusCode.goe(400),
+                                     )
+                                     .fetchOne() ?: 0L
+
+        return ErrorRateStat(totalCount = totalCount, errorCount = errorCount)
+    }
+
+    override fun findLatencyMsByTool(
+        userId: Long,
+        from: ZonedDateTime,
+        to: ZonedDateTime,
+    ): Map<String, List<Int>> {
+        val tuples = queryFactory.select(
+            mcpAuditLog.toolName,
+            mcpAuditLog.latencyMs,
+        )
+            .from(mcpAuditLog)
+            .where(
+                mcpAuditLog.userId.eq(userId),
+                mcpAuditLog.calledAt.goe(from),
+                mcpAuditLog.calledAt.lt(to),
+            )
+            .fetch()
+
+        return tuples.groupBy(
+            keySelector = { requireNotNull(it.get(mcpAuditLog.toolName)) },
+            valueTransform = { it.get(mcpAuditLog.latencyMs) ?: 0 },
+        )
+    }
+
+    override fun findTokenUsageStats(
+        userId: Long,
+        from: ZonedDateTime,
+        to: ZonedDateTime,
+        limit: Int,
+    ): List<TokenUsageStat> {
+        val tuples = fetchTokenTuples(userId, from, to, limit)
+        val tokenIds = tuples.mapNotNull { it.get(mcpAuditLog.tokenId) }
+        if (tokenIds.isEmpty()) return emptyList()
+        val errorCountsByToken = fetchErrorCountsByToken(userId, from, to, tokenIds)
+        return tuples.mapNotNull { tuple ->
+            val tokenId = tuple.get(mcpAuditLog.tokenId) ?: return@mapNotNull null
+            TokenUsageStat(
+                tokenId = tokenId,
+                callCount = tuple.get(mcpAuditLog.id.count()) ?: 0L,
+                errorCount = errorCountsByToken.getOrDefault(tokenId, 0L),
+                lastCalledAt = tuple.get(mcpAuditLog.calledAt.max()),
+            )
+        }
+    }
+
+    private fun fetchTokenTuples(
+        userId: Long,
+        from: ZonedDateTime,
+        to: ZonedDateTime,
+        limit: Int,
+    ): List<com.querydsl.core.Tuple> = queryFactory.select(
+        mcpAuditLog.tokenId,
+        mcpAuditLog.id.count(),
+        mcpAuditLog.calledAt.max(),
+    )
+        .from(mcpAuditLog)
+        .where(
+            mcpAuditLog.userId.eq(userId),
+            mcpAuditLog.calledAt.goe(from),
+            mcpAuditLog.calledAt.lt(to),
+            mcpAuditLog.tokenId.isNotNull,
+        )
+        .groupBy(mcpAuditLog.tokenId)
+        .orderBy(mcpAuditLog.id.count().desc())
+        .limit(limit.toLong())
+        .fetch()
+
+    private fun fetchErrorCountsByToken(
+        userId: Long,
+        from: ZonedDateTime,
+        to: ZonedDateTime,
+        tokenIds: List<Long>,
+    ): Map<Long, Long> = queryFactory.select(
+        Projections.constructor(
+            TokenCallStats::class.java,
+            mcpAuditLog.tokenId,
+            mcpAuditLog.id.count(),
+        )
+    )
+        .from(mcpAuditLog)
+        .where(
+            mcpAuditLog.userId.eq(userId),
+            mcpAuditLog.calledAt.goe(from),
+            mcpAuditLog.calledAt.lt(to),
+            mcpAuditLog.tokenId.`in`(tokenIds),
+            mcpAuditLog.statusCode.goe(400),
+        )
+        .groupBy(mcpAuditLog.tokenId)
+        .fetch()
+        .associate { it.tokenId to it.callCount }
 }

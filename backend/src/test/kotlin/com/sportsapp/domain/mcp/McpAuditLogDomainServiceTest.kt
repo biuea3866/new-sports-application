@@ -13,7 +13,8 @@ import java.time.ZonedDateTime
 class McpAuditLogDomainServiceTest : BehaviorSpec({
 
     val mcpAuditLogRepository = mockk<McpAuditLogRepository>()
-    val service = McpAuditLogDomainService(mcpAuditLogRepository)
+    val mcpAuditLogCustomRepository = mockk<McpAuditLogCustomRepository>()
+    val service = McpAuditLogDomainService(mcpAuditLogRepository, mcpAuditLogCustomRepository)
 
     fun makeAuditLog(id: Long, userId: Long, calledAt: ZonedDateTime): McpAuditLog {
         val log = McpAuditLog(

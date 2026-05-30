@@ -11,7 +11,8 @@ import java.time.ZonedDateTime
 class McpAuditLogDomainServiceRecordTest : BehaviorSpec({
 
     val mcpAuditLogRepository = mockk<McpAuditLogRepository>()
-    val service = McpAuditLogDomainService(mcpAuditLogRepository)
+    val mcpAuditLogCustomRepository = mockk<McpAuditLogCustomRepository>()
+    val service = McpAuditLogDomainService(mcpAuditLogRepository, mcpAuditLogCustomRepository)
 
     Given("[U-01] 정상 tool 호출 정보가 담긴 McpAuditLog가 주어지면") {
         val calledAt = ZonedDateTime.now()
