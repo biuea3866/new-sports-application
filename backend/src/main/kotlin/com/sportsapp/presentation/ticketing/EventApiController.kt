@@ -1,5 +1,7 @@
 package com.sportsapp.presentation.ticketing
 
+import jakarta.validation.Valid
+
 import com.sportsapp.application.ticketing.EventDetailResponse
 import com.sportsapp.application.ticketing.EventResponse
 import com.sportsapp.application.ticketing.GetEventUseCase
@@ -62,7 +64,7 @@ class EventApiController(
     fun selectSeats(
         @PathVariable id: Long,
         @RequestHeader("X-User-Id") userId: Long,
-        @RequestBody request: SelectSeatsRequest,
+        @Valid @RequestBody request: SelectSeatsRequest,
     ): ResponseEntity<SelectSeatsResponse> {
         val command = SelectSeatsCommand(eventId = id, seatIds = request.seatIds, userId = userId)
         return ResponseEntity.ok(selectSeatsUseCase.execute(command))
@@ -72,7 +74,7 @@ class EventApiController(
     fun releaseSeats(
         @PathVariable id: Long,
         @RequestHeader("X-User-Id") userId: Long,
-        @RequestBody request: SelectSeatsRequest,
+        @Valid @RequestBody request: SelectSeatsRequest,
     ): ResponseEntity<Unit> {
         val command = ReleaseSeatsCommand(eventId = id, seatIds = request.seatIds, userId = userId)
         releaseSeatsUseCase.execute(command)
