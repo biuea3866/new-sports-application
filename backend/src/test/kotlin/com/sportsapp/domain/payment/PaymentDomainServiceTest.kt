@@ -20,6 +20,7 @@ class PaymentDomainServiceTest : BehaviorSpec({
         every { paymentRepository.save(any()) } answers { firstArg() }
         every { paymentGateway.requestPayment(any()) } returns PaymentGatewayResult(
             pgTransactionId = "txn-001",
+            provider = "card",
             approvedAt = ZonedDateTime.now(),
         )
 
@@ -83,7 +84,7 @@ class PaymentDomainServiceTest : BehaviorSpec({
             method = PaymentMethod.CREDIT_CARD,
             amount = BigDecimal("10000"),
             currency = "KRW",
-        ).also { it.markCompleted(ZonedDateTime.now()) }
+        ).also { it.markCompleted(ZonedDateTime.now(), "txn-idem-001", "card") }
         every { paymentRepository.findByIdempotencyKey(key) } returns existing
 
         When("create 를 호출하면") {
