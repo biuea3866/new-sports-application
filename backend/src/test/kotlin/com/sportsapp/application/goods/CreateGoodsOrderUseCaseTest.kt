@@ -158,7 +158,7 @@ class CreateGoodsOrderUseCaseTest : BehaviorSpec({
         val pendingOrder = buildPendingOrder()
         val unexpectedPayment = buildPayment(status = PaymentStatus.PENDING)
 
-        every { goodsDomainService.createPendingOrder(1L, baseItems) } returns pendingOrder
+        every { goodsDomainService.createPendingOrder(1L, baseItems, idempotencyKey) } returns pendingOrder
         every {
             paymentDomainService.create(any(), any(), any(), any(), any(), any(), any())
         } returns unexpectedPayment
