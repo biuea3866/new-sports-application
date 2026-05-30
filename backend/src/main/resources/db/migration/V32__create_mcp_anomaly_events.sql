@@ -1,0 +1,27 @@
+CREATE TABLE mcp_anomaly_events
+(
+    id                 BIGINT         NOT NULL AUTO_INCREMENT,
+    source_event_id    VARCHAR(36)    NOT NULL,
+    token_id           BIGINT         NOT NULL,
+    owner_user_id      BIGINT         NOT NULL,
+    detected_at        DATETIME(6)    NOT NULL,
+    current_hour_count BIGINT         NOT NULL,
+    baseline_average   DOUBLE         NOT NULL,
+    status             VARCHAR(32)    NOT NULL DEFAULT 'OPEN',
+    false_positive     TINYINT(1)     NOT NULL DEFAULT 0,
+    resolved_at        DATETIME(6)    NULL,
+    resolved_by        BIGINT         NULL,
+    note               VARCHAR(50)    NULL,
+    created_at         DATETIME(6)    NOT NULL,
+    created_by         BIGINT         NULL,
+    updated_at         DATETIME(6)    NOT NULL,
+    updated_by         BIGINT         NULL,
+    deleted_at         DATETIME(6)    NULL,
+    deleted_by         BIGINT         NULL,
+    PRIMARY KEY (id),
+    UNIQUE INDEX uq_mcp_anomaly_source_event (source_event_id),
+    INDEX idx_mcp_anomaly_events_owner_user_id_deleted_at (owner_user_id, deleted_at),
+    INDEX idx_mcp_anomaly_events_token_id (token_id),
+    INDEX idx_mcp_anomaly_events_detected_at (detected_at),
+    INDEX idx_mcp_anomaly_events_deleted_at (deleted_at)
+);
