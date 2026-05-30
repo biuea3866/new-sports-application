@@ -2,6 +2,7 @@ package com.sportsapp.presentation.facility
 
 import com.sportsapp.application.facility.FacilityCriteria
 import com.sportsapp.application.facility.FacilityResponse
+import com.sportsapp.application.facility.FindNearbyFacilitiesUseCase
 import com.sportsapp.application.facility.GetFacilityUseCase
 import com.sportsapp.application.facility.GetGuTypeStatsUseCase
 import com.sportsapp.application.facility.GuTypeCountResponse
@@ -22,7 +23,16 @@ class FacilityApiController(
     private val listFacilitiesUseCase: ListFacilitiesUseCase,
     private val getFacilityUseCase: GetFacilityUseCase,
     private val getGuTypeStatsUseCase: GetGuTypeStatsUseCase,
+    private val findNearbyFacilitiesUseCase: FindNearbyFacilitiesUseCase,
 ) {
+    @GetMapping("/near")
+    fun findNearby(
+        @RequestParam lat: Double,
+        @RequestParam lng: Double,
+        @RequestParam(defaultValue = "2000") radiusMeters: Double,
+    ): ResponseEntity<List<FacilityResponse>> =
+        ResponseEntity.ok(findNearbyFacilitiesUseCase.execute(lat, lng, radiusMeters))
+
     @GetMapping
     fun listFacilities(
         @RequestParam(required = false) gu: String?,

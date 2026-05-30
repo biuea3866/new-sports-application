@@ -175,6 +175,13 @@ class TicketingDomainService(
         eventRepository.save(event)
     }
 
+    fun deleteEvent(eventId: Long, deletedBy: Long) {
+        val event = eventRepository.findById(eventId)
+            ?: throw ResourceNotFoundException("Event", eventId)
+        event.requireDeletable()
+        eventRepository.softDelete(eventId, deletedBy)
+    }
+
     fun issueComplimentary(eventId: Long, seatId: Long, operatorUserId: Long): Ticket {
         val event = eventRepository.findById(eventId)
             ?: throw ResourceNotFoundException("Event", eventId)

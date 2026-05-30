@@ -1,0 +1,13 @@
+{
+  "name": "mock-data-go-kr",
+  "version": "1.0.0",
+  "description": "공공데이터포털 mock (전국공공체육시설 + 기상청 단기예보) — sports-application 로컬 개발용",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

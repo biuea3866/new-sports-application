@@ -56,6 +56,17 @@ spring:
         spring.json.trusted.packages: "com.sportsapp.*"
     producer:
       acks: all
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:false}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS:false}
 
 notification:
   templates:
@@ -101,6 +112,27 @@ storage:
       - image/jpeg
       - image/png
       - image/webp
+
+# 외부 Open API — 키가 있으면 실 host, 없으면 docker-compose mock host(localhost:910x).
+external:
+  geocoding:
+    base-url: ${EXTERNAL_GEOCODING_BASE_URL:http://localhost:9101}
+    api-key: ${KAKAO_REST_API_KEY:}
+  public-facility:
+    base-url: ${EXTERNAL_PUBLIC_FACILITY_BASE_URL:http://localhost:9102}
+    api-key: ${DATA_GO_KR_SERVICE_KEY:mock-service-key}
+  weather:
+    base-url: ${EXTERNAL_WEATHER_BASE_URL:http://localhost:9102}
+    api-key: ${DATA_GO_KR_SERVICE_KEY:mock-service-key}
+  push:
+    base-url: ${EXTERNAL_PUSH_BASE_URL:https://exp.host}
+    api-key: ${EXPO_ACCESS_TOKEN:}
+  sms:
+    base-url: ${EXTERNAL_SMS_BASE_URL:http://localhost:9103}
+    api-key: ${SOLAPI_API_KEY:mock-api-key}
+    from: ${SMS_SENDER_NUMBER:0700000000}
+  email:
+    from: ${MAIL_FROM:no-reply@sportsapp.local}
 
 spring:
   ai:

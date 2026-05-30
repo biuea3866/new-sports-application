@@ -14,6 +14,7 @@
 | [document-sync.md](./document-sync.md) | TDD 동기화 원칙 및 주의사항 (실행은 `doc-sync` skill) | impl-doc-sync, pipeline-runner |
 | [be-code-convention.md](./be-code-convention.md) | Kotlin/Spring BE 컨벤션 (Hexagonal + Rich Domain) | be-implementer, be-senior, be-tech-lead, pr-reviewer |
 | [pr-guide.md](./pr-guide.md) | 브랜치 네이밍, PR 제목/본문 템플릿, Hook 강제 (실행은 `pr-create` skill) | be-implementer, fe-implementer, code-reviewer |
+| [fe-external-api-via-was.md](./fe-external-api-via-was.md) | 외부 API는 backend WAS 경유, 프론트 직접 호출 금지 (Hook 강제) | fe-implementer, be-implementer, pr-reviewer |
 
 ## 참조 방식
 
