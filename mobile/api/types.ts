@@ -36,9 +36,6 @@ export interface MyProfileResponse {
 }
 
 // --- Product ---
-export type ProductCategory = string;
-export type ProductStatus = 'ACTIVE' | 'INACTIVE' | 'SOLD_OUT';
-
 export type ProductCategory = 'EQUIPMENT' | 'APPAREL' | 'FOOTWEAR' | 'ACCESSORY';
 export type ProductStatus = 'ACTIVE' | 'INACTIVE' | 'SOLD_OUT';
 
@@ -99,6 +96,24 @@ export interface CancelBookingRequest {
   reason?: string;
 }
 
+export interface CreateBookingRequest {
+  slotId: number;
+}
+
+export interface FacilitySlotResponse {
+  id: number;
+  facilityId: number;
+  date: string; // YYYY-MM-DD
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
+  capacity: number;
+  bookedCount: number;
+}
+
+export interface FacilitySlotsResponse {
+  slots: FacilitySlotResponse[];
+}
+
 // --- Facility ---
 export type FacilityType = 'INDOOR' | 'OUTDOOR' | 'MIXED';
 
@@ -119,6 +134,8 @@ export interface FacilityPageResponse {
   totalElements: number;
   totalPages: number;
   last: boolean;
+}
+
 // --- Event ---
 export type EventStatus = 'SCHEDULED' | 'OPEN' | 'CLOSED';
 
@@ -150,6 +167,8 @@ export interface ListEventsResponse {
   totalPages: number;
   number: number;
   size: number;
+}
+
 // --- Room / Message ---
 export type RoomType = 'DIRECT' | 'GROUP';
 
@@ -173,6 +192,9 @@ export interface ListMessagesResponse {
 }
 
 export interface SendMessageRequest {
+  content: string;
+}
+
 // --- Post ---
 export type PostType = string;
 
