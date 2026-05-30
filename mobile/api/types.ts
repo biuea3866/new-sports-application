@@ -236,3 +236,68 @@ export interface CreatePostRequest {
   title: string;
   content: string;
 }
+
+// --- Cart ---
+export interface CartItemResponse {
+  id: number;
+  productId: number;
+  productName: string;
+  productImageUrl: string;
+  unitPrice: string; // BigDecimal → string
+  quantity: number;
+  subtotal: string; // BigDecimal → string
+}
+
+export interface CartResponse {
+  id: number;
+  userId: number;
+  items: CartItemResponse[];
+  totalAmount: string; // BigDecimal → string
+}
+
+export interface AddCartItemRequest {
+  productId: number;
+  quantity: number;
+}
+
+export interface UpdateCartItemRequest {
+  quantity: number;
+}
+
+// --- GoodsOrder ---
+export type GoodsOrderStatus =
+  | 'PENDING'
+  | 'PAID'
+  | 'PREPARING'
+  | 'SHIPPED'
+  | 'DELIVERED'
+  | 'CANCELLED';
+
+export interface GoodsOrderItemResponse {
+  productId: number;
+  productName: string;
+  quantity: number;
+  unitPrice: string;
+  subtotal: string;
+}
+
+export interface GoodsOrderResponse {
+  id: number;
+  userId: number;
+  status: GoodsOrderStatus;
+  items: GoodsOrderItemResponse[];
+  totalAmount: string;
+  createdAt: string; // ISO 8601
+}
+
+export interface GoodsOrderListResponse {
+  content: GoodsOrderResponse[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+}
+
+export interface CreateGoodsOrderRequest {
+  cartId: number;
+}
