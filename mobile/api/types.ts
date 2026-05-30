@@ -129,4 +129,28 @@ export interface ListEventsResponse {
   totalPages: number;
   number: number;
   size: number;
+// --- Room / Message ---
+export type RoomType = 'DIRECT' | 'GROUP';
+
+export interface RoomResponse {
+  id: number;
+  type: RoomType;
+  name: string | null;
+}
+
+export interface MessageResponse {
+  id: number;
+  roomId: number;
+  senderId: number;
+  content: string;
+  sentAt: string; // ISO 8601
+}
+
+export interface ListMessagesResponse {
+  messages: MessageResponse[];
+  nextCursor: string | null;
+}
+
+export interface SendMessageRequest {
+  content: string;
 }
