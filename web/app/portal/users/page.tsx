@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { getB2BRoles } from "@/lib/server/auth";
+import Link from "next/link";
+import { getSessionInfo } from "@/lib/server/auth";
 import { listAdminUsers } from "@/lib/portal/adminUsers";
 import { PortalApiError } from "@/lib/portal/error";
 import type { AdminUser, Page } from "@/lib/portal/types";
@@ -50,8 +51,16 @@ function UserRow({ user }: UserRowProps) {
   });
 
   return (
-    <tr className="border-b last:border-0">
-      <td className="py-3 px-4 text-sm tabular-nums">{user.userId}</td>
+    <tr className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+      <td className="py-3 px-4 text-sm tabular-nums">
+        <Link
+          href={`/portal/users/${user.userId}`}
+          className="text-primary underline-offset-2 hover:underline"
+          aria-label={`회원 ${user.userId} 상세 보기`}
+        >
+          {user.userId}
+        </Link>
+      </td>
       <td className="py-3 px-4 text-sm">{user.email}</td>
       <td className="py-3 px-4">
         <StatusBadge status={user.status} />
@@ -92,8 +101,8 @@ interface UsersPageProps {
 }
 
 export default async function UsersPage({ searchParams }: UsersPageProps) {
-  const roles = getB2BRoles();
-  if (!roles.includes("ADMIN")) {
+  const session = getSessionInfo();
+  if (!session?.roles.includes("ADMIN")) {
     redirect("/portal");
   }
 

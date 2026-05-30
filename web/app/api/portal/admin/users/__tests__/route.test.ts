@@ -1,5 +1,5 @@
 /**
- * [S-01] ADMIN 권한 검증 — 비ADMIN 요청 시 403 반환
+ * [S-01] 비ADMIN 요청 시 403 반환
  * [S-02] ADMIN 권한 — BE에 회원 목록 요청을 forward한다
  * [S-03] BE 401 응답 시 401 + 사용자 친화 메시지를 반환한다
  * [S-04] BE 5xx 응답 시 500 + 사용자 친화 메시지를 반환한다
@@ -15,10 +15,10 @@ vi.mock("next/headers", () => ({
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
-// JWT 페이로드: { sub: 1, email: "admin@example.com", roles: ["ADMIN"] }
+// JWT 페이로드: { sub: 1, email: "admin@example.com", roles: ["ADMIN", "FACILITY_OWNER"] }
 const ADMIN_TOKEN =
   "eyJhbGciOiJIUzI1NiJ9." +
-  Buffer.from(JSON.stringify({ sub: 1, email: "admin@example.com", roles: ["ADMIN"] })).toString("base64url") +
+  Buffer.from(JSON.stringify({ sub: 1, email: "admin@example.com", roles: ["ADMIN", "FACILITY_OWNER"] })).toString("base64url") +
   ".signature";
 
 // JWT 페이로드: { sub: 2, email: "owner@example.com", roles: ["FACILITY_OWNER"] }
