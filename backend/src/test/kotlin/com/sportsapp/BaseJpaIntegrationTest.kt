@@ -20,7 +20,13 @@ import org.testcontainers.junit.jupiter.Container
         "org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration," +
         "org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration," +
         "org.springframework.boot.autoconfigure.data.mongo.MongoRepositoriesAutoConfiguration," +
-        "org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration",
+        "org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration," +
+        "org.springframework.ai.mcp.server.common.autoconfigure.McpServerAutoConfiguration," +
+        "org.springframework.ai.mcp.server.common.autoconfigure.McpServerObjectMapperAutoConfiguration," +
+        "org.springframework.ai.mcp.server.common.autoconfigure.ToolCallbackConverterAutoConfiguration," +
+        "org.springframework.ai.mcp.server.autoconfigure.McpServerSseWebMvcAutoConfiguration," +
+        "org.springframework.ai.mcp.server.autoconfigure.McpServerStreamableHttpWebMvcAutoConfiguration," +
+        "org.springframework.ai.mcp.server.autoconfigure.McpServerStatelessWebMvcAutoConfiguration",
 ])
 abstract class BaseJpaIntegrationTest : BehaviorSpec() {
 

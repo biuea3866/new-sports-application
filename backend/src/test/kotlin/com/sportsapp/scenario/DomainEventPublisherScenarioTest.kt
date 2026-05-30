@@ -62,7 +62,6 @@ class DomainEventPublisherScenarioTest : BehaviorSpec({
     }
 
     val kafkaContainer = KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.6.1"))
-        .withReuse(true)
 
     beforeSpec { kafkaContainer.start() }
 

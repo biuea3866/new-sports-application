@@ -14,7 +14,7 @@ class GoodsDomainService(
     private val popularProductsCache: PopularProductsCache,
     private val goodsOrderRepository: GoodsOrderRepository,
     private val goodsOrderItemRepository: GoodsOrderItemRepository,
-    private val cartDomainService: CartDomainService,
+    private val goodsOrderCustomRepository: GoodsOrderCustomRepository,
 ) {
     fun search(
         category: ProductCategory?,
@@ -55,13 +55,14 @@ class GoodsDomainService(
         popularProductsCache.invalidate(category)
     }
 
-    fun createPendingOrder(userId: Long, items: List<OrderItemInput>): GoodsOrder {
+    fun createPendingOrder(userId: Long, items: List<OrderItemInput>, idempotencyKey: String): GoodsOrder {
+        goodsOrderRepository.findByIdempotencyKey(idempotencyKey)?.let { return it }
         if (items.isEmpty()) throw EmptyOrderException()
         val products = items.associate { item -> item.productId to validateAndDeductStock(item) }
         val totalAmount = items.fold(BigDecimal.ZERO) { acc, item ->
             acc.add(products.getValue(item.productId).price.multiply(BigDecimal(item.quantity)))
         }
-        val order = goodsOrderRepository.save(GoodsOrder.create(userId, totalAmount))
+        val order = goodsOrderRepository.save(GoodsOrder.create(userId, totalAmount, idempotencyKey))
         val orderItems = items.map { item ->
             GoodsOrderItem(
                 orderId = order.id,
@@ -94,7 +95,7 @@ class GoodsDomainService(
         val items = goodsOrderItemRepository.findByOrderId(orderId)
         items.forEach { item ->
             val stock = stockRepository.findByProductId(item.productId)
-                ?: throw com.sportsapp.domain.common.exceptions.ResourceNotFoundException("Stock", item.productId)
+                ?: throw ResourceNotFoundException("Stock", item.productId)
             stock.restore(item.quantity)
             stockRepository.save(stock)
         }
@@ -138,6 +139,13 @@ class GoodsDomainService(
         )
         val stock = stockRepository.save(Stock(productId = product.id, quantity = 0))
         return product to stock
+    }
+
+    fun getProductWithStock(productId: Long): ProductWithStock {
+        val product = productRepository.findByIdAndDeletedAtIsNull(productId)
+            ?: throw ResourceNotFoundException("Product", productId)
+        val stockQuantity = stockRepository.findByProductId(productId)?.quantity ?: 0
+        return ProductWithStock(product = product, stockQuantity = stockQuantity)
     }
 
     fun getProductByIdAndOwnerId(productId: Long, ownerUserId: Long): ProductWithStock {
@@ -209,6 +217,12 @@ class GoodsDomainService(
         productEntity.requireOwnedBy(ownerUserId)
         restoreStock(productId, quantity)
     }
+
+    fun countConfirmedOrdersByOwnerUserId(ownerUserId: Long): Long =
+        goodsOrderCustomRepository.countConfirmedByProductOwnerUserId(ownerUserId)
+
+    fun sumRevenueByOwnerUserId(ownerUserId: Long): BigDecimal =
+        goodsOrderCustomRepository.sumRevenueByProductOwnerUserId(ownerUserId)
 
     companion object {
         private const val POPULAR_LIMIT = 20

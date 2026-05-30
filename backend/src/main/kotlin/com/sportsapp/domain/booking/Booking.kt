@@ -26,7 +26,10 @@ class Booking(
 ) : JpaAuditingBase() {
 
     @Transient
-    private val domainEvents: MutableList<DomainEvent> = mutableListOf()
+    private var _domainEvents: MutableList<DomainEvent>? = null
+
+    private val domainEvents: MutableList<DomainEvent>
+        get() = _domainEvents ?: mutableListOf<DomainEvent>().also { _domainEvents = it }
 
     fun pullDomainEvents(): List<DomainEvent> {
         val events = domainEvents.toList()
@@ -64,10 +67,38 @@ class Booking(
     }
 
     fun cancel() {
+        requireCancellable()
+        this.status = BookingStatus.CANCELLED
+    }
+
+    fun cancel(cancelledByUserId: Long, reason: String?) {
+        requireOwnedBy(cancelledByUserId)
+        requireCancellable()
+        this.status = BookingStatus.CANCELLED
+        registerEvent(BookingCancelledEvent(bookingId = id, cancelledByUserId = cancelledByUserId, reason = reason))
+    }
+
+    fun requireCancellable() {
         if (!status.canTransitTo(BookingStatus.CANCELLED)) {
             throw InvalidBookingStateException(status, BookingStatus.CANCELLED)
         }
-        this.status = BookingStatus.CANCELLED
+    }
+
+    fun requireOwnedBy(requestUserId: Long) {
+        if (userId != requestUserId) {
+            throw UnauthorizedBookingAccessException(id)
+        }
+    }
+
+    fun refund() {
+        if (!status.canTransitTo(BookingStatus.REFUNDED)) {
+            throw RefundPolicyViolationException(id, status)
+        }
+        this.status = BookingStatus.REFUNDED
+    }
+
+    fun requireHasPayment(): Long {
+        return paymentId ?: throw RefundBookingException(id, "결제 정보가 없는 예약은 환불할 수 없습니다.")
     }
 
     fun expire() {
@@ -76,6 +107,7 @@ class Booking(
         }
         this.status = BookingStatus.EXPIRED
     }
+
 
     companion object {
         fun createPending(

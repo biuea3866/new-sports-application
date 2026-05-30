@@ -167,6 +167,31 @@ class PurchaseTicketsUseCaseTest : BehaviorSpec({
         }
     }
 
+    Given("PG가 PaymentStatus.REFUNDED 같은 예상치 못한 상태를 반환하는 경우") {
+        val ticketingDomainService = mockk<TicketingDomainService>()
+        val paymentDomainService = mockk<PaymentDomainService>()
+        val useCase = PurchaseTicketsUseCase(ticketingDomainService, paymentDomainService)
+        val pendingOrder = buildPendingOrder()
+        val unexpectedPayment = buildPayment(PaymentStatus.REFUNDED)
+
+        every { ticketingDomainService.verifyLockOwner(lockId, userId) } returns Unit
+        every { ticketingDomainService.calculateAmount(lockId) } returns BigDecimal("50000")
+        every { ticketingDomainService.createPendingOrder(lockId, userId) } returns pendingOrder
+        every {
+            paymentDomainService.create(any(), any(), any(), any(), any(), any(), any())
+        } returns unexpectedPayment
+        justRun { ticketingDomainService.cancelOrder(100L) }
+
+        When("[U-05] 예상치 못한 PaymentStatus가 반환되면") {
+            useCase.execute(buildCommand())
+
+            Then("confirmOrder는 호출되지 않고 cancelOrder가 호출된다") {
+                verify(exactly = 0) { ticketingDomainService.confirmOrder(any(), any()) }
+                verify(exactly = 1) { ticketingDomainService.cancelOrder(100L) }
+            }
+        }
+    }
+
     Given("빈 lockId로 PurchaseTicketsCommand 생성") {
         When("[Self-Validation] lockId가 blank인 경우") {
             Then("IllegalArgumentException이 발생한다") {

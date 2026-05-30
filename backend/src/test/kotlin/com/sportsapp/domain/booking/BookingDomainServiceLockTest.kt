@@ -17,12 +17,14 @@ class BookingDomainServiceLockTest : BehaviorSpec({
     val slotRepository = mockk<SlotRepository>()
     val distributedLock = mockk<DistributedLock>()
     val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
+    val paymentRefundGateway = mockk<PaymentRefundGateway>(relaxed = true)
 
     val service = BookingDomainService(
         bookingRepository,
         slotRepository,
         distributedLock,
         domainEventPublisher,
+        paymentRefundGateway,
     )
 
     Given("[U-01] tryLock이 false를 반환하는 상황") {

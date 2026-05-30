@@ -1,6 +1,6 @@
 /**
  * 탭 네비게이터 레이아웃
- * 탭: 홈 / 시설 검색 / 마이페이지
+ * 탭: 홈 / 스토어 / 티켓 / 커뮤니티 / 마이
  */
 import { Tabs } from 'expo-router';
 
@@ -21,17 +21,38 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="search"
+        name="store"
         options={{
-          title: '시설 검색',
-          tabBarAccessibilityLabel: '시설 검색 탭',
+          title: '스토어',
+          tabBarAccessibilityLabel: '스토어 탭',
+        }}
+      />
+      <Tabs.Screen
+        name="tickets"
+        options={{
+          title: '티켓',
+          tabBarAccessibilityLabel: '티켓 탭',
+        }}
+      />
+      <Tabs.Screen
+        name="community"
+        options={{
+          title: '커뮤니티',
+          tabBarAccessibilityLabel: '커뮤니티 탭',
+        }}
+      />
+      <Tabs.Screen
+        name="store"
+        options={{
+          title: '스토어',
+          tabBarAccessibilityLabel: '스토어 탭',
         }}
       />
       <Tabs.Screen
         name="me"
         options={{
-          title: '마이페이지',
-          tabBarAccessibilityLabel: '마이페이지 탭',
+          title: '마이',
+          tabBarAccessibilityLabel: '마이 탭',
         }}
       />
     </Tabs>

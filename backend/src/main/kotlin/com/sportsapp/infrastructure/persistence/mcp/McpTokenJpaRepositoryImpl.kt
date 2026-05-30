@@ -23,4 +23,13 @@ class McpTokenJpaRepositoryImpl : McpTokenQueryDslRepository {
                            )
                            .fetch()
     }
+
+    override fun findAllActive(): List<McpToken> {
+        return queryFactory.selectFrom(mcpToken)
+                           .where(
+                               mcpToken.status.eq(McpTokenStatus.ACTIVE),
+                               mcpToken.deletedAt.isNull,
+                           )
+                           .fetch()
+    }
 }

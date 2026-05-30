@@ -119,9 +119,10 @@ export interface MyProduct {
   imageUrl: string;
   status: ProductStatus;
   stockQuantity: number;
-  ownerId: number;
-  createdAt: string;
-  updatedAt: string;
+  // 목록 응답에는 없을 수 있다 (상세 응답에만 포함).
+  ownerId?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CreateProductInput {
@@ -144,23 +145,62 @@ export interface RestoreStockInput {
   quantity: number;
 }
 
+// ─── AdminUser ───────────────────────────────────────────────────────────────
+
+export type UserStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
+
+export interface AdminUser {
+  userId: number;
+  email: string;
+  status: UserStatus;
+  roleNames: string[];
+  joinedAt: string;
+}
+
+
+// ─── Notification ────────────────────────────────────────────────────────────
+
+export type NotificationChannel = "IN_APP" | "EMAIL" | "SMS" | "PUSH";
+export type NotificationStatus = "QUEUED" | "SENT" | "FAILED" | "DELIVERED";
+
+export interface Notification {
+  id: number;
+  userId: number;
+  channel: NotificationChannel;
+  templateId: string;
+  status: NotificationStatus;
+  sentAt: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface NotificationPage {
+  content: Notification[];
+  totalElements: number;
+  totalPages: number;
+  page: number;
+  size: number;
+}
+
+
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
 export interface FacilitySummary {
-  totalFacilities: number;
-  totalSlots: number;
+  count: number;
+  activeSlotsToday: number;
 }
 
 export interface EventSummary {
-  totalEvents: number;
-  scheduledEvents: number;
-  openEvents: number;
+  scheduled: number;
+  open: number;
+  closed: number;
+  totalSeats: number;
+  soldSeats: number;
 }
 
 export interface ProductSummary {
-  totalProducts: number;
-  activeProducts: number;
-  outOfStockProducts: number;
+  active: number;
+  outOfStock: number;
 }
 
 export interface DashboardSummary {
@@ -168,3 +208,4 @@ export interface DashboardSummary {
   events: EventSummary | null;
   products: ProductSummary | null;
 }
+

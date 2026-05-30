@@ -13,6 +13,7 @@ data class PaymentRequest(
 
 data class PaymentGatewayResult(
     val pgTransactionId: String,
+    val provider: String,
     val approvedAt: java.time.ZonedDateTime,
 )
 

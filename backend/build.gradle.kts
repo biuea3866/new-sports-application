@@ -26,12 +26,21 @@ repositories {
 }
 
 dependencies {
+    // Spring AI MCP (1.1.6 GA — Gate #A 검증, Java 17 minimum 충족)
+    implementation(platform("org.springframework.ai:spring-ai-bom:1.1.6"))
+    implementation("org.springframework.ai:spring-ai-starter-mcp-server-webmvc")
+    testImplementation("org.springframework.ai:spring-ai-test")
+
+    // Monitoring (Datadog 메트릭 — PRD G1)
+    implementation("io.micrometer:micrometer-registry-datadog")
+
     // Spring Boot
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.boot:spring-boot-starter-mail")
 
     // JWT
     implementation("io.jsonwebtoken:jjwt-api:0.12.6")

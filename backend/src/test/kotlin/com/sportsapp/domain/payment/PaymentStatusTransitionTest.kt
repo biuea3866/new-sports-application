@@ -54,7 +54,7 @@ class PaymentStatusTransitionTest : BehaviorSpec({
 
         When("markCompleted 를 호출하면") {
             val paidAt = ZonedDateTime.now()
-            payment.markCompleted(paidAt)
+            payment.markCompleted(paidAt, "txn-001", "card")
             Then("[U-01] status 가 COMPLETED 로 바뀌고 paidAt 이 채워진다") {
                 payment.status shouldBe PaymentStatus.COMPLETED
                 payment.paidAt shouldBe paidAt
@@ -71,12 +71,12 @@ class PaymentStatusTransitionTest : BehaviorSpec({
             method = PaymentMethod.CREDIT_CARD,
             amount = BigDecimal("20000"),
             currency = "KRW",
-        ).also { it.markCompleted(ZonedDateTime.now()) }
+        ).also { it.markCompleted(ZonedDateTime.now(), "txn-002", "card") }
 
         When("markCompleted 를 다시 호출하면") {
             Then("[U-02] InvalidPaymentStateException 을 던진다") {
                 shouldThrow<InvalidPaymentStateException> {
-                    payment.markCompleted(ZonedDateTime.now())
+                    payment.markCompleted(ZonedDateTime.now(), "txn-003", "card")
                 }
             }
         }

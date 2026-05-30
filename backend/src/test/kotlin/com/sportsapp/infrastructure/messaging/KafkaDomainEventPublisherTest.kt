@@ -35,7 +35,6 @@ class KafkaDomainEventPublisherTest : BehaviorSpec({
     ) : com.sportsapp.domain.common.DomainEvent
 
     val kafkaContainer = KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.6.1"))
-        .withReuse(true)
 
     beforeSpec { kafkaContainer.start() }
 

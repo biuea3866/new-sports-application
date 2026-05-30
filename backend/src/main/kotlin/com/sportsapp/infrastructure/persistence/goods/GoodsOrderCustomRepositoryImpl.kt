@@ -1,0 +1,48 @@
+package com.sportsapp.infrastructure.persistence.goods
+
+import com.querydsl.jpa.impl.JPAQueryFactory
+import com.sportsapp.domain.goods.GoodsOrderCustomRepository
+import com.sportsapp.domain.goods.GoodsOrderStatus
+import com.sportsapp.domain.goods.QGoodsOrder.goodsOrder
+import com.sportsapp.domain.goods.QGoodsOrderItem.goodsOrderItem
+import com.sportsapp.domain.goods.QProduct.product
+import java.math.BigDecimal
+import org.springframework.stereotype.Repository
+
+@Repository
+class GoodsOrderCustomRepositoryImpl(
+    private val queryFactory: JPAQueryFactory,
+) : GoodsOrderCustomRepository {
+
+    override fun countConfirmedByProductOwnerUserId(ownerUserId: Long): Long =
+        queryFactory.select(goodsOrder.id.countDistinct())
+                    .from(goodsOrder)
+                    .join(goodsOrderItem).on(goodsOrderItem.orderId.eq(goodsOrder.id))
+                    .join(product).on(product.id.eq(goodsOrderItem.productId))
+                    .where(
+                        product.ownerId.eq(ownerUserId),
+                        goodsOrder.status.eq(GoodsOrderStatus.CONFIRMED),
+                        goodsOrder.deletedAt.isNull,
+                        goodsOrderItem.deletedAt.isNull,
+                        product.deletedAt.isNull,
+                    )
+                    .fetchOne() ?: 0L
+
+    override fun sumRevenueByProductOwnerUserId(ownerUserId: Long): BigDecimal {
+        val result = queryFactory.select(
+            goodsOrderItem.unitPrice.multiply(goodsOrderItem.quantity.castToNum(BigDecimal::class.java)).sum()
+        )
+                    .from(goodsOrderItem)
+                    .join(goodsOrder).on(goodsOrder.id.eq(goodsOrderItem.orderId))
+                    .join(product).on(product.id.eq(goodsOrderItem.productId))
+                    .where(
+                        product.ownerId.eq(ownerUserId),
+                        goodsOrder.status.eq(GoodsOrderStatus.CONFIRMED),
+                        goodsOrder.deletedAt.isNull,
+                        goodsOrderItem.deletedAt.isNull,
+                        product.deletedAt.isNull,
+                    )
+                    .fetchOne()
+        return result ?: BigDecimal.ZERO
+    }
+}

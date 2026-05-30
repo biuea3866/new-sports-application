@@ -34,9 +34,10 @@ except Exception:
 CURRENT_DIR="$(pwd 2>/dev/null || echo "")"
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-/Users/biuea/sports-application}"
 
-# CLAUDE_PROJECT_DIR 가 격리 worktree (.claude/worktrees/agent-*) 일 때만 활성
+# CLAUDE_PROJECT_DIR 가 격리 worktree (.claude/worktrees/*) 일 때만 활성.
+# agent-* (하네스 자동) 와 수동 git worktree add (mcp-* 등) 둘 다 포함.
 case "$PROJECT_DIR" in
-  */.claude/worktrees/agent-*)
+  */.claude/worktrees/*)
     IS_AGENT_WORKTREE=1
     ;;
   *)

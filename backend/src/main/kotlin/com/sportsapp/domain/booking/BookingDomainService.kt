@@ -3,6 +3,7 @@ package com.sportsapp.domain.booking
 import com.sportsapp.domain.common.DistributedLock
 import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
+import java.math.BigDecimal
 import java.time.Duration
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -22,6 +23,7 @@ class BookingDomainService(
     private val slotRepository: SlotRepository,
     private val distributedLock: DistributedLock,
     private val domainEventPublisher: DomainEventPublisher,
+    private val paymentRefundGateway: PaymentRefundGateway,
 ) {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun requestBooking(userId: Long, slotId: Long): Booking {
@@ -87,15 +89,18 @@ class BookingDomainService(
         return bookingRepository.save(booking)
     }
 
-    fun cancelBooking(bookingId: Long): Booking {
+    fun cancel(bookingId: Long, cancelledByUserId: Long, reason: String?): Booking {
         val booking = bookingRepository.findById(bookingId)
             ?: throw ResourceNotFoundException("Booking", bookingId)
-        booking.cancel()
-        return bookingRepository.save(booking)
+        booking.cancel(cancelledByUserId, reason)
+        val saved = bookingRepository.save(booking)
+        domainEventPublisher.publishAll(saved.pullDomainEvents())
+        return saved
     }
 
     fun findMyBookings(userId: Long, status: BookingStatus?, pageable: Pageable): Page<Booking> =
         bookingRepository.findPageByUserId(userId, status, pageable)
+
 
     fun getBooking(requesterId: Long, bookingId: Long): Booking {
         val booking = bookingRepository.findById(bookingId)
@@ -103,6 +108,16 @@ class BookingDomainService(
         if (booking.userId == requesterId) return booking
         // TODO(AUTH-05): Facility.ownerId 조회로 FACILITY_OWNER 권한 분기 추가
         throw UnauthorizedBookingAccessException(bookingId)
+    }
+
+    fun refundBooking(bookingId: Long, callerUserId: Long, refundAmount: BigDecimal, reason: String): Booking {
+        val booking = bookingRepository.findById(bookingId)
+            ?: throw ResourceNotFoundException("Booking", bookingId)
+        booking.requireOwnedBy(callerUserId)
+        val paymentId = booking.requireHasPayment()
+        paymentRefundGateway.requestRefund(paymentId.toString(), refundAmount, reason)
+        booking.refund()
+        return bookingRepository.save(booking)
     }
 
 }

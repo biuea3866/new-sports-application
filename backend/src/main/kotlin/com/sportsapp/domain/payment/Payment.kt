@@ -51,14 +51,22 @@ class Payment private constructor(
 
     @Column(name = "failure_reason", nullable = true, length = 500)
     var failureReason: String?,
+
+    @Column(name = "pg_transaction_id", nullable = true, length = 100)
+    var pgTransactionId: String?,
+
+    @Column(name = "provider", nullable = true, length = 32)
+    var provider: String?,
 ) : JpaAuditingBase() {
 
-    fun markCompleted(paidAt: ZonedDateTime) {
+    fun markCompleted(paidAt: ZonedDateTime, pgTransactionId: String, provider: String) {
         if (!status.canTransitTo(PaymentStatus.COMPLETED)) {
             throw InvalidPaymentStateException(status, PaymentStatus.COMPLETED)
         }
         this.status = PaymentStatus.COMPLETED
         this.paidAt = paidAt
+        this.pgTransactionId = pgTransactionId
+        this.provider = provider
     }
 
     fun markFailed(reason: String) {
@@ -97,6 +105,8 @@ class Payment private constructor(
             status = PaymentStatus.PENDING,
             paidAt = null,
             failureReason = null,
+            pgTransactionId = null,
+            provider = null,
         )
     }
 }

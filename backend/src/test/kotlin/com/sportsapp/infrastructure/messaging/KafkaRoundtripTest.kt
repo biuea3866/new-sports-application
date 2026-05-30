@@ -27,7 +27,6 @@ import java.util.concurrent.TimeUnit
 class KafkaRoundtripTest : BehaviorSpec({
 
     val kafkaContainer = KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.6.1"))
-        .withReuse(true)
 
     beforeSpec { kafkaContainer.start() }
     afterSpec { /* reuse — stop 은 testcontainers Ryuk 에 위임 */ }

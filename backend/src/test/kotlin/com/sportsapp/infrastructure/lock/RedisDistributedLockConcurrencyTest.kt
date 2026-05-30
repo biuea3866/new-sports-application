@@ -85,7 +85,6 @@ class RedisDistributedLockConcurrencyTest @Autowired constructor(
         @JvmStatic
         val redis: GenericContainer<*> = GenericContainer("redis:7-alpine")
             .withExposedPorts(REDIS_PORT)
-            .withReuse(true)
 
         @DynamicPropertySource
         @JvmStatic

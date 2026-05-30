@@ -87,7 +87,7 @@ class PaymentRepositoryTest(
                 method = PaymentMethod.CREDIT_CARD,
                 amount = BigDecimal("25000"),
                 currency = "KRW",
-            ).also { it.markCompleted(originalPaidAt) }
+            ).also { it.markCompleted(originalPaidAt, "txn-r03", "card") }
 
             val saved = paymentRepository.save(payment)
 

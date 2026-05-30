@@ -4,6 +4,7 @@ import com.sportsapp.application.message.ListMessagesResponse
 import com.sportsapp.application.message.ListMessagesUseCase
 import com.sportsapp.application.message.MessageResponse
 import com.sportsapp.application.message.SendMessageUseCase
+import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -26,7 +27,7 @@ class MessageApiController(
     fun sendMessage(
         @RequestHeader("X-User-Id") userId: Long, // TODO(AUTH-03): SecurityContext로 교체
         @PathVariable roomId: Long,
-        @RequestBody request: SendMessageRequest,
+        @Valid @RequestBody request: SendMessageRequest,
     ): ResponseEntity<MessageResponse> {
         val response = sendMessageUseCase.execute(request.toCommand(roomId, userId))
         return ResponseEntity.status(HttpStatus.CREATED).body(response)

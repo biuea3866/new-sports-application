@@ -21,7 +21,7 @@ class TicketOrderApiController(
     @ResponseStatus(HttpStatus.ACCEPTED)
     fun purchase(
         @RequestHeader("X-User-Id") userId: Long,
-        @RequestHeader("Idempotency-Key") idempotencyKey: String?,
+        @RequestHeader(value = "Idempotency-Key", required = false) idempotencyKey: String?,
         @RequestBody request: PurchaseTicketOrderRequest,
     ): TicketOrderResponse {
         if (idempotencyKey.isNullOrBlank()) throw MissingIdempotencyKeyException()

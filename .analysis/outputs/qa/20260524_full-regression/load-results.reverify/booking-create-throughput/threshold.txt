@@ -1,0 +1,14 @@
+LOAD-03 booking-create-throughput — reverify 결과
+
+FAIL — threshold 4건 위반 (fix 미해결)
+
+  LOAD_03_latency  p(95)=2913ms    목표 < 500ms   FAIL (목표의 582%)
+  LOAD_03_latency  p(99)=3760ms    목표 < 1500ms  FAIL (목표의 251%)
+  LOAD_03_failures rate=100.00%    목표 < 1.0%    FAIL
+  http_req_failed  rate=49.99%     목표 < 2.0%    FAIL
+
+[상세]
+  - /bookings POST 전수 5xx 계속 발생. error rate run2(50%) → reverify(50%) 미변화.
+  - /facilities/{id}/slots GET 단계는 정상 처리 (expected_response:true p95=1.57s는 슬롯 조회 성공 응답 포함).
+  - 예약 생성 단계에서 100% 실패. auth 헬퍼(X-User-Id) 수정은 반영됐으나 BE /bookings 핸들러에서 여전히 5xx 반환.
+  - run2 대비 p95 악화: run2=314.53ms → reverify=2913ms (총 E2E latency 기준). http_reqs 처리량 감소(927 RPS → 230 RPS)는 ramp-up 완료 시점 차이 반영.
