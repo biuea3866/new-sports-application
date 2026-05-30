@@ -314,3 +314,33 @@ export interface GoodsOrderListResponse {
 export interface CreateGoodsOrderRequest {
   cartId: number;
 }
+
+// --- Notification ---
+export type NotificationType =
+  | 'BOOKING'
+  | 'PAYMENT'
+  | 'EVENT'
+  | 'SYSTEM'
+  | 'PROMOTION';
+
+export interface NotificationResponse {
+  id: number;
+  title: string;
+  content: string;
+  type: NotificationType;
+  isRead: boolean;
+  readAt: string | null; // ISO 8601
+  createdAt: string; // ISO 8601
+}
+
+export interface NotificationListResponse {
+  content: NotificationResponse[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+}
+
+export interface UnreadCountResponse {
+  unreadCount: number;
+}
