@@ -189,10 +189,31 @@ export const NotificationSchema = z.object({
 
 export const NotificationPageSchema = z.object({
   content: z.array(NotificationSchema),
+// ─── Booking ─────────────────────────────────────────────────────────────────
+
+const BookingStatusSchema = z.enum(["PENDING", "CONFIRMED", "CANCELLED", "EXPIRED"]);
+
+export const BookingSchema = z.object({
+  id: z.number().int(),
+  slotId: z.number().int(),
+  userId: z.number().int(),
+  status: BookingStatusSchema,
+  paymentId: z.number().int().nullable(),
+  paymentStatus: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const BookingListResponseSchema = z.object({
+  bookings: z.array(BookingSchema),
   totalElements: z.number().int().nonnegative(),
   totalPages: z.number().int().nonnegative(),
   page: z.number().int().nonnegative(),
   size: z.number().int().positive(),
+});
+
+export const CancelBookingInputSchema = z.object({
+  reason: z.string().optional(),
 });
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
