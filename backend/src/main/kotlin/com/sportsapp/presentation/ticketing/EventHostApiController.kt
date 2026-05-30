@@ -3,6 +3,7 @@ package com.sportsapp.presentation.ticketing
 import com.sportsapp.application.ticketing.CloseMyEventUseCase
 import com.sportsapp.application.ticketing.CreateMyEventUseCase
 import com.sportsapp.application.ticketing.CreateMyEventResult
+import com.sportsapp.application.ticketing.DeleteMyEventUseCase
 import com.sportsapp.application.ticketing.EventResponse
 import com.sportsapp.application.ticketing.GetMyEventWithSalesUseCase
 import com.sportsapp.application.ticketing.ListMyEventsUseCase
@@ -15,6 +16,7 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -30,6 +32,7 @@ class EventHostApiController(
     private val createMyEventUseCase: CreateMyEventUseCase,
     private val openMyEventUseCase: OpenMyEventUseCase,
     private val closeMyEventUseCase: CloseMyEventUseCase,
+    private val deleteMyEventUseCase: DeleteMyEventUseCase,
     private val listMyEventsUseCase: ListMyEventsUseCase,
     private val getMyEventWithSalesUseCase: GetMyEventWithSalesUseCase,
     private val ownershipGuard: OwnershipGuard,
@@ -80,5 +83,13 @@ class EventHostApiController(
         val authUserId = ownershipGuard.authUserId()
         closeMyEventUseCase.execute(id, authUserId)
         return ResponseEntity.ok().build()
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('EVENT_HOST')")
+    fun deleteEvent(@PathVariable id: Long): ResponseEntity<Void> {
+        val authUserId = ownershipGuard.authUserId()
+        deleteMyEventUseCase.execute(id, authUserId)
+        return ResponseEntity.noContent().build()
     }
 }
