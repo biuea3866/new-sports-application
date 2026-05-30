@@ -49,6 +49,10 @@
           },
           {
             "type": "command",
+            "command": "bash /Users/biuea/sports-application/.claude/hooks/_run.sh /Users/biuea/sports-application/.claude/hooks/workflow-gates/worktree-quota-guard.sh"
+          },
+          {
+            "type": "command",
             "command": "bash /Users/biuea/sports-application/.claude/hooks/_run.sh /Users/biuea/sports-application/.claude/hooks/workflow-gates/qa-env-gate.sh"
           },
           {
@@ -74,6 +78,10 @@
           },
           {
             "type": "command",
+            "command": "bash /Users/biuea/sports-application/.claude/hooks/_run.sh /Users/biuea/sports-application/.claude/hooks/workflow-gates/worktree-quota-guard.sh"
+          },
+          {
+            "type": "command",
             "command": "bash /Users/biuea/sports-application/.claude/hooks/_run.sh /Users/biuea/sports-application/.claude/hooks/workflow-gates/agent-merge-guard.sh"
           },
           {
@@ -94,6 +102,36 @@
           {
             "type": "command",
             "command": "bash /Users/biuea/sports-application/.claude/hooks/_run.sh /Users/biuea/sports-application/.claude/hooks/workflow-gates/pr-review-tracker.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /Users/biuea/sports-application/.claude/hooks/_run.sh /Users/biuea/sports-application/.claude/hooks/workflow-gates/completion-merge-gate.sh"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /Users/biuea/sports-application/.claude/hooks/_run.sh /Users/biuea/sports-application/.claude/hooks/workflow-gates/completion-merge-gate.sh"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /Users/biuea/sports-application/.claude/hooks/_run.sh /Users/biuea/sports-application/.claude/hooks/util/cleanup-worktrees.sh --auto"
           }
         ]
       }
