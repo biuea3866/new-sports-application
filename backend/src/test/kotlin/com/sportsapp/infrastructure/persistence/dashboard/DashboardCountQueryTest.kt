@@ -5,6 +5,7 @@ import com.sportsapp.domain.goods.Product
 import com.sportsapp.domain.goods.ProductCategory
 import com.sportsapp.domain.goods.ProductStatus
 import com.sportsapp.domain.goods.Stock
+import com.sportsapp.domain.goods.StockCustomRepository
 import com.sportsapp.domain.ticketing.Event
 import com.sportsapp.domain.ticketing.EventStatus
 import com.sportsapp.domain.goods.StockCustomRepository
