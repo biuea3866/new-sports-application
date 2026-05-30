@@ -128,7 +128,7 @@ class UserCustomRepositoryImplTest(
                     )
                     result.totalElements shouldBe 1L
                     val roles = result.content[0].roleNames
-                    (roles.contains("USER") || roles.contains("FACILITY_OWNER")) shouldBe true
+                    roles.containsAll(listOf("USER", "FACILITY_OWNER")) shouldBe true
                 }
             }
         }

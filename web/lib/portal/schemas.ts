@@ -170,6 +170,100 @@ export const RestoreStockInputSchema = z.object({
   }),
 });
 
+// ─── AdminUser ───────────────────────────────────────────────────────────────
+
+const UserStatusSchema = z.enum(["ACTIVE", "INACTIVE", "SUSPENDED"]);
+
+export const AdminUserSchema = z.object({
+  userId: z.number().int().positive(),
+  email: z.string().email(),
+  status: UserStatusSchema,
+  roleNames: z.array(z.string()),
+  joinedAt: z.string(),
+});
+
+export const AdminUserPageSchema = PageSchema(AdminUserSchema);
+
+
+// ─── Notification ────────────────────────────────────────────────────────────
+
+const NotificationChannelSchema = z.enum(["IN_APP", "EMAIL", "SMS", "PUSH"]);
+const NotificationStatusSchema = z.enum(["QUEUED", "SENT", "FAILED", "DELIVERED"]);
+
+export const NotificationSchema = z.object({
+  id: z.number().int().positive(),
+  userId: z.number().int().positive(),
+  channel: NotificationChannelSchema,
+  templateId: z.string(),
+  status: NotificationStatusSchema,
+  sentAt: z.string().nullable(),
+  readAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+export const NotificationPageSchema = z.object({
+  content: z.array(NotificationSchema),
+  totalElements: z.number().int().nonnegative(),
+  totalPages: z.number().int().nonnegative(),
+  page: z.number().int().nonnegative(),
+  size: z.number().int().positive(),
+});
+
+// ─── Booking ─────────────────────────────────────────────────────────────────
+
+const BookingStatusSchema = z.enum(["PENDING", "CONFIRMED", "CANCELLED", "EXPIRED"]);
+
+export const BookingSchema = z.object({
+  id: z.number().int(),
+  slotId: z.number().int(),
+  userId: z.number().int(),
+  status: BookingStatusSchema,
+  paymentId: z.number().int().nullable(),
+  paymentStatus: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const BookingListResponseSchema = z.object({
+  bookings: z.array(BookingSchema),
+  totalElements: z.number().int().nonnegative(),
+  totalPages: z.number().int().nonnegative(),
+  page: z.number().int().nonnegative(),
+  size: z.number().int().positive(),
+});
+
+export const CancelBookingInputSchema = z.object({
+  reason: z.string().optional(),
+});
+
+// ─── Payment ─────────────────────────────────────────────────────────────────
+
+export const PaymentStatusSchema = z.enum(["PENDING", "COMPLETED", "FAILED", "REFUNDED"]);
+export const PaymentMethodSchema = z.enum([
+  "CREDIT_CARD",
+  "BANK_TRANSFER",
+  "KAKAO",
+  "TOSS",
+  "NAVER",
+  "DANAL",
+]);
+export const OrderTypeSchema = z.enum(["BOOKING", "TICKETING", "GOODS"]);
+
+export const PaymentSummarySchema = z.object({
+  id: z.number().int().positive(),
+  orderType: OrderTypeSchema,
+  orderId: z.number().int().positive(),
+  method: PaymentMethodSchema,
+  amount: z.number(),
+  status: PaymentStatusSchema,
+  createdAt: z.string(),
+  paidAt: z.string().nullable(),
+  pgTransactionId: z.string().nullable().optional(),
+  provider: z.string().nullable().optional(),
+});
+
+export const PaymentSummaryPageSchema = PageSchema(PaymentSummarySchema);
+
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
 export const FacilitySummarySchema = z.object({

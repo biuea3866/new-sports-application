@@ -1,0 +1,3 @@
+mobile/api/types.ts merge=union
+web/lib/portal/types.ts merge=union
+web/lib/portal/schemas.ts merge=union

@@ -84,6 +84,8 @@ app:
   payment:
     mock:
       success-rate: 1.0
+    pg:
+      mock-base-url: ${PG_MOCK_BASE_URL:http://localhost:9090}
   jwt:
     secret: ${APP_JWT_SECRET}
   notifications:

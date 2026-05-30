@@ -55,7 +55,11 @@ class PaymentDomainService(
         return runCatching { paymentGateway.requestPayment(paymentRequest) }
             .fold(
                 onSuccess = { result ->
-                    payment.markCompleted(result.approvedAt)
+                    payment.markCompleted(
+                        paidAt = result.approvedAt,
+                        pgTransactionId = result.pgTransactionId,
+                        provider = result.provider,
+                    )
                     paymentRepository.save(payment)
                 },
                 onFailure = { error ->

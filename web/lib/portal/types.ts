@@ -145,6 +145,44 @@ export interface RestoreStockInput {
   quantity: number;
 }
 
+// ─── AdminUser ───────────────────────────────────────────────────────────────
+
+export type UserStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
+
+export interface AdminUser {
+  userId: number;
+  email: string;
+  status: UserStatus;
+  roleNames: string[];
+  joinedAt: string;
+}
+
+
+// ─── Notification ────────────────────────────────────────────────────────────
+
+export type NotificationChannel = "IN_APP" | "EMAIL" | "SMS" | "PUSH";
+export type NotificationStatus = "QUEUED" | "SENT" | "FAILED" | "DELIVERED";
+
+export interface Notification {
+  id: number;
+  userId: number;
+  channel: NotificationChannel;
+  templateId: string;
+  status: NotificationStatus;
+  sentAt: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface NotificationPage {
+  content: Notification[];
+  totalElements: number;
+  totalPages: number;
+  page: number;
+  size: number;
+}
+
+
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
 export interface FacilitySummary {
@@ -170,3 +208,4 @@ export interface DashboardSummary {
   events: EventSummary | null;
   products: ProductSummary | null;
 }
+
