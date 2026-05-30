@@ -455,7 +455,9 @@ describe("[U-04] PaymentSummarySchema 검증", () => {
   });
 
   it("pgTransactionId/provider가 없는 응답(BE-07 이전)을 파싱한다", () => {
-    const { pgTransactionId: _pg, provider: _pv, ...withoutPg } = validPayment;
+    const { pgTransactionId, provider, ...withoutPg } = validPayment;
+    void pgTransactionId;
+    void provider;
     expect(PaymentSummarySchema.safeParse(withoutPg).success).toBe(true);
   });
 

@@ -22,6 +22,16 @@ const MCP_NAV: ReadonlyArray<NavItem> = [
     label: "MCP 사용 가이드",
     description: "클라이언트별 설정",
   },
+  {
+    href: "/admin/mcp/usage-analytics",
+    label: "MCP 사용 분석",
+    description: "호출·에러율·P95 대시보드",
+  },
+  {
+    href: "/admin/mcp/anomalies",
+    label: "이상 패턴",
+    description: "비정상 호출 패턴 히스토리",
+  },
 ];
 
 export function AdminSidebar(): JSX.Element {
