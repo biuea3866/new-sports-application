@@ -144,6 +144,18 @@ export interface RestoreStockInput {
   quantity: number;
 }
 
+// ─── AdminUser ───────────────────────────────────────────────────────────────
+
+export type UserStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
+
+export interface AdminUser {
+  userId: number;
+  email: string;
+  status: UserStatus;
+  roleNames: string[];
+  joinedAt: string;
+}
+
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
 export interface FacilitySummary {
