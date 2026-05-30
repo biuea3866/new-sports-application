@@ -41,14 +41,14 @@ class NotificationApiScenarioTest(
             }
 
             When("[S-01] GET /notifications/me/unread-count 조회 시") {
-                Then("[S-01] unread-count=5, 1건 read 후 4로 변경된다") {
+                Then("[DEF-004][S-01] 응답 JSON 키가 unreadCount이고, 1건 read 후 4로 변경된다") {
                     mockMvc.perform(
                         get("/notifications/me/unread-count")
                             .header("X-User-Id", userId)
                             .accept(MediaType.APPLICATION_JSON)
                     )
                         .andExpect(status().isOk)
-                        .andExpect(jsonPath("$.count").value(5))
+                        .andExpect(jsonPath("$.unreadCount").value(5))
 
                     val notification = notificationJpaRepository.findAll()
                         .first { it.userId == userId }
@@ -65,7 +65,7 @@ class NotificationApiScenarioTest(
                             .accept(MediaType.APPLICATION_JSON)
                     )
                         .andExpect(status().isOk)
-                        .andExpect(jsonPath("$.count").value(4))
+                        .andExpect(jsonPath("$.unreadCount").value(4))
                 }
             }
         }
