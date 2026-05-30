@@ -1,0 +1,20 @@
+[THRESHOLD VIOLATION] LOAD-03 booking-create-throughput
+
+스크립트: qa/load/k6/booking-create-throughput.js
+실행 시각: 2026-05-24T18:33:14+09:00
+
+위반 임계:
+  - LOAD_03_failures: rate<0.01  → 실측 100.00% (목표 대비 100배 초과)
+  - http_req_failed:  rate<0.02  → 실측 49.99%
+
+통과 임계:
+  - LOAD_03_latency p(95)<500ms  → 실측 314.53ms (PASS)
+  - LOAD_03_latency p(99)<1500ms → 실측 463.20ms (PASS)
+
+원인 단서:
+  - POST /bookings 모든 요청 5xx (check "create not 5xx": 0/55681 통과)
+  - GET /facilities/{id}/slots 는 200 응답 (http_req_failed 49.99% = POST 쪽만 실패)
+  - 총 http_req: 111,367 중 55,681건 실패 = POST /bookings 전수 실패
+  - raw.log에서 BE 응답 확인 필요
+
+k6 exit code: 0 (threshold 위반 감지, 프로세스 정상 종료)

@@ -1,0 +1,8 @@
+LOAD-01 facility-search — reverify 결과
+
+PASS — 모든 threshold 충족
+
+  LOAD_01_latency  p(95)=237.62ms  목표 < 300ms  PASS (여유 20.8%)
+  LOAD_01_latency  p(99)=776.96ms  목표 < 800ms  PASS (여유 2.9%)
+  LOAD_01_failures rate=0.00%      목표 < 0.5%   PASS
+  http_req_failed  rate=0.00%      목표 < 1.0%   PASS

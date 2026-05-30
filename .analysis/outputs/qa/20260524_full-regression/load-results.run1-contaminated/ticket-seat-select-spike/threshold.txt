@@ -1,0 +1,36 @@
+LOAD-02 ticket-seat-select-spike — Threshold 결과
+==================================================
+
+실행 시각 : 2026-05-24T18:11:01+09:00
+k6 version : v1.4.0
+스크립트   : qa/load/k6/ticket-seat-select-spike.js
+목표 URL   : http://localhost:8080/events/1/seats/select
+
+[임계 위반]
+  ✗ http_req_failed  'rate<0.04'  실측=100.00%  (위반 — 모든 요청이 401 Unauthorized)
+
+[임계 통과]
+  ✓ LOAD_02_failures 'rate<0.02'  실측=0.00%    (5xx 없음 — 401은 비즈니스 오류로 분류됨)
+  ✓ LOAD_02_latency  'p(95)<1000' 실측=68.53ms  (목표 대비 93.1% 여유)
+  ✓ LOAD_02_latency  'p(99)<3000' 실측=144.23ms (목표 대비 95.2% 여유)
+
+[원인 분석]
+  - POST /events/{id}/seats/select 엔드포인트가 X-User-Id 헤더 기반 요청에 401 반환
+  - 시나리오 md는 "permitAll + X-User-Id 헤더 모델"을 전제했으나
+    실제 BE는 Bearer 토큰 인증을 요구함
+  - LOAD_02_failures(커스텀)는 5xx만 집계하므로 401은 정상 비즈니스 응답으로 계산 → 0%
+  - http_req_failed(k6 내장)는 4xx 포함 비-2xx를 모두 실패로 집계 → 100%
+  - k6 check 'not 5xx': 100% 통과 (401 < 500)
+
+[측정값 요약]
+  RPS           : 5,286.10/s (spike 200 VU 도달, sleep 없는 루프)
+  p95 latency   : 68.53ms (목표 <1000ms)
+  p99 latency   : 144.23ms (목표 <3000ms)
+  5xx error rate: 0.00% (목표 <2%)
+  http_req_failed: 100.00% (401 포함)
+  iterations    : 254,810
+  http requests : 254,815
+
+[노이즈 경고]
+  로컬 docker-compose 환경 — 절대치 비교가 아닌 회귀 추세 추적용.
+  응답 자체는 401로 균일하게 빠름 — 실제 비즈니스 로직(좌석 락 경쟁)은 미측정.
