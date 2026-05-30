@@ -8,6 +8,7 @@ import org.springframework.http.ProblemDetail
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.authorization.AuthorizationDeniedException
+import jakarta.validation.ConstraintViolationException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.MissingRequestHeaderException
 import org.springframework.web.bind.annotation.ExceptionHandler
@@ -37,6 +38,16 @@ class GlobalExceptionHandler {
             detail = "Access denied"
         )
         return ResponseEntity.status(ErrorStatus.FORBIDDEN.httpStatus).body(problemDetail)
+    }
+
+    @ExceptionHandler(ConstraintViolationException::class)
+    fun handleConstraintViolationException(exception: ConstraintViolationException): ResponseEntity<ProblemDetail> {
+        val problemDetail = ProblemDetailBuilder.build(
+            status = ErrorStatus.BAD_REQUEST,
+            code = "VALIDATION_ERROR",
+            detail = "Request parameter validation failed"
+        )
+        return ResponseEntity.status(ErrorStatus.BAD_REQUEST.httpStatus).body(problemDetail)
     }
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
