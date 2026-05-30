@@ -2,12 +2,15 @@ package com.sportsapp.domain.user
 
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import com.sportsapp.domain.user.exceptions.DuplicateEmailException
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 
 @Service
 class UserDomainService(
     private val userRepository: UserRepository,
+    private val userCustomRepository: UserCustomRepository,
     private val roleRepository: RoleRepository,
     private val userRoleRepository: UserRoleRepository,
     private val passwordEncoder: PasswordEncoder,
@@ -62,6 +65,17 @@ class UserDomainService(
             ?: throw ResourceNotFoundException("UserRole", "$userId/$roleName")
         userRoleRepository.softDeleteByUserIdAndRoleId(userId, role.id, adminId)
     }
+
+    fun listUsers(
+        emailKeyword: String?,
+        roleName: String?,
+        pageable: Pageable,
+    ): Page<UserWithRoles> =
+        userCustomRepository.findAllWithRoles(
+            emailKeyword = emailKeyword,
+            roleName = roleName,
+            pageable = pageable,
+        )
 
     private fun getUser(userId: Long): User =
         userRepository.findById(userId) ?: throw ResourceNotFoundException("User", userId)
