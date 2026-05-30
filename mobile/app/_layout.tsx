@@ -47,7 +47,8 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="facility/[id]/index" options={{ headerShown: false }} />
+        <Stack.Screen name="product/[id]/index" options={{ headerShown: false }} />
+        <Stack.Screen name="cart/index" options={{ headerShown: false }} />
       </Stack>
     </QueryClientProvider>
   );

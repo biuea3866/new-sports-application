@@ -1,88 +1,89 @@
 /**
- * 장바구니 화면
+ * 장바구니 화면 — MO-06
+ * - GET /cart/me: 장바구니 항목 목록 + 소계
+ * - PATCH /cart/items/{itemId}: 수량 변경
+ * - DELETE /cart/items/{itemId}: 항목 삭제
+ * - POST /goods-orders: 주문 생성 → /payment 화면으로 이동
  */
 import {
   View,
   Text,
   FlatList,
   TouchableOpacity,
-  ActivityIndicator,
   StyleSheet,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
+import { useMemo } from 'react';
 import {
-  useMyCartQuery,
-  useUpdateCartItemMutation,
-  useRemoveCartItemMutation,
-  useClearCartMutation,
-} from '../../lib/useCart';
-import { ROUTES } from '../../lib/navigation';
-import type { CartItemResponse } from '../../api/types';
+  useCart,
+  useUpdateCartItem,
+  useRemoveCartItem,
+  useCreateGoodsOrder,
+  useCurrentUserId,
+  CartItemDto,
+} from '../../api/goods';
+
+/** RFC 4122 v4 UUID 생성 (crypto 미설치 환경 대응) */
+function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 
 interface CartItemRowProps {
-  item: CartItemResponse;
+  item: CartItemDto;
   onIncrease: () => void;
   onDecrease: () => void;
   onRemove: () => void;
-  isUpdating: boolean;
+  isPending: boolean;
 }
 
-function CartItemRow({
-  item,
-  onIncrease,
-  onDecrease,
-  onRemove,
-  isUpdating,
-}: CartItemRowProps) {
+function CartItemRow({ item, onIncrease, onDecrease, onRemove, isPending }: CartItemRowProps) {
   return (
-    <View style={styles.itemRow} accessible={true} accessibilityLabel={`${item.productName} 장바구니 항목`}>
+    <View style={styles.itemRow} accessible accessibilityLabel={`상품 ID ${item.productId}, 수량 ${item.quantity}`}>
       <View style={styles.itemInfo}>
-        <Text style={styles.itemName} numberOfLines={2}>
-          {item.productName}
+        <Text style={styles.itemProductId} accessibilityRole="text">
+          상품 #{item.productId}
         </Text>
-        <Text style={styles.itemPrice} accessibilityLabel={`단가 ${item.unitPrice}원`}>
-          {Number(item.unitPrice).toLocaleString()}원
-        </Text>
-        <Text style={styles.itemSubtotal} accessibilityLabel={`소계 ${item.subtotal}원`}>
-          소계: {Number(item.subtotal).toLocaleString()}원
+        <Text style={styles.itemQuantityLabel} accessibilityRole="text">
+          수량: {item.quantity}
         </Text>
       </View>
-
-      <View style={styles.itemControls}>
+      <View style={styles.itemActions}>
         <TouchableOpacity
-          style={[styles.qtyButton, isUpdating && styles.qtyButtonDisabled]}
+          style={styles.quantityButton}
           onPress={onDecrease}
-          disabled={isUpdating || item.quantity <= 1}
+          disabled={isPending || item.quantity <= 1}
           accessibilityRole="button"
-          accessibilityLabel="수량 감소"
-          accessibilityState={{ disabled: isUpdating || item.quantity <= 1 }}
+          accessibilityLabel={`상품 ${item.productId} 수량 감소`}
+          accessibilityState={{ disabled: isPending || item.quantity <= 1 }}
         >
-          <Text style={styles.qtyButtonText}>-</Text>
+          <Text style={styles.quantityButtonText}>-</Text>
         </TouchableOpacity>
-
-        <Text style={styles.qty} accessibilityLabel={`수량 ${item.quantity}`}>
+        <Text style={styles.quantityValue} accessibilityRole="text">
           {item.quantity}
         </Text>
-
         <TouchableOpacity
-          style={[styles.qtyButton, isUpdating && styles.qtyButtonDisabled]}
+          style={styles.quantityButton}
           onPress={onIncrease}
-          disabled={isUpdating}
+          disabled={isPending}
           accessibilityRole="button"
-          accessibilityLabel="수량 증가"
-          accessibilityState={{ disabled: isUpdating }}
+          accessibilityLabel={`상품 ${item.productId} 수량 증가`}
+          accessibilityState={{ disabled: isPending }}
         >
-          <Text style={styles.qtyButtonText}>+</Text>
+          <Text style={styles.quantityButtonText}>+</Text>
         </TouchableOpacity>
-
         <TouchableOpacity
           style={styles.removeButton}
           onPress={onRemove}
-          disabled={isUpdating}
+          disabled={isPending}
           accessibilityRole="button"
-          accessibilityLabel={`${item.productName} 삭제`}
-          accessibilityState={{ disabled: isUpdating }}
+          accessibilityLabel={`상품 ${item.productId} 삭제`}
+          accessibilityState={{ disabled: isPending }}
         >
           <Text style={styles.removeButtonText}>삭제</Text>
         </TouchableOpacity>
@@ -92,133 +93,153 @@ function CartItemRow({
 }
 
 export default function CartScreen() {
-  const { data: cart, isLoading, isError } = useMyCartQuery();
-  const updateMutation = useUpdateCartItemMutation();
-  const removeMutation = useRemoveCartItemMutation();
-  const clearMutation = useClearCartMutation();
+  const router = useRouter();
+  const userId = useCurrentUserId();
 
-  function handleIncrease(itemId: number, currentQuantity: number) {
-    updateMutation.mutate({ cartItemId: itemId, body: { quantity: currentQuantity + 1 } });
-  }
+  const { data: cart, isLoading, isError, refetch } = useCart(userId);
+  const updateCartItem = useUpdateCartItem(userId);
+  const removeCartItem = useRemoveCartItem(userId);
+  const createGoodsOrder = useCreateGoodsOrder(userId);
 
-  function handleDecrease(itemId: number, currentQuantity: number) {
-    if (currentQuantity <= 1) return;
-    updateMutation.mutate({ cartItemId: itemId, body: { quantity: currentQuantity - 1 } });
-  }
+  const isMutating =
+    updateCartItem.isPending || removeCartItem.isPending || createGoodsOrder.isPending;
 
-  function handleRemove(itemId: number) {
-    Alert.alert('항목 삭제', '장바구니에서 삭제하시겠습니까?', [
-      { text: '취소', style: 'cancel' },
+  // 합계 계산 (상품 가격 정보가 CartItemDto에 없으므로 수량 합계만 표시)
+  const totalQuantity = useMemo(
+    () => cart?.items.reduce((acc, item) => acc + item.quantity, 0) ?? 0,
+    [cart]
+  );
+
+  const handleOrder = () => {
+    if (!cart || cart.items.length === 0) {
+      Alert.alert('장바구니가 비어 있습니다.', '상품을 추가한 후 주문하세요.');
+      return;
+    }
+
+    const idempotencyKey = generateUUID();
+
+    createGoodsOrder.mutate(
       {
-        text: '삭제',
-        style: 'destructive',
-        onPress: () => removeMutation.mutate(itemId),
+        body: {
+          method: 'CREDIT_CARD',
+          fromCart: true,
+          items: cart.items.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+          })),
+        },
+        idempotencyKey,
       },
-    ]);
-  }
-
-  function handleClear() {
-    Alert.alert('장바구니 비우기', '장바구니를 모두 비우시겠습니까?', [
-      { text: '취소', style: 'cancel' },
       {
-        text: '비우기',
-        style: 'destructive',
-        onPress: () => clearMutation.mutate(),
-      },
-    ]);
-  }
-
-  function handleOrder() {
-    router.push(ROUTES.order.new);
-  }
+        onSuccess: (order) => {
+          router.push(
+            `/payment?orderType=GOODS&orderId=${order.id}&amount=${order.totalAmount}&method=CREDIT_CARD`
+          );
+        },
+        onError: () => {
+          Alert.alert('주문 실패', '주문 생성에 실패했습니다. 다시 시도해 주세요.');
+        },
+      }
+    );
+  };
 
   if (isLoading) {
     return (
-      <View style={styles.centered} accessibilityLabel="장바구니 로딩 중">
+      <View style={styles.center} accessible accessibilityLabel="장바구니 로딩 중">
         <ActivityIndicator size="large" color="#007AFF" />
       </View>
     );
   }
 
-  if (isError || cart === undefined) {
+  if (isError) {
     return (
-      <View style={styles.centered} accessibilityLabel="장바구니 오류">
-        <Text style={styles.errorText} accessibilityRole="alert">
-          장바구니를 불러오지 못했습니다.
-        </Text>
+      <View style={styles.center} accessible accessibilityLabel="장바구니 오류">
+        <Text style={styles.errorText}>장바구니를 불러오지 못했습니다.</Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={() => void refetch()}
+          accessibilityRole="button"
+          accessibilityLabel="다시 시도"
+        >
+          <Text style={styles.retryButtonText}>다시 시도</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
-  const isMutating =
-    updateMutation.isPending || removeMutation.isPending || clearMutation.isPending;
+  const items = cart?.items ?? [];
 
   return (
-    <View style={styles.container} accessible={false}>
-      <View style={styles.header}>
-        <Text style={styles.title} accessibilityRole="header">
+    <View style={styles.container}>
+      <View style={styles.headerRow}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="뒤로 가기"
+        >
+          <Text style={styles.backText}>{'< 뒤로'}</Text>
+        </TouchableOpacity>
+        <Text style={styles.header} accessibilityRole="header">
           장바구니
         </Text>
-        {cart.items.length > 0 && (
-          <TouchableOpacity
-            onPress={handleClear}
-            disabled={isMutating}
-            accessibilityRole="button"
-            accessibilityLabel="장바구니 비우기"
-            accessibilityState={{ disabled: isMutating }}
-          >
-            <Text style={styles.clearButtonText}>비우기</Text>
-          </TouchableOpacity>
-        )}
+        <View style={styles.headerSpacer} />
       </View>
 
-      {cart.items.length === 0 ? (
-        <View style={styles.centered}>
-          <Text style={styles.emptyText} accessibilityRole="text">
-            장바구니가 비어 있습니다.
-          </Text>
-        </View>
-      ) : (
-        <>
-          <FlatList
-            data={cart.items}
-            keyExtractor={(item) => String(item.id)}
-            renderItem={({ item }) => (
-              <CartItemRow
-                item={item}
-                onIncrease={() => handleIncrease(item.id, item.quantity)}
-                onDecrease={() => handleDecrease(item.id, item.quantity)}
-                onRemove={() => handleRemove(item.id)}
-                isUpdating={isMutating}
-              />
-            )}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
-            contentContainerStyle={styles.listContent}
+      <FlatList
+        data={items}
+        keyExtractor={(item) => String(item.id)}
+        renderItem={({ item }) => (
+          <CartItemRow
+            item={item}
+            isPending={isMutating}
+            onIncrease={() =>
+              updateCartItem.mutate({ itemId: item.id, quantity: item.quantity + 1 })
+            }
+            onDecrease={() =>
+              updateCartItem.mutate({ itemId: item.id, quantity: item.quantity - 1 })
+            }
+            onRemove={() =>
+              Alert.alert('항목 삭제', '이 상품을 장바구니에서 삭제하시겠습니까?', [
+                { text: '취소', style: 'cancel' },
+                { text: '삭제', style: 'destructive', onPress: () => removeCartItem.mutate(item.id) },
+              ])
+            }
           />
-
-          <View style={styles.footer}>
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>합계</Text>
-              <Text
-                style={styles.totalAmount}
-                accessibilityLabel={`합계 ${cart.totalAmount}원`}
-              >
-                {Number(cart.totalAmount).toLocaleString()}원
-              </Text>
-            </View>
-
+        )}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer} accessible accessibilityLabel="장바구니가 비어 있습니다">
+            <Text style={styles.emptyText}>장바구니가 비어 있습니다.</Text>
             <TouchableOpacity
-              style={[styles.orderButton, isMutating && styles.orderButtonDisabled]}
-              onPress={handleOrder}
-              disabled={isMutating}
+              style={styles.shopButton}
+              onPress={() => router.push('/(tabs)/store')}
               accessibilityRole="button"
-              accessibilityLabel="주문하기"
-              accessibilityState={{ disabled: isMutating }}
+              accessibilityLabel="쇼핑하러 가기"
             >
-              <Text style={styles.orderButtonText}>주문하기</Text>
+              <Text style={styles.shopButtonText}>쇼핑하러 가기</Text>
             </TouchableOpacity>
           </View>
-        </>
+        }
+        contentContainerStyle={styles.listContent}
+      />
+
+      {items.length > 0 && (
+        <View style={styles.footer}>
+          <Text style={styles.totalText} accessibilityRole="text">
+            총 {totalQuantity}개 상품
+          </Text>
+          <TouchableOpacity
+            style={[styles.orderButton, (isMutating || createGoodsOrder.isPending) && styles.buttonDisabled]}
+            onPress={handleOrder}
+            disabled={isMutating || createGoodsOrder.isPending}
+            accessibilityRole="button"
+            accessibilityLabel="주문하기"
+            accessibilityState={{ disabled: isMutating || createGoodsOrder.isPending }}
+          >
+            <Text style={styles.orderButtonText}>
+              {createGoodsOrder.isPending ? '주문 중...' : '주문하기'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       )}
     </View>
   );
@@ -227,80 +248,83 @@ export default function CartScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F2F2F7',
   },
-  centered: {
+  center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  header: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    backgroundColor: '#fff',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingTop: 16,
+    paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5EA',
   },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
+  backText: {
+    color: '#007AFF',
+    fontSize: 16,
+    width: 60,
+  },
+  header: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#1C1C1E',
   },
-  clearButtonText: {
-    fontSize: 14,
-    color: '#FF3B30',
-    fontWeight: '600',
+  headerSpacer: {
+    width: 60,
   },
   listContent: {
-    paddingBottom: 8,
+    padding: 16,
+    flexGrow: 1,
   },
   itemRow: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 16,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   itemInfo: {
-    marginBottom: 10,
+    flex: 1,
   },
-  itemName: {
+  itemProductId: {
     fontSize: 15,
+    fontWeight: '600',
     color: '#1C1C1E',
-    fontWeight: '500',
     marginBottom: 4,
   },
-  itemPrice: {
-    fontSize: 14,
-    color: '#3C3C43',
-    marginBottom: 2,
-  },
-  itemSubtotal: {
+  itemQuantityLabel: {
     fontSize: 13,
     color: '#8E8E93',
   },
-  itemControls: {
+  itemActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
-  qtyButton: {
+  quantityButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#F2F2F7',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  qtyButtonDisabled: {
-    backgroundColor: '#C7C7CC',
-  },
-  qtyButtonText: {
-    color: '#fff',
+  quantityButtonText: {
     fontSize: 18,
-    fontWeight: '700',
-    lineHeight: 20,
+    color: '#1C1C1E',
+    fontWeight: '600',
   },
-  qty: {
+  quantityValue: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1C1C1E',
@@ -308,65 +332,79 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   removeButton: {
-    marginLeft: 'auto',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
+    backgroundColor: '#FFE5E5',
     borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#FF3B30',
   },
   removeButtonText: {
-    fontSize: 13,
     color: '#FF3B30',
+    fontSize: 13,
     fontWeight: '600',
   },
-  separator: {
-    height: 1,
-    backgroundColor: '#E5E5EA',
-    marginHorizontal: 16,
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 80,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#8E8E93',
+    marginBottom: 20,
+  },
+  shopButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+  },
+  shopButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
   },
   footer: {
-    paddingHorizontal: 16,
+    backgroundColor: '#fff',
+    paddingHorizontal: 20,
     paddingVertical: 16,
     borderTopWidth: 1,
     borderTopColor: '#E5E5EA',
-    gap: 14,
   },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  totalLabel: {
+  totalText: {
     fontSize: 16,
-    color: '#3C3C43',
     fontWeight: '600',
-  },
-  totalAmount: {
-    fontSize: 20,
-    color: '#007AFF',
-    fontWeight: '700',
+    color: '#1C1C1E',
+    marginBottom: 12,
+    textAlign: 'right',
   },
   orderButton: {
     backgroundColor: '#007AFF',
-    borderRadius: 10,
-    paddingVertical: 14,
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
   },
-  orderButtonDisabled: {
+  buttonDisabled: {
     backgroundColor: '#C7C7CC',
   },
   orderButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
   },
   errorText: {
-    color: '#FF3B30',
-    fontSize: 15,
-  },
-  emptyText: {
+    fontSize: 16,
     color: '#8E8E93',
-    fontSize: 15,
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontWeight: '600',
   },
 });

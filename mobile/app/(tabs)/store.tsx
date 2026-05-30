@@ -1,74 +1,43 @@
 /**
- * 스토어 탭 — 상품 목록 + 카테고리 필터 + 페이지 이동
+ * 스토어 탭 — 상품 목록
+ * MO-05 구현체
  */
 import {
   View,
   Text,
   FlatList,
-  Image,
   TouchableOpacity,
-  ActivityIndicator,
-  ScrollView,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
-import { router } from 'expo-router';
-import { useState } from 'react';
-import { useProducts } from '../../lib/useProducts';
-import { ROUTES } from '../../lib/navigation';
-import type { ProductCategory, ProductSummary } from '../../api/types';
-
-type FilterCategory = ProductCategory | 'ALL';
-
-interface CategoryChipProps {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-}
-
-function CategoryChip({ label, selected, onPress }: CategoryChipProps) {
-  return (
-    <TouchableOpacity
-      style={[styles.chip, selected && styles.chipSelected]}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${label} 카테고리 필터`}
-      accessibilityState={{ selected }}
-    >
-      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
+import { useRouter } from 'expo-router';
+import { useProducts, ProductWithStock } from '../../api/goods';
 
 interface ProductCardProps {
-  product: ProductSummary;
+  product: ProductWithStock;
   onPress: () => void;
 }
 
 function ProductCard({ product, onPress }: ProductCardProps) {
+  const isOutOfStock = product.stockQuantity === 0;
+
   return (
     <TouchableOpacity
       style={styles.card}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${product.name}, ${Number(product.price).toLocaleString()}원`}
+      accessibilityLabel={`${product.name}, ${product.price.toLocaleString()}원${isOutOfStock ? ', 품절' : ''}`}
     >
-      {product.imageUrl.length > 0 && (
-        <Image
-          source={{ uri: product.imageUrl }}
-          style={styles.cardImage}
-          accessibilityLabel={`${product.name} 이미지`}
-          resizeMode="cover"
-        />
-      )}
-      <View style={styles.cardContent}>
+      <View style={styles.cardImagePlaceholder} accessibilityElementsHidden>
+        <Text style={styles.cardImageText}>IMG</Text>
+      </View>
+      <View style={styles.cardInfo}>
         <Text style={styles.cardName} numberOfLines={2}>
           {product.name}
         </Text>
-        <Text style={styles.cardPrice} accessibilityLabel={`가격 ${product.price}원`}>
-          {Number(product.price).toLocaleString()}원
-        </Text>
-        {product.stockQuantity === 0 && (
-          <Text style={styles.soldOut} accessibilityRole="text">
+        <Text style={styles.cardPrice}>{product.price.toLocaleString()}원</Text>
+        {isOutOfStock && (
+          <Text style={styles.outOfStock} accessibilityRole="text">
             품절
           </Text>
         )}
@@ -77,127 +46,57 @@ function ProductCard({ product, onPress }: ProductCardProps) {
   );
 }
 
-const PAGE_SIZE = 20;
-
-const CATEGORY_OPTIONS: { label: string; value: FilterCategory }[] = [
-  { label: '전체', value: 'ALL' },
-  { label: '장비', value: 'EQUIPMENT' },
-  { label: '의류', value: 'APPAREL' },
-  { label: '신발', value: 'FOOTWEAR' },
-  { label: '액세서리', value: 'ACCESSORY' },
-];
-
 export default function StoreScreen() {
-  const [selectedCategory, setSelectedCategory] = useState<FilterCategory>('ALL');
-  const [page, setPage] = useState(0);
+  const router = useRouter();
+  const { data: products, isLoading, isError, refetch } = useProducts();
 
-  const category = selectedCategory === 'ALL' ? undefined : selectedCategory;
-  const { data, isLoading, isError } = useProducts(page, PAGE_SIZE, category);
-
-  function handleCategoryPress(value: FilterCategory) {
-    setSelectedCategory(value);
-    setPage(0);
+  if (isLoading) {
+    return (
+      <View style={styles.center} accessible accessibilityLabel="상품 목록 로딩 중">
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
   }
 
-  function handleProductPress(id: number) {
-    router.push(ROUTES.product.detail(String(id)));
+  if (isError) {
+    return (
+      <View style={styles.center} accessible accessibilityLabel="상품 목록 오류">
+        <Text style={styles.errorText}>상품 목록을 불러오지 못했습니다.</Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={() => void refetch()}
+          accessibilityRole="button"
+          accessibilityLabel="다시 시도"
+        >
+          <Text style={styles.retryButtonText}>다시 시도</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   return (
     <View style={styles.container} accessible={false}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.chipRow}
-        contentContainerStyle={styles.chipRowContent}
-        accessibilityRole="toolbar"
-        accessibilityLabel="카테고리 필터"
-      >
-        {CATEGORY_OPTIONS.map((option) => (
-          <CategoryChip
-            key={option.value}
-            label={option.label}
-            selected={selectedCategory === option.value}
-            onPress={() => handleCategoryPress(option.value)}
+      <Text style={styles.header} accessibilityRole="header">
+        스토어
+      </Text>
+      <FlatList
+        data={products ?? []}
+        keyExtractor={(item) => String(item.id)}
+        numColumns={2}
+        columnWrapperStyle={styles.row}
+        renderItem={({ item }) => (
+          <ProductCard
+            product={item}
+            onPress={() => router.push(`/product/${item.id}`)}
           />
-        ))}
-      </ScrollView>
-
-      {isLoading && (
-        <View style={styles.centered} accessibilityLabel="상품 목록 로딩 중">
-          <ActivityIndicator size="large" color="#007AFF" />
-        </View>
-      )}
-
-      {isError && (
-        <View style={styles.centered}>
-          <Text style={styles.errorText} accessibilityRole="alert">
-            상품 목록을 불러오지 못했습니다.
+        )}
+        ListEmptyComponent={
+          <Text style={styles.emptyText} accessibilityRole="text">
+            등록된 상품이 없습니다.
           </Text>
-        </View>
-      )}
-
-      {!isLoading && !isError && data !== undefined && (
-        <>
-          <FlatList
-            data={data.content}
-            keyExtractor={(item) => String(item.id)}
-            numColumns={2}
-            columnWrapperStyle={styles.columnWrapper}
-            contentContainerStyle={styles.listContent}
-            renderItem={({ item }) => (
-              <ProductCard product={item} onPress={() => handleProductPress(item.id)} />
-            )}
-            ListEmptyComponent={
-              <View style={styles.centered}>
-                <Text style={styles.emptyText} accessibilityRole="text">
-                  상품이 없습니다.
-                </Text>
-              </View>
-            }
-          />
-
-          <View style={styles.pagination} accessibilityRole="toolbar" accessibilityLabel="페이지 이동">
-            <TouchableOpacity
-              style={[styles.pageButton, page === 0 && styles.pageButtonDisabled]}
-              onPress={() => setPage((prev) => prev - 1)}
-              disabled={page === 0}
-              accessibilityRole="button"
-              accessibilityLabel="이전 페이지"
-              accessibilityState={{ disabled: page === 0 }}
-            >
-              <Text style={[styles.pageButtonText, page === 0 && styles.pageButtonTextDisabled]}>
-                이전
-              </Text>
-            </TouchableOpacity>
-
-            <Text style={styles.pageInfo} accessibilityLabel={`${page + 1} / ${data.totalPages} 페이지`}>
-              {page + 1} / {data.totalPages}
-            </Text>
-
-            <TouchableOpacity
-              style={[
-                styles.pageButton,
-                page >= data.totalPages - 1 && styles.pageButtonDisabled,
-              ]}
-              onPress={() => setPage((prev) => prev + 1)}
-              disabled={page >= data.totalPages - 1}
-              accessibilityRole="button"
-              accessibilityLabel="다음 페이지"
-              accessibilityState={{ disabled: page >= data.totalPages - 1 }}
-            >
-              <Text
-                style={[
-                  styles.pageButtonText,
-                  page >= data.totalPages - 1 && styles.pageButtonTextDisabled,
-                ]}
-              >
-                다음
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </>
-      )}
+        }
+        contentContainerStyle={styles.listContent}
+      />
     </View>
   );
 }
@@ -205,120 +104,83 @@ export default function StoreScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F2F2F7',
   },
-  chipRow: {
-    flexGrow: 0,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  chipRowContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 8,
-    flexDirection: 'row',
-  },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#C7C7CC',
-    backgroundColor: '#fff',
-  },
-  chipSelected: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-  },
-  chipText: {
-    fontSize: 13,
-    color: '#3C3C43',
-  },
-  chipTextSelected: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  centered: {
+  center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
   },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 15,
-  },
-  emptyText: {
-    color: '#8E8E93',
-    fontSize: 15,
+  header: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1C1C1E',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+    backgroundColor: '#fff',
   },
   listContent: {
-    padding: 12,
+    padding: 8,
   },
-  columnWrapper: {
-    gap: 12,
-    marginBottom: 12,
+  row: {
+    justifyContent: 'space-between',
   },
   card: {
     flex: 1,
+    margin: 4,
+    backgroundColor: '#fff',
     borderRadius: 10,
-    backgroundColor: '#F2F2F7',
     overflow: 'hidden',
   },
-  cardImage: {
-    width: '100%',
-    height: 130,
+  cardImagePlaceholder: {
+    height: 140,
+    backgroundColor: '#E5E5EA',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  cardContent: {
+  cardImageText: {
+    color: '#C7C7CC',
+    fontSize: 12,
+  },
+  cardInfo: {
     padding: 10,
   },
   cardName: {
-    fontSize: 13,
+    fontSize: 14,
+    fontWeight: '500',
     color: '#1C1C1E',
     marginBottom: 4,
-    fontWeight: '500',
   },
   cardPrice: {
     fontSize: 14,
-    color: '#007AFF',
     fontWeight: '700',
+    color: '#007AFF',
   },
-  soldOut: {
+  outOfStock: {
     fontSize: 12,
     color: '#FF3B30',
     marginTop: 2,
-    fontWeight: '600',
   },
-  pagination: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E5EA',
-    gap: 20,
+  errorText: {
+    fontSize: 16,
+    color: '#8E8E93',
+    marginBottom: 16,
   },
-  pageButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 8,
+  retryButton: {
     backgroundColor: '#007AFF',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
   },
-  pageButtonDisabled: {
-    backgroundColor: '#E5E5EA',
-  },
-  pageButtonText: {
+  retryButtonText: {
     color: '#fff',
     fontWeight: '600',
-    fontSize: 14,
   },
-  pageButtonTextDisabled: {
-    color: '#8E8E93',
-  },
-  pageInfo: {
-    fontSize: 14,
-    color: '#3C3C43',
-    minWidth: 60,
+  emptyText: {
     textAlign: 'center',
+    color: '#8E8E93',
+    marginTop: 40,
+    fontSize: 15,
   },
 });
