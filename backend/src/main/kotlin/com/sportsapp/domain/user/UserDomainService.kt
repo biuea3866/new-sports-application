@@ -24,6 +24,9 @@ class UserDomainService(
         return savedUser
     }
 
+    fun findById(userId: Long): User =
+        userRepository.findById(userId) ?: throw ResourceNotFoundException("User", userId)
+
     fun findByEmail(email: String): User =
         userRepository.findByEmail(email) ?: throw ResourceNotFoundException("User", email)
 
