@@ -60,11 +60,15 @@ class EventQueryScenarioTest(
                     String::class.java
                 )
 
-                Then("200 응답, 섹션 정보와 ZonedDateTime ISO 8601 형식(startsAt)이 포함된다") {
+                Then("200 응답, 섹션 정보·seats 배열·ZonedDateTime ISO 8601 형식(startsAt)이 포함된다") {
                     response.statusCode shouldBe HttpStatus.OK
                     response.body shouldContain "Open Event"
                     response.body shouldContain "sections"
                     response.body shouldContain "totalSeats"
+                    response.body shouldContain "seats"
+                    response.body shouldContain "available"
+                    response.body shouldContain "rowNo"
+                    response.body shouldContain "seatNo"
                     response.body shouldContain "2026-12-01T18:00:00"
                 }
             }

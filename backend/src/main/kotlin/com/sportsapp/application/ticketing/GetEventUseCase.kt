@@ -11,7 +11,7 @@ class GetEventUseCase(
     @Transactional(readOnly = true)
     fun execute(eventId: Long): EventDetailResponse {
         val event = ticketingDomainService.getEvent(eventId)
-        val seats = ticketingDomainService.getSeats(eventId)
-        return EventDetailResponse.of(event, seats)
+        val seatsWithAvailability = ticketingDomainService.getSeatsWithAvailability(eventId)
+        return EventDetailResponse.of(event, seatsWithAvailability)
     }
 }

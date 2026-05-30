@@ -57,6 +57,11 @@ class TicketingDomainService(
 
     fun getSeats(eventId: Long): List<Seat> = seatRepository.findByEventId(eventId)
 
+    fun getSeatsWithAvailability(eventId: Long): List<Pair<Seat, Boolean>> {
+        val seats = seatRepository.findByEventId(eventId)
+        return seats.map { seat -> seat to (seatLockStore.getOwner(eventId, seat.id) == null) }
+    }
+
     fun listEvents(criteria: EventCriteria, pageable: Pageable): Page<Event> =
         eventCustomRepository.findByCriteria(criteria, pageable)
 
