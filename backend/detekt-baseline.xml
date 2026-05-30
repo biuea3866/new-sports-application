@@ -18,5 +18,6 @@
     <ID>TooManyFunctions:GoodsDomainService.kt$GoodsDomainService</ID>
     <ID>TooManyFunctions:McpAuditLogJpaRepositoryImpl.kt$McpAuditLogJpaRepositoryImpl : McpAuditLogQueryDslRepository</ID>
     <ID>TooManyFunctions:TicketingDomainService.kt$TicketingDomainService</ID>
+    <ID>UnusedParameter:GlobalExceptionHandler.kt$GlobalExceptionHandler$exception: ConstraintViolationException</ID>
   </CurrentIssues>
 </SmellBaseline>

@@ -118,6 +118,7 @@ tasks.withType<Test> {
 detekt {
     buildUponDefaultConfig = true
     config.setFrom(files("${rootDir}/config/detekt/detekt.yml"))
+    baseline = file("${rootDir}/detekt-baseline.xml")
     source.setFrom(
         "src/main/kotlin",
         "src/test/kotlin"
@@ -128,7 +129,7 @@ tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
     jvmTarget = "17"
     reports {
         html.required.set(true)
-        xml.required.set(false)
+        xml.required.set(true)
         txt.required.set(false)
     }
 }
