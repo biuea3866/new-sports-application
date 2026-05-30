@@ -27,5 +27,51 @@ services:
       mc mb --ignore-existing local/sports-app;
       "
 
+  mock-pg:
+    build:
+      context: ./mock-pg
+      dockerfile: Dockerfile
+    ports:
+      - "9090:9090"
+    environment:
+      PORT: 9090
+      BE_WEBHOOK_URL: ${BE_WEBHOOK_URL:-http://host.docker.internal:8080/payments/webhook}
+    restart: unless-stopped
+
+  # ---- 외부 Open API mock (유료/키필요 서비스 로컬 대체) ----
+  mock-kakao-local:
+    image: node:20-alpine
+    working_dir: /app
+    ports:
+      - "9101:8080"
+    volumes:
+      - ./mock-servers/kakao-local:/app
+    command: sh -c "npm install --no-audit --no-fund && node server.js"
+
+  mock-data-go-kr:
+    image: node:20-alpine
+    working_dir: /app
+    ports:
+      - "9102:8080"
+    volumes:
+      - ./mock-servers/data-go-kr:/app
+    command: sh -c "npm install --no-audit --no-fund && node server.js"
+
+  mock-solapi:
+    image: node:20-alpine
+    working_dir: /app
+    ports:
+      - "9103:8080"
+    volumes:
+      - ./mock-servers/solapi:/app
+    command: sh -c "npm install --no-audit --no-fund && node server.js"
+
+  # 이메일 catcher (SMTP 1025, Web UI 8025)
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
 volumes:
   minio-data:

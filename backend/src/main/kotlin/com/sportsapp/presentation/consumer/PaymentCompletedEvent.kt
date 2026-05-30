@@ -16,4 +16,12 @@ data class PaymentCompletedEvent(
         recipientUserId = userId,
         eventId = paymentId,
     )
+
+    fun toPushCommand(): EnqueueNotificationCommand = EnqueueNotificationCommand(
+        channel = NotificationChannel.PUSH,
+        templateId = "payment-completed",
+        payload = NotificationPayload(mapOf("amount" to amount.toString())),
+        recipientUserId = userId,
+        eventId = "$paymentId:push",
+    )
 }

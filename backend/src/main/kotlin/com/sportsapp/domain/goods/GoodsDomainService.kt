@@ -140,6 +140,13 @@ class GoodsDomainService(
         return product to stock
     }
 
+    fun getProductWithStock(productId: Long): ProductWithStock {
+        val product = productRepository.findByIdAndDeletedAtIsNull(productId)
+            ?: throw ResourceNotFoundException("Product", productId)
+        val stockQuantity = stockRepository.findByProductId(productId)?.quantity ?: 0
+        return ProductWithStock(product = product, stockQuantity = stockQuantity)
+    }
+
     fun getProductByIdAndOwnerId(productId: Long, ownerUserId: Long): ProductWithStock {
         val productEntity = productRepository.findById(productId)
             ?: throw ResourceNotFoundException("Product", productId)

@@ -293,6 +293,11 @@ def check_code_patterns(rules, tool_input):
 
         pattern = rule["pattern"]
         if re.search(pattern, content, re.MULTILINE):
+            # `must_also_contain`: 패턴이 매치돼도 요구 토큰이 모두 있으면 위반이 아니다.
+            # (예: CREATE TABLE 발견 시 audit 컬럼/인덱스 토큰이 모두 있으면 통과)
+            must_also_contain = rule.get("must_also_contain")
+            if must_also_contain and all(token in content for token in must_also_contain):
+                continue
             severity = rule.get("severity", "error")
             rule_id = rule.get("id", "unknown")
             violations.append((severity, rule["message"], rule_id))

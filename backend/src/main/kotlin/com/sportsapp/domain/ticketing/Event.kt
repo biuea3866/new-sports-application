@@ -1,6 +1,7 @@
 package com.sportsapp.domain.ticketing
 
 import com.sportsapp.domain.common.JpaAuditingBase
+import com.sportsapp.domain.ticketing.exception.InvalidEventStateException
 import com.sportsapp.domain.ticketing.exception.TooManySeatsException
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -62,6 +63,13 @@ class Event(
 
     fun requireOwnedBy(userId: Long) {
         if (ownerId != userId) throw EventOwnershipException(id)
+    }
+
+    fun requireDeletable() {
+        check(!isDeleted) { "Event is already deleted" }
+        if (status != EventStatus.SCHEDULED) {
+            throw InvalidEventStateException("Cannot delete event in $status state")
+        }
     }
 
     fun openSales() {

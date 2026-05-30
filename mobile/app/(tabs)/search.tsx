@@ -1,101 +1,89 @@
 /**
- * 시설 검색 탭 — GET /facilities 브라우즈.
- * 구(gu) 키워드로 필터링하고 목록을 표시한다.
+ * 시설 검색 탭 — 내 주변 시설 + 날씨.
+ *
+ * 모든 데이터는 우리 backend WAS 를 경유한다(외부 Kakao/기상청 직접 호출 금지).
+ * - GET /facilities/near : 좌표 기반 시설 조회(BE GeoSpatial)
+ * - GET /weather         : BE 가 기상청 단기예보 조회
+ *
+ * 기기 GPS(expo-location)는 네이티브 의존이므로 기본 좌표(서울 강남)를 사용한다.
+ * 위치 권한 연동은 후속 작업(expo-location + dev build).
  */
-import { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  ActivityIndicator,
-} from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { getBeClient } from '../../api/be-client';
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 
-interface Facility {
-  id: string;
-  name: string;
-  gu: string;
-  type: string;
-  address: string;
-  parking: boolean;
-  tel: string;
-}
+import {
+  getNearbyFacilities,
+  getWeather,
+  type FacilitySummary,
+  type Forecast,
+} from '../../api/external-features';
 
-interface FacilityPage {
-  content: Facility[];
-  totalElements: number;
-}
+// 기본 좌표: 서울 강남(역삼). 후속으로 expo-location 의 현재 위치로 대체.
+const DEFAULT_LAT = 37.4979;
+const DEFAULT_LNG = 127.0276;
+const DEFAULT_RADIUS_METERS = 3000;
 
-async function fetchFacilities(gu: string): Promise<FacilityPage> {
-  const params = new URLSearchParams({ page: '0', size: '50' });
-  if (gu.trim()) params.set('gu', gu.trim());
-  const res = await getBeClient().get<FacilityPage>(`/facilities?${params.toString()}`);
-  return res.data;
+const SKY_LABEL: Record<string, string> = {
+  CLEAR: '맑음',
+  MOSTLY_CLOUDY: '구름많음',
+  CLOUDY: '흐림',
+};
+
+function currentSlot(forecast: Forecast | undefined) {
+  return forecast?.slots?.[0];
 }
 
 export default function SearchScreen() {
-  const [guInput, setGuInput] = useState('');
-  const [query, setQuery] = useState('');
-
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['facilities', query],
-    queryFn: () => fetchFacilities(query),
+  const facilitiesQuery = useQuery({
+    queryKey: ['facilities', 'near', DEFAULT_LAT, DEFAULT_LNG, DEFAULT_RADIUS_METERS],
+    queryFn: () => getNearbyFacilities(DEFAULT_LAT, DEFAULT_LNG, DEFAULT_RADIUS_METERS),
   });
 
-  return (
-    <View style={styles.container} accessibilityLabel="시설 검색 화면">
-      <Text style={styles.title}>시설 검색</Text>
+  const weatherQuery = useQuery({
+    queryKey: ['weather', DEFAULT_LAT, DEFAULT_LNG],
+    queryFn: () => getWeather(DEFAULT_LAT, DEFAULT_LNG),
+  });
 
-      <View style={styles.searchRow}>
-        <TextInput
-          style={styles.input}
-          placeholder="구 이름 (예: 강남구)"
-          value={guInput}
-          onChangeText={setGuInput}
-          onSubmitEditing={() => setQuery(guInput)}
-          accessibilityLabel="구 검색 입력"
-        />
-        <Pressable
-          style={styles.searchButton}
-          onPress={() => setQuery(guInput)}
-          accessibilityRole="button"
-          accessibilityLabel="검색"
-        >
-          <Text style={styles.searchButtonText}>검색</Text>
-        </Pressable>
+  const slot = currentSlot(weatherQuery.data);
+
+  return (
+    <View style={styles.container} accessible accessibilityLabel="시설 검색 화면">
+      <Text style={styles.title}>내 주변 시설</Text>
+
+      <View style={styles.weatherCard} accessibilityLabel="현재 날씨">
+        {weatherQuery.isLoading ? (
+          <Text style={styles.weatherText}>날씨 불러오는 중…</Text>
+        ) : slot ? (
+          <Text style={styles.weatherText}>
+            {slot.temperature != null ? `${slot.temperature}℃` : '-'}
+            {slot.sky ? `  ${SKY_LABEL[slot.sky] ?? slot.sky}` : ''}
+            {slot.precipitationProbability != null
+              ? `  강수 ${slot.precipitationProbability}%`
+              : ''}
+          </Text>
+        ) : (
+          <Text style={styles.weatherText}>날씨 정보 없음</Text>
+        )}
       </View>
 
-      {isLoading && <ActivityIndicator style={styles.center} color="#007AFF" />}
-
-      {isError && (
-        <View style={styles.center}>
-          <Text style={styles.error}>시설을 불러오지 못했습니다.</Text>
-          <Pressable onPress={() => void refetch()} accessibilityRole="button">
-            <Text style={styles.link}>다시 시도</Text>
-          </Pressable>
-        </View>
-      )}
-
-      {data && (
-        <FlatList
-          data={data.content}
+      {facilitiesQuery.isLoading ? (
+        <ActivityIndicator style={styles.center} />
+      ) : facilitiesQuery.isError ? (
+        <Text style={styles.error}>시설을 불러오지 못했습니다.</Text>
+      ) : (
+        <FlatList<FacilitySummary>
+          data={facilitiesQuery.data ?? []}
           keyExtractor={(item) => item.id}
-          ListHeaderComponent={<Text style={styles.count}>{data.totalElements}개 시설</Text>}
-          ListEmptyComponent={<Text style={styles.empty}>검색 결과가 없습니다.</Text>}
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={<Text style={styles.empty}>주변에 시설이 없습니다.</Text>}
           renderItem={({ item }) => (
-            <View style={styles.facilityCard}>
-              <Text style={styles.facilityName}>{item.name}</Text>
-              <Text style={styles.facilityMeta}>
+            <View style={styles.row} accessibilityLabel={`${item.name} ${item.type}`}>
+              <Text style={styles.rowName}>{item.name}</Text>
+              <Text style={styles.rowMeta}>
                 {item.gu} · {item.type}
+                {item.parking ? ' · 주차가능' : ''}
               </Text>
-              <Text style={styles.facilityAddress}>{item.address}</Text>
-              <Text style={styles.facilityMeta}>
-                {item.parking ? '주차 가능' : '주차 불가'} · {item.tel}
-              </Text>
+              <Text style={styles.rowAddr}>{item.address}</Text>
             </View>
           )}
         />
@@ -105,38 +93,25 @@ export default function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', padding: 16, paddingTop: 56 },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#1C1C1E', marginBottom: 16 },
-  searchRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#D1D1D6',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
+  container: { flex: 1, backgroundColor: '#fff', paddingTop: 24 },
+  title: { fontSize: 22, fontWeight: 'bold', color: '#1C1C1E', paddingHorizontal: 16 },
+  weatherCard: {
+    margin: 16,
+    padding: 16,
+    backgroundColor: '#EAF2FF',
+    borderRadius: 12,
   },
-  searchButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-    paddingHorizontal: 18,
-    justifyContent: 'center',
+  weatherText: { fontSize: 16, color: '#0A3D91', fontWeight: '600' },
+  center: { marginTop: 40 },
+  list: { paddingHorizontal: 16, paddingBottom: 24 },
+  row: {
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E5EA',
   },
-  searchButtonText: { color: '#fff', fontWeight: '600' },
-  center: { alignItems: 'center', marginTop: 40 },
-  error: { color: '#FF3B30', marginBottom: 8 },
-  link: { color: '#007AFF', fontWeight: '600' },
-  count: { fontSize: 13, color: '#8E8E93', marginBottom: 8 },
-  empty: { textAlign: 'center', color: '#8E8E93', marginTop: 40 },
-  facilityCard: {
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 10,
-  },
-  facilityName: { fontSize: 16, fontWeight: '600', color: '#1C1C1E' },
-  facilityMeta: { fontSize: 13, color: '#8E8E93', marginTop: 2 },
-  facilityAddress: { fontSize: 14, color: '#3A3A3C', marginTop: 4 },
+  rowName: { fontSize: 16, fontWeight: '600', color: '#1C1C1E' },
+  rowMeta: { fontSize: 13, color: '#8E8E93', marginTop: 2 },
+  rowAddr: { fontSize: 13, color: '#3A3A3C', marginTop: 2 },
+  empty: { fontSize: 14, color: '#8E8E93', textAlign: 'center', marginTop: 40 },
+  error: { fontSize: 14, color: '#FF3B30', textAlign: 'center', marginTop: 40 },
 });

@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.authorization.AuthorizationDeniedException
 import org.springframework.web.bind.MethodArgumentNotValidException
+import org.springframework.web.bind.MissingRequestHeaderException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 
@@ -53,6 +54,16 @@ class GlobalExceptionHandler {
         }
         problemDetail.setProperty("fieldErrors", fieldErrors)
         return ResponseEntity.status(ErrorStatus.UNPROCESSABLE.httpStatus).body(problemDetail)
+    }
+
+    @ExceptionHandler(MissingRequestHeaderException::class)
+    fun handleMissingRequestHeaderException(exception: MissingRequestHeaderException): ResponseEntity<ProblemDetail> {
+        val problemDetail = ProblemDetailBuilder.build(
+            status = ErrorStatus.BAD_REQUEST,
+            code = "MISSING_HEADER",
+            detail = "Required request header '${exception.headerName}' is not present"
+        )
+        return ResponseEntity.status(ErrorStatus.BAD_REQUEST.httpStatus).body(problemDetail)
     }
 
     @ExceptionHandler(AccessDeniedException::class)

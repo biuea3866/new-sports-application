@@ -6,9 +6,9 @@
 import "server-only";
 import { cookies } from "next/headers";
 
-export type B2BRole = "FACILITY_OWNER" | "EVENT_HOST" | "GOODS_SELLER";
+export type B2BRole = "FACILITY_OWNER" | "EVENT_HOST" | "GOODS_SELLER" | "ADMIN";
 
-const B2B_ROLES: readonly B2BRole[] = ["FACILITY_OWNER", "EVENT_HOST", "GOODS_SELLER"] as const;
+const B2B_ROLES: readonly B2BRole[] = ["FACILITY_OWNER", "EVENT_HOST", "GOODS_SELLER", "ADMIN"] as const;
 
 export interface SessionInfo {
   userId: number;

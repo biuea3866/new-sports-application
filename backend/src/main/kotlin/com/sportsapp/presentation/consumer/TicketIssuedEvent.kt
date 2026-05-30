@@ -16,4 +16,12 @@ data class TicketIssuedEvent(
         recipientUserId = userId,
         eventId = ticketOrderId,
     )
+
+    fun toPushCommand(): EnqueueNotificationCommand = EnqueueNotificationCommand(
+        channel = NotificationChannel.PUSH,
+        templateId = "ticket-issued",
+        payload = NotificationPayload(mapOf("eventTitle" to eventTitle)),
+        recipientUserId = userId,
+        eventId = "$ticketOrderId:push",
+    )
 }
