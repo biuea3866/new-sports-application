@@ -77,3 +77,36 @@ export interface ListBookingsResponse {
 export interface CancelBookingRequest {
   reason?: string;
 }
+
+// --- Event ---
+export type EventStatus = 'SCHEDULED' | 'OPEN' | 'CLOSED';
+
+export interface EventResponse {
+  id: number;
+  title: string;
+  venue: string;
+  startsAt: string; // ISO 8601
+  status: EventStatus;
+}
+
+export interface SectionAvailability {
+  section: string;
+  totalSeats: number;
+}
+
+export interface EventDetailResponse {
+  id: number;
+  title: string;
+  venue: string;
+  startsAt: string; // ISO 8601
+  status: EventStatus;
+  sections: SectionAvailability[];
+}
+
+export interface ListEventsResponse {
+  content: EventResponse[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+}
