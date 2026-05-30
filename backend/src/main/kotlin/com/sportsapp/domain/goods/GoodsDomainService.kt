@@ -55,13 +55,14 @@ class GoodsDomainService(
         popularProductsCache.invalidate(category)
     }
 
-    fun createPendingOrder(userId: Long, items: List<OrderItemInput>): GoodsOrder {
+    fun createPendingOrder(userId: Long, items: List<OrderItemInput>, idempotencyKey: String): GoodsOrder {
+        goodsOrderRepository.findByIdempotencyKey(idempotencyKey)?.let { return it }
         if (items.isEmpty()) throw EmptyOrderException()
         val products = items.associate { item -> item.productId to validateAndDeductStock(item) }
         val totalAmount = items.fold(BigDecimal.ZERO) { acc, item ->
             acc.add(products.getValue(item.productId).price.multiply(BigDecimal(item.quantity)))
         }
-        val order = goodsOrderRepository.save(GoodsOrder.create(userId, totalAmount))
+        val order = goodsOrderRepository.save(GoodsOrder.create(userId, totalAmount, idempotencyKey))
         val orderItems = items.map { item ->
             GoodsOrderItem(
                 orderId = order.id,

@@ -17,6 +17,9 @@ class GoodsOrder(
     @Column(name = "user_id", nullable = false)
     val userId: Long,
 
+    @Column(name = "idempotency_key", nullable = true, unique = true, length = 255)
+    val idempotencyKey: String?,
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     var status: GoodsOrderStatus,
@@ -60,9 +63,10 @@ class GoodsOrder(
     }
 
     companion object {
-        fun create(userId: Long, totalAmount: BigDecimal): GoodsOrder =
+        fun create(userId: Long, totalAmount: BigDecimal, idempotencyKey: String? = null): GoodsOrder =
             GoodsOrder(
                 userId = userId,
+                idempotencyKey = idempotencyKey,
                 status = GoodsOrderStatus.PENDING,
                 totalAmount = totalAmount,
                 paymentId = null,
