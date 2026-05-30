@@ -1,0 +1,13 @@
+{
+  "name": "mock-solapi",
+  "version": "1.0.0",
+  "description": "SOLAPI(솔라피) SMS API mock — sports-application 로컬 개발용 (실발송은 사업자 발신번호 필요)",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

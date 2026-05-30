@@ -11,15 +11,18 @@ class NotificationEventWorker(
     @KafkaListener(topics = ["payment.completed.v1"])
     fun consumePaymentCompleted(event: PaymentCompletedEvent) {
         enqueueNotificationUseCase.execute(event.toCommand())
+        enqueueNotificationUseCase.execute(event.toPushCommand())
     }
 
     @KafkaListener(topics = ["booking.confirmed.v1"])
     fun consumeBookingConfirmed(event: BookingConfirmedEvent) {
         enqueueNotificationUseCase.execute(event.toCommand())
+        enqueueNotificationUseCase.execute(event.toPushCommand())
     }
 
     @KafkaListener(topics = ["ticket.issued.v1"])
     fun consumeTicketIssued(event: TicketIssuedEvent) {
         enqueueNotificationUseCase.execute(event.toCommand())
+        enqueueNotificationUseCase.execute(event.toPushCommand())
     }
 }

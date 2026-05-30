@@ -16,4 +16,12 @@ data class BookingConfirmedEvent(
         recipientUserId = userId,
         eventId = bookingId,
     )
+
+    fun toPushCommand(): EnqueueNotificationCommand = EnqueueNotificationCommand(
+        channel = NotificationChannel.PUSH,
+        templateId = "booking-confirmed",
+        payload = NotificationPayload(mapOf("facility" to facility)),
+        recipientUserId = userId,
+        eventId = "$bookingId:push",
+    )
 }

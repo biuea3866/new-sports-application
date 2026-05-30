@@ -7,11 +7,15 @@ import com.sportsapp.application.notification.MarkNotificationReadCommand
 import com.sportsapp.application.notification.MarkNotificationReadUseCase
 import com.sportsapp.application.notification.NotificationPageResponse
 import com.sportsapp.application.notification.NotificationResponse
+import com.sportsapp.application.notification.PushTokenResponse
+import com.sportsapp.application.notification.RegisterPushTokenUseCase
 import com.sportsapp.application.notification.UnreadCountResponse
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -23,7 +27,14 @@ class NotificationApiController(
     private val listMyNotificationsUseCase: ListMyNotificationsUseCase,
     private val markNotificationReadUseCase: MarkNotificationReadUseCase,
     private val getUnreadCountUseCase: GetUnreadCountUseCase,
+    private val registerPushTokenUseCase: RegisterPushTokenUseCase,
 ) {
+    @PostMapping("/push-tokens")
+    fun registerPushToken(
+        @RequestHeader("X-User-Id") userId: Long,
+        @RequestBody request: RegisterPushTokenRequest,
+    ): ResponseEntity<PushTokenResponse> =
+        ResponseEntity.ok(registerPushTokenUseCase.execute(request.toCommand(userId)))
     @GetMapping("/me")
     fun listMyNotifications(
         @RequestHeader("X-User-Id") userId: Long,

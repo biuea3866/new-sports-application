@@ -62,6 +62,7 @@ class SecurityConfig(
             "/products/**", "/posts/**", "/comments/**", "/rooms/**",
             "/events/**", "/notifications/**",
             "/cart/**", "/ticket-orders/**", "/goods-orders/**",
+            "/weather/**",
         ).permitAll()
         auth.anyRequest().authenticated()
     }
