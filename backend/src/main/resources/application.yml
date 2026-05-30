@@ -18,6 +18,14 @@ mcp:
   external-url: ${MCP_EXTERNAL_URL:https://mcp-api.sportsapp.com}
 
 spring:
+  ai:
+    mcp:
+      server:
+        enabled: true
+        name: sports-mcp-server
+        version: 1.0.0
+        sse-endpoint: /mcp/sse
+        sse-message-endpoint: /mcp/message
   application:
     name: sports-application
   config:
@@ -135,16 +143,6 @@ external:
     from: ${SMS_SENDER_NUMBER:0700000000}
   email:
     from: ${MAIL_FROM:no-reply@sportsapp.local}
-
-spring:
-  ai:
-    mcp:
-      server:
-        enabled: true
-        name: sports-mcp-server
-        version: 1.0.0
-        sse-endpoint: /mcp/sse
-        sse-message-endpoint: /mcp/message
 
 management:
   endpoints:
