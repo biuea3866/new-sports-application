@@ -31,6 +31,7 @@ class ListMyPaymentsUseCaseTest : BehaviorSpec({
         every { payment.status } returns status
         every { payment.createdAt } returns ZonedDateTime.now()
         every { payment.paidAt } returns if (status == PaymentStatus.COMPLETED) ZonedDateTime.now() else null
+        every { payment.checkoutUrl } returns null
         return payment
     }
 

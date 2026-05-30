@@ -30,6 +30,7 @@ class GetPaymentUseCaseTest : BehaviorSpec({
         every { payment.status } returns PaymentStatus.COMPLETED
         every { payment.createdAt } returns ZonedDateTime.now()
         every { payment.paidAt } returns ZonedDateTime.now()
+        every { payment.checkoutUrl } returns null
         return payment
     }
 

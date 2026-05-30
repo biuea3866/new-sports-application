@@ -16,6 +16,7 @@ data class PaymentResponse(
     val status: PaymentStatus,
     val createdAt: ZonedDateTime,
     val paidAt: ZonedDateTime?,
+    val checkoutUrl: String?,
 ) {
     companion object {
         fun of(payment: Payment): PaymentResponse = PaymentResponse(
@@ -27,6 +28,7 @@ data class PaymentResponse(
             status = payment.status,
             createdAt = payment.createdAt,
             paidAt = payment.paidAt,
+            checkoutUrl = payment.checkoutUrl,
         )
     }
 }

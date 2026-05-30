@@ -37,6 +37,7 @@ class CreatePaymentWithPgMethodTest : BehaviorSpec({
         every { payment.status } returns status
         every { payment.createdAt } returns ZonedDateTime.now()
         every { payment.paidAt } returns if (status == PaymentStatus.COMPLETED) ZonedDateTime.now() else null
+        every { payment.checkoutUrl } returns "http://localhost:9090/pg/card/checkout?tid=MOCK_tid"
         return payment
     }
 
@@ -49,9 +50,9 @@ class CreatePaymentWithPgMethodTest : BehaviorSpec({
         PaymentMethod.CREDIT_CARD,
     ).forEach { method ->
         Given("method=$method 로 결제 요청 — PG 성공") {
-            val completedPayment = buildMockPayment(method, PaymentStatus.COMPLETED)
+            val readyPayment = buildMockPayment(method, PaymentStatus.READY)
             every {
-                paymentDomainService.create(
+                paymentDomainService.prepare(
                     userId = any(),
                     idempotencyKey = any(),
                     orderType = any(),
@@ -59,23 +60,26 @@ class CreatePaymentWithPgMethodTest : BehaviorSpec({
                     method = method,
                     amount = any(),
                     currency = any(),
+                    itemName = any(),
+                    returnUrl = any(),
+                    failUrl = any(),
                 )
-            } returns completedPayment
+            } returns readyPayment
 
             When("execute 를 호출하면") {
                 val result = useCase.execute(buildCommand(method))
 
-                Then("[U-01] method=$method 로 COMPLETED 상태의 PaymentResponse 를 반환한다") {
-                    result.status shouldBe PaymentStatus.COMPLETED
+                Then("[U-01] method=$method 로 READY 상태의 PaymentResponse 를 반환한다") {
+                    result.status shouldBe PaymentStatus.READY
                     result.method shouldBe method
                 }
             }
         }
 
-        Given("method=$method 로 결제 요청 — PG 실패") {
+        Given("method=$method 로 결제 요청 — PG 실패(FAILED 상태)") {
             val failedPayment = buildMockPayment(method, PaymentStatus.FAILED)
             every {
-                paymentDomainService.create(
+                paymentDomainService.prepare(
                     userId = any(),
                     idempotencyKey = any(),
                     orderType = any(),
@@ -83,6 +87,9 @@ class CreatePaymentWithPgMethodTest : BehaviorSpec({
                     method = method,
                     amount = any(),
                     currency = any(),
+                    itemName = any(),
+                    returnUrl = any(),
+                    failUrl = any(),
                 )
             } returns failedPayment
 

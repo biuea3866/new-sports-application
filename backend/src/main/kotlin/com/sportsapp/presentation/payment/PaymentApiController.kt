@@ -5,6 +5,8 @@ import com.sportsapp.application.payment.GetPaymentUseCase
 import com.sportsapp.application.payment.ListMyPaymentsUseCase
 import com.sportsapp.application.payment.PaymentCriteria
 import com.sportsapp.application.payment.PaymentResponse
+import com.sportsapp.application.payment.PreparePaymentResponse
+import com.sportsapp.application.payment.PreparePaymentUseCase
 import com.sportsapp.domain.payment.MissingIdempotencyKeyException
 import com.sportsapp.domain.payment.PaymentStatus
 import jakarta.validation.Valid
@@ -29,6 +31,7 @@ import java.time.ZonedDateTime
 @Profile("!test-jpa")
 class PaymentApiController(
     private val createPaymentUseCase: CreatePaymentUseCase,
+    private val preparePaymentUseCase: PreparePaymentUseCase,
     private val getPaymentUseCase: GetPaymentUseCase,
     private val listMyPaymentsUseCase: ListMyPaymentsUseCase,
 ) {
@@ -41,6 +44,18 @@ class PaymentApiController(
         if (idempotencyKey.isNullOrBlank()) throw MissingIdempotencyKeyException()
         val command = request.toCommand(userId = 1L, idempotencyKey = idempotencyKey)
         return createPaymentUseCase.execute(command)
+    }
+
+    @PostMapping("/prepare")
+    @ResponseStatus(HttpStatus.CREATED)
+    fun preparePayment(
+        @RequestHeader("X-User-Id") userId: Long,
+        @RequestHeader("Idempotency-Key", required = false) idempotencyKey: String?,
+        @Valid @RequestBody request: PreparePaymentRequest,
+    ): PreparePaymentResponse {
+        if (idempotencyKey.isNullOrBlank()) throw MissingIdempotencyKeyException()
+        val command = request.toCommand(userId = userId, idempotencyKey = idempotencyKey)
+        return preparePaymentUseCase.execute(command)
     }
 
     @GetMapping("/{id}")
