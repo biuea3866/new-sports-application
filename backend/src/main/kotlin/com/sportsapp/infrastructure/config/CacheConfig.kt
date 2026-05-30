@@ -2,7 +2,7 @@ package com.sportsapp.infrastructure.config
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator
+import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import org.springframework.cache.annotation.EnableCaching
@@ -53,9 +53,18 @@ class CacheConfig {
             registerKotlinModule()
             registerModule(JavaTimeModule())
             // Kotlin data class는 final이라 NON_FINAL 타이핑은 @class를 쓰지 않는다.
-            // 캐시 값 round-trip(쓰기/읽기 모두 @class 필요)을 위해 EVERYTHING으로 강제한다.
+            // 캐시 값 round-trip(쓰기/읽기 모두 @class 필요)을 위해 EVERYTHING으로 강제하되,
+            // 역직렬화 가능한 타입을 애플리케이션·표준 라이브러리 패키지로 제한해
+            // 임의 클래스 역직렬화(가젯) 위험을 차단한다 (LaissezFaire=전부 허용 대체).
+            val typeValidator = BasicPolymorphicTypeValidator.builder()
+                .allowIfSubType("com.sportsapp.")
+                .allowIfSubType("java.util.")
+                .allowIfSubType("java.lang.")
+                .allowIfSubType("java.time.")
+                .allowIfSubType("kotlin.")
+                .build()
             activateDefaultTyping(
-                LaissezFaireSubTypeValidator.instance,
+                typeValidator,
                 ObjectMapper.DefaultTyping.EVERYTHING,
                 JsonTypeInfo.As.PROPERTY,
             )

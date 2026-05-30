@@ -15,6 +15,12 @@ const DEMO_EMAIL = "demo-user@test.local";
 const DEMO_PASSWORD = "Passw0rd!";
 
 export async function GET(request: Request) {
+  // 운영 빌드에서는 고정 자격증명 자동 로그인 백도어를 차단한다.
+  // 데모/로컬(NODE_ENV !== production)에서만 동작.
+  if (process.env.NODE_ENV === "production") {
+    return new NextResponse(null, { status: 404 });
+  }
+
   const backendUrl = process.env["BACKEND_URL"] ?? "http://localhost:8080";
 
   const loginRes = await fetch(`${backendUrl}/auth/login`, {
