@@ -6,6 +6,7 @@ import com.sportsapp.domain.mcp.McpAuditLogDomainService
 import com.sportsapp.domain.mcp.McpUsageAnalyticsResult
 import com.sportsapp.domain.mcp.ToolCallStat
 import com.sportsapp.domain.mcp.ToolLatencyStat
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -102,6 +103,35 @@ class GetMcpUsageAnalyticsUseCaseTest : BehaviorSpec({
 
             Then("[U-03] aggregateUsageAnalytics가 userId=42, 정확한 기간으로 1회 호출된다") {
                 verify(exactly = 1) { mcpAuditLogDomainService.aggregateUsageAnalytics(42L, from, to) }
+            }
+        }
+    }
+
+    Given("[U-04] from이 to보다 미래인 Command를 생성하면") {
+        When("GetMcpUsageAnalyticsCommand 생성 시") {
+            Then("[U-04] IllegalArgumentException이 발생한다") {
+                shouldThrow<IllegalArgumentException> {
+                    GetMcpUsageAnalyticsCommand(userId = 1L, from = now, to = now.minusDays(1))
+                }
+            }
+        }
+    }
+
+    Given("[U-05] 조회 기간이 366일인 Command를 생성하면") {
+        When("GetMcpUsageAnalyticsCommand 생성 시") {
+            Then("[U-05] IllegalArgumentException이 발생한다") {
+                shouldThrow<IllegalArgumentException> {
+                    GetMcpUsageAnalyticsCommand(userId = 1L, from = now.minusDays(366), to = now)
+                }
+            }
+        }
+    }
+
+    Given("[U-06] 조회 기간이 정확히 365일인 Command를 생성하면") {
+        When("GetMcpUsageAnalyticsCommand 생성 시") {
+            Then("[U-06] 생성이 정상적으로 성공한다") {
+                val command = GetMcpUsageAnalyticsCommand(userId = 1L, from = now.minusDays(365), to = now)
+                command.userId shouldBe 1L
             }
         }
     }

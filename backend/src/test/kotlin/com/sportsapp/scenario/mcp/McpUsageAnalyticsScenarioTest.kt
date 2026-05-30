@@ -47,7 +47,17 @@ class McpUsageAnalyticsScenarioTest(
         dateTime.withZoneSameInstant(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT)
 
     private fun loginAndGetToken(email: String, password: String): String {
+        val user = userDomainService.register(email, password)
+        userDomainService.assignRole(adminId = user.id, userId = user.id, roleName = "ADMIN")
+        return doLogin(email, password)
+    }
+
+    private fun loginAsUserAndGetToken(email: String, password: String): String {
         userDomainService.register(email, password)
+        return doLogin(email, password)
+    }
+
+    private fun doLogin(email: String, password: String): String {
         val headers = HttpHeaders().apply { set("Content-Type", "application/json") }
         val body = objectMapper.writeValueAsString(mapOf("email" to email, "password" to password))
         val response = restTemplate.exchange(
@@ -209,6 +219,54 @@ class McpUsageAnalyticsScenarioTest(
                     val result = objectMapper.readValue(response.body, GetMcpUsageAnalyticsResponse::class.java)
                     result.errorRateStat.totalCount shouldBe 1L
                     result shouldNotBe null
+                }
+            }
+        }
+
+        Given("[S-05] ADMIN 롤이 없는 ROLE_USER가 usage-analytics API를 호출하면") {
+            val userToken = loginAsUserAndGetToken("analytics-user-only@example.com", "Pass1234!")
+            val headers = HttpHeaders().apply {
+                set("Content-Type", "application/json")
+                setBearerAuth(userToken)
+            }
+
+            When("GET /api/admin/mcp/usage-analytics 를 호출하면") {
+                val now = ZonedDateTime.now()
+                val from = formatUtc(now.minusDays(7))
+                val to = formatUtc(now.plusMinutes(1))
+                val response = restTemplate.exchange(
+                    "${baseUrl()}/api/admin/mcp/usage-analytics?from=$from&to=$to",
+                    HttpMethod.GET,
+                    HttpEntity<Void>(headers),
+                    String::class.java,
+                )
+
+                Then("[S-05] 403 Forbidden 응답이 반환된다") {
+                    response.statusCode shouldBe HttpStatus.FORBIDDEN
+                }
+            }
+        }
+
+        Given("[S-06] 조회 기간이 365일을 초과하면") {
+            val accessToken = loginAndGetToken("analytics-longrange@example.com", "Pass1234!")
+            val headers = HttpHeaders().apply {
+                set("Content-Type", "application/json")
+                setBearerAuth(accessToken)
+            }
+
+            When("GET /api/admin/mcp/usage-analytics 를 366일 범위로 호출하면") {
+                val now = ZonedDateTime.now()
+                val from = formatUtc(now.minusDays(366))
+                val to = formatUtc(now)
+                val response = restTemplate.exchange(
+                    "${baseUrl()}/api/admin/mcp/usage-analytics?from=$from&to=$to",
+                    HttpMethod.GET,
+                    HttpEntity<Void>(headers),
+                    String::class.java,
+                )
+
+                Then("[S-06] 400 Bad Request 응답이 반환된다") {
+                    response.statusCode shouldBe HttpStatus.BAD_REQUEST
                 }
             }
         }

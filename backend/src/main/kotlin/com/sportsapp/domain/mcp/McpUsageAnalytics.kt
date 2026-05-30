@@ -56,3 +56,14 @@ data class TokenUsageStat(
     val errorRatePercent: Double
         get() = if (callCount == 0L) 0.0 else errorCount.toDouble() / callCount.toDouble() * 100.0
 }
+
+/**
+ * MCP 사용 분석 집계 결과 (DomainService → UseCase 전달 단위).
+ */
+data class McpUsageAnalyticsResult(
+    val dailyStats: List<DailyUsageStat>,
+    val toolCallStats: List<ToolCallStat>,
+    val errorRateStat: ErrorRateStat,
+    val toolLatencyStats: List<ToolLatencyStat>,
+    val tokenUsageStats: List<TokenUsageStat>,
+)

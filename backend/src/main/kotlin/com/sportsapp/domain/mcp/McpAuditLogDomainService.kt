@@ -56,10 +56,3 @@ class McpAuditLogDomainService(
     }
 }
 
-data class McpUsageAnalyticsResult(
-    val dailyStats: List<DailyUsageStat>,
-    val toolCallStats: List<ToolCallStat>,
-    val errorRateStat: ErrorRateStat,
-    val toolLatencyStats: List<ToolLatencyStat>,
-    val tokenUsageStats: List<TokenUsageStat>,
-)

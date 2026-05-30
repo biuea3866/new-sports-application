@@ -187,6 +187,7 @@ class McpAuditLogJpaRepositoryImpl : McpAuditLogQueryDslRepository {
                 mcpAuditLog.calledAt.goe(from),
                 mcpAuditLog.calledAt.lt(to),
             )
+            .limit(100_000L)
             .fetch()
 
         return tuples.groupBy(

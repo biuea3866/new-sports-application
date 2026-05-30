@@ -66,6 +66,16 @@ class GlobalExceptionHandler {
         return ResponseEntity.status(ErrorStatus.BAD_REQUEST.httpStatus).body(problemDetail)
     }
 
+    @ExceptionHandler(IllegalArgumentException::class)
+    fun handleIllegalArgumentException(exception: IllegalArgumentException): ResponseEntity<ProblemDetail> {
+        val problemDetail = ProblemDetailBuilder.build(
+            status = ErrorStatus.BAD_REQUEST,
+            code = "BAD_REQUEST",
+            detail = exception.message ?: "Invalid request"
+        )
+        return ResponseEntity.status(ErrorStatus.BAD_REQUEST.httpStatus).body(problemDetail)
+    }
+
     @ExceptionHandler(AccessDeniedException::class)
     fun handleAccessDeniedException(exception: AccessDeniedException): ResponseEntity<ProblemDetail> {
         val problemDetail = ProblemDetail.forStatus(HttpStatus.FORBIDDEN)
