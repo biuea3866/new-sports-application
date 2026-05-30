@@ -51,7 +51,7 @@ mobile/android/.gradle/
 mobile/coverage/
 
 # ===== Claude Code 런타임 =====
-.feature-pipeline-state.json
+.feature-pipeline-state.json*
 .claude/cache/
 .analysis/findings/
 .claire/
@@ -60,6 +60,10 @@ mobile/coverage/
 scripts/ops/admin-click-baseline/results/
 # fixtures/*.log 는 dry-run 검증용이므로 *.log 패턴에서 예외 처리
 !scripts/ops/admin-click-baseline/fixtures/*.log
+
+# ===== QA e2e 런타임 아티팩트 (소스 아님) =====
+qa/e2e/node_modules/
+qa/e2e/test-results/
 
 # ===== Misc =====
 *.tsbuildinfo
