@@ -100,18 +100,31 @@ export interface CreateBookingRequest {
   slotId: number;
 }
 
-export interface FacilitySlotResponse {
+// BE SlotResponse shape
+export interface SlotResponse {
   id: number;
-  facilityId: number;
-  date: string; // YYYY-MM-DD
-  startTime: string; // HH:mm
-  endTime: string; // HH:mm
+  facilityId: string;
+  date: string; // ISO 8601
+  timeRange: string;
   capacity: number;
-  bookedCount: number;
+  ownerId: number;
 }
 
-export interface FacilitySlotsResponse {
-  slots: FacilitySlotResponse[];
+export type PaymentMethod = 'KAKAO' | 'TOSS' | 'NAVER' | 'DANAL' | 'CREDIT_CARD' | 'BANK_TRANSFER';
+
+export interface CreateBookingBody {
+  slotId: number;
+  paymentMethod: PaymentMethod;
+  amount: number;
+  currency: 'KRW';
+}
+
+export interface CreateBookingResult {
+  bookingId: number;
+  slotId: number;
+  userId: number;
+  status: BookingStatus;
+  paymentId: number;
 }
 
 // --- Facility ---

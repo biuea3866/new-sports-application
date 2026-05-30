@@ -5,8 +5,10 @@ import { getBeClient } from './be-client';
 import type {
   BookingResponse,
   CancelBookingRequest,
-  CreateBookingRequest,
+  CreateBookingBody,
+  CreateBookingResult,
   ListBookingsResponse,
+  SlotResponse,
 } from './types';
 
 export async function listMyBookings(page = 0, size = 20): Promise<ListBookingsResponse> {
@@ -24,7 +26,12 @@ export async function cancelBooking(
   return res.data;
 }
 
-export async function createBooking(body: CreateBookingRequest): Promise<BookingResponse> {
-  const res = await getBeClient().post<BookingResponse>('/bookings', body);
+export async function listSlots(facilityId: string): Promise<SlotResponse[]> {
+  const res = await getBeClient().get<SlotResponse[]>(`/facilities/${facilityId}/slots`);
+  return res.data;
+}
+
+export async function createBooking(body: CreateBookingBody): Promise<CreateBookingResult> {
+  const res = await getBeClient().post<CreateBookingResult>('/bookings', body);
   return res.data;
 }
