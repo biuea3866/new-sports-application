@@ -66,16 +66,6 @@ class GlobalExceptionHandler {
         return ResponseEntity.status(ErrorStatus.BAD_REQUEST.httpStatus).body(problemDetail)
     }
 
-    @ExceptionHandler(MissingRequestHeaderException::class)
-    fun handleMissingRequestHeaderException(exception: MissingRequestHeaderException): ResponseEntity<ProblemDetail> {
-        val problemDetail = ProblemDetailBuilder.build(
-            status = ErrorStatus.BAD_REQUEST,
-            code = "MISSING_HEADER",
-            detail = "Required request header '${exception.headerName}' is not present"
-        )
-        return ResponseEntity.status(ErrorStatus.BAD_REQUEST.httpStatus).body(problemDetail)
-    }
-
     @ExceptionHandler(AccessDeniedException::class)
     fun handleAccessDeniedException(exception: AccessDeniedException): ResponseEntity<ProblemDetail> {
         val problemDetail = ProblemDetail.forStatus(HttpStatus.FORBIDDEN)
