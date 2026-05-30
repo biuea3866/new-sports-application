@@ -9,6 +9,8 @@ import {
   MyEventDetailSchema,
   MyProductSchema,
   DashboardSummarySchema,
+  AdminUserSchema,
+  AdminUserPageSchema,
   CreateFacilityInputSchema,
   CreateEventInputSchema,
   CreateProductInputSchema,
@@ -156,6 +158,102 @@ describe("[U-01] zod 스키마 응답 형태 검증", () => {
     it("모든 필드가 null인 Dashboard를 파싱한다", () => {
       const data = { facilities: null, events: null, products: null };
       const result = DashboardSummarySchema.safeParse(data);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe("[U-02] AdminUserSchema", () => {
+    it("유효한 AdminUser 응답을 파싱한다", () => {
+      const data = {
+        userId: 1,
+        email: "admin@example.com",
+        status: "ACTIVE",
+        roleNames: ["ADMIN"],
+        joinedAt: "2026-01-01T00:00:00Z",
+      };
+      const result = AdminUserSchema.safeParse(data);
+      expect(result.success).toBe(true);
+    });
+
+    it("status가 SUSPENDED인 회원을 파싱한다", () => {
+      const data = {
+        userId: 2,
+        email: "user@example.com",
+        status: "SUSPENDED",
+        roleNames: [],
+        joinedAt: "2026-01-15T09:00:00Z",
+      };
+      const result = AdminUserSchema.safeParse(data);
+      expect(result.success).toBe(true);
+    });
+
+    it("roleNames가 빈 배열인 회원을 파싱한다", () => {
+      const data = {
+        userId: 3,
+        email: "user2@example.com",
+        status: "INACTIVE",
+        roleNames: [],
+        joinedAt: "2026-02-01T00:00:00Z",
+      };
+      const result = AdminUserSchema.safeParse(data);
+      expect(result.success).toBe(true);
+    });
+
+    it("유효하지 않은 status는 파싱에 실패한다", () => {
+      const data = {
+        userId: 1,
+        email: "admin@example.com",
+        status: "BANNED",
+        roleNames: [],
+        joinedAt: "2026-01-01T00:00:00Z",
+      };
+      const result = AdminUserSchema.safeParse(data);
+      expect(result.success).toBe(false);
+    });
+
+    it("email 형식이 유효하지 않으면 파싱에 실패한다", () => {
+      const data = {
+        userId: 1,
+        email: "not-an-email",
+        status: "ACTIVE",
+        roleNames: [],
+        joinedAt: "2026-01-01T00:00:00Z",
+      };
+      const result = AdminUserSchema.safeParse(data);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("[U-03] AdminUserPageSchema", () => {
+    it("Page<AdminUser> 형태를 파싱한다", () => {
+      const data = {
+        content: [
+          {
+            userId: 1,
+            email: "admin@example.com",
+            status: "ACTIVE",
+            roleNames: ["ADMIN"],
+            joinedAt: "2026-01-01T00:00:00Z",
+          },
+        ],
+        page: 0,
+        size: 20,
+        totalElements: 1,
+        totalPages: 1,
+      };
+      const result = AdminUserPageSchema.safeParse(data);
+      expect(result.success).toBe(true);
+    });
+
+    it("content가 빈 배열인 경우를 파싱한다", () => {
+      const data = {
+        content: [],
+        page: 0,
+        size: 20,
+        totalElements: 0,
+        totalPages: 0,
+      };
+      const result = AdminUserPageSchema.safeParse(data);
       expect(result.success).toBe(true);
     });
   });
