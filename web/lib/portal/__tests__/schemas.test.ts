@@ -17,6 +17,8 @@ import {
   RestoreStockInputSchema,
   NotificationSchema,
   NotificationPageSchema,
+  PaymentSummarySchema,
+  PaymentSummaryPageSchema,
 } from "../schemas";
 
 describe("[U-01] zod 스키마 응답 형태 검증", () => {
@@ -426,5 +428,65 @@ describe("[U-02] NotificationSchema 검증", () => {
       };
       expect(NotificationPageSchema.safeParse(data).success).toBe(true);
     });
+  });
+});
+
+describe("[U-04] PaymentSummarySchema 검증", () => {
+  const validPayment = {
+    id: 1,
+    orderType: "BOOKING",
+    orderId: 10,
+    method: "KAKAO",
+    amount: 50000,
+    status: "COMPLETED",
+    createdAt: "2026-06-01T09:00:00Z",
+    paidAt: "2026-06-01T09:01:00Z",
+    pgTransactionId: "pg-tx-001",
+    provider: "kakao",
+  };
+
+  it("유효한 Payment 응답을 파싱한다", () => {
+    expect(PaymentSummarySchema.safeParse(validPayment).success).toBe(true);
+  });
+
+  it("paidAt이 null인 PENDING 결제를 파싱한다", () => {
+    const pending = { ...validPayment, status: "PENDING", paidAt: null, pgTransactionId: null, provider: null };
+    expect(PaymentSummarySchema.safeParse(pending).success).toBe(true);
+  });
+
+  it("pgTransactionId/provider가 없는 응답(BE-07 이전)을 파싱한다", () => {
+    const { pgTransactionId: _pg, provider: _pv, ...withoutPg } = validPayment;
+    expect(PaymentSummarySchema.safeParse(withoutPg).success).toBe(true);
+  });
+
+  it("status가 유효하지 않으면 파싱에 실패한다", () => {
+    const invalid = { ...validPayment, status: "UNKNOWN" };
+    expect(PaymentSummarySchema.safeParse(invalid).success).toBe(false);
+  });
+
+  it("method가 유효하지 않으면 파싱에 실패한다", () => {
+    const invalid = { ...validPayment, method: "PAYPAL" };
+    expect(PaymentSummarySchema.safeParse(invalid).success).toBe(false);
+  });
+
+  it("orderType이 유효하지 않으면 파싱에 실패한다", () => {
+    const invalid = { ...validPayment, orderType: "SUBSCRIPTION" };
+    expect(PaymentSummarySchema.safeParse(invalid).success).toBe(false);
+  });
+
+  it("PaymentSummaryPageSchema — content가 있는 페이지를 파싱한다", () => {
+    const page = {
+      content: [validPayment],
+      page: 0,
+      size: 20,
+      totalElements: 1,
+      totalPages: 1,
+    };
+    expect(PaymentSummaryPageSchema.safeParse(page).success).toBe(true);
+  });
+
+  it("PaymentSummaryPageSchema — content가 빈 배열인 페이지를 파싱한다", () => {
+    const page = { content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 };
+    expect(PaymentSummaryPageSchema.safeParse(page).success).toBe(true);
   });
 });
