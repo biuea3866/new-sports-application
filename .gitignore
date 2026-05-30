@@ -60,6 +60,9 @@ mobile/coverage/
 qa/e2e/node_modules/
 qa/e2e/test-results/
 
+# k6 부하테스트 raw 출력 (수 GB — summary.json/threshold.txt만 추적, raw.json 제외)
+.analysis/outputs/qa/**/raw.json
+
 # ===== Misc =====
 *.tsbuildinfo
 .npm/
