@@ -94,7 +94,7 @@ export default function SearchScreen() {
           accessibilityLabel="구 이름 입력"
           accessibilityHint="구 이름을 입력하면 해당 구의 시설을 검색합니다"
         />
-        <View style={styles.chipRow} accessibilityRole="group" accessible={false}>
+        <View style={styles.chipRow} accessible={false}>
           {FACILITY_TYPES.map(({ label, value }) => (
             <TouchableOpacity
               key={value}
