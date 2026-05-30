@@ -232,6 +232,11 @@
         "id": "no-track-dev",
         "pattern": "git (push\\s+(-u|--set-upstream).*\\bdev\\b|branch\\s+--set-upstream-to=.*dev)",
         "message": "BLOCKED: dev를 upstream으로 설정 금지 — feature 브랜치의 remote만 tracking하세요."
+      },
+      {
+        "id": "no-create-stash",
+        "pattern": "\\bgit\\s+stash\\b(?!\\s+(list|show|pop|apply|drop|clear|branch))",
+        "message": "BLOCKED: git stash 신규 생성 금지 — stash는 누적·유실의 주원인입니다. 작업을 commit(미완성이면 WIP 커밋)하거나 별도 브랜치로 분리하세요. 정리용 git stash list/show/pop/apply/drop/clear/branch 는 허용됩니다."
       }
     ]
   },
