@@ -154,6 +154,7 @@ export interface AdminUser {
   status: UserStatus;
   roleNames: string[];
   joinedAt: string;
+}
 
 // ─── Notification ────────────────────────────────────────────────────────────
 
@@ -179,30 +180,6 @@ export interface NotificationPage {
   size: number;
 }
 
-
-// ─── Notification ────────────────────────────────────────────────────────────
-
-export type NotificationChannel = "IN_APP" | "EMAIL" | "SMS" | "PUSH";
-export type NotificationStatus = "QUEUED" | "SENT" | "FAILED" | "DELIVERED";
-
-export interface Notification {
-  id: number;
-  userId: number;
-  channel: NotificationChannel;
-  templateId: string;
-  status: NotificationStatus;
-  sentAt: string | null;
-  readAt: string | null;
-  createdAt: string;
-}
-
-export interface NotificationPage {
-  content: Notification[];
-  totalElements: number;
-  totalPages: number;
-  page: number;
-  size: number;
-}
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
