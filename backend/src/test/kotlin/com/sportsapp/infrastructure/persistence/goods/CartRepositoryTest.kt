@@ -19,8 +19,8 @@ class CartRepositoryTest(
     init {
         Given("Cart 저장 후 조회 검증") {
             afterEach {
-                jdbcTemplate.execute("DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM carts WHERE user_id IN (1, 2, 3, 999))")
-                jdbcTemplate.execute("DELETE FROM carts WHERE user_id IN (1, 2, 3, 999)")
+                jdbcTemplate.execute("DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM carts WHERE user_id IN (1, 2, 3, 999, 5000))")
+                jdbcTemplate.execute("DELETE FROM carts WHERE user_id IN (1, 2, 3, 999, 5000)")
             }
 
             When("userId로 Cart를 저장하고 findByUserId로 조회하면") {
@@ -73,6 +73,32 @@ class CartRepositoryTest(
 
                     val newItem = cartItemRepository.save(CartItem(cartId = cart.id, productId = 200L, quantity = 2))
                     newItem.id shouldNotBe item.id
+                }
+            }
+
+            When("[DEF-003] soft-delete된 cart가 존재하고 새 cart가 생성된 상태에서 findByUserId를 호출하면") {
+                Then("500 없이 활성(deletedAt=null) cart 단일 건을 반환한다") {
+                    val deletedCart = cartRepository.save(Cart(userId = 5000L))
+                    deletedCart.softDelete(userId = 5000L)
+                    cartRepository.save(deletedCart)
+
+                    val activeCart = cartRepository.save(Cart(userId = 5000L))
+
+                    val found = cartRepository.findByUserId(5000L)
+                    found shouldNotBe null
+                    found?.id shouldBe activeCart.id
+                    found?.isDeleted shouldBe false
+                }
+            }
+
+            When("[DEF-003-unique] 활성 cart가 존재하는 상태에서 findByUserId를 재호출하면") {
+                Then("동일한 단일 활성 cart를 반환하며 중복 생성되지 않는다") {
+                    val firstCart = cartRepository.save(Cart(userId = 5000L))
+
+                    // getOrCreateCart 멱등성: 이미 존재하면 재사용
+                    val found = cartRepository.findByUserId(5000L)
+                    found shouldNotBe null
+                    found?.id shouldBe firstCart.id
                 }
             }
         }
