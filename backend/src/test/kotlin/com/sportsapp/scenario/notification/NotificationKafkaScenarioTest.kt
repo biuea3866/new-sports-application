@@ -45,7 +45,6 @@ class NotificationKafkaScenarioTest(
             .withDatabaseName("sports")
             .withUsername("test")
             .withPassword("test")
-            .withReuse(true)
             .also { it.start() }
 
         val kafkaContainer: KafkaContainer = KafkaContainer(

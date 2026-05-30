@@ -40,7 +40,6 @@ abstract class BaseIntegrationTest : BehaviorSpec() {
             .also { it.start() }
 
         val mongoContainer: MongoDBContainer = MongoDBContainer("mongo:7.0")
-            .withReuse(true)
             .also { it.start() }
 
         @Container
@@ -54,7 +53,6 @@ abstract class BaseIntegrationTest : BehaviorSpec() {
             .withEnv("MINIO_ROOT_USER", "minioadmin")
             .withEnv("MINIO_ROOT_PASSWORD", "minioadmin")
             .withCommand("server", "/data")
-            .withReuse(true)
             .also { it.start() }
     }
 }
