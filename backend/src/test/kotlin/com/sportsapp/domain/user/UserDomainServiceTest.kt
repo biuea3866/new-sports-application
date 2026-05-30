@@ -13,12 +13,14 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 class UserDomainServiceTest : BehaviorSpec({
 
     val userRepository = mockk<UserRepository>()
+    val userCustomRepository = mockk<UserCustomRepository>()
     val roleRepository = mockk<RoleRepository>()
     val userRoleRepository = mockk<UserRoleRepository>()
     val passwordEncoder = BCryptPasswordEncoder()
 
     val userDomainService = UserDomainService(
         userRepository = userRepository,
+        userCustomRepository = userCustomRepository,
         roleRepository = roleRepository,
         userRoleRepository = userRoleRepository,
         passwordEncoder = passwordEncoder,
