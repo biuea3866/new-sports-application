@@ -68,6 +68,7 @@ class SecurityConfig(
             "/events/**", "/notifications/**",
             "/cart/**", "/ticket-orders/**", "/goods-orders/**",
             "/weather/**",
+            "/operator/inbox/**", // TODO(AUTH-04): JWT 인증 통합 시 제거
         ).permitAll()
         auth.anyRequest().authenticated()
     }
