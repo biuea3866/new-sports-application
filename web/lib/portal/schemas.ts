@@ -170,6 +170,34 @@ export const AdminUserSchema = z.object({
 
 export const AdminUserPageSchema = PageSchema(AdminUserSchema);
 
+// ─── Payment ─────────────────────────────────────────────────────────────────
+
+export const PaymentStatusSchema = z.enum(["PENDING", "COMPLETED", "FAILED", "REFUNDED"]);
+export const PaymentMethodSchema = z.enum([
+  "CREDIT_CARD",
+  "BANK_TRANSFER",
+  "KAKAO",
+  "TOSS",
+  "NAVER",
+  "DANAL",
+]);
+export const OrderTypeSchema = z.enum(["BOOKING", "TICKETING", "GOODS"]);
+
+export const PaymentSummarySchema = z.object({
+  id: z.number().int().positive(),
+  orderType: OrderTypeSchema,
+  orderId: z.number().int().positive(),
+  method: PaymentMethodSchema,
+  amount: z.number(),
+  status: PaymentStatusSchema,
+  createdAt: z.string(),
+  paidAt: z.string().nullable(),
+  pgTransactionId: z.string().nullable().optional(),
+  provider: z.string().nullable().optional(),
+});
+
+export const PaymentSummaryPageSchema = PageSchema(PaymentSummarySchema);
+
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
 export const FacilitySummarySchema = z.object({

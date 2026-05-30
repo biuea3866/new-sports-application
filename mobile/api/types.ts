@@ -77,3 +77,25 @@ export interface ListBookingsResponse {
 export interface CancelBookingRequest {
   reason?: string;
 }
+
+// --- Facility ---
+export type FacilityType = 'INDOOR' | 'OUTDOOR' | 'MIXED';
+
+export interface FacilityResponse {
+  id: number;
+  name: string;
+  gu: string;
+  type: FacilityType;
+  address: string;
+  parking: boolean;
+  phone: string;
+}
+
+export interface FacilityPageResponse {
+  content: FacilityResponse[];
+  number: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  last: boolean;
+}
