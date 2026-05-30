@@ -54,6 +54,10 @@
         "hooks": [
           {
             "type": "command",
+            "command": "bash /Users/biuea/sports-application/.claude/hooks/_run.sh /Users/biuea/sports-application/.claude/hooks/workflow-gates/agent-worktree-guard.sh"
+          },
+          {
+            "type": "command",
             "command": "bash /Users/biuea/sports-application/.claude/hooks/_run.sh /Users/biuea/sports-application/.claude/hooks/workflow-gates/agent-merge-guard.sh"
           },
           {

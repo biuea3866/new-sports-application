@@ -17,8 +17,14 @@ hooks/
 ├── verify/                  ← 사후 검증 (PostToolUse)
 │   └── subagent-verify.py
 ├── workflow-gates/          ← 워크플로우 단계 게이트 (Bash)
-│   ├── feature-gate.sh
+│   ├── feature-gate.sh           (브랜치/파이프라인 단계 + 메인 워크트리 직접 구현 차단)
 │   ├── feature-tdd-gate.sh
+│   ├── agent-worktree-guard.sh   (구현 에이전트 워크트리 격리 강제)
+│   ├── agent-merge-guard.sh      (구현 에이전트 PR 머지 차단)
+│   ├── wave-fanout-guard.sh      (wave 병렬 스폰 advisory 경고)
+│   ├── worktree-isolation-guard.sh (워크트리 에이전트의 main 경로 침범 차단)
+│   ├── pr-review-gate.sh
+│   ├── pr-review-tracker.sh
 │   ├── push-review.sh       (현재 미등록 — 비용 발생 가능, 옵션)
 │   └── push-test.sh
 └── util/                    ← 수동 호출용 유틸리티 (hook 아님)
@@ -49,12 +55,18 @@ hooks/
 |---|---|---|---|
 | PreToolUse | `Write\|Edit` | `code-rules/harness-check.py file-guard` | 파일 경로/이름 가드 |
 | PreToolUse | `Write\|Edit` | `code-rules/harness-check.py code-pattern` | `harness-rules.json` 금지 패턴 차단 |
-| PreToolUse | `Write\|Edit` | `workflow-gates/feature-gate.sh` | main/dev 브랜치 + 파이프라인 미진입 상태 구현 코드 차단 |
+| PreToolUse | `Write\|Edit` | `workflow-gates/feature-gate.sh` | ① main/dev 브랜치 + 파이프라인 미진입 상태 구현 코드 차단 ② **APPROVED/IMPLEMENTING 중 메인 워크트리 직접 구현 차단(갭 B)** — `.claude/worktrees/` 밖 구현 파일은 deny, 머지 중(MERGE_HEAD)이면 예외 |
 | PreToolUse | `Bash` | `code-rules/harness-check.py git-guard` | git 명령 가드 (예: main 직접 push) |
 | PreToolUse | `Bash` | `code-rules/harness-check.py bash-file-guard` | bash 명령이 건드리는 파일 가드 |
 | PreToolUse | `Bash` | `workflow-gates/feature-tdd-gate.sh` | push 시 src/main 변경 있는데 src/test 변경 없으면 차단 |
 | PreToolUse | `Bash` | `workflow-gates/push-test.sh` | push 전 변경된 Gradle 모듈 테스트 자동 실행 |
+| PreToolUse | `Bash` | `workflow-gates/pr-review-gate.sh` | PR 생성 게이트 |
+| PreToolUse | `Bash` | `workflow-gates/worktree-isolation-guard.sh` | 워크트리 에이전트가 main 워크트리 경로로 cd/git 침범 차단 |
+| PreToolUse | `Agent` | `workflow-gates/agent-worktree-guard.sh` | **구현 에이전트(`*implementer`/`tdd-implement`/`db-schema-writer`/`kafka-topic-provisioner`)가 워크트리 격리 없이 스폰되면 차단(갭 A)** — `isolation:"worktree"` 또는 prompt 에 `.claude/worktrees/` 경로 必 |
+| PreToolUse | `Agent` | `workflow-gates/agent-merge-guard.sh` | 구현 에이전트의 `gh pr merge` 직접 수행 차단 |
+| PreToolUse | `Agent` | `workflow-gates/wave-fanout-guard.sh` | wave ready≥2 직렬 스폰 시 경고 (advisory, 차단 안 함) |
 | PostToolUse | `Agent` | `verify/subagent-verify.py` | 구현 서브에이전트의 push/PR/리뷰어 호출 검증 |
+| PostToolUse | `Agent` | `workflow-gates/pr-review-tracker.sh` | PR 리뷰 추적 |
 
 > 미등록: `workflow-gates/push-review.sh` — push 마다 `claude -p`로 자동 PR 리뷰를 돌리는 게이트.
 > 비용 발생 가능성 때문에 기본 비활성. 필요 시 settings.json에 위 패턴으로 등록.
