@@ -44,7 +44,7 @@ describe("[S-01] 유효 CSV 미리보기 후 일괄 등록 성공", () => {
     render(<FacilitiesImportClient />);
 
     const input = screen.getByLabelText("CSV 파일 선택");
-    await act(async () => {
+    act(() => {
       Object.defineProperty(input, "files", {
         value: [makeFile(VALID_CSV)],
         configurable: true,
@@ -70,7 +70,7 @@ describe("[S-01] 유효 CSV 미리보기 후 일괄 등록 성공", () => {
     render(<FacilitiesImportClient />);
 
     const input = screen.getByLabelText("CSV 파일 선택");
-    await act(async () => {
+    act(() => {
       Object.defineProperty(input, "files", {
         value: [makeFile(VALID_CSV)],
         configurable: true,
@@ -82,7 +82,7 @@ describe("[S-01] 유효 CSV 미리보기 후 일괄 등록 성공", () => {
       expect(screen.getByRole("button", { name: /일괄 등록 시작/ })).toBeInTheDocument();
     });
 
-    await act(async () => {
+    act(() => {
       fireEvent.click(screen.getByRole("button", { name: /일괄 등록 시작/ }));
     });
 
@@ -108,7 +108,7 @@ describe("[S-01] 유효 CSV 미리보기 후 일괄 등록 성공", () => {
     render(<FacilitiesImportClient />);
 
     const input = screen.getByLabelText("CSV 파일 선택");
-    await act(async () => {
+    act(() => {
       Object.defineProperty(input, "files", {
         value: [makeFile(VALID_CSV)],
         configurable: true,
@@ -120,7 +120,7 @@ describe("[S-01] 유효 CSV 미리보기 후 일괄 등록 성공", () => {
       expect(screen.getByRole("button", { name: /일괄 등록 시작/ })).toBeInTheDocument();
     });
 
-    await act(async () => {
+    act(() => {
       fireEvent.click(screen.getByRole("button", { name: /일괄 등록 시작/ }));
     });
 
@@ -137,7 +137,7 @@ describe("[S-02] CSV 파싱 에러 행 표시", () => {
     render(<FacilitiesImportClient />);
 
     const input = screen.getByLabelText("CSV 파일 선택");
-    await act(async () => {
+    act(() => {
       Object.defineProperty(input, "files", {
         value: [makeFile(CSV_WITH_ERROR)],
         configurable: true,
@@ -161,7 +161,7 @@ describe("[S-02] CSV 파싱 에러 행 표시", () => {
     render(<FacilitiesImportClient />);
 
     const input = screen.getByLabelText("CSV 파일 선택");
-    await act(async () => {
+    act(() => {
       Object.defineProperty(input, "files", {
         value: [makeFile(allErrorCsv)],
         configurable: true,
@@ -205,7 +205,7 @@ describe("[S-03] POST 실패 행 표시", () => {
     render(<FacilitiesImportClient />);
 
     const input = screen.getByLabelText("CSV 파일 선택");
-    await act(async () => {
+    act(() => {
       Object.defineProperty(input, "files", {
         value: [makeFile(VALID_CSV)],
         configurable: true,
@@ -217,7 +217,7 @@ describe("[S-03] POST 실패 행 표시", () => {
       expect(screen.getByRole("button", { name: /일괄 등록 시작/ })).toBeInTheDocument();
     });
 
-    await act(async () => {
+    act(() => {
       fireEvent.click(screen.getByRole("button", { name: /일괄 등록 시작/ }));
     });
 
@@ -247,7 +247,7 @@ describe("[S-03] POST 실패 행 표시", () => {
     render(<FacilitiesImportClient />);
 
     const input = screen.getByLabelText("CSV 파일 선택");
-    await act(async () => {
+    act(() => {
       Object.defineProperty(input, "files", {
         value: [makeFile(VALID_CSV)],
         configurable: true,
@@ -259,7 +259,7 @@ describe("[S-03] POST 실패 행 표시", () => {
       expect(screen.getByRole("button", { name: /일괄 등록 시작/ })).toBeInTheDocument();
     });
 
-    await act(async () => {
+    act(() => {
       fireEvent.click(screen.getByRole("button", { name: /일괄 등록 시작/ }));
     });
 
@@ -277,7 +277,7 @@ describe("[S-04] 비CSV 파일 에러", () => {
     render(<FacilitiesImportClient />);
 
     const input = screen.getByLabelText("CSV 파일 선택");
-    await act(async () => {
+    act(() => {
       Object.defineProperty(input, "files", {
         value: [makeFile("some content", "facilities.xlsx", "application/vnd.openxmlformats")],
         configurable: true,

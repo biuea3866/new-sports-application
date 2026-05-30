@@ -9,11 +9,6 @@ const nextConfig = {
   experimental: {
     turbo: {},
   },
-  eslint: {
-    // pre-existing lint errors in __tests__ files (origin/dev base already failing)
-    // block only new violations via tsc --noEmit in CI
-    ignoreDuringBuilds: true,
-  },
 };
 
 export default withBundleAnalyzer(nextConfig);

@@ -75,6 +75,7 @@ export default function UsageAnalyticsPage(): JSX.Element {
 
   function handleSearch(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    void loadData();
   }
 
   const dailyAggregated = data ? aggregateDailyStats(data.dailyStats) : [];
@@ -230,7 +231,7 @@ export default function UsageAnalyticsPage(): JSX.Element {
                       tick={{ fontSize: 11 }}
                       width={140}
                     />
-                    <Tooltip formatter={(value: number) => [`${value}ms`, "P95"]} />
+                    <Tooltip formatter={(value) => [`${String(value ?? 0)}ms`, "P95"]} />
                     <Bar dataKey="p95LatencyMs" name="P95 (ms)" fill="#8b5cf6" />
                   </BarChart>
                 </ResponsiveContainer>
