@@ -180,3 +180,17 @@ export const DashboardSummarySchema = z.object({
   events: EventSummarySchema.nullable(),
   products: ProductSummarySchema.nullable(),
 });
+
+// ─── AdminUser ───────────────────────────────────────────────────────────────
+
+const UserStatusSchema = z.enum(["ACTIVE", "INACTIVE", "SUSPENDED"]);
+
+export const AdminUserSchema = z.object({
+  userId: z.number().int().positive(),
+  email: z.string().email(),
+  status: UserStatusSchema,
+  roleNames: z.array(z.string()),
+  joinedAt: z.string(),
+});
+
+export const AdminUserPageSchema = PageSchema(AdminUserSchema);

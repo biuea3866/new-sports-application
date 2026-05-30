@@ -168,3 +168,15 @@ export interface DashboardSummary {
   events: EventSummary | null;
   products: ProductSummary | null;
 }
+
+// ─── AdminUser ───────────────────────────────────────────────────────────────
+
+export type UserStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
+
+export interface AdminUser {
+  userId: number;
+  email: string;
+  status: UserStatus;
+  roleNames: string[];
+  joinedAt: string;
+}
