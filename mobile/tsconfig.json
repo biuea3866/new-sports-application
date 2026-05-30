@@ -15,17 +15,26 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@/api/*": ["api/*"],
-      "@/lib/*": ["lib/*"],
-      "@/app/*": ["app/*"],
-      "@/assets/*": ["assets/*"]
+      "@/api/*": [
+        "api/*"
+      ],
+      "@/lib/*": [
+        "lib/*"
+      ],
+      "@/app/*": [
+        "app/*"
+      ],
+      "@/assets/*": [
+        "assets/*"
+      ]
     }
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.d.ts",
-    "expo-env.d.ts"
+    "expo-env.d.ts",
+    ".expo/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"
