@@ -32,7 +32,7 @@ class PaymentQueryScenarioTest(
             method = PaymentMethod.CREDIT_CARD,
             amount = BigDecimal("10000"),
             currency = "KRW",
-        ).also { it.markCompleted(ZonedDateTime.now()) }
+        ).also { it.markCompleted(ZonedDateTime.now(), "txn-query-${idempotencyKey}", "card") }
         return paymentRepository.save(payment)
     }
 

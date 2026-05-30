@@ -24,6 +24,7 @@ class MockPaymentGateway(
         }
         return PaymentGatewayResult(
             pgTransactionId = UUID.randomUUID().toString(),
+            provider = "mock",
             approvedAt = ZonedDateTime.now(),
         )
     }
