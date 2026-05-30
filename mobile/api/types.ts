@@ -39,6 +39,27 @@ export interface MyProfileResponse {
 export type ProductCategory = string;
 export type ProductStatus = 'ACTIVE' | 'INACTIVE' | 'SOLD_OUT';
 
+export type ProductCategory = 'EQUIPMENT' | 'APPAREL' | 'FOOTWEAR' | 'ACCESSORY';
+export type ProductStatus = 'ACTIVE' | 'INACTIVE' | 'SOLD_OUT';
+
+export interface ProductSummary {
+  id: number;
+  name: string;
+  category: ProductCategory;
+  price: string; // BigDecimal → string
+  imageUrl: string;
+  status: ProductStatus;
+  stockQuantity: number;
+}
+
+export interface ProductListResponse {
+  content: ProductSummary[];
+  totalElements: number;
+  totalPages: number;
+  page: number;
+  size: number;
+}
+
 export interface ProductDetailResponse {
   id: number;
   name: string;

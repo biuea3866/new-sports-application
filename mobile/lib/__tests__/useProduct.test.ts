@@ -17,7 +17,7 @@ describe('Product API', () => {
   const mockProduct: ProductDetailResponse = {
     id: 1,
     name: '테니스 라켓',
-    category: 'SPORTS',
+    category: 'EQUIPMENT',
     price: '150000',
     description: '고품질 테니스 라켓입니다.',
     imageUrl: 'https://example.com/racket.jpg',
