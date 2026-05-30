@@ -1,6 +1,7 @@
 package com.sportsapp.presentation.booking
 
 import com.sportsapp.application.booking.BookingResponse
+import com.sportsapp.application.booking.CancelBookingUseCase
 import com.sportsapp.application.booking.CreateBookingResult
 import com.sportsapp.application.booking.CreateBookingUseCase
 import com.sportsapp.application.booking.GetBookingUseCase
@@ -25,6 +26,7 @@ class BookingApiController(
     private val listMyBookingsUseCase: ListMyBookingsUseCase,
     private val getBookingUseCase: GetBookingUseCase,
     private val createBookingUseCase: CreateBookingUseCase,
+    private val cancelBookingUseCase: CancelBookingUseCase,
 ) {
     @PostMapping
     fun createBooking(
@@ -56,5 +58,14 @@ class BookingApiController(
         @PathVariable id: Long,
     ): ResponseEntity<BookingResponse> {
         return ResponseEntity.ok(getBookingUseCase.execute(requesterId = userId, bookingId = id))
+    }
+
+    @PostMapping("/{id}/cancel")
+    fun cancelBooking(
+        @RequestHeader("X-User-Id") userId: Long,
+        @PathVariable id: Long,
+        @RequestBody request: CancelBookingRequest,
+    ): ResponseEntity<BookingResponse> {
+        return ResponseEntity.ok(cancelBookingUseCase.execute(request.toCommand(bookingId = id, userId = userId)))
     }
 }
