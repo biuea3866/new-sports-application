@@ -2,6 +2,9 @@ package com.sportsapp.domain.goods
 
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import java.math.BigDecimal
+import java.math.RoundingMode
+import java.time.ZonedDateTime
+import java.time.temporal.ChronoUnit
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
@@ -223,6 +226,25 @@ class GoodsDomainService(
 
     fun sumRevenueByOwnerUserId(ownerUserId: Long): BigDecimal =
         goodsOrderCustomRepository.sumRevenueByProductOwnerUserId(ownerUserId)
+
+    fun aggregateGoodsKpi(ownerUserId: Long, from: ZonedDateTime, to: ZonedDateTime): GoodsKpiSummary {
+        val periodRevenue = goodsOrderCustomRepository.sumRevenueByProductOwnerUserIdAndDateRange(ownerUserId, from, to)
+        val outOfStockSkuCount = stockRepository.countOutOfStockByOwnerId(ownerUserId)
+        val activeProductCount = productRepository.countByOwnerIdAndStatus(ownerUserId, ProductStatus.ACTIVE)
+
+        val dayCount = ChronoUnit.DAYS.between(from.toLocalDate(), to.toLocalDate()).coerceAtLeast(1)
+        val dailyRevenueTotal = periodRevenue.divide(BigDecimal(dayCount), 2, RoundingMode.HALF_UP)
+
+        val inventoryTurnoverRate = if (activeProductCount > 0) {
+            periodRevenue.divide(BigDecimal(activeProductCount), 2, RoundingMode.HALF_UP)
+        } else BigDecimal.ZERO
+
+        return GoodsKpiSummary(
+            dailyRevenueTotal = dailyRevenueTotal,
+            inventoryTurnoverRate = inventoryTurnoverRate,
+            outOfStockSkuCount = outOfStockSkuCount,
+        )
+    }
 
     companion object {
         private const val POPULAR_LIMIT = 20

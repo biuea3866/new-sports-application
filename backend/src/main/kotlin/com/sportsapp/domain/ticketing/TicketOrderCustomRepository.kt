@@ -9,4 +9,10 @@ interface TicketOrderCustomRepository {
         from: ZonedDateTime,
         to: ZonedDateTime,
     ): TicketSalesSummary
+
+    fun countComplimentaryByOwnerUserIdAndDateRange(
+        ownerUserId: Long,
+        from: ZonedDateTime,
+        to: ZonedDateTime,
+    ): Long
 }

@@ -15,6 +15,9 @@
     <ID>TooManyFunctions:FacilityMongoRepository.kt$FacilityMongoRepository : MongoRepository</ID>
     <ID>TooManyFunctions:FacilityRepository.kt$FacilityRepository</ID>
     <ID>TooManyFunctions:FacilityRepositoryImpl.kt$FacilityRepositoryImpl : FacilityRepository</ID>
+    <ID>TooManyFunctions:BookingDomainService.kt$BookingDomainService</ID>
+    <ID>TooManyFunctions:BookingRepository.kt$BookingRepository</ID>
+    <ID>TooManyFunctions:BookingRepositoryImpl.kt$BookingRepositoryImpl : BookingRepository</ID>
     <ID>TooManyFunctions:GoodsDomainService.kt$GoodsDomainService</ID>
     <ID>TooManyFunctions:McpAuditLogJpaRepositoryImpl.kt$McpAuditLogJpaRepositoryImpl : McpAuditLogQueryDslRepository</ID>
     <ID>TooManyFunctions:TicketingDomainService.kt$TicketingDomainService</ID>
