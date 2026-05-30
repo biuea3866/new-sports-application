@@ -2,21 +2,25 @@ package com.sportsapp.domain.payment
 
 import java.math.BigDecimal
 
-data class PaymentRequest(
+data class PgPrepareRequest(
+    val provider: String,
     val idempotencyKey: String,
-    val method: PaymentMethod,
-    val amount: BigDecimal,
-    val currency: String,
+    val userId: Long,
     val orderType: OrderType,
     val orderId: Long,
+    val amount: BigDecimal,
+    val currency: String,
+    val itemName: String,
+    val returnUrl: String,
+    val failUrl: String,
 )
 
-data class PaymentGatewayResult(
-    val pgTransactionId: String,
+data class PgPrepareResult(
+    val tid: String,
     val provider: String,
-    val approvedAt: java.time.ZonedDateTime,
+    val checkoutUrl: String,
 )
 
 interface PaymentGateway {
-    fun requestPayment(request: PaymentRequest): PaymentGatewayResult
+    fun prepare(request: PgPrepareRequest): PgPrepareResult
 }

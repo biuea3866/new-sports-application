@@ -34,7 +34,10 @@ class PaymentCustomRepositoryImplTest(
             amount = BigDecimal("10000"),
             currency = "KRW",
         )
-        if (status == PaymentStatus.COMPLETED) payment.markCompleted(ZonedDateTime.now(), "txn-${idempotencyKey}", "card")
+        if (status == PaymentStatus.COMPLETED) {
+            payment.markReady("txn-$idempotencyKey", "card", "http://checkout")
+            payment.markCompleted(ZonedDateTime.now())
+        }
         if (status == PaymentStatus.FAILED) payment.markFailed("PG error")
         return paymentRepository.save(payment)
     }
@@ -128,7 +131,10 @@ class PaymentCustomRepositoryImplTest(
                 method = PaymentMethod.CREDIT_CARD,
                 amount = BigDecimal("10000"),
                 currency = "KRW",
-            ).also { it.markCompleted(paidAt, "txn-r04", "card") }
+            ).also {
+                it.markReady("txn-r04", "card", "http://checkout")
+                it.markCompleted(paidAt)
+            }
             paymentRepository.save(payment)
 
             val pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "createdAt"))

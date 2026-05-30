@@ -10,22 +10,26 @@ import java.time.ZonedDateTime
 
 class PaymentDomainServiceTest : BehaviorSpec({
 
-    Given("create — PG 성공 케이스") {
-        val paymentRepository = mockk<PaymentRepository>()
-        val paymentGateway = mockk<PaymentGateway>()
+    fun buildPrepareRequest() = Triple(
+        mockk<PaymentRepository>(),
+        mockk<PaymentGateway>(),
+        "test-key-01"
+    )
+
+    Given("prepare — PG 성공 케이스") {
+        val (paymentRepository, paymentGateway, key) = buildPrepareRequest()
         val service = PaymentDomainService(paymentRepository, paymentGateway)
 
-        val key = "create-success-01"
         every { paymentRepository.findByIdempotencyKey(key) } returns null
         every { paymentRepository.save(any()) } answers { firstArg() }
-        every { paymentGateway.requestPayment(any()) } returns PaymentGatewayResult(
-            pgTransactionId = "txn-001",
+        every { paymentGateway.prepare(any()) } returns PgPrepareResult(
+            tid = "MOCK_CARD_abc123",
             provider = "card",
-            approvedAt = ZonedDateTime.now(),
+            checkoutUrl = "http://localhost:9090/pg/card/checkout?tid=MOCK_CARD_abc123",
         )
 
-        When("create 를 호출하면") {
-            val result = service.create(
+        When("prepare 를 호출하면") {
+            val result = service.prepare(
                 userId = 1L,
                 idempotencyKey = key,
                 orderType = OrderType.BOOKING,
@@ -33,49 +37,26 @@ class PaymentDomainServiceTest : BehaviorSpec({
                 method = PaymentMethod.CREDIT_CARD,
                 amount = BigDecimal("10000"),
                 currency = "KRW",
+                itemName = "테스트 예약",
+                returnUrl = "http://localhost/return",
+                failUrl = "http://localhost/fail",
             )
-            Then("[U-02] COMPLETED 상태의 Payment 가 반환된다") {
-                result.status shouldBe PaymentStatus.COMPLETED
-                verify(exactly = 1) { paymentGateway.requestPayment(any()) }
+            Then("[U-02] READY 상태의 Payment 가 반환되고 checkoutUrl 이 설정된다") {
+                result.status shouldBe PaymentStatus.READY
+                result.pgTransactionId shouldBe "MOCK_CARD_abc123"
+                result.checkoutUrl shouldBe "http://localhost:9090/pg/card/checkout?tid=MOCK_CARD_abc123"
+                verify(exactly = 1) { paymentGateway.prepare(any()) }
                 verify(exactly = 1) { paymentRepository.save(any()) }
             }
         }
     }
 
-    Given("create — PG 실패 케이스") {
+    Given("prepare — 멱등 hit 케이스") {
         val paymentRepository = mockk<PaymentRepository>()
         val paymentGateway = mockk<PaymentGateway>()
         val service = PaymentDomainService(paymentRepository, paymentGateway)
 
-        val key = "create-fail-01"
-        every { paymentRepository.findByIdempotencyKey(key) } returns null
-        every { paymentRepository.save(any()) } answers { firstArg() }
-        every { paymentGateway.requestPayment(any()) } throws PaymentGatewayException("카드 한도 초과")
-
-        When("create 를 호출하면") {
-            val result = service.create(
-                userId = 1L,
-                idempotencyKey = key,
-                orderType = OrderType.BOOKING,
-                orderId = 101L,
-                method = PaymentMethod.CREDIT_CARD,
-                amount = BigDecimal("10000"),
-                currency = "KRW",
-            )
-            Then("[U-02] FAILED 상태와 failureReason 이 담긴 Payment 가 반환된다") {
-                result.status shouldBe PaymentStatus.FAILED
-                result.failureReason shouldBe "카드 한도 초과"
-                verify(exactly = 1) { paymentRepository.save(any()) }
-            }
-        }
-    }
-
-    Given("create — 멱등 hit 케이스") {
-        val paymentRepository = mockk<PaymentRepository>()
-        val paymentGateway = mockk<PaymentGateway>()
-        val service = PaymentDomainService(paymentRepository, paymentGateway)
-
-        val key = "create-idem-hit-01"
+        val key = "idem-hit-key"
         val existing = Payment.create(
             userId = 1L,
             idempotencyKey = key,
@@ -84,11 +65,14 @@ class PaymentDomainServiceTest : BehaviorSpec({
             method = PaymentMethod.CREDIT_CARD,
             amount = BigDecimal("10000"),
             currency = "KRW",
-        ).also { it.markCompleted(ZonedDateTime.now(), "txn-idem-001", "card") }
+        ).also {
+            it.markReady("tid-existing", "card", "http://localhost:9090/pg/card/checkout?tid=tid-existing")
+            it.markCompleted(ZonedDateTime.now())
+        }
         every { paymentRepository.findByIdempotencyKey(key) } returns existing
 
-        When("create 를 호출하면") {
-            val result = service.create(
+        When("prepare 를 호출하면") {
+            val result = service.prepare(
                 userId = 1L,
                 idempotencyKey = key,
                 orderType = OrderType.BOOKING,
@@ -96,10 +80,98 @@ class PaymentDomainServiceTest : BehaviorSpec({
                 method = PaymentMethod.CREDIT_CARD,
                 amount = BigDecimal("10000"),
                 currency = "KRW",
+                itemName = "테스트",
+                returnUrl = "",
+                failUrl = "",
             )
-            Then("[U-02] PG 호출 없이 기존 Payment 를 반환한다") {
+            Then("[U-01] PG 호출 없이 기존 Payment 를 반환한다") {
                 result shouldBe existing
-                verify(exactly = 0) { paymentGateway.requestPayment(any()) }
+                verify(exactly = 0) { paymentGateway.prepare(any()) }
+                verify(exactly = 0) { paymentRepository.save(any()) }
+            }
+        }
+    }
+
+    Given("confirmWebhook — PAYMENT_APPROVED 케이스") {
+        val paymentRepository = mockk<PaymentRepository>()
+        val paymentGateway = mockk<PaymentGateway>()
+        val service = PaymentDomainService(paymentRepository, paymentGateway)
+
+        val tid = "MOCK_CARD_approve01"
+        val readyPayment = Payment.create(
+            userId = 1L,
+            idempotencyKey = "confirm-key-01",
+            orderType = OrderType.BOOKING,
+            orderId = 300L,
+            method = PaymentMethod.CREDIT_CARD,
+            amount = BigDecimal("15000"),
+            currency = "KRW",
+        ).also { it.markReady(tid, "card", "http://checkout") }
+        every { paymentRepository.findByPgTransactionId(tid) } returns readyPayment
+        every { paymentRepository.save(any()) } answers { firstArg() }
+
+        When("confirmWebhook(eventType=PAYMENT_APPROVED) 를 호출하면") {
+            val result = service.confirmWebhook(tid = tid, eventType = "PAYMENT_APPROVED")
+
+            Then("[U-03] 상태가 COMPLETED 로 전이된다") {
+                result.status shouldBe PaymentStatus.COMPLETED
+                verify(exactly = 1) { paymentRepository.save(any()) }
+            }
+        }
+    }
+
+    Given("confirmWebhook — PAYMENT_CANCELED 케이스") {
+        val paymentRepository = mockk<PaymentRepository>()
+        val paymentGateway = mockk<PaymentGateway>()
+        val service = PaymentDomainService(paymentRepository, paymentGateway)
+
+        val tid = "MOCK_CARD_cancel01"
+        val readyPayment = Payment.create(
+            userId = 1L,
+            idempotencyKey = "confirm-key-02",
+            orderType = OrderType.BOOKING,
+            orderId = 400L,
+            method = PaymentMethod.CREDIT_CARD,
+            amount = BigDecimal("20000"),
+            currency = "KRW",
+        ).also { it.markReady(tid, "card", "http://checkout") }
+        every { paymentRepository.findByPgTransactionId(tid) } returns readyPayment
+        every { paymentRepository.save(any()) } answers { firstArg() }
+
+        When("confirmWebhook(eventType=PAYMENT_CANCELED) 를 호출하면") {
+            val result = service.confirmWebhook(tid = tid, eventType = "PAYMENT_CANCELED")
+
+            Then("[U-04] 상태가 CANCELLED 로 전이된다") {
+                result.status shouldBe PaymentStatus.CANCELLED
+            }
+        }
+    }
+
+    Given("confirmWebhook — 멱등 케이스 (PAYMENT_APPROVED 중복 수신)") {
+        val paymentRepository = mockk<PaymentRepository>()
+        val paymentGateway = mockk<PaymentGateway>()
+        val service = PaymentDomainService(paymentRepository, paymentGateway)
+
+        val tid = "MOCK_CARD_dup01"
+        val completedPayment = Payment.create(
+            userId = 1L,
+            idempotencyKey = "confirm-key-03",
+            orderType = OrderType.BOOKING,
+            orderId = 500L,
+            method = PaymentMethod.CREDIT_CARD,
+            amount = BigDecimal("25000"),
+            currency = "KRW",
+        ).also {
+            it.markReady(tid, "card", "http://checkout")
+            it.markCompleted(ZonedDateTime.now())
+        }
+        every { paymentRepository.findByPgTransactionId(tid) } returns completedPayment
+
+        When("이미 COMPLETED 상태에서 PAYMENT_APPROVED webhook 을 다시 수신하면") {
+            val result = service.confirmWebhook(tid = tid, eventType = "PAYMENT_APPROVED")
+
+            Then("[U-05] save 를 호출하지 않고 기존 Payment 를 반환한다 (멱등)") {
+                result.status shouldBe PaymentStatus.COMPLETED
                 verify(exactly = 0) { paymentRepository.save(any()) }
             }
         }

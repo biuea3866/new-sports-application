@@ -1,6 +1,7 @@
 package com.sportsapp.domain.payment
 
 import java.math.BigDecimal
+import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
@@ -11,7 +12,11 @@ class PaymentDomainService(
     private val paymentRepository: PaymentRepository,
     private val paymentGateway: PaymentGateway,
 ) {
-    fun create(
+    companion object {
+        private val log = LoggerFactory.getLogger(PaymentDomainService::class.java)
+    }
+
+    fun prepare(
         userId: Long,
         idempotencyKey: String,
         orderType: OrderType,
@@ -19,6 +24,9 @@ class PaymentDomainService(
         method: PaymentMethod,
         amount: BigDecimal,
         currency: String,
+        itemName: String,
+        returnUrl: String,
+        failUrl: String,
     ): Payment {
         val existing = paymentRepository.findByIdempotencyKey(idempotencyKey)
         if (existing != null) return existing
@@ -32,41 +40,72 @@ class PaymentDomainService(
             amount = amount,
             currency = currency,
         )
-        return processPayment(payment, idempotencyKey, method, amount, currency, orderType, orderId)
+
+        val provider = method.toPgProviderName()
+        val prepareResult = paymentGateway.prepare(
+            PgPrepareRequest(
+                provider = provider,
+                idempotencyKey = idempotencyKey,
+                userId = userId,
+                orderType = orderType,
+                orderId = orderId,
+                amount = amount,
+                currency = currency,
+                itemName = itemName,
+                returnUrl = returnUrl,
+                failUrl = failUrl,
+            )
+        )
+
+        payment.markReady(
+            tid = prepareResult.tid,
+            provider = prepareResult.provider,
+            checkoutUrl = prepareResult.checkoutUrl,
+        )
+        return paymentRepository.save(payment)
     }
 
-    private fun processPayment(
-        payment: Payment,
+    fun create(
+        userId: Long,
         idempotencyKey: String,
+        orderType: OrderType,
+        orderId: Long,
         method: PaymentMethod,
         amount: BigDecimal,
         currency: String,
-        orderType: OrderType,
-        orderId: Long,
-    ): Payment {
-        val paymentRequest = PaymentRequest(
-            idempotencyKey = idempotencyKey,
-            method = method,
-            amount = amount,
-            currency = currency,
-            orderType = orderType,
-            orderId = orderId,
-        )
-        return runCatching { paymentGateway.requestPayment(paymentRequest) }
-            .fold(
-                onSuccess = { result ->
-                    payment.markCompleted(
-                        paidAt = result.approvedAt,
-                        pgTransactionId = result.pgTransactionId,
-                        provider = result.provider,
-                    )
-                    paymentRepository.save(payment)
-                },
-                onFailure = { error ->
-                    payment.markFailed(error.message ?: "PG 오류")
-                    paymentRepository.save(payment)
-                },
-            )
+    ): Payment = prepare(
+        userId = userId,
+        idempotencyKey = idempotencyKey,
+        orderType = orderType,
+        orderId = orderId,
+        method = method,
+        amount = amount,
+        currency = currency,
+        itemName = "$orderType #$orderId",
+        returnUrl = "",
+        failUrl = "",
+    )
+
+    fun confirmWebhook(tid: String, eventType: String): Payment {
+        val payment = paymentRepository.findByPgTransactionId(tid)
+            ?: throw PaymentNotFoundException(-1L)
+
+        return when (eventType) {
+            "PAYMENT_APPROVED" -> {
+                if (payment.status == PaymentStatus.COMPLETED) return payment
+                payment.markCompleted(ZonedDateTime.now())
+                paymentRepository.save(payment)
+            }
+            "PAYMENT_CANCELED" -> {
+                if (payment.status == PaymentStatus.CANCELLED) return payment
+                payment.markCancelled()
+                paymentRepository.save(payment)
+            }
+            else -> {
+                log.warn("confirmWebhook: 미인식 eventType={} tid={}", eventType, tid)
+                payment
+            }
+        }
     }
 
     fun findStatuses(paymentIds: List<Long>): Map<Long, PaymentStatus> {

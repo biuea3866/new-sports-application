@@ -9,6 +9,7 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.ZonedDateTime
 
@@ -46,27 +47,49 @@ class Payment private constructor(
     @Column(name = "status", nullable = false, length = 20)
     var status: PaymentStatus,
 
+    @Column(name = "pg_transaction_id", nullable = true, length = 100)
+    var pgTransactionId: String?,
+
+    @Column(name = "provider", nullable = true, length = 32)
+    var provider: String?,
+
+    @Column(name = "checkout_url", nullable = true, length = 500)
+    var checkoutUrl: String?,
+
     @Column(name = "paid_at", nullable = true)
     var paidAt: ZonedDateTime?,
 
     @Column(name = "failure_reason", nullable = true, length = 500)
     var failureReason: String?,
 
-    @Column(name = "pg_transaction_id", nullable = true, length = 100)
-    var pgTransactionId: String?,
-
-    @Column(name = "provider", nullable = true, length = 32)
-    var provider: String?,
+    @Version
+    @Column(name = "version", nullable = false)
+    val version: Long = 0,
 ) : JpaAuditingBase() {
 
-    fun markCompleted(paidAt: ZonedDateTime, pgTransactionId: String, provider: String) {
+    fun markReady(tid: String, provider: String, checkoutUrl: String) {
+        if (!status.canTransitTo(PaymentStatus.READY)) {
+            throw InvalidPaymentStateException(status, PaymentStatus.READY)
+        }
+        this.status = PaymentStatus.READY
+        this.pgTransactionId = tid
+        this.provider = provider
+        this.checkoutUrl = checkoutUrl
+    }
+
+    fun markCompleted(paidAt: ZonedDateTime) {
         if (!status.canTransitTo(PaymentStatus.COMPLETED)) {
             throw InvalidPaymentStateException(status, PaymentStatus.COMPLETED)
         }
         this.status = PaymentStatus.COMPLETED
         this.paidAt = paidAt
-        this.pgTransactionId = pgTransactionId
-        this.provider = provider
+    }
+
+    fun markCancelled() {
+        if (!status.canTransitTo(PaymentStatus.CANCELLED)) {
+            throw InvalidPaymentStateException(status, PaymentStatus.CANCELLED)
+        }
+        this.status = PaymentStatus.CANCELLED
     }
 
     fun markFailed(reason: String) {
@@ -103,10 +126,12 @@ class Payment private constructor(
             amount = amount,
             currency = currency,
             status = PaymentStatus.PENDING,
-            paidAt = null,
-            failureReason = null,
             pgTransactionId = null,
             provider = null,
+            checkoutUrl = null,
+            paidAt = null,
+            failureReason = null,
+            version = 0,
         )
     }
 }

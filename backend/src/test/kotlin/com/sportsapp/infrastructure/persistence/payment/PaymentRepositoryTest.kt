@@ -5,6 +5,7 @@ import com.sportsapp.domain.payment.OrderType
 import com.sportsapp.domain.payment.Payment
 import com.sportsapp.domain.payment.PaymentMethod
 import com.sportsapp.domain.payment.PaymentRepository
+import com.sportsapp.domain.payment.PaymentStatus
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -87,7 +88,10 @@ class PaymentRepositoryTest(
                 method = PaymentMethod.CREDIT_CARD,
                 amount = BigDecimal("25000"),
                 currency = "KRW",
-            ).also { it.markCompleted(originalPaidAt, "txn-r03", "card") }
+            ).also {
+                it.markReady("tid-zdt-01", "card", "http://checkout")
+                it.markCompleted(originalPaidAt)
+            }
 
             val saved = paymentRepository.save(payment)
 
@@ -97,6 +101,30 @@ class PaymentRepositoryTest(
                     found.shouldNotBeNull()
                     val paidAt = requireNotNull(found.paidAt)
                     paidAt.toInstant() shouldBe originalPaidAt.toInstant()
+                }
+            }
+        }
+
+        Given("READY 상태 Payment 를 pgTransactionId 로 조회") {
+            val key = "idem-tid-01"
+            val tid = "MOCK_CARD_tid_repo01"
+            val payment = Payment.create(
+                userId = 1L,
+                idempotencyKey = key,
+                orderType = OrderType.BOOKING,
+                orderId = 400L,
+                method = PaymentMethod.CREDIT_CARD,
+                amount = BigDecimal("30000"),
+                currency = "KRW",
+            ).also { it.markReady(tid, "card", "http://localhost:9090/pg/card/checkout?tid=$tid") }
+            paymentRepository.save(payment)
+
+            When("findByPgTransactionId 를 호출하면") {
+                val found = paymentRepository.findByPgTransactionId(tid)
+                Then("[R-04] 저장된 Payment 가 반환되고 READY 상태이다") {
+                    found.shouldNotBeNull()
+                    found.pgTransactionId shouldBe tid
+                    found.status shouldBe PaymentStatus.READY
                 }
             }
         }

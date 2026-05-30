@@ -23,6 +23,9 @@ class PaymentRepositoryImpl(
     override fun findByIdempotencyKey(idempotencyKey: String): Payment? =
         paymentJpaRepository.findByIdempotencyKey(idempotencyKey)
 
+    override fun findByPgTransactionId(pgTransactionId: String): Payment? =
+        paymentJpaRepository.findByPgTransactionId(pgTransactionId)
+
     override fun findAllByIdIn(ids: List<Long>): List<Payment> =
         paymentJpaRepository.findAllByIdIn(ids)
 

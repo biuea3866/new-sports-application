@@ -5,11 +5,11 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
-class CreatePaymentUseCase(
+class PreparePaymentUseCase(
     private val paymentDomainService: PaymentDomainService,
 ) {
     @Transactional
-    fun execute(command: CreatePaymentCommand): PaymentResponse {
+    fun execute(command: PreparePaymentCommand): PreparePaymentResponse {
         val payment = paymentDomainService.prepare(
             userId = command.userId,
             idempotencyKey = command.idempotencyKey,
@@ -18,10 +18,10 @@ class CreatePaymentUseCase(
             method = command.method,
             amount = command.amount,
             currency = command.currency,
-            itemName = "${command.orderType} #${command.orderId}",
-            returnUrl = "",
-            failUrl = "",
+            itemName = command.itemName,
+            returnUrl = command.returnUrl,
+            failUrl = command.failUrl,
         )
-        return PaymentResponse.of(payment)
+        return PreparePaymentResponse.of(payment)
     }
 }
