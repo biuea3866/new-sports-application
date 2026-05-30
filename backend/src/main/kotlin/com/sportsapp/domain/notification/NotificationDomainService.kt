@@ -7,7 +7,12 @@ import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
-private val SUPPORTED_ENQUEUE_CHANNELS = setOf(NotificationChannel.IN_APP)
+private val SUPPORTED_ENQUEUE_CHANNELS = setOf(
+    NotificationChannel.IN_APP,
+    NotificationChannel.PUSH,
+    NotificationChannel.EMAIL,
+    NotificationChannel.SMS,
+)
 
 @Service
 class NotificationDomainService(
@@ -40,12 +45,25 @@ class NotificationDomainService(
                     userId = userId,
                     channel = channel,
                     templateId = templateId,
-                    payload = payload,
+                    payload = enrichPayload(templateId, payload),
                     eventId = eventId,
                 )
             )
         } catch (e: DataIntegrityViolationException) {
             notificationRepository.findByEventId(eventId)
+        }
+    }
+
+    // 이벤트 기반 알림도 제목/본문을 렌더해 PUSH/EMAIL/SMS 채널이 내용을 갖도록 한다.
+    // 알 수 없는 템플릿이면 원본 payload 를 그대로 둔다(IN_APP 는 영향 없음).
+    private fun enrichPayload(templateId: String, payload: NotificationPayload?): NotificationPayload {
+        val base = payload?.data ?: emptyMap()
+        if (base.containsKey("_title")) return NotificationPayload(base)
+        return try {
+            val rendered = templateRenderer.render(templateId, base)
+            NotificationPayload(base + mapOf("_title" to rendered.title, "_body" to rendered.body))
+        } catch (exception: UnknownTemplateException) {
+            NotificationPayload(base)
         }
     }
 

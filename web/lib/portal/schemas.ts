@@ -6,14 +6,25 @@ import { z } from "zod";
 
 // ─── 공통 ───────────────────────────────────────────────────────────────────
 
+// BE는 Spring Data `Page`를 반환한다 (페이지 인덱스 필드명이 `number`, `page` 아님).
+// `number`(Spring)와 `page`(혹시 모를 커스텀) 양쪽을 수용해 FE 표준 `page`로 정규화한다.
 export const PageSchema = <T extends z.ZodTypeAny>(itemSchema: T) =>
-  z.object({
-    content: z.array(itemSchema),
-    page: z.number().int().nonnegative(),
-    size: z.number().int().positive(),
-    totalElements: z.number().int().nonnegative(),
-    totalPages: z.number().int().nonnegative(),
-  });
+  z
+    .object({
+      content: z.array(itemSchema),
+      number: z.number().int().nonnegative().optional(),
+      page: z.number().int().nonnegative().optional(),
+      size: z.number().int().positive(),
+      totalElements: z.number().int().nonnegative(),
+      totalPages: z.number().int().nonnegative(),
+    })
+    .transform((p) => ({
+      content: p.content,
+      page: p.page ?? p.number ?? 0,
+      size: p.size,
+      totalElements: p.totalElements,
+      totalPages: p.totalPages,
+    }));
 
 // ─── Facility ────────────────────────────────────────────────────────────────
 
@@ -107,6 +118,8 @@ export const CreateEventInputSchema = z.object({
   seats: z.array(z.string().min(1)).min(1).max(500, {
     message: "좌석은 최대 500개까지 등록할 수 있습니다.",
   }),
+  price: z.number().int().positive({ message: "좌석 가격을 입력해 주세요." }),
+  section: z.string().min(1).default("GENERAL"),
 });
 
 // ─── Product ─────────────────────────────────────────────────────────────────
@@ -123,9 +136,10 @@ export const MyProductSchema = z.object({
   imageUrl: z.string(),
   status: ProductStatusSchema,
   stockQuantity: z.number().int().nonnegative(),
-  ownerId: z.number().int(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
+  // 목록 응답에는 아래 필드가 없을 수 있다 (상세 응답에만 포함). optional 처리.
+  ownerId: z.number().int().optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
 });
 
 export const MyProductPageSchema = PageSchema(MyProductSchema);
@@ -253,20 +267,21 @@ export const PaymentSummaryPageSchema = PageSchema(PaymentSummarySchema);
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
 export const FacilitySummarySchema = z.object({
-  totalFacilities: z.number().int().nonnegative(),
-  totalSlots: z.number().int().nonnegative(),
+  count: z.number().int().nonnegative(),
+  activeSlotsToday: z.number().int().nonnegative(),
 });
 
 export const EventSummarySchema = z.object({
-  totalEvents: z.number().int().nonnegative(),
-  scheduledEvents: z.number().int().nonnegative(),
-  openEvents: z.number().int().nonnegative(),
+  scheduled: z.number().int().nonnegative(),
+  open: z.number().int().nonnegative(),
+  closed: z.number().int().nonnegative(),
+  totalSeats: z.number().int().nonnegative(),
+  soldSeats: z.number().int().nonnegative(),
 });
 
 export const ProductSummarySchema = z.object({
-  totalProducts: z.number().int().nonnegative(),
-  activeProducts: z.number().int().nonnegative(),
-  outOfStockProducts: z.number().int().nonnegative(),
+  active: z.number().int().nonnegative(),
+  outOfStock: z.number().int().nonnegative(),
 });
 
 export const DashboardSummarySchema = z.object({

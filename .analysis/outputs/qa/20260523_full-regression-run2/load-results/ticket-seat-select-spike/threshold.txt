@@ -1,0 +1,30 @@
+LOAD-02 ticket-seat-select-spike — Threshold 기록
+실행 일시: 2026-05-23T18:11:16+09:00 ~ 18:12:18+09:00
+
+=== 위반 항목 ===
+
+[FAIL] http_req_failed    rate<0.04     실측=100.00%  (목표 4% 대비 25배 초과)
+       - http_req_failed 는 k6 내장 메트릭으로 4xx/5xx 모두 집계
+       - POST /events/1/seats/select 가 전 요청 4xx 반환
+       - 시나리오 md 정책("5xx만 error로 집계")과 달리 4xx도 포함됨
+
+=== 통과 항목 ===
+
+[PASS] LOAD_02_failures   rate<0.02     실측=0.00%    (5xx 응답 0건)
+[PASS] LOAD_02_latency    p(95)<1000ms  실측=19.98ms  (여유 98.0%)
+[PASS] LOAD_02_latency    p(99)<3000ms  실측=40.67ms  (여유 98.6%)
+
+=== 원인 분석 ===
+
+POST /events/1/seats/select 에서 전 요청이 4xx를 반환.
+시드 데이터(qa/load/seeds/ticket-seat-select.sql) 없음.
+- event_id=1 인 이벤트가 DB에 존재하지 않거나 권한 오류
+- X-User-Id 헤더 기반 headerAuth 사용 (Bearer 토큰 불필요)
+
+spike 패턴: 0→10 VU(6s) → 10→200 VU(6s) → 200 VU 유지(24s) → ramp-down(12s)
+최대 RPS 달성: 14,700 req/s (200 VU 구간, 모두 즉시 4xx 응답)
+latency: p95=19.98ms, p99=40.67ms (4xx 응답 포함 — 실제 처리 latency 불측정)
+
+회복 시간 측정 불가: 4xx 응답이므로 "정상 수준" 기준 설정 불가.
+
+k6 exit code: 99 (http_req_failed threshold 위반, 시나리오 자체 임계는 모두 통과)

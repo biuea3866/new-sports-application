@@ -1,0 +1,13 @@
+{
+  "name": "mock-kakao-local",
+  "version": "1.0.0",
+  "description": "Kakao Local REST API mock (주소 검색/좌표 변환) — sports-application 로컬 개발용",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

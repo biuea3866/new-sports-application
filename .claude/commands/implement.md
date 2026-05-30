@@ -210,6 +210,23 @@ Wave 3: e               (단독, 1개 tool_use)
    - 훅이 deny하면 → 지적된 Must Fix 항목 수정 후 재시도
 ```
 
+### 서브에이전트 워크트리 격리 강제 (필수)
+
+isolation 실패는 wave 병렬성을 0으로 만든다. 모든 서브에이전트 prompt에 아래 4줄을 반드시 포함한다:
+
+```
+## Worktree 격리 (위반 시 hook 차단)
+- 당신은 isolated worktree (현재 $PWD) 안에서만 작업합니다.
+- DO NOT use `cd /Users/biuea/sports-application/...` 절대 경로 — main worktree 진입 금지.
+- DO NOT use `git -C /Users/biuea/sports-application/...` — 자기 worktree 외 경로에서 git 작업 금지.
+- 모든 명령은 $PWD 또는 상대 경로 기준 (cd backend, ./gradlew test). 절대 경로는 $PWD prefix.
+```
+
+→ 다음 3개 hook 이 워크트리 격리·위임을 강제한다:
+- `agent-worktree-guard.sh` (PreToolUse Agent) — 구현 에이전트를 워크트리 격리 없이 스폰하면 **차단**. `isolation:"worktree"` 이거나 prompt 에 `.claude/worktrees/` 경로가 있어야 통과.
+- `feature-gate.sh` (PreToolUse Write/Edit) — APPROVED/IMPLEMENTING 중 **메인 워크트리에서 구현 파일 직접 작성 차단**. 구현은 워크트리 서브에이전트에 위임해야 한다. 머지 충돌 해소(MERGE_HEAD 존재) 시에만 예외.
+- `worktree-isolation-guard.sh` (PreToolUse Bash) — 워크트리 에이전트가 main 워크트리 경로로 cd/git 하면 차단.
+
 ---
 
 ## Step 4 — Hook 강제 셀프리뷰 (자동, 수동 개입 불필요)

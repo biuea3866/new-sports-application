@@ -1,302 +1,117 @@
 /**
- * 홈 탭 — 다가오는 경기 5건 + 추천 상품 5건 + 근처 시설 요약
- * PIPELINE-TICKET: MO-03
+ * 홈 화면 — 다가오는 경기 + 상품 추천.
+ * GET /events, GET /products를 호출해 요약을 보여준다.
  */
-import {
-  View,
-  Text,
-  ScrollView,
-  ActivityIndicator,
-  StyleSheet,
-  FlatList,
-} from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
-import {
-  fetchUpcomingEvents,
-  fetchRecommendedProducts,
-  fetchNearbyFacilities,
-} from '../../api/home';
-import type { EventSummary, ProductSummary, FacilitySummary } from '../../api/home';
+import { getBeClient } from '../../api/be-client';
 
-// 섹션 헤더 컴포넌트
-
-interface SectionHeaderProps {
+interface EventItem {
+  id: number;
   title: string;
+  venue: string;
+  startsAt: string;
+  status: string;
+}
+interface ProductItem {
+  id: number;
+  name: string;
+  category: string;
+  price: number;
+}
+interface Page<T> {
+  content: T[];
 }
 
-function SectionHeader({ title }: SectionHeaderProps) {
-  return (
-    <Text style={styles.sectionTitle} accessibilityRole="header">
-      {title}
-    </Text>
-  );
+async function fetchEvents(): Promise<EventItem[]> {
+  const res = await getBeClient().get<Page<EventItem>>('/events?page=0&size=5');
+  return res.data.content;
+}
+async function fetchProducts(): Promise<ProductItem[]> {
+  const res = await getBeClient().get<Page<ProductItem>>('/products?page=0&size=5');
+  return res.data.content;
 }
 
-// 이벤트 카드
-
-interface EventCardProps {
-  item: EventSummary;
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(
+    d.getDate()
+  ).padStart(2, '0')}`;
 }
-
-function EventCard({ item }: EventCardProps) {
-  const startDate = new Date(item.startAt).toLocaleDateString('ko-KR', {
-    month: 'short',
-    day: 'numeric',
-  });
-  return (
-    <View
-      style={styles.card}
-      accessible={true}
-      accessibilityLabel={`경기: ${item.title}, ${startDate}, ${item.location}`}
-    >
-      <Text style={styles.cardTitle} numberOfLines={1}>
-        {item.title}
-      </Text>
-      <Text style={styles.cardSub}>{startDate}</Text>
-      <Text style={styles.cardSub} numberOfLines={1}>
-        {item.location}
-      </Text>
-    </View>
-  );
-}
-
-// 상품 카드
-
-interface ProductCardProps {
-  item: ProductSummary;
-}
-
-function ProductCard({ item }: ProductCardProps) {
-  const priceText = item.price.toLocaleString('ko-KR') + '원';
-  return (
-    <View
-      style={styles.card}
-      accessible={true}
-      accessibilityLabel={`상품: ${item.name}, ${priceText}`}
-    >
-      <Text style={styles.cardTitle} numberOfLines={1}>
-        {item.name}
-      </Text>
-      <Text style={styles.cardPrice}>{priceText}</Text>
-    </View>
-  );
-}
-
-// 시설 카드
-
-interface FacilityCardProps {
-  item: FacilitySummary;
-}
-
-function FacilityCard({ item }: FacilityCardProps) {
-  return (
-    <View
-      style={styles.card}
-      accessible={true}
-      accessibilityLabel={`시설: ${item.name}, ${item.address}`}
-    >
-      <Text style={styles.cardTitle} numberOfLines={1}>
-        {item.name}
-      </Text>
-      <Text style={styles.cardSub} numberOfLines={1}>
-        {item.address}
-      </Text>
-    </View>
-  );
-}
-
-// 에러 뷰
-
-interface ErrorViewProps {
-  message: string;
-}
-
-function ErrorView({ message }: ErrorViewProps) {
-  return (
-    <View style={styles.errorContainer} accessible={true} accessibilityRole="alert">
-      <Text style={styles.errorText}>{message}</Text>
-    </View>
-  );
-}
-
-// 메인 화면
 
 export default function HomeScreen() {
-  const {
-    data: events,
-    isLoading: eventsLoading,
-    isError: eventsError,
-  } = useQuery({
-    queryKey: ['home', 'events'],
-    queryFn: fetchUpcomingEvents,
-  });
-
-  const {
-    data: products,
-    isLoading: productsLoading,
-    isError: productsError,
-  } = useQuery({
-    queryKey: ['home', 'products'],
-    queryFn: fetchRecommendedProducts,
-  });
-
-  const {
-    data: facilities,
-    isLoading: facilitiesLoading,
-    isError: facilitiesError,
-  } = useQuery({
-    queryKey: ['home', 'facilities'],
-    queryFn: fetchNearbyFacilities,
-  });
-
-  const isLoading = eventsLoading || productsLoading || facilitiesLoading;
-
-  if (isLoading) {
-    return (
-      <View style={styles.centered} accessible={true} accessibilityLabel="홈 화면 로딩 중">
-        <ActivityIndicator size="large" color="#007AFF" accessibilityLabel="로딩 중" />
-      </View>
-    );
-  }
+  const events = useQuery({ queryKey: ['home-events'], queryFn: fetchEvents });
+  const products = useQuery({ queryKey: ['home-products'], queryFn: fetchProducts });
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.contentContainer}
-      accessibilityLabel="홈 화면"
-    >
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <Text style={styles.appTitle}>Sports App</Text>
+      <Text style={styles.appSubtitle}>생활 체육 예약 플랫폼</Text>
+
+      <Text style={styles.sectionTitle}>다가오는 경기</Text>
+      {events.isLoading ? (
+        <ActivityIndicator color="#007AFF" />
+      ) : events.isError ? (
+        <Text style={styles.error}>경기를 불러오지 못했습니다.</Text>
+      ) : events.data && events.data.length > 0 ? (
+        events.data.map((e) => (
+          <View key={e.id} style={styles.card}>
+            <Text style={styles.cardTitle}>{e.title}</Text>
+            <Text style={styles.cardMeta}>
+              {e.venue} · {formatDate(e.startsAt)} · {e.status}
+            </Text>
+          </View>
+        ))
+      ) : (
+        <Text style={styles.empty}>등록된 경기가 없습니다.</Text>
+      )}
+
+      <Text style={styles.sectionTitle}>상품</Text>
+      {products.isLoading ? (
+        <ActivityIndicator color="#007AFF" />
+      ) : products.isError ? (
+        <Text style={styles.error}>상품을 불러오지 못했습니다.</Text>
+      ) : products.data && products.data.length > 0 ? (
+        products.data.map((p) => (
+          <View key={p.id} style={styles.card}>
+            <Text style={styles.cardTitle}>{p.name}</Text>
+            <Text style={styles.cardMeta}>
+              {p.category} · {p.price.toLocaleString('ko-KR')}원
+            </Text>
+          </View>
+        ))
+      ) : (
+        <Text style={styles.empty}>등록된 상품이 없습니다.</Text>
+      )}
+
       <StatusBar style="auto" />
-
-      <Text style={styles.screenTitle}>Sports App</Text>
-
-      {/* 다가오는 경기 */}
-      <SectionHeader title="다가오는 경기" />
-      {eventsError ? (
-        <ErrorView message="경기 정보를 불러오지 못했습니다." />
-      ) : (
-        <FlatList<EventSummary>
-          data={events ?? []}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={({ item }) => <EventCard item={item} />}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.horizontalList}
-          scrollEnabled={false}
-          ListEmptyComponent={<Text style={styles.emptyText}>예정된 경기가 없습니다.</Text>}
-          accessibilityLabel="다가오는 경기 목록"
-        />
-      )}
-
-      {/* 추천 상품 */}
-      <SectionHeader title="추천 상품" />
-      {productsError ? (
-        <ErrorView message="상품 정보를 불러오지 못했습니다." />
-      ) : (
-        <FlatList<ProductSummary>
-          data={products ?? []}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={({ item }) => <ProductCard item={item} />}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.horizontalList}
-          scrollEnabled={false}
-          ListEmptyComponent={<Text style={styles.emptyText}>추천 상품이 없습니다.</Text>}
-          accessibilityLabel="추천 상품 목록"
-        />
-      )}
-
-      {/* 근처 시설 */}
-      <SectionHeader title="근처 시설" />
-      {facilitiesError ? (
-        <ErrorView message="시설 정보를 불러오지 못했습니다." />
-      ) : (
-        <FlatList<FacilitySummary>
-          data={facilities ?? []}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={({ item }) => <FacilityCard item={item} />}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.horizontalList}
-          scrollEnabled={false}
-          ListEmptyComponent={<Text style={styles.emptyText}>근처 시설이 없습니다.</Text>}
-          accessibilityLabel="근처 시설 목록"
-        />
-      )}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  contentContainer: {
-    paddingTop: 60,
-    paddingBottom: 32,
-  },
-  centered: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  screenTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1C1C1E',
-    paddingHorizontal: 16,
-    marginBottom: 24,
-  },
+  container: { flex: 1, backgroundColor: '#fff' },
+  content: { padding: 20, paddingTop: 56 },
+  appTitle: { fontSize: 26, fontWeight: 'bold', color: '#1C1C1E' },
+  appSubtitle: { fontSize: 14, color: '#8E8E93', marginTop: 2, marginBottom: 24 },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#1C1C1E',
-    paddingHorizontal: 16,
-    marginBottom: 12,
-    marginTop: 24,
-  },
-  horizontalList: {
-    paddingHorizontal: 16,
-    gap: 12,
+    marginTop: 16,
+    marginBottom: 10,
   },
   card: {
-    width: 160,
-    backgroundColor: '#F2F2F7',
-    borderRadius: 12,
-    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 10,
   },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1C1C1E',
-    marginBottom: 4,
-  },
-  cardSub: {
-    fontSize: 12,
-    color: '#8E8E93',
-    marginTop: 2,
-  },
-  cardPrice: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#007AFF',
-    marginTop: 4,
-  },
-  emptyText: {
-    fontSize: 13,
-    color: '#8E8E93',
-    paddingVertical: 8,
-  },
-  errorContainer: {
-    marginHorizontal: 16,
-    padding: 12,
-    backgroundColor: '#FFF2F2',
-    borderRadius: 8,
-  },
-  errorText: {
-    fontSize: 13,
-    color: '#FF3B30',
-  },
+  cardTitle: { fontSize: 16, fontWeight: '600', color: '#1C1C1E' },
+  cardMeta: { fontSize: 13, color: '#8E8E93', marginTop: 4 },
+  error: { color: '#FF3B30' },
+  empty: { color: '#8E8E93' },
 });

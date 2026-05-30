@@ -1,199 +1,142 @@
 /**
  * 회원가입 화면
+ * POST /users/register → 자동 로그인(POST /auth/login) → 홈 탭으로 이동.
  */
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  StyleSheet,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
 import { useState } from 'react';
-import { router } from 'expo-router';
-import { register, login } from '../../api/auth';
+import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { useRouter, Link } from 'expo-router';
+import { AxiosError } from 'axios';
+import { getBeClient } from '../../api/be-client';
 import { useAuthStore } from '../../lib/auth';
 
-interface FormState {
-  email: string;
-  password: string;
+interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
 }
 
 export default function RegisterScreen() {
-  const [form, setForm] = useState<FormState>({ email: '', password: '' });
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
   const setTokens = useAuthStore((s) => s.setTokens);
 
-  const handleRegister = async () => {
-    if (!form.email || !form.password) {
-      setErrorMessage('이메일과 비밀번호를 입력해주세요.');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleRegister() {
+    if (!email.trim() || !password) {
+      setError('이메일과 비밀번호를 입력해 주세요.');
       return;
     }
-    if (form.password.length < 8) {
-      setErrorMessage('비밀번호는 8자 이상이어야 합니다.');
+    if (password.length < 8) {
+      setError('비밀번호는 8자 이상이어야 합니다.');
       return;
     }
-    setErrorMessage(null);
-    setIsLoading(true);
+    setSubmitting(true);
+    setError(null);
     try {
-      await register({ email: form.email, password: form.password });
-      // 회원가입 후 자동 로그인
-      const loginRes = await login({ email: form.email, password: form.password });
-      await setTokens({ accessToken: loginRes.accessToken, refreshToken: loginRes.refreshToken });
-      router.replace('/(tabs)/');
-    } catch {
-      setErrorMessage('회원가입에 실패했습니다. 이미 사용 중인 이메일일 수 있습니다.');
+      const client = getBeClient();
+      await client.post('/users/register', { email: email.trim(), password });
+      const res = await client.post<LoginResponse>('/auth/login', {
+        email: email.trim(),
+        password,
+      });
+      await setTokens({
+        accessToken: res.data.accessToken,
+        refreshToken: res.data.refreshToken,
+      });
+      router.replace('/(tabs)');
+    } catch (e) {
+      if (e instanceof AxiosError && e.response?.status === 409) {
+        setError('이미 가입된 이메일입니다.');
+      } else if (e instanceof AxiosError && e.response?.status === 422) {
+        setError('입력값을 확인해 주세요. (이메일 형식 / 비밀번호 8자 이상)');
+      } else {
+        setError('회원가입에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+      }
     } finally {
-      setIsLoading(false);
+      setSubmitting(false);
     }
-  };
+  }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <View style={styles.container} accessible={true} accessibilityLabel="회원가입 화면">
-        <Text style={styles.title}>회원가입</Text>
+    <View style={styles.container} accessibilityLabel="회원가입 화면">
+      <Text style={styles.title}>회원가입</Text>
+      <Text style={styles.subtitle}>새 계정을 만들어 시작하세요</Text>
 
-        <View style={styles.fieldGroup}>
-          <Text nativeID="regEmailLabel" style={styles.label} accessibilityRole="text">
-            이메일
-          </Text>
-          <TextInput
-            style={styles.input}
-            accessibilityLabel="이메일 입력"
-            accessibilityLabelledBy="regEmailLabel"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            value={form.email}
-            onChangeText={(v) => setForm((prev) => ({ ...prev, email: v }))}
-            placeholder="example@email.com"
-            placeholderTextColor="#8E8E93"
-            editable={!isLoading}
-          />
-        </View>
+      {error !== null && (
+        <Text style={styles.error} accessibilityRole="alert">
+          {error}
+        </Text>
+      )}
 
-        <View style={styles.fieldGroup}>
-          <Text nativeID="regPasswordLabel" style={styles.label} accessibilityRole="text">
-            비밀번호 (8자 이상)
-          </Text>
-          <TextInput
-            style={styles.input}
-            accessibilityLabel="비밀번호 입력"
-            accessibilityLabelledBy="regPasswordLabel"
-            secureTextEntry
-            value={form.password}
-            onChangeText={(v) => setForm((prev) => ({ ...prev, password: v }))}
-            placeholder="비밀번호 (8자 이상)"
-            placeholderTextColor="#8E8E93"
-            editable={!isLoading}
-          />
-        </View>
+      <TextInput
+        style={styles.input}
+        placeholder="이메일"
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        keyboardType="email-address"
+        autoComplete="email"
+        accessibilityLabel="이메일 입력"
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="비밀번호 (8자 이상)"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+        accessibilityLabel="비밀번호 입력"
+      />
 
-        {errorMessage !== null && (
-          <Text
-            style={styles.errorText}
-            accessibilityRole="alert"
-            accessibilityLiveRegion="polite"
-          >
-            {errorMessage}
-          </Text>
+      <Pressable
+        style={[styles.button, submitting && styles.buttonDisabled]}
+        onPress={() => void handleRegister()}
+        disabled={submitting}
+        accessibilityRole="button"
+        accessibilityLabel="회원가입"
+      >
+        {submitting ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>회원가입</Text>
         )}
+      </Pressable>
 
-        <Pressable
-          style={[styles.button, isLoading && styles.buttonDisabled]}
-          onPress={handleRegister}
-          disabled={isLoading}
-          accessibilityRole="button"
-          accessibilityLabel="회원가입"
-          accessibilityState={{ disabled: isLoading }}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>회원가입</Text>
-          )}
-        </Pressable>
-
-        <Pressable
-          style={styles.linkButton}
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel="로그인 화면으로 돌아가기"
-        >
-          <Text style={styles.linkText}>이미 계정이 있으신가요? 로그인</Text>
-        </Pressable>
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>이미 계정이 있으신가요? </Text>
+        <Link href="/(auth)/login" style={styles.link}>
+          로그인
+        </Link>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  container: {
-    flex: 1,
-    paddingHorizontal: 24,
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1C1C1E',
-    marginBottom: 32,
-  },
-  fieldGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    color: '#3C3C43',
-    marginBottom: 6,
-  },
+  container: { flex: 1, backgroundColor: '#fff', padding: 24, justifyContent: 'center' },
+  title: { fontSize: 28, fontWeight: 'bold', color: '#1C1C1E', marginBottom: 4 },
+  subtitle: { fontSize: 14, color: '#8E8E93', marginBottom: 28 },
   input: {
-    height: 48,
     borderWidth: 1,
-    borderColor: '#C7C7CC',
+    borderColor: '#D1D1D6',
     borderRadius: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     fontSize: 16,
-    color: '#1C1C1E',
-    backgroundColor: '#F2F2F7',
-  },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 14,
     marginBottom: 12,
   },
   button: {
-    height: 50,
     backgroundColor: '#007AFF',
-    borderRadius: 10,
+    borderRadius: 8,
+    paddingVertical: 14,
     alignItems: 'center',
-    justifyContent: 'center',
     marginTop: 8,
   },
-  buttonDisabled: {
-    backgroundColor: '#9E9E9E',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  linkButton: {
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  linkText: {
-    color: '#007AFF',
-    fontSize: 14,
-  },
+  buttonDisabled: { opacity: 0.6 },
+  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  error: { color: '#FF3B30', fontSize: 13, marginBottom: 12 },
+  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
+  footerText: { color: '#8E8E93', fontSize: 14 },
+  link: { color: '#007AFF', fontSize: 14, fontWeight: '600' },
 });

@@ -1,261 +1,117 @@
 /**
- * 시설 검색 탭 — MO-07
- * GET /facilities?gu={gu}&type={type}&page=0&size=50 (public)
+ * 시설 검색 탭 — 내 주변 시설 + 날씨.
+ *
+ * 모든 데이터는 우리 backend WAS 를 경유한다(외부 Kakao/기상청 직접 호출 금지).
+ * - GET /facilities/near : 좌표 기반 시설 조회(BE GeoSpatial)
+ * - GET /weather         : BE 가 기상청 단기예보 조회
+ *
+ * 기기 GPS(expo-location)는 네이티브 의존이므로 기본 좌표(서울 강남)를 사용한다.
+ * 위치 권한 연동은 후속 작업(expo-location + dev build).
  */
-import { useState, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+
 import {
-  View,
-  Text,
-  TextInput,
-  FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
-  StyleSheet,
-} from 'react-native';
-import { router } from 'expo-router';
-import { useFacilities } from '../../lib/useFacility';
-import { ROUTES } from '../../lib/navigation';
-import type { FacilityResponse, FacilityType } from '../../api/types';
+  getNearbyFacilities,
+  getWeather,
+  type FacilitySummary,
+  type Forecast,
+} from '../../api/external-features';
 
-const FACILITY_TYPES: { label: string; value: FacilityType }[] = [
-  { label: '실내', value: 'INDOOR' },
-  { label: '실외', value: 'OUTDOOR' },
-  { label: '복합', value: 'MIXED' },
-];
+// 기본 좌표: 서울 강남(역삼). 후속으로 expo-location 의 현재 위치로 대체.
+const DEFAULT_LAT = 37.4979;
+const DEFAULT_LNG = 127.0276;
+const DEFAULT_RADIUS_METERS = 3000;
 
-interface FacilityCardProps {
-  facility: FacilityResponse;
-  onPress: () => void;
-}
+const SKY_LABEL: Record<string, string> = {
+  CLEAR: '맑음',
+  MOSTLY_CLOUDY: '구름많음',
+  CLOUDY: '흐림',
+};
 
-function FacilityCard({ facility, onPress }: FacilityCardProps) {
-  const typeLabel =
-    FACILITY_TYPES.find((t) => t.value === facility.type)?.label ?? facility.type;
-
-  return (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={onPress}
-      accessible={true}
-      accessibilityLabel={`${facility.name} 시설 상세 보기`}
-      accessibilityRole="button"
-    >
-      <Text style={styles.cardName}>{facility.name}</Text>
-      <View style={styles.cardMeta}>
-        <Text style={styles.cardMetaText}>{facility.gu}</Text>
-        <Text style={styles.cardDot}> · </Text>
-        <Text style={styles.cardMetaText}>{typeLabel}</Text>
-        {facility.parking && (
-          <>
-            <Text style={styles.cardDot}> · </Text>
-            <Text style={styles.cardMetaText}>주차 가능</Text>
-          </>
-        )}
-      </View>
-      <Text style={styles.cardAddress}>{facility.address}</Text>
-      {facility.phone.length > 0 && (
-        <Text style={styles.cardPhone}>{facility.phone}</Text>
-      )}
-    </TouchableOpacity>
-  );
+function currentSlot(forecast: Forecast | undefined) {
+  return forecast?.slots?.[0];
 }
 
 export default function SearchScreen() {
-  const [guInput, setGuInput] = useState('');
-  const [selectedType, setSelectedType] = useState<FacilityType | undefined>(undefined);
-
-  const { data, isLoading, isError, error } = useFacilities({
-    gu: guInput.trim(),
-    type: selectedType,
+  const facilitiesQuery = useQuery({
+    queryKey: ['facilities', 'near', DEFAULT_LAT, DEFAULT_LNG, DEFAULT_RADIUS_METERS],
+    queryFn: () => getNearbyFacilities(DEFAULT_LAT, DEFAULT_LNG, DEFAULT_RADIUS_METERS),
   });
 
-  const handleCardPress = useCallback((id: number) => {
-    router.push(ROUTES.facility.detail(String(id)));
-  }, []);
+  const weatherQuery = useQuery({
+    queryKey: ['weather', DEFAULT_LAT, DEFAULT_LNG],
+    queryFn: () => getWeather(DEFAULT_LAT, DEFAULT_LNG),
+  });
 
-  const handleTypeChip = useCallback(
-    (type: FacilityType) => {
-      setSelectedType((prev) => (prev === type ? undefined : type));
-    },
-    []
-  );
+  const slot = currentSlot(weatherQuery.data);
 
   return (
-    <View style={styles.container} accessible={false}>
-      <View style={styles.searchSection}>
-        <TextInput
-          style={styles.input}
-          placeholder="구 이름으로 검색 (예: 강남구)"
-          placeholderTextColor="#8E8E93"
-          value={guInput}
-          onChangeText={setGuInput}
-          returnKeyType="search"
-          accessible={true}
-          accessibilityLabel="구 이름 입력"
-          accessibilityHint="구 이름을 입력하면 해당 구의 시설을 검색합니다"
-        />
-        <View style={styles.chipRow} accessible={false}>
-          {FACILITY_TYPES.map(({ label, value }) => (
-            <TouchableOpacity
-              key={value}
-              style={[styles.chip, selectedType === value && styles.chipSelected]}
-              onPress={() => handleTypeChip(value)}
-              accessible={true}
-              accessibilityLabel={`${label} 타입 필터`}
-              accessibilityState={{ selected: selectedType === value }}
-              accessibilityRole="button"
-            >
-              <Text
-                style={[styles.chipText, selectedType === value && styles.chipTextSelected]}
-              >
-                {label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+    <View style={styles.container} accessible accessibilityLabel="시설 검색 화면">
+      <Text style={styles.title}>내 주변 시설</Text>
+
+      <View style={styles.weatherCard} accessibilityLabel="현재 날씨">
+        {weatherQuery.isLoading ? (
+          <Text style={styles.weatherText}>날씨 불러오는 중…</Text>
+        ) : slot ? (
+          <Text style={styles.weatherText}>
+            {slot.temperature != null ? `${slot.temperature}℃` : '-'}
+            {slot.sky ? `  ${SKY_LABEL[slot.sky] ?? slot.sky}` : ''}
+            {slot.precipitationProbability != null
+              ? `  강수 ${slot.precipitationProbability}%`
+              : ''}
+          </Text>
+        ) : (
+          <Text style={styles.weatherText}>날씨 정보 없음</Text>
+        )}
       </View>
 
-      {isLoading && (
-        <View style={styles.centerBox} accessible={true} accessibilityLabel="검색 중">
-          <ActivityIndicator size="large" color="#007AFF" />
-        </View>
-      )}
-
-      {isError && (
-        <View style={styles.centerBox} accessible={true} accessibilityLabel="오류 발생">
-          <Text style={styles.errorText}>
-            {error instanceof Error ? error.message : '검색에 실패했습니다.'}
-          </Text>
-        </View>
-      )}
-
-      {!isLoading && !isError && data !== undefined && (
-        <FlatList
-          data={data.content}
-          keyExtractor={(item) => String(item.id)}
+      {facilitiesQuery.isLoading ? (
+        <ActivityIndicator style={styles.center} />
+      ) : facilitiesQuery.isError ? (
+        <Text style={styles.error}>시설을 불러오지 못했습니다.</Text>
+      ) : (
+        <FlatList<FacilitySummary>
+          data={facilitiesQuery.data ?? []}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={<Text style={styles.empty}>주변에 시설이 없습니다.</Text>}
           renderItem={({ item }) => (
-            <FacilityCard facility={item} onPress={() => handleCardPress(item.id)} />
-          )}
-          ListEmptyComponent={
-            <View style={styles.centerBox} accessible={true} accessibilityLabel="검색 결과 없음">
-              <Text style={styles.emptyText}>검색 결과가 없습니다.</Text>
+            <View style={styles.row} accessibilityLabel={`${item.name} ${item.type}`}>
+              <Text style={styles.rowName}>{item.name}</Text>
+              <Text style={styles.rowMeta}>
+                {item.gu} · {item.type}
+                {item.parking ? ' · 주차가능' : ''}
+              </Text>
+              <Text style={styles.rowAddr}>{item.address}</Text>
             </View>
-          }
-          contentContainerStyle={
-            data.content.length === 0 ? styles.listEmpty : styles.listContent
-          }
-          accessibilityLabel="시설 검색 결과 목록"
+          )}
         />
-      )}
-
-      {!isLoading && !isError && data === undefined && (
-        <View style={styles.centerBox} accessible={true} accessibilityLabel="검색 안내">
-          <Text style={styles.emptyText}>구 이름 또는 시설 타입으로 검색하세요.</Text>
-        </View>
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F2F2F7',
-  },
-  searchSection: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingTop: 56,
-    paddingBottom: 12,
-  },
-  input: {
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: '#F2F2F7',
-    paddingHorizontal: 12,
-    fontSize: 16,
-    color: '#1C1C1E',
-    marginBottom: 10,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#C7C7CC',
-    backgroundColor: '#fff',
-  },
-  chipSelected: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-  },
-  chipText: {
-    fontSize: 14,
-    color: '#3A3A3C',
-  },
-  chipTextSelected: {
-    color: '#fff',
-  },
-  centerBox: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  errorText: {
-    fontSize: 14,
-    color: '#FF3B30',
-    textAlign: 'center',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#8E8E93',
-    textAlign: 'center',
-  },
-  listContent: {
-    padding: 12,
-    gap: 10,
-  },
-  listEmpty: {
-    flex: 1,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+  container: { flex: 1, backgroundColor: '#fff', paddingTop: 24 },
+  title: { fontSize: 22, fontWeight: 'bold', color: '#1C1C1E', paddingHorizontal: 16 },
+  weatherCard: {
+    margin: 16,
     padding: 16,
-    marginBottom: 10,
+    backgroundColor: '#EAF2FF',
+    borderRadius: 12,
   },
-  cardName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1C1C1E',
-    marginBottom: 4,
+  weatherText: { fontSize: 16, color: '#0A3D91', fontWeight: '600' },
+  center: { marginTop: 40 },
+  list: { paddingHorizontal: 16, paddingBottom: 24 },
+  row: {
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E5EA',
   },
-  cardMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  cardMetaText: {
-    fontSize: 13,
-    color: '#636366',
-  },
-  cardDot: {
-    fontSize: 13,
-    color: '#C7C7CC',
-  },
-  cardAddress: {
-    fontSize: 13,
-    color: '#636366',
-    marginTop: 2,
-  },
-  cardPhone: {
-    fontSize: 13,
-    color: '#007AFF',
-    marginTop: 4,
-  },
+  rowName: { fontSize: 16, fontWeight: '600', color: '#1C1C1E' },
+  rowMeta: { fontSize: 13, color: '#8E8E93', marginTop: 2 },
+  rowAddr: { fontSize: 13, color: '#3A3A3C', marginTop: 2 },
+  empty: { fontSize: 14, color: '#8E8E93', textAlign: 'center', marginTop: 40 },
+  error: { fontSize: 14, color: '#FF3B30', textAlign: 'center', marginTop: 40 },
 });

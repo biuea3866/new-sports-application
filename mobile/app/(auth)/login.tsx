@@ -1,193 +1,134 @@
 /**
  * 로그인 화면
+ * 이메일/비밀번호로 POST /auth/login → 토큰 저장 → 홈 탭으로 이동.
  */
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  StyleSheet,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
 import { useState } from 'react';
-import { router } from 'expo-router';
-import { login } from '../../api/auth';
+import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { useRouter, Link } from 'expo-router';
+import { AxiosError } from 'axios';
+import { getBeClient } from '../../api/be-client';
 import { useAuthStore } from '../../lib/auth';
 
-interface FormState {
-  email: string;
-  password: string;
+interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
 }
 
 export default function LoginScreen() {
-  const [form, setForm] = useState<FormState>({ email: '', password: '' });
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
   const setTokens = useAuthStore((s) => s.setTokens);
 
-  const handleLogin = async () => {
-    if (!form.email || !form.password) {
-      setErrorMessage('이메일과 비밀번호를 입력해주세요.');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleLogin() {
+    if (!email.trim() || !password) {
+      setError('이메일과 비밀번호를 입력해 주세요.');
       return;
     }
-    setErrorMessage(null);
-    setIsLoading(true);
+    setSubmitting(true);
+    setError(null);
     try {
-      const res = await login({ email: form.email, password: form.password });
-      await setTokens({ accessToken: res.accessToken, refreshToken: res.refreshToken });
-      router.replace('/(tabs)/');
-    } catch {
-      setErrorMessage('이메일 또는 비밀번호가 올바르지 않습니다.');
+      const res = await getBeClient().post<LoginResponse>('/auth/login', {
+        email: email.trim(),
+        password,
+      });
+      await setTokens({
+        accessToken: res.data.accessToken,
+        refreshToken: res.data.refreshToken,
+      });
+      router.replace('/(tabs)');
+    } catch (e) {
+      if (e instanceof AxiosError && e.response?.status === 401) {
+        setError('이메일 또는 비밀번호가 올바르지 않습니다.');
+      } else {
+        setError('로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+      }
     } finally {
-      setIsLoading(false);
+      setSubmitting(false);
     }
-  };
+  }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <View style={styles.container} accessible={true} accessibilityLabel="로그인 화면">
-        <Text style={styles.title}>로그인</Text>
+    <View style={styles.container} accessibilityLabel="로그인 화면">
+      <Text style={styles.title}>로그인</Text>
+      <Text style={styles.subtitle}>Sports App에 오신 것을 환영합니다</Text>
 
-        <View style={styles.fieldGroup}>
-          <Text nativeID="emailLabel" style={styles.label} accessibilityRole="text">
-            이메일
-          </Text>
-          <TextInput
-            style={styles.input}
-            accessibilityLabel="이메일 입력"
-            accessibilityLabelledBy="emailLabel"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            value={form.email}
-            onChangeText={(v) => setForm((prev) => ({ ...prev, email: v }))}
-            placeholder="example@email.com"
-            placeholderTextColor="#8E8E93"
-            editable={!isLoading}
-          />
-        </View>
+      {error !== null && (
+        <Text style={styles.error} accessibilityRole="alert">
+          {error}
+        </Text>
+      )}
 
-        <View style={styles.fieldGroup}>
-          <Text nativeID="passwordLabel" style={styles.label} accessibilityRole="text">
-            비밀번호
-          </Text>
-          <TextInput
-            style={styles.input}
-            accessibilityLabel="비밀번호 입력"
-            accessibilityLabelledBy="passwordLabel"
-            secureTextEntry
-            value={form.password}
-            onChangeText={(v) => setForm((prev) => ({ ...prev, password: v }))}
-            placeholder="비밀번호"
-            placeholderTextColor="#8E8E93"
-            editable={!isLoading}
-          />
-        </View>
+      <TextInput
+        style={styles.input}
+        placeholder="이메일"
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        keyboardType="email-address"
+        autoComplete="email"
+        accessibilityLabel="이메일 입력"
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="비밀번호"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+        accessibilityLabel="비밀번호 입력"
+      />
 
-        {errorMessage !== null && (
-          <Text
-            style={styles.errorText}
-            accessibilityRole="alert"
-            accessibilityLiveRegion="polite"
-          >
-            {errorMessage}
-          </Text>
+      <Pressable
+        style={[styles.button, submitting && styles.buttonDisabled]}
+        onPress={() => void handleLogin()}
+        disabled={submitting}
+        accessibilityRole="button"
+        accessibilityLabel="로그인"
+      >
+        {submitting ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>로그인</Text>
         )}
+      </Pressable>
 
-        <Pressable
-          style={[styles.button, isLoading && styles.buttonDisabled]}
-          onPress={handleLogin}
-          disabled={isLoading}
-          accessibilityRole="button"
-          accessibilityLabel="로그인"
-          accessibilityState={{ disabled: isLoading }}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>로그인</Text>
-          )}
-        </Pressable>
-
-        <Pressable
-          style={styles.linkButton}
-          onPress={() => router.push('/(auth)/register')}
-          accessibilityRole="button"
-          accessibilityLabel="회원가입 화면으로 이동"
-        >
-          <Text style={styles.linkText}>계정이 없으신가요? 회원가입</Text>
-        </Pressable>
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>계정이 없으신가요? </Text>
+        <Link href="/(auth)/register" style={styles.link}>
+          회원가입
+        </Link>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  container: {
-    flex: 1,
-    paddingHorizontal: 24,
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1C1C1E',
-    marginBottom: 32,
-  },
-  fieldGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    color: '#3C3C43',
-    marginBottom: 6,
-  },
+  container: { flex: 1, backgroundColor: '#fff', padding: 24, justifyContent: 'center' },
+  title: { fontSize: 28, fontWeight: 'bold', color: '#1C1C1E', marginBottom: 4 },
+  subtitle: { fontSize: 14, color: '#8E8E93', marginBottom: 28 },
   input: {
-    height: 48,
     borderWidth: 1,
-    borderColor: '#C7C7CC',
+    borderColor: '#D1D1D6',
     borderRadius: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     fontSize: 16,
-    color: '#1C1C1E',
-    backgroundColor: '#F2F2F7',
-  },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 14,
     marginBottom: 12,
   },
   button: {
-    height: 50,
     backgroundColor: '#007AFF',
-    borderRadius: 10,
+    borderRadius: 8,
+    paddingVertical: 14,
     alignItems: 'center',
-    justifyContent: 'center',
     marginTop: 8,
   },
-  buttonDisabled: {
-    backgroundColor: '#9E9E9E',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  linkButton: {
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  linkText: {
-    color: '#007AFF',
-    fontSize: 14,
-  },
+  buttonDisabled: { opacity: 0.6 },
+  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  error: { color: '#FF3B30', fontSize: 13, marginBottom: 12 },
+  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
+  footerText: { color: '#8E8E93', fontSize: 14 },
+  link: { color: '#007AFF', fontSize: 14, fontWeight: '600' },
 });
