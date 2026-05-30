@@ -7,8 +7,3 @@ package com.sportsapp.domain.facility
 interface GeocodingGateway {
     fun geocode(address: String): Coordinate?
 }
-
-data class Coordinate(
-    val lat: Double,
-    val lng: Double,
-)
