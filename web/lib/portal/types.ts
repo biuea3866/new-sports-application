@@ -181,6 +181,7 @@ export interface NotificationPage {
   size: number;
 }
 
+
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
 export interface FacilitySummary {
