@@ -77,3 +77,45 @@ export interface ListBookingsResponse {
 export interface CancelBookingRequest {
   reason?: string;
 }
+
+// --- Post ---
+export type PostType = string;
+
+export interface PostResponse {
+  id: number;
+  userId: number;
+  title: string;
+  type: PostType;
+  createdAt: string; // ISO 8601
+}
+
+export interface CommentResponse {
+  id: number;
+  postId: number;
+  userId: number;
+  content: string;
+  createdAt: string; // ISO 8601
+}
+
+export interface PostDetailResponse {
+  id: number;
+  userId: number;
+  title: string;
+  content: string;
+  type: PostType;
+  createdAt: string; // ISO 8601
+  comments: CommentResponse[];
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  number: number; // current page (0-indexed)
+  size: number;
+}
+
+export interface CreatePostRequest {
+  title: string;
+  content: string;
+}
