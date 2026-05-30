@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * /portal/bookings — 예약 현황 조회
- * 시설 소유자가 자신에게 들어온 예약 목록을 확인한다.
+ * /portal/bookings — 예약 현황 조회 및 취소
+ * 시설 소유자가 자신에게 들어온 예약 목록을 확인하고 취소할 수 있다.
  */
 import React, { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -12,12 +12,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/toast";
 import {
   type BookingResponse,
   type BookingStatus,
   type ListBookingsParams,
   fetchBooking,
   fetchMyBookings,
+  cancelBooking,
 } from "@/lib/portal/bookings";
 
 const STATUS_LABELS: Record<BookingStatus, string> = {
@@ -34,6 +36,8 @@ const STATUS_COLORS: Record<BookingStatus, string> = {
   EXPIRED: "bg-red-100 text-red-700",
 };
 
+const CANCELLABLE_STATUSES: BookingStatus[] = ["PENDING", "CONFIRMED"];
+
 const PAGE_SIZE = 10;
 
 interface DetailModalState {
@@ -43,7 +47,13 @@ interface DetailModalState {
   error: string | null;
 }
 
+interface CancelConfirmState {
+  bookingId: number;
+  pending: boolean;
+}
+
 export default function BookingsPage() {
+  const { addToast } = useToast();
   const [statusFilter, setStatusFilter] = useState<BookingStatus | "">("");
   const [page, setPage] = useState(0);
   const [bookings, setBookings] = useState<BookingResponse[]>([]);
@@ -52,6 +62,7 @@ export default function BookingsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [detailModal, setDetailModal] = useState<DetailModalState | null>(null);
+  const [cancelConfirm, setCancelConfirm] = useState<CancelConfirmState | null>(null);
 
   const loadBookings = useCallback(async () => {
     setLoading(true);
@@ -92,6 +103,34 @@ export default function BookingsPage() {
   function handleStatusChange(e: React.ChangeEvent<HTMLSelectElement>) {
     setStatusFilter(e.target.value as BookingStatus | "");
     setPage(0);
+  }
+
+  function requestCancel(bookingId: number) {
+    setCancelConfirm({ bookingId, pending: false });
+  }
+
+  async function confirmCancel() {
+    if (!cancelConfirm) return;
+    setCancelConfirm((prev) => (prev ? { ...prev, pending: true } : null));
+    try {
+      await cancelBooking(cancelConfirm.bookingId);
+      addToast({ title: "예약이 취소되었습니다.", variant: "default" });
+      setCancelConfirm(null);
+      // 취소 후 목록 새로고침
+      await loadBookings();
+      // 상세 모달이 해당 예약을 보고 있으면 닫기
+      if (detailModal?.bookingId === cancelConfirm.bookingId) {
+        closeDetail();
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "예약 취소에 실패했습니다.";
+      addToast({ title: "취소 실패", description: msg, variant: "destructive" });
+      setCancelConfirm((prev) => (prev ? { ...prev, pending: false } : null));
+    }
+  }
+
+  function dismissCancel() {
+    setCancelConfirm(null);
   }
 
   return (
@@ -159,23 +198,29 @@ export default function BookingsPage() {
                     예약 ID
                   </th>
                   <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                    예약자 ID
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
                     슬롯 ID
                   </th>
                   <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
                     상태
                   </th>
                   <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                    결제 상태
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
                     예약 일시
                   </th>
                   <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
-                    상세
+                    액션
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {bookings.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                    <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
                       예약이 없습니다.
                     </td>
                   </tr>
@@ -183,6 +228,7 @@ export default function BookingsPage() {
                   bookings.map((booking) => (
                     <tr key={booking.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">{booking.id}</td>
+                      <td className="px-4 py-3">{booking.userId}</td>
                       <td className="px-4 py-3">{booking.slotId}</td>
                       <td className="px-4 py-3">
                         <span
@@ -192,9 +238,12 @@ export default function BookingsPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-600">
+                        {booking.paymentStatus ?? "-"}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">
                         {new Date(booking.createdAt).toLocaleString("ko-KR")}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 flex items-center gap-2">
                         <Button
                           variant="ghost"
                           size="sm"
@@ -203,6 +252,16 @@ export default function BookingsPage() {
                         >
                           상세
                         </Button>
+                        {CANCELLABLE_STATUSES.includes(booking.status) && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => requestCancel(booking.id)}
+                            aria-label={`예약 ${booking.id} 취소`}
+                          >
+                            취소
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -265,51 +324,100 @@ export default function BookingsPage() {
           )}
 
           {detailModal?.booking && (
-            <dl className="space-y-3 text-sm py-2">
-              <div className="flex gap-2">
-                <dt className="w-28 font-medium text-gray-500">예약 ID</dt>
-                <dd>{detailModal.booking.id}</dd>
-              </div>
-              <div className="flex gap-2">
-                <dt className="w-28 font-medium text-gray-500">슬롯 ID</dt>
-                <dd>{detailModal.booking.slotId}</dd>
-              </div>
-              <div className="flex gap-2">
-                <dt className="w-28 font-medium text-gray-500">사용자 ID</dt>
-                <dd>{detailModal.booking.userId}</dd>
-              </div>
-              <div className="flex gap-2">
-                <dt className="w-28 font-medium text-gray-500">상태</dt>
-                <dd>
-                  <span
-                    className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[detailModal.booking.status]}`}
+            <>
+              <dl className="space-y-3 text-sm py-2">
+                <div className="flex gap-2">
+                  <dt className="w-28 font-medium text-gray-500">예약 ID</dt>
+                  <dd>{detailModal.booking.id}</dd>
+                </div>
+                <div className="flex gap-2">
+                  <dt className="w-28 font-medium text-gray-500">슬롯 ID</dt>
+                  <dd>{detailModal.booking.slotId}</dd>
+                </div>
+                <div className="flex gap-2">
+                  <dt className="w-28 font-medium text-gray-500">예약자 ID</dt>
+                  <dd>{detailModal.booking.userId}</dd>
+                </div>
+                <div className="flex gap-2">
+                  <dt className="w-28 font-medium text-gray-500">상태</dt>
+                  <dd>
+                    <span
+                      className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[detailModal.booking.status]}`}
+                    >
+                      {STATUS_LABELS[detailModal.booking.status]}
+                    </span>
+                  </dd>
+                </div>
+                {detailModal.booking.paymentId !== null && (
+                  <div className="flex gap-2">
+                    <dt className="w-28 font-medium text-gray-500">결제 ID</dt>
+                    <dd>{detailModal.booking.paymentId}</dd>
+                  </div>
+                )}
+                {detailModal.booking.paymentStatus !== null && (
+                  <div className="flex gap-2">
+                    <dt className="w-28 font-medium text-gray-500">결제 상태</dt>
+                    <dd>{detailModal.booking.paymentStatus}</dd>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <dt className="w-28 font-medium text-gray-500">예약 일시</dt>
+                  <dd>{new Date(detailModal.booking.createdAt).toLocaleString("ko-KR")}</dd>
+                </div>
+                <div className="flex gap-2">
+                  <dt className="w-28 font-medium text-gray-500">수정 일시</dt>
+                  <dd>{new Date(detailModal.booking.updatedAt).toLocaleString("ko-KR")}</dd>
+                </div>
+              </dl>
+              {CANCELLABLE_STATUSES.includes(detailModal.booking.status) && (
+                <div className="pt-2 flex justify-end">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      closeDetail();
+                      requestCancel(detailModal.bookingId);
+                    }}
+                    aria-label={`예약 ${detailModal.bookingId} 취소`}
                   >
-                    {STATUS_LABELS[detailModal.booking.status]}
-                  </span>
-                </dd>
-              </div>
-              {detailModal.booking.paymentId !== null && (
-                <div className="flex gap-2">
-                  <dt className="w-28 font-medium text-gray-500">결제 ID</dt>
-                  <dd>{detailModal.booking.paymentId}</dd>
+                    예약 취소
+                  </Button>
                 </div>
               )}
-              {detailModal.booking.paymentStatus !== null && (
-                <div className="flex gap-2">
-                  <dt className="w-28 font-medium text-gray-500">결제 상태</dt>
-                  <dd>{detailModal.booking.paymentStatus}</dd>
-                </div>
-              )}
-              <div className="flex gap-2">
-                <dt className="w-28 font-medium text-gray-500">예약 일시</dt>
-                <dd>{new Date(detailModal.booking.createdAt).toLocaleString("ko-KR")}</dd>
-              </div>
-              <div className="flex gap-2">
-                <dt className="w-28 font-medium text-gray-500">수정 일시</dt>
-                <dd>{new Date(detailModal.booking.updatedAt).toLocaleString("ko-KR")}</dd>
-              </div>
-            </dl>
+            </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* 취소 확인 다이얼로그 */}
+      <Dialog open={cancelConfirm !== null} onOpenChange={(open) => !open && dismissCancel()}>
+        <DialogContent aria-labelledby="cancel-confirm-title">
+          <DialogHeader>
+            <DialogTitle id="cancel-confirm-title">예약 취소 확인</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-700 py-2">
+            예약 #{cancelConfirm?.bookingId}을 취소하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={dismissCancel}
+              disabled={cancelConfirm?.pending}
+              aria-label="취소 작업 닫기"
+            >
+              닫기
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => void confirmCancel()}
+              disabled={cancelConfirm?.pending}
+              aria-label="예약 취소 확정"
+            >
+              {cancelConfirm?.pending ? "처리 중..." : "예약 취소"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </main>

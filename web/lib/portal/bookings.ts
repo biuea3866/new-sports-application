@@ -56,3 +56,17 @@ export async function fetchBooking(bookingId: number): Promise<BookingResponse> 
   }
   return res.json() as Promise<BookingResponse>;
 }
+
+/** 예약 취소 */
+export async function cancelBooking(bookingId: number, reason?: string): Promise<BookingResponse> {
+  const res = await fetch(`/api/portal/bookings/${bookingId}/cancel`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { message?: string } | null;
+    throw new Error(body?.message ?? `예약 취소 실패: ${res.status}`);
+  }
+  return res.json() as Promise<BookingResponse>;
+}
