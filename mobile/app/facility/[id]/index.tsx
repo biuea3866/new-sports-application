@@ -46,35 +46,47 @@ export default function FacilityDetailScreen() {
       )}
 
       {!isLoading && !isError && data !== undefined && (
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          accessible={false}
-          accessibilityLabel="시설 상세 정보"
-        >
-          <Text style={styles.name}>{data.name}</Text>
-          <View style={styles.row}>
-            <Text style={styles.label}>구</Text>
-            <Text style={styles.value}>{data.gu}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>타입</Text>
-            <Text style={styles.value}>{TYPE_LABEL[data.type]}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>주소</Text>
-            <Text style={styles.value}>{data.address}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>주차</Text>
-            <Text style={styles.value}>{data.parking ? '가능' : '불가'}</Text>
-          </View>
-          {data.phone.length > 0 && (
+        <>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            accessible={false}
+            accessibilityLabel="시설 상세 정보"
+          >
+            <Text style={styles.name}>{data.name}</Text>
             <View style={styles.row}>
-              <Text style={styles.label}>전화</Text>
-              <Text style={[styles.value, styles.phone]}>{data.phone}</Text>
+              <Text style={styles.label}>구</Text>
+              <Text style={styles.value}>{data.gu}</Text>
             </View>
-          )}
-        </ScrollView>
+            <View style={styles.row}>
+              <Text style={styles.label}>타입</Text>
+              <Text style={styles.value}>{TYPE_LABEL[data.type]}</Text>
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.label}>주소</Text>
+              <Text style={styles.value}>{data.address}</Text>
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.label}>주차</Text>
+              <Text style={styles.value}>{data.parking ? '가능' : '불가'}</Text>
+            </View>
+            {data.phone.length > 0 && (
+              <View style={styles.row}>
+                <Text style={styles.label}>전화</Text>
+                <Text style={[styles.value, styles.phone]}>{data.phone}</Text>
+              </View>
+            )}
+          </ScrollView>
+          <View style={styles.bookingButtonContainer}>
+            <TouchableOpacity
+              style={styles.bookingButton}
+              onPress={() => router.push(`/booking/new?facilityId=${facilityId}`)}
+              accessibilityRole="button"
+              accessibilityLabel="예약하기"
+            >
+              <Text style={styles.bookingButtonText}>예약하기</Text>
+            </TouchableOpacity>
+          </View>
+        </>
       )}
     </View>
   );
@@ -133,5 +145,22 @@ const styles = StyleSheet.create({
   },
   phone: {
     color: '#007AFF',
+  },
+  bookingButtonContainer: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#C7C7CC',
+  },
+  bookingButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  bookingButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

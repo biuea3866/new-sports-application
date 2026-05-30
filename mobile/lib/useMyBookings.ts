@@ -3,8 +3,8 @@
  * useCancelBooking — POST /bookings/{id}/cancel mutation 훅
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { cancelBooking, createBooking, listMyBookings } from '../api/booking';
-import type { BookingResponse, CreateBookingRequest, ListBookingsResponse } from '../api/types';
+import { cancelBooking, listMyBookings } from '../api/booking';
+import type { BookingResponse, ListBookingsResponse } from '../api/types';
 
 export const MY_BOOKINGS_QUERY_KEY = ['bookings', 'me'] as const;
 
@@ -31,13 +31,3 @@ export function useCancelBooking() {
   });
 }
 
-export function useCreateBooking() {
-  const queryClient = useQueryClient();
-
-  return useMutation<BookingResponse, Error, CreateBookingRequest>({
-    mutationFn: (body) => createBooking(body),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: MY_BOOKINGS_QUERY_KEY });
-    },
-  });
-}
