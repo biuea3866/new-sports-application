@@ -8,7 +8,7 @@
 -- 해결:
 --   1. 기존 중복(userId별 활성 row > 1건) 을 soft-delete 로 정리한다 (최신 id 1건 유지).
 --   2. active_marker 컬럼 추가:
---      - 활성 cart: active_marker = id (null 이 아닌 고유값 → UNIQUE 적용)
+--      - 활성 cart: active_marker = 1 (상수 — user_id 당 활성 cart 1건만 허용, UNIQUE 적용)
 --      - soft-delete 된 cart: active_marker = NULL (null 은 UNIQUE 체크 제외)
 --   3. UNIQUE(user_id, active_marker) 제약으로 활성 cart 중복 생성 원천 차단.
 --

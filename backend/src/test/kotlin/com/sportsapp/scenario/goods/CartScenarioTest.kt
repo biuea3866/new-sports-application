@@ -7,6 +7,7 @@ import com.sportsapp.domain.goods.ProductStatus
 import com.sportsapp.domain.goods.Stock
 import com.sportsapp.infrastructure.persistence.goods.ProductJpaRepository
 import com.sportsapp.infrastructure.persistence.goods.StockJpaRepository
+import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.http.MediaType
@@ -19,6 +20,10 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.math.BigDecimal
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 @AutoConfigureMockMvc
 class CartScenarioTest(
@@ -138,25 +143,48 @@ class CartScenarioTest(
                 }
             }
 
-            When("[DEF-002 중복 row] 동일 userId의 활성 cart row가 2건 존재할 때") {
-                Then("GET /cart/me 가 200을 반환하고 DELETE /cart 가 204를 반환한다") {
-                    // DB 직접 삽입으로 중복 row 상황 재현
-                    jdbcTemplate.execute(
-                        "INSERT INTO carts (user_id, created_at, updated_at) VALUES (8001, NOW(6), NOW(6))"
-                    )
-                    jdbcTemplate.execute(
-                        "INSERT INTO carts (user_id, created_at, updated_at) VALUES (8001, NOW(6), NOW(6))"
-                    )
+            When("[DEF-002 동시성] 동일 userId 로 POST /cart/items 가 동시에 10회 요청되면") {
+                Then("NonUniqueResultException 500 은 발생하지 않고 활성 cart 는 최대 1건이다") {
+                    val threadCount = 10
+                    val latch = CountDownLatch(threadCount)
+                    val executor = Executors.newFixedThreadPool(threadCount)
+                    val nonUniqueResultErrorCount = AtomicInteger(0)
 
-                    mockMvc.perform(
-                        get("/cart/me")
-                            .header("X-User-Id", "8001")
-                    ).andExpect(status().isOk)
+                    repeat(threadCount) {
+                        executor.submit {
+                            try {
+                                val result = mockMvc.perform(
+                                    post("/cart/items")
+                                        .header("X-User-Id", "8001")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content("""{"productId": $productId, "quantity": 1}""")
+                                ).andReturn()
+                                // IncorrectResultSizeDataAccessException(NonUniqueResult) 로 인한 500 만 카운트
+                                // DataIntegrityViolationException(constraint) 은 카운트하지 않음
+                                val responseBody = result.response.contentAsString
+                                if (result.response.status == 500 &&
+                                    responseBody.contains("IncorrectResultSize", ignoreCase = true)
+                                ) {
+                                    nonUniqueResultErrorCount.incrementAndGet()
+                                }
+                            } finally {
+                                latch.countDown()
+                            }
+                        }
+                    }
 
-                    mockMvc.perform(
-                        delete("/cart")
-                            .header("X-User-Id", "8001")
-                    ).andExpect(status().isNoContent)
+                    latch.await(30, TimeUnit.SECONDS)
+                    executor.shutdown()
+
+                    // NonUniqueResultException 500 이 없어야 한다 — DEF-002 핵심 검증
+                    nonUniqueResultErrorCount.get() shouldBe 0
+
+                    val activeCartCount = jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM carts WHERE user_id = 8001 AND deleted_at IS NULL",
+                        Int::class.java
+                    )
+                    // UNIQUE 제약으로 활성 cart 는 최대 1건
+                    (activeCartCount ?: 0) shouldBe 1
                 }
             }
         }

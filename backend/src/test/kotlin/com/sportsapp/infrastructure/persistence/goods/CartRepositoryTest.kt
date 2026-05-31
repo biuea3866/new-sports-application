@@ -19,8 +19,8 @@ class CartRepositoryTest(
     init {
         Given("Cart 저장 후 조회 검증") {
             afterEach {
-                jdbcTemplate.execute("DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM carts WHERE user_id IN (1, 2, 3, 999, 5000))")
-                jdbcTemplate.execute("DELETE FROM carts WHERE user_id IN (1, 2, 3, 999, 5000)")
+                jdbcTemplate.execute("DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM carts WHERE user_id IN (1, 2, 3, 999, 5000, 7001, 7002))")
+                jdbcTemplate.execute("DELETE FROM carts WHERE user_id IN (1, 2, 3, 999, 5000, 7001, 7002)")
             }
 
             When("userId로 Cart를 저장하고 findByUserId로 조회하면") {
@@ -102,30 +102,28 @@ class CartRepositoryTest(
                 }
             }
 
-            When("[DEF-002] 동일 userId의 활성 cart row가 DB에 2건 존재할 때 findByUserId를 호출하면") {
-                Then("NonUniqueResult 500 없이 활성 cart 단일 건을 반환한다") {
-                    // DB에 직접 중복 row 삽입 (unique 제약 우회 — NULL != NULL 이슈 재현)
-                    jdbcTemplate.execute(
-                        "INSERT INTO carts (user_id, created_at, updated_at) VALUES (7001, NOW(6), NOW(6))"
-                    )
-                    jdbcTemplate.execute(
-                        "INSERT INTO carts (user_id, created_at, updated_at) VALUES (7001, NOW(6), NOW(6))"
-                    )
+            When("[DEF-002] save() 를 통해 동일 userId로 첫 Cart를 저장하면") {
+                Then("active_marker = 1 이 설정되고 findByUserId 로 단일 건이 반환된다") {
+                    val cart = cartRepository.save(Cart(userId = 7001L))
+                    cart.activeMarker shouldBe Cart.ACTIVE_MARKER
 
                     val found = cartRepository.findByUserId(7001L)
                     found shouldNotBe null
                     found?.userId shouldBe 7001L
+                    found?.activeMarker shouldBe Cart.ACTIVE_MARKER
                 }
             }
 
             When("[DEF-002-unique-constraint] 활성 cart가 이미 존재할 때 동일 userId로 두 번째 Cart를 save하면") {
-                Then("unique 제약 위반이 발생한다") {
+                Then("UNIQUE(user_id, active_marker) 제약 위반이 발생한다 (NonUniqueResultException 이 아님)") {
                     cartRepository.save(Cart(userId = 7002L))
 
-                    val exception = runCatching {
-                        cartRepository.save(Cart(userId = 7002L))
-                    }
-                    exception.isFailure shouldBe true
+                    val secondResult = runCatching { cartRepository.save(Cart(userId = 7002L)) }
+                    // UNIQUE(user_id, active_marker) 위반 → DataIntegrityViolationException
+                    // IncorrectResultSizeDataAccessException(기존 NonUniqueResult 500) 이 아님을 확인
+                    secondResult.isFailure shouldBe true
+                    secondResult.exceptionOrNull()?.javaClass?.name shouldNotBe
+                        "org.springframework.dao.IncorrectResultSizeDataAccessException"
                 }
             }
         }
