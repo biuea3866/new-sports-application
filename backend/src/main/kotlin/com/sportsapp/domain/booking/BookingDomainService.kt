@@ -29,7 +29,7 @@ class BookingDomainService(
     private val paymentRefundGateway: PaymentRefundGateway,
 ) {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    fun requestBooking(userId: Long, slotId: Long): Booking {
+    fun requestBooking(userId: Long, slotId: Long): BookingResult {
         val lockKey = "booking:slot:$slotId"
         val lockValue = "user:$userId"
         if (!spinLock(lockKey, lockValue)) throw SlotBusyException(slotId)
@@ -37,7 +37,7 @@ class BookingDomainService(
         return doBooking(userId, slotId, lockKey, lockValue)
     }
 
-    private fun doBooking(userId: Long, slotId: Long, lockKey: String, lockValue: String): Booking {
+    private fun doBooking(userId: Long, slotId: Long, lockKey: String, lockValue: String): BookingResult {
         try {
             val slot = slotRepository.findById(slotId)
                 ?: throw ResourceNotFoundException("Slot", slotId)
@@ -49,7 +49,12 @@ class BookingDomainService(
             val booking = bookingRepository.save(Booking.createPending(userId, slotId))
             booking.registerEvent(BookingRequestedEvent(bookingId = booking.id, slotId = slotId, userId = userId))
             domainEventPublisher.publishAll(booking.pullDomainEvents())
-            return booking
+            return BookingResult(
+                bookingId = booking.id,
+                slotId = booking.slotId,
+                userId = booking.userId,
+                status = booking.status,
+            )
         } finally {
             if (!TransactionSynchronizationManager.isActualTransactionActive()) {
                 distributedLock.unlock(lockKey, lockValue)

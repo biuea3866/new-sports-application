@@ -92,10 +92,10 @@ class BookingDomainServiceLockTest : BehaviorSpec({
         every { bookingRepository.countBySlotIdAndStatusIn(42L, any()) } returns 2L
         every { bookingRepository.save(any()) } returns booking
 
-        When("requestBooking을 호출하면") {
+        When("requestBooking 을 호출하면") {
             val result = service.requestBooking(userId = 1L, slotId = 42L)
 
-            Then("PENDING 상태의 Booking이 반환된다") {
+            Then("PENDING 상태의 BookingResult 가 반환된다") {
                 result.status shouldBe BookingStatus.PENDING
                 result.userId shouldBe 1L
                 result.slotId shouldBe 42L
