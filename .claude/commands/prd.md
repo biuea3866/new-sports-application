@@ -21,10 +21,13 @@ description: 요구사항·컨텍스트를 받아 PRD(Product Requirements Docum
 [Step 2] PRD 초안 작성
     │ .analysis/outputs/{날짜}_{기능명}/prd.md 저장
     ▼
-[Step 3] 사용자 검토 게이트
-    │ 작성된 PRD 요약 출력 → 수정 요청 시 재작성
+[Step 3] prd-reviewer 검수 (필수)
+    │ prd-reviewer 에이전트로 누락·모순·실현가능성 점검 → 지적 반영
     ▼
-[Step 4] 완료 출력
+[Step 4] 사용자 검토 게이트
+    │ 검수 결과 + PRD 요약 출력 → 수정 요청 시 재작성
+    ▼
+[Step 5] 완료 출력
       파일 경로 + 다음 단계 안내 (/feature or /implement)
 ```
 
@@ -97,9 +100,24 @@ description: 요구사항·컨텍스트를 받아 PRD(Product Requirements Docum
 
 ---
 
-## Step 3 — 사용자 검토 게이트
+## Step 3 — prd-reviewer 검수 (필수)
 
-PRD 작성 후 다음 요약을 출력하고 사용자 확인을 기다린다:
+PRD 초안 작성 직후 **반드시** `prd-reviewer` 에이전트를 호출해 검수한다. 이 단계는 생략할 수 없다.
+
+- 호출: `prd-reviewer` 서브에이전트에 작성한 `prd.md` 경로(들)를 전달
+- 점검 항목: 요구사항 누락, FR 간 모순, AS-IS 근거의 코드 사실 일치 여부, 실현 가능성, 오픈 이슈 충분성, 영향 범위 정확성
+- 결과 처리:
+  - **Must Fix** 지적 → PRD를 수정한 뒤 재검수 (지적 0건까지 반복)
+  - **Nice to Have** 지적 → 오픈 이슈로 남기거나 반영
+- 검수 결과(지적 목록 + 반영 내역)를 Step 4 요약에 포함한다.
+
+> 검수 없이 "PRD 완료"를 단언하지 않는다 (`rules/COMPLETION-RULE.md` §2 — "PRD 분석 완료"는 reviewer 산출물 첨부 시에만 인정).
+
+---
+
+## Step 4 — 사용자 검토 게이트
+
+검수 반영 후 다음 요약을 출력하고 사용자 확인을 기다린다:
 
 ```
 ## PRD 요약 — {기능명}
@@ -108,17 +126,18 @@ PRD 작성 후 다음 요약을 출력하고 사용자 확인을 기다린다:
 영향 레포: {N}개 — {목록}
 기능 요구사항: {N}건
 오픈 이슈: {N}건 (PM 확인 필요)
+prd-reviewer 검수: Must Fix {N}건 반영 / Nice to Have {N}건
 
 전체 문서: {prd.md 경로}
 ```
 
 **대기 액션**:
-- "확인" / "OK" → Step 4 진행
+- "확인" / "OK" → Step 5 진행
 - 수정 요청 → 해당 섹션 수정 후 재출력
 
 ---
 
-## Step 4 — 완료 출력
+## Step 5 — 완료 출력
 
 ```
 PRD 작성 완료: {prd.md 경로}
@@ -136,3 +155,4 @@ PRD 작성 완료: {prd.md 경로}
 - 코드·SQL을 직접 작성하지 않는다. PRD는 요구사항 문서이지 설계 문서가 아니다.
 - 오픈 이슈가 있으면 임의로 결정하지 않고 목록으로 남긴다.
 - 기능 요구사항은 "무엇을" 기술한다. "어떻게"는 TDD 단계에서 결정한다.
+- **Step 3 prd-reviewer 검수는 필수**다. 검수를 건너뛰고 PRD를 완료 처리하지 않는다.
