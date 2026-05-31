@@ -6,7 +6,6 @@ import com.sportsapp.domain.payment.PaymentDomainService
 import com.sportsapp.domain.payment.PaymentMethod
 import com.sportsapp.domain.payment.PaymentStatus
 import com.sportsapp.domain.ticketing.OrderStatus
-import com.sportsapp.domain.ticketing.TicketOrder
 import com.sportsapp.domain.ticketing.TicketingDomainService
 import com.sportsapp.domain.ticketing.exception.SeatNotLockOwnerException
 import io.kotest.assertions.throwables.shouldThrow
@@ -31,12 +30,8 @@ class PurchaseTicketsUseCaseTest : BehaviorSpec({
         currency = "KRW",
     )
 
-    fun buildPendingOrder(orderId: Long = 100L): TicketOrder {
-        val order = mockk<TicketOrder>(relaxed = true)
-        every { order.id } returns orderId
-        every { order.status } returns OrderStatus.PENDING
-        return order
-    }
+    fun buildPendingOrderResponse(orderId: Long = 100L): TicketOrderResponse =
+        TicketOrderResponse(ticketOrderId = orderId, status = OrderStatus.PENDING)
 
     fun buildPayment(status: PaymentStatus, paymentId: Long = 999L): Payment {
         val payment = mockk<Payment>()
@@ -66,18 +61,18 @@ class PurchaseTicketsUseCaseTest : BehaviorSpec({
         val ticketingDomainService = mockk<TicketingDomainService>()
         val paymentDomainService = mockk<PaymentDomainService>()
         val useCase = PurchaseTicketsUseCase(ticketingDomainService, paymentDomainService)
-        val pendingOrder = buildPendingOrder()
+        val pendingOrderResponse = buildPendingOrderResponse()
         val readyPayment = buildPayment(PaymentStatus.READY)
 
         every { ticketingDomainService.verifyLockOwner(lockId, userId) } returns Unit
         every { ticketingDomainService.calculateAmount(lockId) } returns BigDecimal("80000")
-        every { ticketingDomainService.createPendingOrder(lockId, userId) } returns pendingOrder
+        every { ticketingDomainService.createPendingOrder(lockId, userId) } returns pendingOrderResponse
         every {
             paymentDomainService.create(
                 userId = userId,
                 idempotencyKey = idempotencyKey,
                 orderType = OrderType.TICKETING,
-                orderId = 100L,
+                orderId = pendingOrderResponse.ticketOrderId,
                 method = PaymentMethod.CREDIT_CARD,
                 amount = BigDecimal("80000"),
                 currency = "KRW",
@@ -106,12 +101,12 @@ class PurchaseTicketsUseCaseTest : BehaviorSpec({
         val ticketingDomainService = mockk<TicketingDomainService>()
         val paymentDomainService = mockk<PaymentDomainService>()
         val useCase = PurchaseTicketsUseCase(ticketingDomainService, paymentDomainService)
-        val pendingOrder = buildPendingOrder()
+        val pendingOrderResponse = buildPendingOrderResponse()
         val completedPayment = buildPayment(PaymentStatus.COMPLETED)
 
         every { ticketingDomainService.verifyLockOwner(lockId, userId) } returns Unit
         every { ticketingDomainService.calculateAmount(lockId) } returns BigDecimal("50000")
-        every { ticketingDomainService.createPendingOrder(lockId, userId) } returns pendingOrder
+        every { ticketingDomainService.createPendingOrder(lockId, userId) } returns pendingOrderResponse
         every {
             paymentDomainService.create(any(), any(), any(), any(), any(), any(), any())
         } returns completedPayment
@@ -137,12 +132,12 @@ class PurchaseTicketsUseCaseTest : BehaviorSpec({
         val ticketingDomainService = mockk<TicketingDomainService>()
         val paymentDomainService = mockk<PaymentDomainService>()
         val useCase = PurchaseTicketsUseCase(ticketingDomainService, paymentDomainService)
-        val pendingOrder = buildPendingOrder()
+        val pendingOrderResponse = buildPendingOrderResponse()
         val failedPayment = buildPayment(PaymentStatus.FAILED)
 
         every { ticketingDomainService.verifyLockOwner(lockId, userId) } returns Unit
         every { ticketingDomainService.calculateAmount(lockId) } returns BigDecimal("50000")
-        every { ticketingDomainService.createPendingOrder(lockId, userId) } returns pendingOrder
+        every { ticketingDomainService.createPendingOrder(lockId, userId) } returns pendingOrderResponse
         every {
             paymentDomainService.create(any(), any(), any(), any(), any(), any(), any())
         } returns failedPayment
