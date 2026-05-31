@@ -43,9 +43,12 @@ class Facility(
     val eduYn: Boolean,
     @Field("meta")
     val meta: Map<String, String>,
-    @Field("owner_user_id")
-    var ownerUserId: Long? = null,
+    ownerUserId: Long? = null,
 ) : BaseDocument() {
+
+    @Field("owner_user_id")
+    var ownerUserId: Long? = ownerUserId
+        private set
 
     val lat: Double get() = location.y
     val lng: Double get() = location.x
