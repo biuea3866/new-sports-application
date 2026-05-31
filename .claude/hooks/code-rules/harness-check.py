@@ -284,7 +284,10 @@ def check_code_patterns(rules, tool_input):
     violations = []
     for rule in forbidden.get("rules", []):
         file_glob = rule.get("file_glob", "*")
-        if not fnmatch(Path(file_path).name, file_glob):
+        # 전체 경로 우선 매칭 + 파일명 매칭 폴백 (하위 호환).
+        # 경로 기반 glob(`*/infrastructure/*/mysql/*.kt`)과 파일명 glob(`*Request.kt`) 모두 지원.
+        if not (_matches_any_glob(file_path, file_glob)
+                or _matches_any_glob(Path(file_path).name, file_glob)):
             continue
 
         exclude_glob = rule.get("exclude_glob")

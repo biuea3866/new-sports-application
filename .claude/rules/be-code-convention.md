@@ -102,6 +102,84 @@ class User(
 // ❌ infrastructure/persistence/user/UserEntity.kt + UserMapper — 생성 금지
 ```
 
+## 패키지 구조 (Package Layout)
+
+루트 패키지는 `com.sportsapp.<layer>.<context>.<sub>` 형태다. layer 가 1차, **도메인 컨텍스트가 2차, 역할(sub)이 3차**다. infrastructure 도 동일하게 **도메인 우선**으로 둔다 (기술 우선 `persistence/<context>` 금지).
+
+> 한 레이어/도메인 디렉토리에 모든 파일을 평면(flat)으로 두지 않는다. 아래 sub-package 로 반드시 나눈다.
+
+### presentation/<context>/
+
+| sub-package | 책임 | 파일명 |
+|---|---|---|
+| `controller/` | REST 진입점 | `~ApiController.kt` |
+| `worker/` | Kafka Consumer + 내부 이벤트 리스너 (비동기/외부 이벤트 진입점) | `~EventWorker.kt` |
+| `scheduler/` | `@Scheduled` 주기 작업 | `~Scheduler.kt` |
+| `batch/` | Spring Batch Job/Step 설정 | `~Batch.kt` / `~BatchConfig.kt` |
+| `dto/request/` | 외부 요청 바디 | `~Request.kt` |
+| `dto/response/` | 외부 응답 바디 | `~Response.kt` |
+
+- `@TransactionalEventListener(AFTER_COMMIT)` 도 `worker/` 에 둔다 (이벤트 진입점).
+- `batch/`·`scheduler/` 는 해당 작업이 없으면 디렉토리를 만들지 않는다 (빈 패키지 금지).
+
+### application/<context>/
+
+| sub-package | 책임 | 파일명 |
+|---|---|---|
+| `usecase/` | 행위 1개 = 클래스 1개 | `~UseCase.kt` |
+| `dto/` | UseCase 입력 `Command` + 내부 반환 `Result` | `~Command.kt`, `~Result.kt` |
+
+### domain/<context>/
+
+| sub-package | 책임 | 파일명 |
+|---|---|---|
+| `service/` | DomainService (조회·연결·persist 오케스트레이션) | `~DomainService.kt` |
+| `entity/` | `@Entity` aggregate root + 자식 entity + **aggregate 상태 enum(Status)** | `Booking.kt`, `BookingStatus.kt` |
+| `vo/` | `@Embeddable` 값 객체 + aggregate 에 귀속되지 않는 순수 도메인 enum | `Money.kt`, `SeatGrade.kt` |
+| `dto/` | 쿼리 projection / 도메인 조회 결과 객체 | `FacilityKpiSummary.kt` |
+| `repository/` | Repository interface | `~Repository.kt` |
+| `gateway/` | Gateway interface | `~Gateway.kt` |
+| `event/` | DomainEvent | `~Event.kt` |
+| `exception/` | 도메인 예외 | `~Exception.kt` |
+
+- **Status enum 위치**: aggregate 의 상태를 표현하고 `canTransitTo()` 같은 행위를 가지면 `entity/` 에 aggregate 와 같이 둔다. aggregate 에 귀속되지 않는 순수 분류 enum 은 `vo/`.
+- `domain/common/` 은 도메인 공통 산출물: `DomainEventPublisher` interface, `BusinessException` base, `JpaAuditingBase`/`BaseDocument`, 공통 exception/security/storage. 다른 도메인은 `domain.common` 만 import 허용 (도메인 간 직접 참조 금지 원칙 유지).
+
+### infrastructure/<context>/ (도메인 우선)
+
+| sub-package | 책임 | 파일명 |
+|---|---|---|
+| `mysql/` | Spring Data JpaRepository + Custom interface + RepositoryImpl(QueryDSL) | `~JpaRepository.kt`, `~RepositoryImpl.kt` |
+| `mongo/` | MongoDB Repository/Template 구현 | `~MongoRepositoryImpl.kt` |
+| `kafka/` | `DomainEventPublisher` 구현(Producer), Avro/직렬화 어댑터 | `Kafka~Publisher.kt` |
+| `gateway/` | Gateway 구현(외부 API client) | `~GatewayImpl.kt` |
+
+- **도메인 비귀속(cross-cutting) 인프라**는 도메인 디렉토리 밖에 둔다: `infrastructure/{config, security, messaging, redis, storage, lock, audit, external}`. 예) `messaging/` 의 RoutingPublisher, `external/` 의 RestClientFactory, `config/` 의 CacheConfig.
+- 한 도메인이 mysql·mongo·kafka·gateway 중 일부만 쓰면 쓰는 것만 만든다.
+
+### 디렉토리 예시 (booking)
+
+```
+presentation/booking/
+  controller/ BookingApiController.kt  SlotApiController.kt
+  worker/     BookingRequestedEventWorker.kt
+  dto/request/  CreateBookingRequest.kt  CancelBookingRequest.kt  CreateSlotRequest.kt
+  dto/response/ BookingResponse.kt  SlotResponse.kt  ListBookingsResponse.kt
+application/booking/
+  usecase/ CreateBookingUseCase.kt  CancelBookingUseCase.kt  ...
+  dto/     CreateBookingCommand.kt  CreateBookingResult.kt  ...
+domain/booking/
+  service/    BookingDomainService.kt  SlotDomainService.kt
+  entity/     Booking.kt  Slot.kt  BookingStatus.kt
+  dto/        FacilityKpiSummary.kt
+  repository/ BookingRepository.kt  SlotRepository.kt  BookingKpiQueryRepository.kt
+  gateway/    PaymentRefundGateway.kt
+  event/      BookingRequestedEvent.kt  BookingCancelledEvent.kt
+  exception/  InvalidSlotException.kt  SlotFullException.kt  RefundPolicyViolationException.kt ...
+infrastructure/booking/
+  mysql/ BookingJpaRepository.kt  BookingQueryDslRepository.kt  BookingRepositoryImpl.kt  SlotRepositoryImpl.kt  BookingKpiQueryRepositoryImpl.kt
+```
+
 ## UseCase 규칙 (핵심)
 
 ### 원칙
@@ -486,22 +564,30 @@ presentation → application → domain ← infrastructure
 
 ## 네이밍 컨벤션
 
-| 역할 | 위치 | 파일명 |
+| 역할 | 위치 (패키지) | 파일명 |
 |---|---|---|
-| Controller | presentation | `~ApiController.kt` |
-| Kafka Consumer / EventListener | presentation | `~EventWorker.kt` |
-| UseCase | application | `~UseCase.kt` |
-| Entity (= JPA `@Entity`, 단일 모델) | domain | 도메인명 (`User.kt`, `Product.kt`) — 별도 `~Entity.kt` POJO 금지 |
-| Domain Repository (DB 영속화) | domain | `~Repository.kt` (interface) |
-| Domain Gateway (외부 시스템 호출: 외부 API/SMS/이메일) | domain | `~Gateway.kt` (interface) |
-| Domain Event Publisher | domain | `DomainEventPublisher.kt` (interface) |
-| Spring Data JPA Repository | infrastructure | `~JpaRepository.kt` — `JpaRepository<도메인Entity, Long>` 직접 |
-| Repository 구현 (Domain interface → JpaRepository 위임 + QueryDSL) | infrastructure | `~RepositoryImpl.kt` |
-| Gateway 구현 | infrastructure | `~GatewayImpl.kt` |
-| Event Publisher 구현 | infrastructure | `KafkaDomainEventPublisher.kt` 등 |
-| Command | application | `~Command.kt` |
-| Request | presentation | `~Request.kt` |
-| Response | application | `~Response.kt` |
+| Controller | `presentation/<context>/controller` | `~ApiController.kt` |
+| Kafka Consumer / EventListener | `presentation/<context>/worker` | `~EventWorker.kt` |
+| Scheduler | `presentation/<context>/scheduler` | `~Scheduler.kt` |
+| Batch | `presentation/<context>/batch` | `~Batch.kt` |
+| Request | `presentation/<context>/dto/request` | `~Request.kt` |
+| Response | `presentation/<context>/dto/response` | `~Response.kt` |
+| UseCase | `application/<context>/usecase` | `~UseCase.kt` |
+| Command / Result | `application/<context>/dto` | `~Command.kt`, `~Result.kt` |
+| DomainService | `domain/<context>/service` | `~DomainService.kt` |
+| Entity (= JPA `@Entity`, 단일 모델) + Status enum | `domain/<context>/entity` | 도메인명 (`User.kt`, `Booking.kt`) — 별도 `~Entity.kt` POJO 금지 |
+| Value Object / 순수 enum | `domain/<context>/vo` | `Money.kt`, `SeatGrade.kt` |
+| 쿼리 projection / 조회 결과 | `domain/<context>/dto` | `FacilityKpiSummary.kt` |
+| Domain Repository (interface) | `domain/<context>/repository` | `~Repository.kt` |
+| Domain Gateway (interface) | `domain/<context>/gateway` | `~Gateway.kt` |
+| Domain Event | `domain/<context>/event` | `~Event.kt` |
+| Domain Exception | `domain/<context>/exception` | `~Exception.kt` |
+| Domain Event Publisher (interface) | `domain/common` | `DomainEventPublisher.kt` |
+| Spring Data JPA Repository | `infrastructure/<context>/mysql` | `~JpaRepository.kt` — `JpaRepository<도메인Entity, Long>` 직접 |
+| Repository 구현 (QueryDSL) | `infrastructure/<context>/mysql` | `~RepositoryImpl.kt` |
+| Mongo Repository 구현 | `infrastructure/<context>/mongo` | `~MongoRepositoryImpl.kt` |
+| Gateway 구현 | `infrastructure/<context>/gateway` | `~GatewayImpl.kt` |
+| Event Publisher 구현 (Kafka Producer) | `infrastructure/<context>/kafka` | `Kafka~Publisher.kt` |
 
 **Repository vs Gateway 구분**:
 - Repository → DB 영속화 (JPA, MyBatis, MongoDB 등)
@@ -518,17 +604,18 @@ presentation → application → domain ← infrastructure
 ## DTO 흐름
 
 ```
-Request (presentation)
-  → Command (application)
-    → Entity (domain)
-      → Response (application)
-        → 그대로 presentation 반환
+Request (presentation/dto/request)
+  → Command (application/dto)        — Request.toCommand()
+    → Entity (domain/entity)         — Command → Entity 직접 생성
+      → Result (application/dto)     — UseCase 반환
+        → Response (presentation/dto/response)  — Controller 가 Response.of(result)
 ```
 
-- Request: 외부 입력 형태
-- Command: UseCase 실행 파라미터 (`toCommand()`로 변환)
-- Response: UseCase 반환값, presentation이 그대로 사용
-- **Entity ↔ 영속화 POJO 변환 단계 없음** — JPA Entity 가 도메인 Entity 이므로 toEntity()/toDomain() 매퍼 금지. Command → Entity 직접 생성, Entity → Response 직접 매핑.
+- Request: 외부 입력 형태. `toCommand()` 로 Command 변환.
+- Command: UseCase 실행 파라미터.
+- Result: UseCase 반환값 (도메인 Entity 또는 application 내부 DTO). presentation 타입을 application 이 알지 않는다.
+- Response: Controller 가 `Result` → `Response.of(...)` 로 변환해 반환. **Response 는 presentation 소속** — application/domain 은 Response 를 import 하지 않는다.
+- **Entity ↔ 영속화 POJO 변환 단계 없음** — JPA Entity 가 도메인 Entity 이므로 toEntity()/toDomain() 매퍼 금지. Command → Entity 직접 생성, Entity/Result → Response 직접 매핑.
 
 ### @Transactional 메서드는 Entity 가 아닌 DTO 를 반환한다 (OSIV 위반 방지)
 
@@ -559,7 +646,7 @@ fun confirmOrder(orderId: Long, paymentId: Long): ConfirmOrderResult { ... }
 |---|---|
 | 기본 트랜잭션 | UseCase `@Transactional` |
 | Domain Event 발행 | DomainService가 `DomainEventPublisher` interface(domain layer)로 호출, 구현체는 infrastructure (Kafka·Spring ApplicationEventPublisher 등) |
-| 이벤트 처리 | `@TransactionalEventListener(AFTER_COMMIT)` — **presentation layer**에 위치, UseCase 경유 |
+| 이벤트 처리 | `@TransactionalEventListener(AFTER_COMMIT)` — **presentation/<context>/worker** 에 위치, UseCase 경유 |
 | 도메인 간 이벤트 | 비동기 (`@Async` + `@Retryable`) |
 
 ## 클린 코드 규칙
@@ -631,14 +718,14 @@ fun process(id: Long): Result {
 
 ## Kafka Consumer
 
-- **위치**: presentation layer (`~EventWorker.kt`) — Controller와 동일한 외부 진입점
+- **위치**: `presentation/<context>/worker/~EventWorker.kt` — Controller와 동일한 외부 진입점
 - `ConsumerRecord<String, String>` 금지 → DTO 직접 매핑
 - `JsonDeserializer` + `trusted.packages` 설정
 - Consumer에서 Repository / DomainService 직접 호출 금지 → **UseCase 경유**
 - ObjectMapper 수동 파싱 금지
 
 ```kotlin
-// presentation/consumer/PlanChangedEventWorker.kt
+// presentation/<context>/worker/PlanChangedEventWorker.kt
 @Component
 class PlanChangedEventWorker(
     private val planChangedUseCase: PlanChangedUseCase,

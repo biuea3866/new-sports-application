@@ -52,8 +52,8 @@
       {
         "id": "no-repository-in-consumer",
         "pattern": "(Repository|JpaRepository).*\\.(save|find|delete|update)",
-        "file_glob": "*Consumer*.kt",
-        "message": "Consumer에서 Repository 직접 호출 금지 — Facade/Service를 경유하세요.",
+        "file_glob": "*EventWorker*.kt",
+        "message": "EventWorker(Kafka Consumer/이벤트 리스너)에서 Repository 직접 호출 금지 — UseCase를 경유하세요. (presentation/<context>/worker)",
         "severity": "error"
       },
       {
@@ -189,16 +189,18 @@
       {
         "id": "no-persistence-entity-pojo",
         "pattern": "@Entity\\b|@Document\\b",
-        "file_glob": "*/infrastructure/persistence/**/*.kt",
-        "message": "infrastructure/persistence 에 @Entity/@Document POJO 분리 금지 — JPA Entity 가 곧 도메인 Entity 다. domain/<context>/ 에 단일 모델로 작성하세요 (be-code-convention.md 'JPA Entity = Domain Entity').",
-        "severity": "error"
+        "file_glob": "{*/infrastructure/*/mysql/*.kt,*/infrastructure/*/mongo/*.kt,*/infrastructure/persistence/*.kt}",
+        "message": "infrastructure 에 @Entity/@Document POJO 분리 금지 — JPA Entity 가 곧 도메인 Entity 다. domain/<context>/entity 에 단일 모델로 작성하세요 (be-code-convention.md 'JPA Entity = Domain Entity').",
+        "severity": "error",
+        "note": "경로 glob 은 PR 리뷰어/harness-auditor 가 소비. PreToolUse 훅(harness-check.py)은 file_glob 을 파일명에만 매칭하므로 경로 glob 은 훅에서 발동하지 않음 — 훅 강제는 PR 단계에서 수행."
       },
       {
         "id": "no-domain-persistence-mapper",
         "pattern": "fun\\s+to(Domain|Entity|Document)\\s*\\(|fun\\s+from(Domain|Entity|Document)\\s*\\(",
-        "file_glob": "*/infrastructure/persistence/**/*.kt",
+        "file_glob": "{*/infrastructure/*/mysql/*.kt,*/infrastructure/*/mongo/*.kt,*/infrastructure/persistence/*.kt}",
         "message": "도메인↔영속화 POJO 매퍼 금지 — 단일 JPA Entity 모델이므로 toDomain/toEntity 변환 불필요. Repository 가 도메인 Entity 를 직접 반환.",
-        "severity": "error"
+        "severity": "error",
+        "note": "경로 glob 은 PR 리뷰어/harness-auditor 소비. 훅은 파일명 매칭만 하므로 경로 glob 미발동 (no-persistence-entity-pojo 동일)."
       },
       {
         "id": "no-many-to-many",
@@ -483,6 +485,27 @@
         "severity": "error"
       }
     ]
+  },
+
+  "package_layout": {
+    "description": "패키지 구조 — layer→context→sub 3단. infrastructure 도 도메인 우선. PR 리뷰어/harness-auditor 강제. 상세는 be-code-convention.md '패키지 구조 (Package Layout)'.",
+    "root": "com.sportsapp.<layer>.<context>.<sub>",
+    "layers": {
+      "presentation/<context>": ["controller", "worker", "scheduler", "batch", "dto/request", "dto/response"],
+      "application/<context>": ["usecase", "dto"],
+      "domain/<context>": ["service", "entity", "vo", "dto", "repository", "gateway", "event", "exception"],
+      "infrastructure/<context>": ["mysql", "mongo", "kafka", "gateway"]
+    },
+    "cross_cutting_infra": ["config", "security", "messaging", "redis", "storage", "lock", "audit", "external"],
+    "rules": [
+      "한 레이어/도메인 디렉토리에 파일을 평면(flat)으로 두지 않는다 — 위 sub-package 로 분리.",
+      "infrastructure 는 기술 우선(persistence/<context>) 금지 — 도메인 우선(<context>/mysql) 로 둔다.",
+      "Response 는 presentation/<context>/dto/response 소속 — application/domain 은 Response import 금지.",
+      "Status enum 은 aggregate 와 같이 domain/<context>/entity, 순수 분류 enum 은 domain/<context>/vo.",
+      "batch/·scheduler/ 는 해당 작업이 없으면 디렉토리를 만들지 않는다 (빈 패키지 금지).",
+      "도메인 비귀속 인프라(RoutingPublisher, RestClientFactory, CacheConfig 등)는 cross_cutting_infra 에 둔다."
+    ],
+    "enforcement_note": "PreToolUse 훅(harness-check.py)은 forbidden_patterns 의 file_glob 을 파일명에만 매칭하므로 경로 기반 구조 규칙은 훅에서 자동 차단되지 않는다. 구조 위반은 pr-reviewer/harness-auditor 가 경로로 검출한다."
   },
 
   "clean_code": {
