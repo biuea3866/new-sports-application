@@ -1,6 +1,5 @@
 package com.sportsapp.domain.ticketing
 
-import com.sportsapp.application.ticketing.TicketOrderResponse
 import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import com.sportsapp.domain.ticketing.exception.LockExpiredException
@@ -12,6 +11,8 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -104,7 +105,7 @@ class TicketingDomainService(
             ?: throw ResourceNotFoundException("TicketOrder", ticketOrderId)
 
     @Transactional
-    fun createPendingOrder(lockId: String, userId: Long): TicketOrderResponse {
+    fun createPendingOrder(lockId: String, userId: Long): TicketOrderResult {
         val pairs = parseLockId(lockId)
         val eventId = pairs.first().first
         val seatIds = pairs.map { it.second }
@@ -114,20 +115,19 @@ class TicketingDomainService(
             lockedSeatIds = seatIds,
         )
         val saved = ticketOrderRepository.save(order)
-        return TicketOrderResponse.of(saved)
+        return TicketOrderResult.of(saved)
     }
 
-    @Transactional
-    fun confirmOrder(orderId: Long, paymentId: Long): TicketOrderResponse {
+    fun confirmOrder(orderId: Long, paymentId: Long): TicketOrderResult {
         val order = ticketOrderRepository.findById(orderId)
             ?: throw ResourceNotFoundException("TicketOrder", orderId)
         if (order.status == OrderStatus.CONFIRMED) {
-            return TicketOrderResponse.of(order)
+            return TicketOrderResult.of(order)
         }
         order.confirm(paymentId, order.lockedSeatIds)
         ticketOrderRepository.save(order)
         domainEventPublisher.publish(TicketIssuedEvent(ticketOrderId = order.id))
-        return TicketOrderResponse.of(order)
+        return TicketOrderResult.of(order)
     }
 
     @Transactional
@@ -137,8 +137,27 @@ class TicketingDomainService(
         order.cancel()
         ticketOrderRepository.save(order)
         val tickets = ticketRepository.findByTicketOrderId(orderId)
-        tickets.forEach { it.revoke() }
+        tickets.forEach { ticket ->
+            ticket.revoke()
+            ticket.softDelete(null)
+        }
         if (tickets.isNotEmpty()) ticketRepository.saveAll(tickets)
+        registerSeatUnlockAfterCommit(order)
+    }
+
+    private fun registerSeatUnlockAfterCommit(order: TicketOrder) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            unlockSeats(order)
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() {
+                unlockSeats(order)
+            }
+        })
+    }
+
+    private fun unlockSeats(order: TicketOrder) {
         order.lockedSeatIds.forEach { seatId ->
             runCatching { seatLockStore.unlock(order.lockedEventId, seatId, order.userId) }
                 .onFailure { logger.warn("Failed to unlock seat $seatId for event ${order.lockedEventId}: ${it.message}") }

@@ -1,6 +1,6 @@
 package com.sportsapp.infrastructure.payment
 
-import com.sportsapp.application.ticketing.TicketOrderResponse
+import com.sportsapp.domain.ticketing.TicketOrderResult
 import com.sportsapp.domain.booking.Booking
 import com.sportsapp.domain.booking.BookingDomainService
 import com.sportsapp.domain.goods.GoodsDomainService
@@ -75,8 +75,8 @@ class OrderConfirmationGatewayImplTest : BehaviorSpec({
             goodsDomainService = goodsDomainService,
             ticketingDomainService = ticketingDomainService,
         )
-        val ticketOrderResponse = mockk<TicketOrderResponse>()
-        every { ticketingDomainService.confirmOrder(orderId = 30L, paymentId = 300L) } returns ticketOrderResponse
+        val ticketOrderResult = mockk<TicketOrderResult>()
+        every { ticketingDomainService.confirmOrder(orderId = 30L, paymentId = 300L) } returns ticketOrderResult
 
         When("confirm 을 호출하면") {
             gateway.confirm(orderType = OrderType.TICKETING, orderId = 30L, paymentId = 300L)
