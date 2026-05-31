@@ -1,5 +1,6 @@
 package com.sportsapp.domain.payment
 
+import com.sportsapp.domain.common.DomainEvent
 import com.sportsapp.domain.common.JpaAuditingBase
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -9,6 +10,7 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Transient
 import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.ZonedDateTime
@@ -67,6 +69,22 @@ class Payment private constructor(
     val version: Long = 0,
 ) : JpaAuditingBase() {
 
+    @Transient
+    private var _domainEvents: MutableList<DomainEvent>? = null
+
+    private val domainEvents: MutableList<DomainEvent>
+        get() = _domainEvents ?: mutableListOf<DomainEvent>().also { _domainEvents = it }
+
+    fun pullDomainEvents(): List<DomainEvent> {
+        val events = domainEvents.toList()
+        domainEvents.clear()
+        return events
+    }
+
+    private fun registerEvent(event: DomainEvent) {
+        domainEvents.add(event)
+    }
+
     fun markReady(tid: String, provider: String, checkoutUrl: String) {
         if (!status.canTransitTo(PaymentStatus.READY)) {
             throw InvalidPaymentStateException(status, PaymentStatus.READY)
@@ -83,6 +101,7 @@ class Payment private constructor(
         }
         this.status = PaymentStatus.COMPLETED
         this.paidAt = paidAt
+        registerEvent(PaymentCompletedEvent(paymentId = id))
     }
 
     fun markCancelled() {

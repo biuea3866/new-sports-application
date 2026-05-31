@@ -1,5 +1,6 @@
 package com.sportsapp.domain.payment
 
+import com.sportsapp.domain.common.DomainEventPublisher
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -18,7 +19,12 @@ class PaymentDomainServiceTest : BehaviorSpec({
 
     Given("prepare — PG 성공 케이스") {
         val (paymentRepository, paymentGateway, key) = buildPrepareRequest()
-        val service = PaymentDomainService(paymentRepository, paymentGateway)
+        val service = PaymentDomainService(
+            paymentRepository = paymentRepository,
+            paymentGateway = paymentGateway,
+            orderConfirmationGateway = mockk(relaxed = true),
+            domainEventPublisher = mockk(relaxed = true),
+        )
 
         every { paymentRepository.findByIdempotencyKey(key) } returns null
         every { paymentRepository.save(any()) } answers { firstArg() }
@@ -54,7 +60,12 @@ class PaymentDomainServiceTest : BehaviorSpec({
     Given("prepare — 멱등 hit 케이스") {
         val paymentRepository = mockk<PaymentRepository>()
         val paymentGateway = mockk<PaymentGateway>()
-        val service = PaymentDomainService(paymentRepository, paymentGateway)
+        val service = PaymentDomainService(
+            paymentRepository = paymentRepository,
+            paymentGateway = paymentGateway,
+            orderConfirmationGateway = mockk(relaxed = true),
+            domainEventPublisher = mockk(relaxed = true),
+        )
 
         val key = "idem-hit-key"
         val existing = Payment.create(
@@ -95,7 +106,12 @@ class PaymentDomainServiceTest : BehaviorSpec({
     Given("confirmWebhook — PAYMENT_APPROVED 케이스") {
         val paymentRepository = mockk<PaymentRepository>()
         val paymentGateway = mockk<PaymentGateway>()
-        val service = PaymentDomainService(paymentRepository, paymentGateway)
+        val service = PaymentDomainService(
+            paymentRepository = paymentRepository,
+            paymentGateway = paymentGateway,
+            orderConfirmationGateway = mockk(relaxed = true),
+            domainEventPublisher = mockk(relaxed = true),
+        )
 
         val tid = "MOCK_CARD_approve01"
         val readyPayment = Payment.create(
@@ -123,7 +139,12 @@ class PaymentDomainServiceTest : BehaviorSpec({
     Given("confirmWebhook — PAYMENT_CANCELED 케이스") {
         val paymentRepository = mockk<PaymentRepository>()
         val paymentGateway = mockk<PaymentGateway>()
-        val service = PaymentDomainService(paymentRepository, paymentGateway)
+        val service = PaymentDomainService(
+            paymentRepository = paymentRepository,
+            paymentGateway = paymentGateway,
+            orderConfirmationGateway = mockk(relaxed = true),
+            domainEventPublisher = mockk(relaxed = true),
+        )
 
         val tid = "MOCK_CARD_cancel01"
         val readyPayment = Payment.create(
@@ -150,7 +171,12 @@ class PaymentDomainServiceTest : BehaviorSpec({
     Given("confirmWebhook — 멱등 케이스 (PAYMENT_APPROVED 중복 수신)") {
         val paymentRepository = mockk<PaymentRepository>()
         val paymentGateway = mockk<PaymentGateway>()
-        val service = PaymentDomainService(paymentRepository, paymentGateway)
+        val service = PaymentDomainService(
+            paymentRepository = paymentRepository,
+            paymentGateway = paymentGateway,
+            orderConfirmationGateway = mockk(relaxed = true),
+            domainEventPublisher = mockk(relaxed = true),
+        )
 
         val tid = "MOCK_CARD_dup01"
         val completedPayment = Payment.create(

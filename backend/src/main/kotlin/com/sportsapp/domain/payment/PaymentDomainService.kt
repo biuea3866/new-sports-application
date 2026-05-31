@@ -1,5 +1,6 @@
 package com.sportsapp.domain.payment
 
+import com.sportsapp.domain.common.DomainEventPublisher
 import java.math.BigDecimal
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
@@ -11,6 +12,8 @@ import java.time.ZonedDateTime
 class PaymentDomainService(
     private val paymentRepository: PaymentRepository,
     private val paymentGateway: PaymentGateway,
+    private val orderConfirmationGateway: OrderConfirmationGateway,
+    private val domainEventPublisher: DomainEventPublisher,
 ) {
     companion object {
         private val log = LoggerFactory.getLogger(PaymentDomainService::class.java)
@@ -94,7 +97,14 @@ class PaymentDomainService(
             "PAYMENT_APPROVED" -> {
                 if (payment.status == PaymentStatus.COMPLETED) return payment
                 payment.markCompleted(ZonedDateTime.now())
-                paymentRepository.save(payment)
+                val saved = paymentRepository.save(payment)
+                orderConfirmationGateway.confirm(
+                    orderType = saved.orderType,
+                    orderId = saved.orderId,
+                    paymentId = saved.id,
+                )
+                domainEventPublisher.publishAll(saved.pullDomainEvents())
+                saved
             }
             "PAYMENT_CANCELED" -> {
                 if (payment.status == PaymentStatus.CANCELLED) return payment
