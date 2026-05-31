@@ -38,6 +38,7 @@ class PaymentWebhookConfirmTest : BehaviorSpec({
             paymentGateway = paymentGateway,
             orderConfirmationGateway = orderConfirmationGateway,
             domainEventPublisher = domainEventPublisher,
+            transactionTemplate = mockk(relaxed = true),
         )
 
         val tid = "MOCK_CARD_u04_01"
@@ -74,6 +75,7 @@ class PaymentWebhookConfirmTest : BehaviorSpec({
             paymentGateway = paymentGateway,
             orderConfirmationGateway = orderConfirmationGateway,
             domainEventPublisher = domainEventPublisher,
+            transactionTemplate = mockk(relaxed = true),
         )
 
         val tid = "MOCK_CARD_u05_01"
@@ -102,6 +104,7 @@ class PaymentWebhookConfirmTest : BehaviorSpec({
             paymentGateway = paymentGateway,
             orderConfirmationGateway = orderConfirmationGateway,
             domainEventPublisher = domainEventPublisher,
+            transactionTemplate = mockk(relaxed = true),
         )
 
         val tid = "MOCK_CARD_u06_01"
@@ -142,6 +145,7 @@ class PaymentWebhookConfirmTest : BehaviorSpec({
             paymentGateway = paymentGateway,
             orderConfirmationGateway = orderConfirmationGateway,
             domainEventPublisher = domainEventPublisher,
+            transactionTemplate = mockk(relaxed = true),
         )
 
         val tid = "MOCK_CARD_u07_01"

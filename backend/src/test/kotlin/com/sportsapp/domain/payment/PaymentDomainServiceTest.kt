@@ -24,6 +24,7 @@ class PaymentDomainServiceTest : BehaviorSpec({
             paymentGateway = paymentGateway,
             orderConfirmationGateway = mockk(relaxed = true),
             domainEventPublisher = mockk(relaxed = true),
+            transactionTemplate = mockk(relaxed = true),
         )
 
         every { paymentRepository.findByIdempotencyKey(key) } returns null
@@ -65,6 +66,7 @@ class PaymentDomainServiceTest : BehaviorSpec({
             paymentGateway = paymentGateway,
             orderConfirmationGateway = mockk(relaxed = true),
             domainEventPublisher = mockk(relaxed = true),
+            transactionTemplate = mockk(relaxed = true),
         )
 
         val key = "idem-hit-key"
@@ -111,6 +113,7 @@ class PaymentDomainServiceTest : BehaviorSpec({
             paymentGateway = paymentGateway,
             orderConfirmationGateway = mockk(relaxed = true),
             domainEventPublisher = mockk(relaxed = true),
+            transactionTemplate = mockk(relaxed = true),
         )
 
         val tid = "MOCK_CARD_approve01"
@@ -144,6 +147,7 @@ class PaymentDomainServiceTest : BehaviorSpec({
             paymentGateway = paymentGateway,
             orderConfirmationGateway = mockk(relaxed = true),
             domainEventPublisher = mockk(relaxed = true),
+            transactionTemplate = mockk(relaxed = true),
         )
 
         val tid = "MOCK_CARD_cancel01"
@@ -176,6 +180,7 @@ class PaymentDomainServiceTest : BehaviorSpec({
             paymentGateway = paymentGateway,
             orderConfirmationGateway = mockk(relaxed = true),
             domainEventPublisher = mockk(relaxed = true),
+            transactionTemplate = mockk(relaxed = true),
         )
 
         val tid = "MOCK_CARD_dup01"
