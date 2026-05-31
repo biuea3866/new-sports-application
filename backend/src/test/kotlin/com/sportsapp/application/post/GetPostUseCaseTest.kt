@@ -42,7 +42,7 @@ class GetPostUseCaseTest : BehaviorSpec({
         val post = Post.create(userId = 1L, title = "제목", content = "내용", type = PostType.FREE)
             .also { initAuditFields(it) }
         val comments = (1..3).map {
-            Comment.create(postId = 1L, userId = it.toLong(), content = "댓글 $it")
+            Comment.create(post = post, userId = it.toLong(), content = "댓글 $it")
                 .also { comment -> initAuditFields(comment) }
         }
         every { postDomainService.getDetail(1L) } returns Pair(post, comments)

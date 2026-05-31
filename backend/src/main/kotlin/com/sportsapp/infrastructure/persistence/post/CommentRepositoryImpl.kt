@@ -18,14 +18,14 @@ class CommentRepositoryImpl(
     override fun findById(id: Long): Comment? = commentJpaRepository.findByIdAndDeletedAtIsNull(id)
 
     override fun findByPostId(postId: Long): List<Comment> =
-        commentJpaRepository.findByPostIdAndDeletedAtIsNull(postId)
+        commentJpaRepository.findByPost_IdAndDeletedAtIsNull(postId)
 
     override fun findAllActiveByPostId(postId: Long): List<Comment> =
-        commentJpaRepository.findAllByPostIdAndDeletedAtIsNull(postId)
+        commentJpaRepository.findAllByPost_IdAndDeletedAtIsNull(postId)
 
     override fun findTop50ByPostId(postId: Long): List<Comment> =
-        commentJpaRepository.findTop50ByPostIdAndDeletedAtIsNullOrderByCreatedAtAsc(postId)
+        commentJpaRepository.findTop50ByPost_IdAndDeletedAtIsNullOrderByCreatedAtAsc(postId)
 
     override fun findPageByPostId(postId: Long, pageable: Pageable): Page<Comment> =
-        commentJpaRepository.findByPostIdAndDeletedAtIsNull(postId, pageable)
+        commentJpaRepository.findByPost_IdAndDeletedAtIsNull(postId, pageable)
 }
