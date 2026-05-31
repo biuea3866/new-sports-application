@@ -139,6 +139,22 @@ BE는 startup에 30~120s 소요. FE는 빌드 1~2분 + start 수 초. `/actuator
 - `.analysis/outputs/qa/{YYYYMMDD}_{topic}/artifacts/` — 스크린샷·트레이스·video·console log
 - `.analysis/outputs/qa/{YYYYMMDD}_{topic}/e2e-report.md` — 시나리오별 pass/fail + 아티팩트 링크
 
+#### 렌더 검증 필수 (스모크·status 대체 절대 금지)
+
+E2E의 핵심 책임은 **인증된 상태에서 화면이 실제로 렌더된 결과를 눈으로 확인 가능한 수준으로 단언**하는 것이다. 다음은 "E2E 통과/렌더 확인"으로 **인정하지 않는다**:
+
+- BE API 직접 호출(`curl`) 스모크 — API 200/400은 화면 렌더 증명이 아니다
+- SSR HTTP status(200/307/404)만 확인 — 307(미인증 리다이렉트)은 "라우트 존재"일 뿐 렌더가 아니다
+- 로그인 없이 미인증 리다이렉트만 확인하고 종료
+
+각 화면 시나리오는 반드시 다음을 수행한다:
+1. 로그인 fixture로 **인증 쿠키/세션 확보** 후 페이지 진입 (`qa/e2e/fixtures/`)
+2. 화면 요소를 **콘텐츠 단위로 단언** — `await expect(page.getByText(...)).toBeVisible()`, 차트/목록/테이블의 실제 데이터 행·축 라벨, 빈 상태일 땐 빈 상태 텍스트
+3. 핵심 상호작용(기간 필터 변경·버튼 클릭·폼 제출·읽음 처리) 후 **결과 DOM 변화** 단언
+4. 정상·실패 모두 `browser_take_screenshot`으로 캡처해 아티팩트에 보존
+
+> 회고(2026-05-31): 화면 E2E를 BE API 스모크 + SSR status(200/307)로 대체하고 "검증 통과"를 단언한 사고. status는 렌더를 증명하지 않는다. **인증 후 실제 렌더·상호작용 단언이 /qa의 핵심 책임**이며, 이를 생략하면 `/qa` 완료로 단언할 수 없다.
+
 ### Step 2' — qa-load-tester
 
 **입력**: `scenarios/load/` 디렉토리 경로 + `QA_API_URL`

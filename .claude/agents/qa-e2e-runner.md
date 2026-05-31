@@ -43,6 +43,19 @@ qa/e2e/specs/{flow-slug}.spec.ts           # 영구 보존, 다음 회귀에서 
 - 인증·시드 데이터는 `qa/e2e/fixtures/`의 fixture 함수로 분리.
 - 실패 시 자동으로 trace·screenshot·video 캡처 (`playwright.config.ts`의 `use.trace = "retain-on-failure"`).
 
+### 렌더 단언 필수 (status·스모크로 pass 판정 금지)
+
+각 test는 HTTP status 코드가 아니라 **실제 렌더된 화면 요소**를 단언해야 한다.
+
+- ✅ `await expect(page.getByText("가동률")).toBeVisible()`, 차트 SVG·테이블 행·목록 항목·빈 상태 텍스트를 콘텐츠 단위로 단언
+- ✅ 인증이 필요한 페이지(`/portal/*`, `/admin/*`)는 **fixture 로그인으로 세션 확보 후** 진입해 데이터 렌더를 단언. 미인증 307 리다이렉트만 확인하고 끝내지 않는다.
+- ✅ 상호작용(필터·버튼·폼·읽음 처리) 후 결과 DOM 변화를 단언
+- ❌ `expect(response.status()).toBe(200)`만으로 pass 처리 — status는 렌더를 증명하지 않는다
+- ❌ BE API 직접 호출(curl/request) 응답만 확인 — 그건 화면 E2E가 아니다
+- ❌ 307/404가 아니라는 확인만으로 "렌더 정상" 단언
+
+페이지가 렌더되지 않거나 데이터가 비어 보이면(차트 미표시, 목록 0행이 기대와 불일치) Fail로 처리하고 screenshot·console·network를 캡처한다.
+
 ### 기존 spec과 신규 spec 구분
 
 - 시나리오 md의 `related-files`가 기존 spec과 매칭되면 **기존 spec 갱신**.
