@@ -101,6 +101,33 @@ class CartRepositoryTest(
                     found?.id shouldBe firstCart.id
                 }
             }
+
+            When("[DEF-002] 동일 userId의 활성 cart row가 DB에 2건 존재할 때 findByUserId를 호출하면") {
+                Then("NonUniqueResult 500 없이 활성 cart 단일 건을 반환한다") {
+                    // DB에 직접 중복 row 삽입 (unique 제약 우회 — NULL != NULL 이슈 재현)
+                    jdbcTemplate.execute(
+                        "INSERT INTO carts (user_id, created_at, updated_at) VALUES (7001, NOW(6), NOW(6))"
+                    )
+                    jdbcTemplate.execute(
+                        "INSERT INTO carts (user_id, created_at, updated_at) VALUES (7001, NOW(6), NOW(6))"
+                    )
+
+                    val found = cartRepository.findByUserId(7001L)
+                    found shouldNotBe null
+                    found?.userId shouldBe 7001L
+                }
+            }
+
+            When("[DEF-002-unique-constraint] 활성 cart가 이미 존재할 때 동일 userId로 두 번째 Cart를 save하면") {
+                Then("unique 제약 위반이 발생한다") {
+                    cartRepository.save(Cart(userId = 7002L))
+
+                    val exception = runCatching {
+                        cartRepository.save(Cart(userId = 7002L))
+                    }
+                    exception.isFailure shouldBe true
+                }
+            }
         }
     }
 }

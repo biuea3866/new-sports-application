@@ -137,6 +137,28 @@ class CartScenarioTest(
                     ).andExpect(status().isForbidden)
                 }
             }
+
+            When("[DEF-002 중복 row] 동일 userId의 활성 cart row가 2건 존재할 때") {
+                Then("GET /cart/me 가 200을 반환하고 DELETE /cart 가 204를 반환한다") {
+                    // DB 직접 삽입으로 중복 row 상황 재현
+                    jdbcTemplate.execute(
+                        "INSERT INTO carts (user_id, created_at, updated_at) VALUES (8001, NOW(6), NOW(6))"
+                    )
+                    jdbcTemplate.execute(
+                        "INSERT INTO carts (user_id, created_at, updated_at) VALUES (8001, NOW(6), NOW(6))"
+                    )
+
+                    mockMvc.perform(
+                        get("/cart/me")
+                            .header("X-User-Id", "8001")
+                    ).andExpect(status().isOk)
+
+                    mockMvc.perform(
+                        delete("/cart")
+                            .header("X-User-Id", "8001")
+                    ).andExpect(status().isNoContent)
+                }
+            }
         }
     }
 }
