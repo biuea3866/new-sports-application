@@ -133,6 +133,26 @@ class RequestRentalUseCase(
 - `DomainEventPublisher` interface는 **domain 레이어에 정의**, 구현체는 infrastructure 레이어에 위치
 - 다른 도메인 데이터는 **ID(Long)만 보유**
 
+### Aggregate 생명주기 — 고아 금지 (`be-code-convention.md` "Aggregate 생명주기")
+
+- DB FK·JPA cascade 가 없으므로 **자식 생명주기는 DomainService 가 손으로 전파**한다.
+- 루트를 soft-delete/취소하는 메서드는 **같은 트랜잭션에서 자식도 soft-delete/취소** — Post→Comment, TicketOrder→Ticket, Event→Seat, Order→Item. 루트만 지우고 끝내면 고아 발생.
+- 전파용 `softDeleteByXxxId` 를 만들면 루트 종료 경로에서 **반드시 호출** (정의만 하고 안 부르면 안 됨).
+- aggregate 마다 "루트 soft-delete → 자식 조회 0건" 테스트를 RED 로 먼저 작성.
+
+### RepositoryImpl 순수성 — 비즈니스 로직 금지
+
+- `*RepositoryImpl.kt` 는 JpaRepository 위임 + QueryDSL 조회만. **중복 해소·`.softDelete()` 호출·상태 결정·활성마커 관리 금지** — 전부 DomainService 로.
+- RepositoryImpl 메서드가 `if/when` 분기하거나 엔티티 상태를 바꾸면 거의 항상 위반. 멱등 보정이 필요하면 `resolveDuplicateXxx` 같은 DomainService 메서드로 끌어내고 RepositoryImpl 은 raw 조회만 제공.
+
+### 결제·동시성 (`be-code-convention.md` "동시성·멱등성 최종 방어선")
+
+- UseCase 에서 `when/if (payment.status)` 동기 분기 금지 — `prepare` 직후 status 는 항상 READY. 완료는 **웹훅/이벤트(AFTER_COMMIT)** 로 받아 주문 확정.
+- capacity/좌석/재고는 락 외에 **DB unique 제약을 최종 방어선**으로 둔다 (락 TTL 만료 대비).
+- `@Version` 충돌은 `@Retryable` 또는 도메인예외(409)로, 500 으로 새지 않게.
+- `@Transactional` 안에서 외부 Gateway 호출 금지, 도메인 이벤트는 AFTER_COMMIT.
+- **OSIV**: `@Transactional` 메서드는 JPA Entity 가 아닌 DTO/primitive/Unit 를 반환한다 — 트랜잭션 안에서 Entity → DTO 매핑을 끝내고 detach 된 값만 내보낸다. `spring.jpa.open-in-view` 는 false 유지. DomainService 가 Entity 를 UseCase 로 넘기는 패턴은 UseCase 트랜잭션 안에서 매핑되면 허용 (단 트랜잭션은 UseCase 한 곳에만).
+
 ### Repository 구현 전략
 
 | 상황 | 방법 |
