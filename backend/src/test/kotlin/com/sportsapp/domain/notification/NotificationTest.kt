@@ -97,4 +97,62 @@ class NotificationTest : BehaviorSpec({
             }
         }
     }
+
+    Given("QUEUED 상태의 Notification") {
+        val notification = Notification.queue(
+            userId = 1L,
+            channel = NotificationChannel.IN_APP,
+            templateId = "test",
+            payload = null,
+        )
+
+        When("markFailed 를 호출하면") {
+            notification.markFailed()
+
+            Then("status 가 FAILED 로 전이된다") {
+                notification.status shouldBe NotificationStatus.FAILED
+            }
+        }
+    }
+
+    Given("이미 FAILED 상태의 Notification") {
+        val notification = Notification(
+            userId = 1L,
+            channel = NotificationChannel.IN_APP,
+            templateId = "test",
+            payload = NotificationPayload(emptyMap()),
+            status = NotificationStatus.FAILED,
+            sentAt = null,
+            readAt = null,
+            eventId = null,
+        )
+
+        When("markFailed 를 다시 호출하면") {
+            Then("InvalidNotificationStateException 이 발생한다") {
+                shouldThrow<InvalidNotificationStateException> {
+                    notification.markFailed()
+                }
+            }
+        }
+    }
+
+    Given("NotificationStatus") {
+        When("QUEUED 에 canTransitToFailed 를 호출하면") {
+            Then("true 를 반환한다") {
+                NotificationStatus.QUEUED.canTransitToFailed() shouldBe true
+            }
+        }
+
+        When("SENT 에 canTransitToFailed 를 호출하면") {
+            Then("true 를 반환한다") {
+                NotificationStatus.SENT.canTransitToFailed() shouldBe true
+            }
+        }
+
+        When("FAILED 에 canTransitToFailed 를 호출하면") {
+            Then("false 를 반환한다") {
+                NotificationStatus.FAILED.canTransitToFailed() shouldBe false
+            }
+        }
+    }
 })

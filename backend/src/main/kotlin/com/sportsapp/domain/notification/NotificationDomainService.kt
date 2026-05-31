@@ -1,5 +1,6 @@
 package com.sportsapp.domain.notification
 
+import com.sportsapp.application.notification.NotificationResponse
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
@@ -27,7 +28,7 @@ class NotificationDomainService(
         channel: NotificationChannel,
         templateId: String,
         payload: NotificationPayload?,
-    ): Notification = dispatchNotification(Notification.queue(userId, channel, templateId, payload))
+    ): NotificationResponse = NotificationResponse.of(dispatchNotification(Notification.queue(userId, channel, templateId, payload)))
 
     @Transactional(noRollbackFor = [DataIntegrityViolationException::class])
     fun enqueueOrSkip(
@@ -72,8 +73,8 @@ class NotificationDomainService(
         val gateway = channelGateways.find { it.supportedChannel == notification.channel }
             ?: return markFailedAndSave(notification)
 
-        val result = gateway.send(notification)
-        return if (result.success) {
+        val sendResult = gateway.send(notification)
+        return if (sendResult.success) {
             notification.markSent()
             notificationRepository.save(notification)
         } else {
@@ -87,12 +88,12 @@ class NotificationDomainService(
     }
 
     @Transactional
-    fun markRead(notificationId: Long, userId: Long): Notification {
+    fun markRead(notificationId: Long, userId: Long): NotificationResponse {
         val notification = notificationRepository.findById(notificationId)
             ?: throw NotificationNotFoundException(notificationId)
         notification.requireOwnedBy(userId)
         notification.markRead()
-        return notificationRepository.save(notification)
+        return NotificationResponse.of(notificationRepository.save(notification))
     }
 
     @Transactional
@@ -101,7 +102,7 @@ class NotificationDomainService(
         channel: NotificationChannel,
         templateId: String,
         payload: Map<String, Any>,
-    ): Notification {
+    ): NotificationResponse {
         val rendered = templateRenderer.render(templateId, payload)
         val enrichedPayload = NotificationPayload(
             payload + mapOf("_title" to rendered.title, "_body" to rendered.body)

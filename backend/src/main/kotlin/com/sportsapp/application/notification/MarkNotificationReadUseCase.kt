@@ -10,10 +10,9 @@ class MarkNotificationReadUseCase(
 ) {
     @Transactional
     fun execute(command: MarkNotificationReadCommand): NotificationResponse {
-        val notification = notificationDomainService.markRead(
+        return notificationDomainService.markRead(
             notificationId = command.notificationId,
             userId = command.userId,
         )
-        return NotificationResponse.of(notification)
     }
 }

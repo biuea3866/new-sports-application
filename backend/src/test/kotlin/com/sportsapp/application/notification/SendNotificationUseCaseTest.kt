@@ -1,6 +1,5 @@
 package com.sportsapp.application.notification
 
-import com.sportsapp.domain.notification.Notification
 import com.sportsapp.domain.notification.NotificationChannel
 import com.sportsapp.domain.notification.NotificationDomainService
 import com.sportsapp.domain.notification.NotificationStatus
@@ -21,7 +20,7 @@ class SendNotificationUseCaseTest : BehaviorSpec({
 
     val baseTime = ZonedDateTime.now(ZoneOffset.UTC)
 
-    Given("[U-01] 유효한 templateId 와 payload 로 발송 요청") {
+    Given("유효한 templateId 와 payload 로 발송 요청") {
         val command = SendNotificationCommand(
             userId = 1L,
             channel = NotificationChannel.IN_APP,
@@ -29,16 +28,16 @@ class SendNotificationUseCaseTest : BehaviorSpec({
             payload = mapOf("amount" to 30000),
         )
 
-        val notification = mockk<Notification> {
-            every { id } returns 1L
-            every { userId } returns 1L
-            every { channel } returns NotificationChannel.IN_APP
-            every { templateId } returns "payment-completed"
-            every { status } returns NotificationStatus.SENT
-            every { sentAt } returns baseTime
-            every { readAt } returns null
-            every { createdAt } returns baseTime
-        }
+        val notificationResponse = NotificationResponse(
+            id = 1L,
+            userId = 1L,
+            channel = NotificationChannel.IN_APP,
+            templateId = "payment-completed",
+            status = NotificationStatus.SENT,
+            sentAt = baseTime,
+            readAt = null,
+            createdAt = baseTime,
+        )
 
         every {
             notificationDomainService.sendWithTemplate(
@@ -47,12 +46,12 @@ class SendNotificationUseCaseTest : BehaviorSpec({
                 templateId = "payment-completed",
                 payload = mapOf("amount" to 30000),
             )
-        } returns notification
+        } returns notificationResponse
 
         When("execute 를 호출하면") {
             val result = useCase.execute(command)
 
-            Then("[U-01] NotificationResponse 가 반환되고 sendWithTemplate 이 호출된다") {
+            Then("NotificationResponse 가 반환되고 sendWithTemplate 이 호출된다") {
                 result.templateId shouldBe "payment-completed"
                 result.userId shouldBe 1L
                 result.status shouldBe NotificationStatus.SENT
@@ -68,7 +67,7 @@ class SendNotificationUseCaseTest : BehaviorSpec({
         }
     }
 
-    Given("[U-02] 존재하지 않는 templateId 로 발송 요청") {
+    Given("존재하지 않는 templateId 로 발송 요청") {
         val command = SendNotificationCommand(
             userId = 1L,
             channel = NotificationChannel.IN_APP,
@@ -86,7 +85,7 @@ class SendNotificationUseCaseTest : BehaviorSpec({
         } throws UnknownTemplateException("non-existent")
 
         When("execute 를 호출하면") {
-            Then("[U-02] UnknownTemplateException 이 전파된다") {
+            Then("UnknownTemplateException 이 전파된다") {
                 shouldThrow<UnknownTemplateException> {
                     useCase.execute(command)
                 }
