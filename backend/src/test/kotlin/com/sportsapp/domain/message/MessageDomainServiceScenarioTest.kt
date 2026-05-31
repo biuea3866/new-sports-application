@@ -99,5 +99,26 @@ class MessageDomainServiceScenarioTest(
                 }
             }
         }
+
+        Given("sendMessage 호출 후 createdAt 초기화 및 room.lastMessageAt 원자적 갱신 검증") {
+            val room = messageDomainService.createDirectRoom()
+            messageDomainService.joinRoom(room.id, userId = 200L)
+
+            When("sendMessage 를 호출하면") {
+                val message = messageDomainService.sendMessage(
+                    roomId = room.id,
+                    userId = 200L,
+                    content = "원자성 확인",
+                )
+
+                Then("message.createdAt 이 초기화되어 있고 room.lastMessageAt 도 함께 갱신된다") {
+                    message.createdAt.shouldNotBeNull()
+                    val updatedRoom = roomRepository.findById(room.id)
+                    updatedRoom.shouldNotBeNull()
+                    updatedRoom.lastMessageAt.shouldNotBeNull()
+                    updatedRoom.lastMessageAt shouldBe message.createdAt
+                }
+            }
+        }
     }
 }
