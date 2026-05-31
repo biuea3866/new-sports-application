@@ -4,34 +4,58 @@ import com.sportsapp.domain.booking.BookingDomainService
 import com.sportsapp.domain.booking.BookingResult
 import com.sportsapp.domain.payment.OrderType
 import com.sportsapp.domain.payment.PaymentDomainService
+import com.sportsapp.domain.payment.PgInitiateCommand
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionTemplate
 import java.util.UUID
 
 @Service
 class CreateBookingUseCase(
     private val bookingDomainService: BookingDomainService,
     private val paymentDomainService: PaymentDomainService,
+    private val transactionTemplate: TransactionTemplate,
 ) {
-    @Transactional
     fun execute(command: CreateBookingCommand): CreateBookingResult {
-        val bookingResult = bookingDomainService.requestBooking(command.userId, command.slotId)
-        val payment = paymentDomainService.create(
-            userId = command.userId,
-            idempotencyKey = buildIdempotencyKey(bookingResult),
-            orderType = OrderType.BOOKING,
-            orderId = bookingResult.bookingId,
-            method = command.paymentMethod,
-            amount = command.amount,
-            currency = command.currency,
+        val (bookingResult, paymentId, idempotencyKey) = persistBookingAndPendingPayment(command)
+        val pgResult = paymentDomainService.initiatePg(
+            PgInitiateCommand(
+                paymentId = paymentId,
+                method = command.paymentMethod,
+                idempotencyKey = idempotencyKey,
+                userId = command.userId,
+                orderType = OrderType.BOOKING,
+                orderId = bookingResult.bookingId,
+                amount = command.amount,
+                currency = command.currency,
+                itemName = "BOOKING #${bookingResult.bookingId}",
+                returnUrl = "",
+                failUrl = "",
+            )
         )
         return CreateBookingResult(
             bookingId = bookingResult.bookingId,
             slotId = bookingResult.slotId,
             userId = bookingResult.userId,
             status = bookingResult.status,
-            paymentId = payment.id,
+            paymentId = pgResult.paymentId,
         )
+    }
+
+    private fun persistBookingAndPendingPayment(command: CreateBookingCommand): Triple<BookingResult, Long, String> {
+        return transactionTemplate.execute {
+            val bookingResult = bookingDomainService.requestBooking(command.userId, command.slotId)
+            val idempotencyKey = buildIdempotencyKey(bookingResult)
+            val paymentId = paymentDomainService.createPending(
+                userId = command.userId,
+                idempotencyKey = idempotencyKey,
+                orderType = OrderType.BOOKING,
+                orderId = bookingResult.bookingId,
+                method = command.paymentMethod,
+                amount = command.amount,
+                currency = command.currency,
+            )
+            Triple(bookingResult, paymentId, idempotencyKey)
+        } ?: throw IllegalStateException("Transaction returned null")
     }
 
     private fun buildIdempotencyKey(bookingResult: BookingResult): String =
