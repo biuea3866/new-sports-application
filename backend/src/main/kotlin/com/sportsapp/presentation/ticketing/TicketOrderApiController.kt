@@ -1,10 +1,13 @@
 package com.sportsapp.presentation.ticketing
 
+import com.sportsapp.application.ticketing.GetTicketOrderUseCase
 import com.sportsapp.application.ticketing.PurchaseTicketsCommand
 import com.sportsapp.application.ticketing.PurchaseTicketsUseCase
 import com.sportsapp.application.ticketing.TicketOrderResponse
 import com.sportsapp.domain.payment.MissingIdempotencyKeyException
 import org.springframework.http.HttpStatus
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
@@ -16,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/ticket-orders")
 class TicketOrderApiController(
     private val purchaseTicketsUseCase: PurchaseTicketsUseCase,
+    private val getTicketOrderUseCase: GetTicketOrderUseCase,
 ) {
     @PostMapping
     @ResponseStatus(HttpStatus.ACCEPTED)
@@ -34,4 +38,9 @@ class TicketOrderApiController(
         )
         return purchaseTicketsUseCase.execute(command)
     }
+
+    @GetMapping("/{id}")
+    fun getTicketOrder(
+        @PathVariable id: Long,
+    ): TicketOrderResponse = getTicketOrderUseCase.execute(id)
 }
