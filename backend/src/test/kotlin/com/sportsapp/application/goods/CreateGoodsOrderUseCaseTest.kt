@@ -1,6 +1,5 @@
 package com.sportsapp.application.goods
 
-import com.sportsapp.domain.goods.CartDomainService
 import com.sportsapp.domain.goods.EmptyOrderException
 import com.sportsapp.domain.goods.GoodsDomainService
 import com.sportsapp.domain.goods.GoodsOrder
@@ -15,7 +14,6 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
-import io.mockk.justRun
 import io.mockk.mockk
 import io.mockk.verify
 import java.math.BigDecimal
@@ -25,11 +23,11 @@ class CreateGoodsOrderUseCaseTest : BehaviorSpec({
     val baseItems = listOf(OrderItemInput(productId = 1L, quantity = 2))
     val idempotencyKey = "idem-key-1"
 
-    fun command(items: List<OrderItemInput> = baseItems, fromCart: Boolean = false) = CreateGoodsOrderCommand(
+    fun command(items: List<OrderItemInput> = baseItems) = CreateGoodsOrderCommand(
         userId = 1L,
         idempotencyKey = idempotencyKey,
         method = PaymentMethod.CREDIT_CARD,
-        fromCart = fromCart,
+        fromCart = false,
         items = items,
     )
 
@@ -38,66 +36,24 @@ class CreateGoodsOrderUseCaseTest : BehaviorSpec({
         every { order.id } returns orderId
         every { order.totalAmount } returns totalAmount
         every { order.status } returns GoodsOrderStatus.PENDING
+        every { order.paymentId } returns null
         return order
     }
 
-    fun buildConfirmedOrder(orderId: Long = 1L, totalAmount: BigDecimal = BigDecimal("20000")): GoodsOrder {
-        val order = mockk<GoodsOrder>(relaxed = true)
-        every { order.id } returns orderId
-        every { order.totalAmount } returns totalAmount
-        every { order.status } returns GoodsOrderStatus.CONFIRMED
-        return order
-    }
-
-    fun buildPayment(paymentId: Long = 10L, status: PaymentStatus = PaymentStatus.COMPLETED): Payment {
+    fun buildPayment(paymentId: Long = 10L, status: PaymentStatus = PaymentStatus.READY): Payment {
         val payment = mockk<Payment>()
         every { payment.id } returns paymentId
         every { payment.status } returns status
         return payment
     }
 
-    Given("빈 items 목록인 CreateGoodsOrderCommand가 주어졌을 때") {
-        val goodsDomainService = mockk<GoodsDomainService>()
-        val paymentDomainService = mockk<PaymentDomainService>()
-        val cartDomainService = mockk<CartDomainService>()
-        val useCase = CreateGoodsOrderUseCase(goodsDomainService, paymentDomainService, cartDomainService)
-        val emptyCommand = command(emptyList())
-
-        every { goodsDomainService.createPendingOrder(1L, emptyList(), idempotencyKey) } throws EmptyOrderException()
-
-        When("execute를 호출하면") {
-            Then("[U-01] EmptyOrderException이 발생한다") {
-                shouldThrow<EmptyOrderException> { useCase.execute(emptyCommand) }
-            }
-        }
-    }
-
-    Given("INACTIVE 상품을 포함한 CreateGoodsOrderCommand가 주어졌을 때") {
-        val goodsDomainService = mockk<GoodsDomainService>()
-        val paymentDomainService = mockk<PaymentDomainService>()
-        val cartDomainService = mockk<CartDomainService>()
-        val useCase = CreateGoodsOrderUseCase(goodsDomainService, paymentDomainService, cartDomainService)
-        val inactiveItems = listOf(OrderItemInput(productId = 99L, quantity = 1))
-        val inactiveCommand = command(inactiveItems)
-
-        every { goodsDomainService.createPendingOrder(1L, inactiveItems, idempotencyKey) } throws ProductInactiveException(99L)
-
-        When("execute를 호출하면") {
-            Then("[U-03] ProductInactiveException이 발생한다") {
-                shouldThrow<ProductInactiveException> { useCase.execute(inactiveCommand) }
-            }
-        }
-    }
-
     Given("유효한 CreateGoodsOrderCommand가 주어졌을 때") {
         val goodsDomainService = mockk<GoodsDomainService>()
         val paymentDomainService = mockk<PaymentDomainService>()
-        val cartDomainService = mockk<CartDomainService>()
-        val useCase = CreateGoodsOrderUseCase(goodsDomainService, paymentDomainService, cartDomainService)
+        val useCase = CreateGoodsOrderUseCase(goodsDomainService, paymentDomainService)
         val validCommand = command()
         val pendingOrder = buildPendingOrder()
-        val payment = buildPayment()
-        val confirmedOrder = buildConfirmedOrder()
+        val payment = buildPayment(status = PaymentStatus.READY)
 
         every { goodsDomainService.createPendingOrder(1L, baseItems, idempotencyKey) } returns pendingOrder
         every {
@@ -111,25 +67,55 @@ class CreateGoodsOrderUseCaseTest : BehaviorSpec({
                 currency = "KRW",
             )
         } returns payment
-        every { goodsDomainService.markPaid(1L, 10L) } returns confirmedOrder
 
         When("execute를 호출하면") {
-            Then("[U-02] GoodsOrderResponse(orderId, paymentId, paymentStatus=COMPLETED)가 반환되고 markPaid가 호출된다") {
-                val result = useCase.execute(validCommand)
+            val result = useCase.execute(validCommand)
+
+            Then("orderId와 paymentId가 포함된 응답이 반환된다") {
                 result.id shouldBe 1L
                 result.paymentId shouldBe 10L
-                result.paymentStatus shouldBe PaymentStatus.COMPLETED
                 result.totalAmount shouldBe BigDecimal("20000")
-                verify(exactly = 1) { goodsDomainService.markPaid(1L, 10L) }
+            }
+
+            Then("markPaid는 호출되지 않는다") {
+                verify(exactly = 0) { goodsDomainService.markPaid(any(), any()) }
+            }
+
+            Then("cancelPendingOrder는 호출되지 않는다") {
+                verify(exactly = 0) { goodsDomainService.cancelPendingOrder(any()) }
             }
         }
     }
 
-    Given("PG 호출이 PaymentStatus.FAILED를 반환하는 CreateGoodsOrderCommand가 주어졌을 때") {
+    Given("결제 생성 직후 payment status가 COMPLETED인 경우") {
         val goodsDomainService = mockk<GoodsDomainService>()
         val paymentDomainService = mockk<PaymentDomainService>()
-        val cartDomainService = mockk<CartDomainService>()
-        val useCase = CreateGoodsOrderUseCase(goodsDomainService, paymentDomainService, cartDomainService)
+        val useCase = CreateGoodsOrderUseCase(goodsDomainService, paymentDomainService)
+        val validCommand = command()
+        val pendingOrder = buildPendingOrder()
+        val completedPayment = buildPayment(status = PaymentStatus.COMPLETED)
+
+        every { goodsDomainService.createPendingOrder(1L, baseItems, idempotencyKey) } returns pendingOrder
+        every {
+            paymentDomainService.create(any(), any(), any(), any(), any(), any(), any())
+        } returns completedPayment
+
+        When("execute를 호출하면") {
+            val result = useCase.execute(validCommand)
+
+            Then("동기 status 분기 없이 응답을 반환하고 markPaid를 호출하지 않는다") {
+                result.id shouldBe 1L
+                result.paymentId shouldBe 10L
+                verify(exactly = 0) { goodsDomainService.markPaid(any(), any()) }
+                verify(exactly = 0) { goodsDomainService.cancelPendingOrder(any()) }
+            }
+        }
+    }
+
+    Given("결제 생성 직후 payment status가 FAILED인 경우") {
+        val goodsDomainService = mockk<GoodsDomainService>()
+        val paymentDomainService = mockk<PaymentDomainService>()
+        val useCase = CreateGoodsOrderUseCase(goodsDomainService, paymentDomainService)
         val validCommand = command()
         val pendingOrder = buildPendingOrder()
         val failedPayment = buildPayment(status = PaymentStatus.FAILED)
@@ -138,62 +124,70 @@ class CreateGoodsOrderUseCaseTest : BehaviorSpec({
         every {
             paymentDomainService.create(any(), any(), any(), any(), any(), any(), any())
         } returns failedPayment
-        justRun { goodsDomainService.cancelPendingOrder(1L) }
 
         When("execute를 호출하면") {
-            Then("[U-04] 보상 트랜잭션으로 cancelPendingOrder가 호출되고 markPaid는 호출되지 않는다") {
-                useCase.execute(validCommand)
-                verify(exactly = 1) { goodsDomainService.cancelPendingOrder(1L) }
+            val result = useCase.execute(validCommand)
+
+            Then("동기 취소 분기 없이 응답을 반환하고 cancelPendingOrder를 호출하지 않는다") {
+                result.id shouldBe 1L
+                verify(exactly = 0) { goodsDomainService.cancelPendingOrder(any()) }
                 verify(exactly = 0) { goodsDomainService.markPaid(any(), any()) }
             }
         }
     }
 
-    Given("PG 호출이 PaymentStatus.PENDING 같은 예상치 못한 상태를 반환하는 경우") {
+    Given("동일 idempotencyKey로 이미 CONFIRMED 상태의 주문이 존재할 때") {
         val goodsDomainService = mockk<GoodsDomainService>()
         val paymentDomainService = mockk<PaymentDomainService>()
-        val cartDomainService = mockk<CartDomainService>()
-        val useCase = CreateGoodsOrderUseCase(goodsDomainService, paymentDomainService, cartDomainService)
+        val useCase = CreateGoodsOrderUseCase(goodsDomainService, paymentDomainService)
         val validCommand = command()
-        val pendingOrder = buildPendingOrder()
-        val unexpectedPayment = buildPayment(status = PaymentStatus.PENDING)
 
-        every { goodsDomainService.createPendingOrder(1L, baseItems, idempotencyKey) } returns pendingOrder
-        every {
-            paymentDomainService.create(any(), any(), any(), any(), any(), any(), any())
-        } returns unexpectedPayment
-        justRun { goodsDomainService.cancelPendingOrder(1L) }
+        val existingOrder = mockk<GoodsOrder>(relaxed = true)
+        every { existingOrder.id } returns 5L
+        every { existingOrder.totalAmount } returns BigDecimal("20000")
+        every { existingOrder.status } returns GoodsOrderStatus.CONFIRMED
+        every { existingOrder.paymentId } returns 55L
+        every { goodsDomainService.createPendingOrder(1L, baseItems, idempotencyKey) } returns existingOrder
 
         When("execute를 호출하면") {
-            Then("[U-06] markPaid가 호출되지 않고 cancelPendingOrder가 호출된다") {
-                useCase.execute(validCommand)
-                verify(exactly = 0) { goodsDomainService.markPaid(any(), any()) }
-                verify(exactly = 1) { goodsDomainService.cancelPendingOrder(1L) }
+            val result = useCase.execute(validCommand)
+
+            Then("기존 주문을 그대로 반환하고 결제를 재생성하지 않는다") {
+                result.id shouldBe 5L
+                result.totalAmount shouldBe BigDecimal("20000")
+                result.paymentId shouldBe 55L
+                verify(exactly = 0) { paymentDomainService.create(any(), any(), any(), any(), any(), any(), any()) }
             }
         }
     }
 
-    Given("fromCart=true이고 결제가 성공하는 경우") {
+    Given("빈 items 목록인 CreateGoodsOrderCommand가 주어졌을 때") {
         val goodsDomainService = mockk<GoodsDomainService>()
         val paymentDomainService = mockk<PaymentDomainService>()
-        val cartDomainService = mockk<CartDomainService>()
-        val useCase = CreateGoodsOrderUseCase(goodsDomainService, paymentDomainService, cartDomainService)
-        val cartCommand = command(fromCart = true)
-        val pendingOrder = buildPendingOrder()
-        val payment = buildPayment()
-        val confirmedOrder = buildConfirmedOrder()
+        val useCase = CreateGoodsOrderUseCase(goodsDomainService, paymentDomainService)
+        val emptyCommand = command(emptyList())
 
-        every { goodsDomainService.createPendingOrder(1L, baseItems, idempotencyKey) } returns pendingOrder
-        every {
-            paymentDomainService.create(any(), any(), any(), any(), any(), any(), any())
-        } returns payment
-        every { goodsDomainService.markPaid(1L, 10L) } returns confirmedOrder
-        justRun { cartDomainService.clearCart(1L) }
+        every { goodsDomainService.createPendingOrder(1L, emptyList(), idempotencyKey) } throws EmptyOrderException()
 
         When("execute를 호출하면") {
-            Then("[U-05] 결제 성공 후 cartDomainService.clearCart가 호출된다") {
-                useCase.execute(cartCommand)
-                verify(exactly = 1) { cartDomainService.clearCart(1L) }
+            Then("EmptyOrderException이 발생한다") {
+                shouldThrow<EmptyOrderException> { useCase.execute(emptyCommand) }
+            }
+        }
+    }
+
+    Given("INACTIVE 상품을 포함한 CreateGoodsOrderCommand가 주어졌을 때") {
+        val goodsDomainService = mockk<GoodsDomainService>()
+        val paymentDomainService = mockk<PaymentDomainService>()
+        val useCase = CreateGoodsOrderUseCase(goodsDomainService, paymentDomainService)
+        val inactiveItems = listOf(OrderItemInput(productId = 99L, quantity = 1))
+        val inactiveCommand = command(inactiveItems)
+
+        every { goodsDomainService.createPendingOrder(1L, inactiveItems, idempotencyKey) } throws ProductInactiveException(99L)
+
+        When("execute를 호출하면") {
+            Then("ProductInactiveException이 발생한다") {
+                shouldThrow<ProductInactiveException> { useCase.execute(inactiveCommand) }
             }
         }
     }

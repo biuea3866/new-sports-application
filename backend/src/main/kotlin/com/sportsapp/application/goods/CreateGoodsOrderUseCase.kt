@@ -1,29 +1,22 @@
 package com.sportsapp.application.goods
 
-import com.sportsapp.domain.goods.CartDomainService
 import com.sportsapp.domain.goods.GoodsDomainService
 import com.sportsapp.domain.goods.GoodsOrder
 import com.sportsapp.domain.goods.GoodsOrderStatus
 import com.sportsapp.domain.payment.OrderType
-import com.sportsapp.domain.payment.Payment
 import com.sportsapp.domain.payment.PaymentDomainService
-import com.sportsapp.domain.payment.PaymentStatus
-import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class CreateGoodsOrderUseCase(
     private val goodsDomainService: GoodsDomainService,
     private val paymentDomainService: PaymentDomainService,
-    private val cartDomainService: CartDomainService,
 ) {
-    private val logger = LoggerFactory.getLogger(javaClass)
-
+    @Transactional
     fun execute(command: CreateGoodsOrderCommand): GoodsOrderResponse {
         val order = goodsDomainService.createPendingOrder(command.userId, command.items, command.idempotencyKey)
-        if (order.status != GoodsOrderStatus.PENDING) {
-            return buildIdempotentResponse(order)
-        }
+        if (order.status != GoodsOrderStatus.PENDING) return buildIdempotentResponse(order)
         val payment = paymentDomainService.create(
             userId = command.userId,
             idempotencyKey = command.idempotencyKey,
@@ -33,7 +26,6 @@ class CreateGoodsOrderUseCase(
             amount = order.totalAmount,
             currency = "KRW",
         )
-        processPaymentResult(order.id, payment, command)
         return GoodsOrderResponse.ofCreated(
             OrderWithPayment(
                 orderId = order.id,
@@ -44,29 +36,12 @@ class CreateGoodsOrderUseCase(
         )
     }
 
-    private fun buildIdempotentResponse(order: GoodsOrder): GoodsOrderResponse {
-        val paymentStatusMap = order.paymentId?.let { paymentDomainService.findStatuses(listOf(it)) }
-        return GoodsOrderResponse.ofCreated(
-            OrderWithPayment(
-                orderId = order.id,
-                paymentId = order.paymentId,
-                paymentStatus = paymentStatusMap?.values?.firstOrNull(),
-                totalAmount = order.totalAmount,
-            )
+    private fun buildIdempotentResponse(order: GoodsOrder) = GoodsOrderResponse.ofCreated(
+        OrderWithPayment(
+            orderId = order.id,
+            paymentId = order.paymentId,
+            paymentStatus = null,
+            totalAmount = order.totalAmount,
         )
-    }
-
-    private fun processPaymentResult(orderId: Long, payment: Payment, command: CreateGoodsOrderCommand) {
-        when (payment.status) {
-            PaymentStatus.COMPLETED -> {
-                goodsDomainService.markPaid(orderId, payment.id)
-                if (command.fromCart) cartDomainService.clearCart(command.userId)
-            }
-            PaymentStatus.FAILED -> goodsDomainService.cancelPendingOrder(orderId)
-            else -> {
-                logger.error("Unexpected payment status: ${payment.status}, orderId=$orderId")
-                goodsDomainService.cancelPendingOrder(orderId)
-            }
-        }
-    }
+    )
 }
