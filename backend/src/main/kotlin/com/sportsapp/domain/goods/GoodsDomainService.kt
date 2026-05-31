@@ -102,6 +102,8 @@ class GoodsDomainService(
             stock.restore(item.quantity)
             stockRepository.save(stock)
         }
+        items.forEach { it.softDelete(null) }
+        if (items.isNotEmpty()) goodsOrderItemRepository.saveAll(items)
     }
 
     fun markPaid(orderId: Long, paymentId: Long): GoodsOrder {
