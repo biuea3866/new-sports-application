@@ -14,8 +14,9 @@
 #   모델에게 전달한다. stop_hook_active 가 true 면(이미 1회 발화) 재차단하지
 #   않는다 → 무한 루프 방지, 단발성 리마인드.
 #
-# 머지 검사(c)는 feat/* · fix/* 브랜치에만 적용한다. 메인 파이프라인 브랜치
-# (pipeline-base-*, dev, main 등)는 머지 대상이 아니므로 (a)(b)만 검사.
+# 머지 검사(c)는 작업 브랜치(feat/* · fix/* · feature/* · docs/* · chore/* ·
+# refactor/*)에 적용한다. dev · main · 파이프라인 베이스 브랜치는 머지 대상이
+# 아니므로 (a)(b)만 검사.
 #
 # 종료 코드: 0(allow stop), 2(block stop + 사유 전달)
 
@@ -58,17 +59,17 @@ if [ -n "$UPSTREAM" ]; then
     PROBLEMS="${PROBLEMS}\n  - ❌ push 되지 않은 커밋 ${AHEAD}개 (${BRANCH} → ${UPSTREAM})"
   fi
 else
-  # upstream 미설정 — feature/fix 브랜치면 아직 한 번도 push 안 한 것
+  # upstream 미설정 — 작업 브랜치면 아직 한 번도 push 안 한 것
   case "$BRANCH" in
-    feat/*|fix/*|feature/*)
+    feat/*|fix/*|feature/*|docs/*|chore/*|refactor/*)
       PROBLEMS="${PROBLEMS}\n  - ❌ 원격 추적 브랜치 없음 — 한 번도 push 되지 않음 (${BRANCH})"
       ;;
   esac
 fi
 
-# (c) dev 미머지 — feat/* · fix/* 브랜치에만 적용
+# (c) dev 미머지 — 작업 브랜치(feat/fix/feature/docs/chore/refactor)에 적용
 case "$BRANCH" in
-  feat/*|fix/*|feature/*)
+  feat/*|fix/*|feature/*|docs/*|chore/*|refactor/*)
     if git rev-parse --verify --quiet origin/dev >/dev/null 2>&1; then
       if ! git merge-base --is-ancestor HEAD origin/dev 2>/dev/null; then
         UNIQ="$(git rev-list --count origin/dev..HEAD 2>/dev/null || echo "?")"
