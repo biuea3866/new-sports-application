@@ -1,6 +1,7 @@
-package com.sportsapp.application.weather
+package com.sportsapp.application.weather.usecase
 
-import com.sportsapp.domain.weather.WeatherDomainService
+import com.sportsapp.application.weather.ForecastResponse
+import com.sportsapp.domain.weather.service.WeatherDomainService
 import org.springframework.stereotype.Service
 
 @Service

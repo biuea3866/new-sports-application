@@ -1,7 +1,7 @@
-package com.sportsapp.presentation.weather
+package com.sportsapp.presentation.weather.controller
 
 import com.sportsapp.application.weather.ForecastResponse
-import com.sportsapp.application.weather.GetForecastUseCase
+import com.sportsapp.application.weather.usecase.GetForecastUseCase
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping

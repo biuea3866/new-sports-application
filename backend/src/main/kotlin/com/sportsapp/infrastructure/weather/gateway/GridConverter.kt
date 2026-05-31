@@ -1,4 +1,4 @@
-package com.sportsapp.infrastructure.weather
+package com.sportsapp.infrastructure.weather.gateway
 
 import kotlin.math.PI
 import kotlin.math.cos
