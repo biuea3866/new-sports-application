@@ -154,7 +154,8 @@ class User(
 | `kafka/` | `DomainEventPublisher` 구현(Producer), Avro/직렬화 어댑터 | `Kafka~Publisher.kt` |
 | `gateway/` | Gateway 구현(외부 API client) | `~GatewayImpl.kt` |
 
-- **도메인 비귀속(cross-cutting) 인프라**는 도메인 디렉토리 밖에 둔다: `infrastructure/{config, security, messaging, redis, storage, lock, audit, external}`. 예) `messaging/` 의 RoutingPublisher, `external/` 의 RestClientFactory, `config/` 의 CacheConfig.
+- **도메인 비귀속(cross-cutting) 인프라**는 도메인 디렉토리 밖에 둔다: `infrastructure/{config, security, messaging, redis, storage, lock, audit, external, persistence}`. 예) `messaging/` 의 RoutingPublisher, `external/` 의 RestClientFactory, `config/` 의 CacheConfig.
+- `infrastructure/persistence/` 는 **전역 영속화 지원만** 허용한다 — `ZonedDateTime` JPA `@Converter`, Mongo 타입 컨버터, `MongoAuditorAware` 같이 특정 도메인에 귀속되지 않는 cross-cutting 컨버터/auditor. **도메인 Repository 구현(`~RepositoryImpl`)은 절대 여기 두지 않는다** — 그것은 `infrastructure/<context>/{mysql,mongo}` 다.
 - 한 도메인이 mysql·mongo·kafka·gateway 중 일부만 쓰면 쓰는 것만 만든다.
 
 ### 디렉토리 예시 (booking)

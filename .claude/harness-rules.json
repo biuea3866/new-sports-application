@@ -496,10 +496,10 @@
       "domain/<context>": ["service", "entity", "vo", "dto", "repository", "gateway", "event", "exception"],
       "infrastructure/<context>": ["mysql", "mongo", "kafka", "gateway"]
     },
-    "cross_cutting_infra": ["config", "security", "messaging", "redis", "storage", "lock", "audit", "external"],
+    "cross_cutting_infra": ["config", "security", "messaging", "redis", "storage", "lock", "audit", "external", "persistence"],
     "rules": [
       "한 레이어/도메인 디렉토리에 파일을 평면(flat)으로 두지 않는다 — 위 sub-package 로 분리.",
-      "infrastructure 는 기술 우선(persistence/<context>) 금지 — 도메인 우선(<context>/mysql) 로 둔다.",
+      "infrastructure 는 기술 우선(persistence/<context>) 금지 — 도메인 우선(<context>/mysql) 로 둔다. 단 infrastructure/persistence 는 전역 컨버터(ZonedDateTime @Converter, Mongo 타입 컨버터, MongoAuditorAware)만 허용하고 도메인 RepositoryImpl 은 절대 두지 않는다.",
       "Response 는 presentation/<context>/dto/response 소속 — application/domain 은 Response import 금지.",
       "Status enum 은 aggregate 와 같이 domain/<context>/entity, 순수 분류 enum 은 domain/<context>/vo.",
       "batch/·scheduler/ 는 해당 작업이 없으면 디렉토리를 만들지 않는다 (빈 패키지 금지).",
