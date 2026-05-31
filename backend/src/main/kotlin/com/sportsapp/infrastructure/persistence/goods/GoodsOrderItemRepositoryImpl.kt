@@ -13,5 +13,5 @@ class GoodsOrderItemRepositoryImpl(
         goodsOrderItemJpaRepository.saveAll(items)
 
     override fun findByOrderId(orderId: Long): List<GoodsOrderItem> =
-        goodsOrderItemJpaRepository.findAllByOrderIdAndDeletedAtIsNull(orderId)
+        goodsOrderItemJpaRepository.findAllByOrder_IdAndDeletedAtIsNull(orderId)
 }

@@ -51,13 +51,13 @@ class GoodsOrderRepositoryTest(
                     )
                     val items = listOf(
                         GoodsOrderItem(
-                            orderId = order.id,
+                            order = order,
                             productId = 10L,
                             quantity = 2,
                             unitPrice = BigDecimal("15000"),
                         ),
                         GoodsOrderItem(
-                            orderId = order.id,
+                            order = order,
                             productId = 20L,
                             quantity = 1,
                             unitPrice = BigDecimal("20000"),
