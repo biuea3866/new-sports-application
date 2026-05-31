@@ -12,7 +12,7 @@ class CartDomainService(
 ) {
 
     fun getOrCreateCart(userId: Long): Cart =
-        cartRepository.findByUserId(userId) ?: cartRepository.save(Cart(userId = userId))
+        cartRepository.findActiveByUserId(userId) ?: cartRepository.save(Cart(userId = userId))
 
     fun getCartWithItems(userId: Long): Pair<Cart, List<CartItem>> {
         val cart = getOrCreateCart(userId)
@@ -20,13 +20,17 @@ class CartDomainService(
     }
 
     fun addItem(userId: Long, productId: Long, quantity: Int): Pair<Cart, List<CartItem>> {
-        requirePositiveQuantity(quantity)
-        validateProductActive(productId)
+        val product = productRepository.findById(productId)
+            ?: throw ResourceNotFoundException("Product", productId)
+        product.requireActive()
 
         val cart = getOrCreateCart(userId)
         val existingItem = cartItemRepository.findByCartIdAndProductId(cart.id, productId)
         val totalQuantity = (existingItem?.quantity ?: 0) + quantity
-        validateStockSufficient(productId, totalQuantity)
+
+        val stock = stockRepository.findByProductId(productId)
+            ?: throw ResourceNotFoundException("Stock", productId)
+        stock.requireSufficient(totalQuantity)
 
         if (existingItem != null) {
             existingItem.addQuantity(quantity)
@@ -39,14 +43,14 @@ class CartDomainService(
     }
 
     fun updateItem(userId: Long, itemId: Long, newQuantity: Int): Pair<Cart, List<CartItem>> {
-        requirePositiveQuantity(newQuantity)
-
         val cart = getOrCreateCart(userId)
         val item = cartItemRepository.findById(itemId)
             ?: throw ResourceNotFoundException("CartItem", itemId)
         if (item.cartId != cart.id) throw CartAccessDeniedException(itemId)
 
-        validateStockSufficient(item.productId, newQuantity)
+        val stock = stockRepository.findByProductId(item.productId)
+            ?: throw ResourceNotFoundException("Stock", item.productId)
+        stock.requireSufficient(newQuantity)
         item.updateQuantity(newQuantity)
         cartItemRepository.save(item)
 
@@ -70,21 +74,5 @@ class CartDomainService(
         val items = cartItemRepository.findAllByCartId(cart.id)
         items.forEach { it.softDelete(userId) }
         cartItemRepository.saveAll(items)
-    }
-
-    private fun requirePositiveQuantity(quantity: Int) {
-        if (quantity <= 0) throw InvalidQuantityException(quantity)
-    }
-
-    private fun validateProductActive(productId: Long) {
-        val product = productRepository.findById(productId)
-            ?: throw ResourceNotFoundException("Product", productId)
-        if (product.status != ProductStatus.ACTIVE) throw ProductInactiveException(productId)
-    }
-
-    private fun validateStockSufficient(productId: Long, requiredQuantity: Int) {
-        val stock = stockRepository.findByProductId(productId)
-            ?: throw ResourceNotFoundException("Stock", productId)
-        if (stock.quantity < requiredQuantity) throw OutOfStockException(productId, requiredQuantity, stock.quantity)
     }
 }

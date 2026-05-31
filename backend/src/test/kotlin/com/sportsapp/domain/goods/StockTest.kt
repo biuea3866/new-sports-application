@@ -51,6 +51,33 @@ class StockTest : BehaviorSpec({
         }
     }
 
+    Given("재고가 5개인 Stock에 requireSufficient를 호출할 때") {
+        When("required가 재고보다 많으면") {
+            Then("OutOfStockException을 던진다") {
+                val stock = Stock(productId = 1L, quantity = 5)
+                shouldThrow<OutOfStockException> { stock.requireSufficient(6) }
+            }
+        }
+
+        When("required가 재고와 같으면") {
+            Then("예외 없이 통과한다") {
+                val stock = Stock(productId = 1L, quantity = 5)
+                io.kotest.assertions.throwables.shouldNotThrowAny {
+                    stock.requireSufficient(5)
+                }
+            }
+        }
+
+        When("required가 재고보다 적으면") {
+            Then("예외 없이 통과한다") {
+                val stock = Stock(productId = 1L, quantity = 5)
+                io.kotest.assertions.throwables.shouldNotThrowAny {
+                    stock.requireSufficient(3)
+                }
+            }
+        }
+    }
+
     Given("재고가 5개인 Stock에 restore를 호출할 때") {
         When("3개를 복구하면") {
             Then("[U-02] quantity가 8이 된다") {
