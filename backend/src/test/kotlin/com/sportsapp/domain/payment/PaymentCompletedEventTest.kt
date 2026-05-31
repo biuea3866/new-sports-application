@@ -22,7 +22,7 @@ class PaymentCompletedEventTest : BehaviorSpec({
             val paidAt = ZonedDateTime.now()
             payment.markCompleted(paidAt)
 
-            Then("[U-01] status 가 COMPLETED 로 전이되고 PaymentCompletedEvent 가 1건 적재된다") {
+            Then("status 가 COMPLETED 로 전이되고 PaymentCompletedEvent 가 1건 적재된다") {
                 payment.status shouldBe PaymentStatus.COMPLETED
                 val events = payment.pullDomainEvents()
                 events.size shouldBe 1
@@ -45,7 +45,7 @@ class PaymentCompletedEventTest : BehaviorSpec({
         )
 
         When("markCompleted 를 호출하면") {
-            Then("[U-02] InvalidPaymentStateException 이 던져진다") {
+            Then("InvalidPaymentStateException 이 던져진다") {
                 io.kotest.assertions.throwables.shouldThrow<InvalidPaymentStateException> {
                     payment.markCompleted(ZonedDateTime.now())
                 }
@@ -58,7 +58,7 @@ class PaymentCompletedEventTest : BehaviorSpec({
         val event = PaymentCompletedEvent(paymentId = paymentId)
 
         When("topic 과 aggregateId 를 확인하면") {
-            Then("[U-03] topic 은 payment.completed.v1 이고 aggregateId 는 paymentId 와 일치한다") {
+            Then("topic 은 payment.completed.v1 이고 aggregateId 는 paymentId 와 일치한다") {
                 event.topic shouldBe "payment.completed.v1"
                 event.aggregateId shouldBe paymentId
             }

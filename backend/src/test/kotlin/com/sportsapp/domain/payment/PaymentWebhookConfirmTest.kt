@@ -54,7 +54,7 @@ class PaymentWebhookConfirmTest : BehaviorSpec({
         When("confirmWebhook(eventType=PAYMENT_APPROVED) 를 호출하면") {
             service.confirmWebhook(tid = tid, eventType = "PAYMENT_APPROVED")
 
-            Then("[U-04] pullDomainEvents() 가 PaymentCompletedEvent 1건을 publishAll 로 전달한다") {
+            Then("pullDomainEvents() 가 PaymentCompletedEvent 1건을 publishAll 로 전달한다") {
                 verify(exactly = 1) { domainEventPublisher.publishAll(any()) }
                 capturedEvents.size shouldBe 1
                 val event = capturedEvents[0]
@@ -84,7 +84,7 @@ class PaymentWebhookConfirmTest : BehaviorSpec({
         When("이미 COMPLETED 상태에서 PAYMENT_APPROVED 웹훅을 수신하면") {
             service.confirmWebhook(tid = tid, eventType = "PAYMENT_APPROVED")
 
-            Then("[U-05] save 와 publishAll 이 호출되지 않는다 (멱등 early-return)") {
+            Then("save 와 publishAll 이 호출되지 않는다 (멱등 early-return)") {
                 verify(exactly = 0) { paymentRepository.save(any()) }
                 verify(exactly = 0) { domainEventPublisher.publishAll(any()) }
                 verify(exactly = 0) { orderConfirmationGateway.confirm(any(), any(), any()) }
@@ -120,7 +120,7 @@ class PaymentWebhookConfirmTest : BehaviorSpec({
         When("confirmWebhook(eventType=PAYMENT_APPROVED) 를 호출하면") {
             service.confirmWebhook(tid = tid, eventType = "PAYMENT_APPROVED")
 
-            Then("[U-06] OrderConfirmationGateway.confirm 이 payment.orderType 과 payment.orderId 로 1회 호출된다") {
+            Then("OrderConfirmationGateway.confirm 이 payment.orderType 과 payment.orderId 로 1회 호출된다") {
                 verify(exactly = 1) {
                     orderConfirmationGateway.confirm(
                         orderType = OrderType.TICKETING,
@@ -152,7 +152,7 @@ class PaymentWebhookConfirmTest : BehaviorSpec({
         When("confirmWebhook(eventType=PAYMENT_CANCELED) 를 호출하면") {
             service.confirmWebhook(tid = tid, eventType = "PAYMENT_CANCELED")
 
-            Then("[U-07] PaymentCompletedEvent 가 발행되지 않는다 (publishAll 미호출)") {
+            Then("PaymentCompletedEvent 가 발행되지 않는다 (publishAll 미호출)") {
                 verify(exactly = 0) { domainEventPublisher.publishAll(any()) }
                 verify(exactly = 0) { orderConfirmationGateway.confirm(any(), any(), any()) }
             }

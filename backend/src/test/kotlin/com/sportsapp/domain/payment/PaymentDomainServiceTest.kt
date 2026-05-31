@@ -47,7 +47,7 @@ class PaymentDomainServiceTest : BehaviorSpec({
                 returnUrl = "http://localhost/return",
                 failUrl = "http://localhost/fail",
             )
-            Then("[U-02] READY 상태의 Payment 가 반환되고 checkoutUrl 이 설정된다") {
+            Then("READY 상태의 Payment 가 반환되고 checkoutUrl 이 설정된다") {
                 result.status shouldBe PaymentStatus.READY
                 result.pgTransactionId shouldBe "MOCK_CARD_abc123"
                 result.checkoutUrl shouldBe "http://localhost:9090/pg/card/checkout?tid=MOCK_CARD_abc123"
@@ -95,7 +95,7 @@ class PaymentDomainServiceTest : BehaviorSpec({
                 returnUrl = "",
                 failUrl = "",
             )
-            Then("[U-01] PG 호출 없이 기존 Payment 를 반환한다") {
+            Then("PG 호출 없이 기존 Payment 를 반환한다") {
                 result shouldBe existing
                 verify(exactly = 0) { paymentGateway.prepare(any()) }
                 verify(exactly = 0) { paymentRepository.save(any()) }
@@ -129,7 +129,7 @@ class PaymentDomainServiceTest : BehaviorSpec({
         When("confirmWebhook(eventType=PAYMENT_APPROVED) 를 호출하면") {
             val result = service.confirmWebhook(tid = tid, eventType = "PAYMENT_APPROVED")
 
-            Then("[U-03] 상태가 COMPLETED 로 전이된다") {
+            Then("상태가 COMPLETED 로 전이된다") {
                 result.status shouldBe PaymentStatus.COMPLETED
                 verify(exactly = 1) { paymentRepository.save(any()) }
             }
@@ -162,7 +162,7 @@ class PaymentDomainServiceTest : BehaviorSpec({
         When("confirmWebhook(eventType=PAYMENT_CANCELED) 를 호출하면") {
             val result = service.confirmWebhook(tid = tid, eventType = "PAYMENT_CANCELED")
 
-            Then("[U-04] 상태가 CANCELLED 로 전이된다") {
+            Then("상태가 CANCELLED 로 전이된다") {
                 result.status shouldBe PaymentStatus.CANCELLED
             }
         }
@@ -196,7 +196,7 @@ class PaymentDomainServiceTest : BehaviorSpec({
         When("이미 COMPLETED 상태에서 PAYMENT_APPROVED webhook 을 다시 수신하면") {
             val result = service.confirmWebhook(tid = tid, eventType = "PAYMENT_APPROVED")
 
-            Then("[U-05] save 를 호출하지 않고 기존 Payment 를 반환한다 (멱등)") {
+            Then("save 를 호출하지 않고 기존 Payment 를 반환한다 (멱등)") {
                 result.status shouldBe PaymentStatus.COMPLETED
                 verify(exactly = 0) { paymentRepository.save(any()) }
             }
