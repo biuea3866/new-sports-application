@@ -86,4 +86,30 @@ class PostTest : BehaviorSpec({
             }
         }
     }
+
+    Given("Post 에 addComment 를 호출하면") {
+        val post = Post.create(userId = 1L, title = "제목", content = "내용")
+
+        When("유효한 userId 와 content 를 전달하면") {
+            val comment = post.addComment(userId = 2L, content = "댓글")
+
+            Then("Comment 가 생성되고 post.comments 컬렉션에 추가되며 양방향 참조가 설정된다") {
+                comment.post shouldBe post
+                comment.userId shouldBe 2L
+                comment.content shouldBe "댓글"
+                post.comments.size shouldBe 1
+                post.comments.first() shouldBe comment
+            }
+        }
+    }
+
+    Given("Post 에 addComment 를 빈 content 로 호출하면") {
+        val post = Post.create(userId = 1L, title = "제목", content = "내용")
+
+        Then("IllegalArgumentException 을 던진다") {
+            shouldThrow<IllegalArgumentException> {
+                post.addComment(userId = 2L, content = "")
+            }
+        }
+    }
 })

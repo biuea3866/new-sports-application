@@ -2,6 +2,10 @@
 <SmellBaseline>
   <ManuallySuppressedIssues></ManuallySuppressedIssues>
   <CurrentIssues>
+    <ID>FunctionNaming:CommentJpaRepository.kt$CommentJpaRepository$fun findByPost_IdAndDeletedAtIsNull(postId: Long): List&lt;Comment&gt;</ID>
+    <ID>FunctionNaming:CommentJpaRepository.kt$CommentJpaRepository$fun findTop50ByPost_IdAndDeletedAtIsNullOrderByCreatedAtAsc(postId: Long): List&lt;Comment&gt;</ID>
+    <ID>FunctionNaming:CommentJpaRepository.kt$CommentJpaRepository$fun findByPost_IdAndDeletedAtIsNull(postId: Long, pageable: Pageable): Page&lt;Comment&gt;</ID>
+    <ID>FunctionNaming:CommentJpaRepository.kt$CommentJpaRepository$fun findAllByPost_IdAndDeletedAtIsNull(postId: Long): List&lt;Comment&gt;</ID>
     <ID>LongMethod:MockPgGatewayImpl.kt$MockPgGatewayImpl$override fun prepare(request: PgPrepareRequest): PgPrepareResult</ID>
     <ID>LongMethod:PaymentDomainService.kt$PaymentDomainService$fun prepare( userId: Long, idempotencyKey: String, orderType: OrderType, orderId: Long, method: PaymentMethod, amount: BigDecimal, currency: String, itemName: String, returnUrl: String, failUrl: String, ): Payment</ID>
     <ID>LongMethod:PushChannelGateway.kt$PushChannelGateway$override fun send(notification: Notification): SendResult</ID>

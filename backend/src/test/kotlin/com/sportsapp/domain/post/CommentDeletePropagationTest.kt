@@ -8,7 +8,8 @@ import io.kotest.matchers.shouldNotBe
 class BE10CommentDeletePropagationTest : BehaviorSpec({
 
     Given("[U-01] Comment.delete에 소유자가 아닌 userId 전달 시") {
-        val comment = Comment.create(postId = 1L, userId = 2L, content = "댓글")
+        val post = Post.create(userId = 1L, title = "제목", content = "내용")
+        val comment = Comment.create(post = post, userId = 2L, content = "댓글")
 
         When("다른 userId로 delete를 호출하면") {
             Then("[U-01] NotCommentOwnerException을 던진다") {
@@ -20,7 +21,8 @@ class BE10CommentDeletePropagationTest : BehaviorSpec({
     }
 
     Given("[U-02] Comment.softDelete는 소유자 검증 없이 deletedAt을 설정한다") {
-        val comment = Comment.create(postId = 1L, userId = 2L, content = "댓글")
+        val post = Post.create(userId = 1L, title = "제목", content = "내용")
+        val comment = Comment.create(post = post, userId = 2L, content = "댓글")
 
         When("소유자가 아닌 userId로 softDelete를 호출하면") {
             comment.softDelete(999L)

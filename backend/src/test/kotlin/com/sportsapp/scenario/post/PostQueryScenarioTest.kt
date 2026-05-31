@@ -66,7 +66,7 @@ class PostQueryScenarioTest(
                 Post.create(userId = 1L, title = "게시글 제목", content = "게시글 내용", type = PostType.FREE)
             )
             repeat(3) { i ->
-                commentJpaRepository.save(Comment.create(postId = post.id, userId = 1L, content = "댓글 $i"))
+                commentJpaRepository.save(Comment.create(post = post, userId = 1L, content = "댓글 $i"))
             }
 
             When("[S-02] GET /posts/{id} 단건 조회 시") {
