@@ -28,7 +28,7 @@ import org.testcontainers.junit.jupiter.Container
 /**
  * S-01: 의도적 BusinessException 발생 시 Controller가 정확한 ProblemDetail + 매핑된 HTTP 상태를 반환한다.
  * S-02: RuntimeException은 500 + INTERNAL_ERROR 코드의 ProblemDetail로 변환된다.
- * S-03: @Valid 실패 시 422 + 필드별 에러 목록 포함 ProblemDetail이 반환된다.
+ * S-03: @Valid 실패 시 400 + 필드별 에러 목록 포함 ProblemDetail이 반환된다.
  * [DEF-001] S-04: 무효 enum 쿼리 파라미터 전달 시 500 대신 400을 반환한다.
  * [DEF-001] S-05: 유효 enum 쿼리 파라미터 전달 시 200을 반환한다 (회귀).
  */
