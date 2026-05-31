@@ -13,7 +13,7 @@ data class MessageResponse(
     companion object {
         fun of(message: Message): MessageResponse = MessageResponse(
             id = message.id,
-            roomId = message.roomId,
+            roomId = message.room.id,
             senderId = message.userId,
             content = message.content,
             sentAt = message.createdAt,

@@ -5,5 +5,4 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface MessageJpaRepository : JpaRepository<Message, Long> {
     fun findByIdAndDeletedAtIsNull(id: Long): Message?
-    fun findByRoomIdAndDeletedAtIsNull(roomId: Long): List<Message>
 }

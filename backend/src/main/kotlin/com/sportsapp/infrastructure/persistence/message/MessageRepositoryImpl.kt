@@ -17,14 +17,11 @@ class MessageRepositoryImpl(
     override fun findById(id: Long): Message? = messageJpaRepository.findByIdAndDeletedAtIsNull(id)
 
     override fun findByRoomId(roomId: Long): List<Message> =
-        messageJpaRepository.findByRoomIdAndDeletedAtIsNull(roomId)
+        messageCustomRepository.findByRoomIdAndNotDeleted(roomId)
 
     override fun findByCursor(roomId: Long, before: ZonedDateTime?, pageSize: Int): List<Message> =
         messageCustomRepository.findByCursor(roomId, before, pageSize)
 
-    override fun softDeleteAllByRoomId(roomId: Long, userId: Long?) {
-        val messages = messageJpaRepository.findByRoomIdAndDeletedAtIsNull(roomId)
-        messages.forEach { it.softDelete(userId) }
-        messageJpaRepository.saveAll(messages)
-    }
+    override fun softDeleteAllByRoomId(roomId: Long, userId: Long?) =
+        messageCustomRepository.softDeleteAllByRoomId(roomId, userId)
 }

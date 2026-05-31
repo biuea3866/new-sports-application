@@ -16,7 +16,7 @@ class MessageDomainService(
     fun createGroupRoom(name: String, participantIds: List<Long>): Room {
         val room = roomRepository.save(Room.createGroup(name))
         participantIds.forEach { userId ->
-            roomParticipantRepository.save(RoomParticipant.create(room.id, userId))
+            roomParticipantRepository.save(RoomParticipant.create(room, userId))
         }
         return room
     }
@@ -27,8 +27,8 @@ class MessageDomainService(
         val existing = roomRepository.findDirectRoomByParticipantIds(sortedIdA, sortedIdB)
         if (existing != null) return existing
         val room = roomRepository.save(Room.createDirect())
-        roomParticipantRepository.save(RoomParticipant.create(room.id, sortedIdA))
-        roomParticipantRepository.save(RoomParticipant.create(room.id, sortedIdB))
+        roomParticipantRepository.save(RoomParticipant.create(room, sortedIdA))
+        roomParticipantRepository.save(RoomParticipant.create(room, sortedIdB))
         return room
     }
 
@@ -50,7 +50,7 @@ class MessageDomainService(
         if (roomParticipantRepository.existsByRoomIdAndUserId(roomId, userId)) {
             throw BusinessRuleViolationException("User $userId is already in room $roomId")
         }
-        return roomParticipantRepository.save(RoomParticipant.create(roomId, userId))
+        return roomParticipantRepository.save(RoomParticipant.create(room, userId))
     }
 
     fun leaveRoom(roomId: Long, userId: Long) {
@@ -76,7 +76,7 @@ class MessageDomainService(
         if (!roomParticipantRepository.existsByRoomIdAndUserId(roomId, userId)) {
             throw NotRoomParticipantException(userId, roomId)
         }
-        val message = messageRepository.save(Message.create(roomId, userId, content))
+        val message = messageRepository.save(Message.create(room, userId, content))
         room.lastMessageBumpedTo(message.createdAt)
         roomRepository.save(room)
         return message
