@@ -206,6 +206,27 @@
         "file_glob": "*.kt",
         "message": "@ManyToMany / @JoinTable 금지 — 매핑 테이블을 독립 Entity 로 풀어쓰세요 (자체 PK·audit·부여 컬럼). be-code-convention.md '@ManyToMany 금지 — 매핑 Entity 로 풀어쓰기' 참조.",
         "severity": "error"
+      },
+      {
+        "id": "no-repo-gateway-in-usecase",
+        "pattern": "val\\s+\\w+\\s*:\\s*\\w*(Repository|Gateway|DomainEventPublisher)\\b",
+        "file_glob": "*UseCase.kt",
+        "message": "UseCase 가 Repository/Gateway/DomainEventPublisher 를 직접 주입 금지 — DomainService 만 주입하세요. 조회·검증·이벤트 발행은 DomainService 책임. be-code-convention.md 'UseCase 규칙 (핵심)' 참조.",
+        "severity": "error"
+      },
+      {
+        "id": "no-payment-status-branch-in-usecase",
+        "pattern": "when\\s*\\(\\s*\\w*[Pp]ayment\\w*\\.status|\\.status\\s*==\\s*PaymentStatus\\.",
+        "file_glob": "*UseCase.kt",
+        "message": "UseCase 에서 결제 상태 동기 분기(when/if payment.status) 금지 — prepare 직후 status 는 항상 미완(READY)이라 정상 흐름이 깨집니다. 결제 완료는 웹훅/이벤트(AFTER_COMMIT)로 받아 주문을 확정하세요. be-code-convention.md 'UseCase 에서 외부/결제 상태 동기 분기 금지' 참조.",
+        "severity": "error"
+      },
+      {
+        "id": "no-business-logic-in-repository-impl",
+        "pattern": "\\.softDelete\\s*\\(",
+        "file_glob": "*RepositoryImpl.kt",
+        "message": "RepositoryImpl 에서 Entity.softDelete() 호출 금지 — 중복 해소·soft-delete 판단·상태 결정은 비즈니스 로직이라 DomainService 책임. RepositoryImpl 은 JpaRepository 위임 + QueryDSL 조회만. be-code-convention.md 'RepositoryImpl 은 순수 영속화만' 참조. (bulk softDeleteByXxxId 쿼리 메서드는 QueryDSL update 이므로 무관)",
+        "severity": "error"
       }
     ]
   },

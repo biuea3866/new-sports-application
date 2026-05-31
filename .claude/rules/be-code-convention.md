@@ -295,6 +295,71 @@ class CartDomainService(...) {
 - **기본 조회 필터**: Repository 의 `findById` / `findByX` 는 기본으로 `deletedAt IS NULL` 필터. 삭제 포함 조회는 별도 `findAllIncludingDeleted` 같은 명시 메서드.
 - **상태 전이**: 이미 삭제된 entity 에 비즈니스 동작 호출 시 `IllegalStateException` 또는 도메인 예외.
 
+### Aggregate 생명주기 — 루트 soft-delete 시 자식 전파 필수 (고아 금지)
+
+이 코드베이스는 `no-db-fk` 룰로 DB 외래키를 금지하고, aggregate 간/내 참조를 **FK id(Long)** 로만 맺는다. 그 대가로 **JPA cascade·orphanRemoval 이 없으므로 자식 생명주기를 DomainService 가 손으로 전파해야 한다.** 이걸 빠뜨리면 루트가 soft-delete 돼도 자식이 `deleted_at IS NULL` 로 살아남는 **고아(orphan)** 가 된다.
+
+**규칙**: aggregate 루트를 soft-delete(또는 취소·종료 등 생명주기 종료) 하는 DomainService 메서드는 **같은 트랜잭션 안에서 자식도 전부 soft-delete(또는 동등 상태 전이) 해야 한다.** 루트만 지우고 끝내면 안 된다.
+
+| aggregate 루트 → 자식 | 루트 종료 시 반드시 |
+|---|---|
+| Post → Comment | `commentRepository.softDeleteAllByPostId(postId, userId)` 동반 |
+| TicketOrder → Ticket | 주문 취소 시 발권된 Ticket 도 취소/soft-delete (좌석 unique 점유 해제) |
+| Event → Seat | 이벤트 삭제 시 `seatRepository.softDeleteByEventId(eventId, userId)` 동반 |
+| Order → OrderItem | 주문 취소/삭제 시 item 도 동반 처리 |
+
+- **자식 전파 메서드를 정의만 하고 호출하지 않는 것 금지** — `softDeleteByXxxId` 같은 메서드를 만들었으면 루트 종료 경로에서 반드시 호출. 데드 메서드는 고아의 신호다.
+- **검증**: aggregate 마다 "루트 soft-delete → 자식 조회 0건" 시나리오/레포지토리 테스트를 필수로 작성한다 (ticket-guide 테스트 체크리스트 참조).
+- **트랜잭션 한 단위**: 루트+자식 생명주기 변경은 한 `@Transactional`(UseCase) 안에서 원자적으로. 부모만 저장되고 자식이 누락된 반쪽 aggregate 가 생기면 안 된다.
+
+> 판단 기준: "이 Entity 는 루트가 사라지면 **독립적으로 존재할 의미가 있는가?**" 없으면 같은 aggregate 의 자식이며, 루트 생명주기에 종속돼야 한다.
+
+### RepositoryImpl 은 순수 영속화만 — 비즈니스 로직 금지
+
+`infrastructure/persistence/**/*RepositoryImpl.kt` 는 **JpaRepository 위임 + QueryDSL 조회**만 한다. 다음은 **DomainService 의 책임**이며 RepositoryImpl 에 두면 레이어 위반이다.
+
+- 중복 데이터 해소 (중복 row 탐지 후 골라 살리고 나머지 soft-delete)
+- `softDelete()` 호출 / soft-delete 여부 판단 / 상태 결정 분기
+- 활성 마커(`activeMarker`) 같은 도메인 불변식 관리
+- 조건부 재저장, 보정 로직
+
+```kotlin
+// ❌ BAD — RepositoryImpl 이 중복 해소·softDelete·activeMarker 를 결정 (비즈니스 로직이 infra 에)
+override fun findByUserId(userId: Long): Cart? {
+    val activeCarts = cartJpaRepository.findAllByUserIdAndDeletedAtIsNull(userId)
+    if (activeCarts.size <= 1) return activeCarts.firstOrNull()
+    val newest = activeCarts.maxBy { it.id }                  // ← 도메인 결정
+    val duplicates = activeCarts.filter { it.id != newest.id }
+    duplicates.forEach { it.softDelete(userId = null); it.activeMarker = null }  // ← 도메인 동작
+    cartJpaRepository.saveAll(duplicates)
+    return newest
+}
+
+// ✅ GOOD — RepositoryImpl 은 조회만, 중복 해소는 DomainService 가
+override fun findActiveByUserId(userId: Long): List<Cart> =
+    cartJpaRepository.findAllByUserIdAndDeletedAtIsNull(userId)
+
+// DomainService 에서
+fun getOrResolveCart(userId: Long): Cart {
+    val carts = cartRepository.findActiveByUserId(userId)
+    return cartDomainService.resolveDuplicates(carts, userId)   // 중복 해소·softDelete 는 도메인 책임
+}
+```
+
+- **판단 기준**: RepositoryImpl 메서드가 `if/when` 으로 분기하거나 `softDelete()`/엔티티 상태 변경을 호출하면 거의 항상 위반이다. RepositoryImpl 은 "넣고/꺼내는" 것만 한다.
+- 멱등 보정(중복 정리)이 정말 필요하면 명시적 DomainService 메서드(`resolveDuplicateCarts`)로 끌어내고, RepositoryImpl 은 그 입력이 될 raw 조회만 제공한다.
+
+### UseCase 에서 외부/결제 상태 동기 분기 금지
+
+UseCase 가 `paymentDomainService.create()` 직후 `when (payment.status)` / `if (payment.status == ...)` 로 confirm/cancel 을 동기 분기하면 안 된다. 결제 준비(`prepare`)는 항상 미완(READY)이므로 동기 분기는 정상 흐름을 깨뜨린다. 결제 완료는 **웹훅/이벤트(비동기)** 로 받아 주문을 확정한다 (`payment.completed.v1` → 각 주문 컨텍스트가 자기 EventWorker 에서 확정, AFTER_COMMIT 발행).
+
+### 동시성·멱등성 최종 방어선
+
+- **capacity/예약/좌석/재고류 테이블**: 분산락·낙관락은 보조 수단이고, **DB 제약(부분 unique 인덱스 등)을 최종 방어선**으로 둔다. (`no-db-fk` 는 외래키만 금지 — unique 제약은 허용·권장.) 락 TTL 만료·STW 로 락이 풀려도 DB 가 오버부킹/이중발권을 막아야 한다.
+- **낙관락 충돌**: `@Version` 을 쓰면 `ObjectOptimisticLockingFailureException` 을 `@Retryable` 또는 도메인 예외(409 품절 등)로 처리한다. 그대로 500 으로 노출 금지.
+- **트랜잭션 내 외부 호출 금지**: PG·SMS·푸시 등 외부 Gateway 호출을 `@Transactional` 안에서 하지 않는다 (DB 커넥션 장기 점유 + 보상 불일치).
+- **도메인 이벤트 발행**: 커밋 전 발행 금지. `@TransactionalEventListener(AFTER_COMMIT)` 경로로 통일 (롤백 시 유령 이벤트 방지).
+
 ### JpaAuditingBase (JPA, @MappedSuperclass)
 
 > 베이스 클래스 이름이 `*Entity*` 패턴이 아닌 `JpaAuditingBase` 인 이유: `no-default-constructor-values` 룰(`*Entity*.kt` glob)이 `lateinit var` 와 audit 인프라 placeholder 와 충돌하기 때문. 도메인 Entity 는 **`Entity` 접미사 없이** 도메인명 그대로 작성하고 베이스를 상속한다 — `class User : JpaAuditingBase()`, `class Product : JpaAuditingBase()` (네이밍 컨벤션 테이블과 일치).
@@ -464,6 +529,29 @@ Request (presentation)
 - Command: UseCase 실행 파라미터 (`toCommand()`로 변환)
 - Response: UseCase 반환값, presentation이 그대로 사용
 - **Entity ↔ 영속화 POJO 변환 단계 없음** — JPA Entity 가 도메인 Entity 이므로 toEntity()/toDomain() 매퍼 금지. Command → Entity 직접 생성, Entity → Response 직접 매핑.
+
+### @Transactional 메서드는 Entity 가 아닌 DTO 를 반환한다 (OSIV 위반 방지)
+
+`@Transactional` 이 걸린 메서드(application UseCase, domain DomainService 불문)는 **반환값으로 JPA Entity 를 내보내지 않는다.** 트랜잭션·영속성 컨텍스트가 닫힌 뒤 호출자가 Entity 의 lazy 연관/프록시에 접근하면 `LazyInitializationException` 이 나거나, 이를 가리려고 OSIV(Open Session In View) 를 켜게 된다. OSIV 는 커넥션을 뷰 렌더링까지 잡아 커넥션 풀을 고갈시키는 안티패턴이다.
+
+| 위치 | 반환 |
+|---|---|
+| `@Transactional` UseCase.execute | **Response/Result DTO** (이미 컨벤션 — Entity → Response 매핑은 트랜잭션 안에서) |
+| `@Transactional` DomainService 메서드 | **DTO 또는 primitive/Unit/식별자(Long)**. Entity 를 그대로 반환 금지 |
+
+```kotlin
+// ❌ BAD — @Transactional 메서드가 Entity 반환 (트랜잭션 밖에서 lazy 터짐 / OSIV 강제)
+@Transactional
+fun confirmOrder(orderId: Long, paymentId: Long): TicketOrder { ... }
+
+// ✅ GOOD — DTO 로 반환 (트랜잭션 안에서 필요한 값 추출 완료)
+@Transactional
+fun confirmOrder(orderId: Long, paymentId: Long): ConfirmOrderResult { ... }
+```
+
+- 트랜잭션 경계 안에서 Entity → DTO 매핑을 끝내고 **detach 된 DTO 만 밖으로** 내보낸다.
+- DomainService 가 Entity 를 UseCase 로 넘기고 UseCase(@Transactional)가 Response 로 매핑하는 기존 패턴은, 매핑이 **UseCase 트랜잭션 안에서** 일어나므로 허용된다. 다만 그 경우 DomainService 메서드 자체에는 `@Transactional` 을 중복으로 걸지 않는다 (트랜잭션은 UseCase 한 곳).
+- **금지**: OSIV 활성화(`spring.jpa.open-in-view=true`)로 lazy 문제를 가리는 것. 기본 `false` 를 유지하고 DTO 반환으로 해결한다.
 
 ## 트랜잭션 & 이벤트
 
