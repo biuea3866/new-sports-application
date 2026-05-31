@@ -1,6 +1,7 @@
 package com.sportsapp.domain.payment
 
 import com.sportsapp.domain.common.DomainEventPublisher
+import com.sportsapp.domain.common.PgEventType
 import java.math.BigDecimal
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
@@ -174,7 +175,7 @@ class PaymentDomainService(
             ?: throw PaymentNotFoundException(-1L)
 
         return when (eventType) {
-            "PAYMENT_APPROVED" -> {
+            PgEventType.PAYMENT_APPROVED.value -> {
                 if (payment.status == PaymentStatus.COMPLETED) return payment
                 payment.markCompleted(ZonedDateTime.now())
                 val saved = paymentRepository.save(payment)
@@ -186,7 +187,7 @@ class PaymentDomainService(
                 domainEventPublisher.publishAll(saved.pullDomainEvents())
                 saved
             }
-            "PAYMENT_CANCELED" -> {
+            PgEventType.PAYMENT_CANCELED.value -> {
                 if (payment.status == PaymentStatus.CANCELLED) return payment
                 payment.markCancelled()
                 paymentRepository.save(payment)

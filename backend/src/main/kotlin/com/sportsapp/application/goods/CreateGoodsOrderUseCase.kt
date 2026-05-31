@@ -1,5 +1,6 @@
 package com.sportsapp.application.goods
 
+import com.sportsapp.domain.common.Currency
 import com.sportsapp.domain.goods.GoodsDomainService
 import com.sportsapp.domain.goods.GoodsOrder
 import com.sportsapp.domain.goods.GoodsOrderStatus
@@ -24,7 +25,7 @@ class CreateGoodsOrderUseCase(
             orderId = order.id,
             method = command.method,
             amount = order.totalAmount,
-            currency = "KRW",
+            currency = Currency.KRW.code,
         )
         return GoodsOrderResponse.ofCreated(
             OrderWithPayment(
