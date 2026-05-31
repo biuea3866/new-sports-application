@@ -125,6 +125,9 @@ class TicketingDomainService(
             ?: throw ResourceNotFoundException("TicketOrder", orderId)
         order.cancel()
         ticketOrderRepository.save(order)
+        val tickets = ticketRepository.findByTicketOrderId(orderId)
+        tickets.forEach { it.revoke() }
+        if (tickets.isNotEmpty()) ticketRepository.saveAll(tickets)
         order.lockedSeatIds.forEach { seatId ->
             runCatching { seatLockStore.unlock(order.lockedEventId, seatId, order.userId) }
                 .onFailure { logger.warn("Failed to unlock seat $seatId for event ${order.lockedEventId}: ${it.message}") }
@@ -186,6 +189,7 @@ class TicketingDomainService(
             ?: throw ResourceNotFoundException("Event", eventId)
         event.requireDeletable()
         eventRepository.softDelete(eventId, deletedBy)
+        seatRepository.softDeleteByEventId(eventId, deletedBy)
     }
 
     fun issueComplimentary(eventId: Long, seatId: Long, operatorUserId: Long): Ticket {
