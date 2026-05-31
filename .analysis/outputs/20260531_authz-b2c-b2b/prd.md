@@ -47,7 +47,7 @@
 | 역할 (유령 = 1종) | `OPERATIONS_MANAGER` — `OperationKpiApiController.kt:37` `@PreAuthorize`에만 등장, **roles 테이블 시드 0건** | **기존 결함** — 누구에게도 부여 불가능한데 게이팅에 사용. FR-07/09 인벤토리에서 정리 대상 |
 | 권한 enforcement | `@PreAuthorize` 26곳 + `OwnershipGuard.requireOwned`(코드 기반 "내 리소스" 검사) 혼재. 26곳 중 다수는 MCP 도구의 `@authz.hasMcpScope(...)`(Role 아닌 **MCP 토큰 scope**) | 등급 게이팅 수단 0건. 조직 단위 권한 위임 불가 |
 | `OwnershipGuard.requireOwned` 특이동작 | `ownerUserId == null`이면 **통과**(`OwnershipGuard.kt:17-18` 주석 — admin 시드/B2C 호환 리소스) | null 소유 리소스는 현재 사실상 누구나 접근 — 이관(FR-07) 시 충돌 주의 |
-| 리소스 소유 — 저장소 이종 | **Facility = MongoDB Document**(`Facility.kt:14` `@Document` + `BaseDocument`), `ownerUserId: Long?`(`Facility.kt:47`) 1인 단일 소유. **Event/Product = MySQL JPA**(`Event.kt:15`·`Product.kt:14` `@Entity`), ownerId(Long) | 소유자=개인. organizationId 부여 시 **Facility는 Flyway 아님(Mongo 컬렉션 필드+백필 스크립트)**, Event/Product만 Flyway(V34~) |
+| 리소스 소유 — 저장소 이종 | **Facility = MongoDB Document**(`Facility.kt:14` `@Document` + `BaseDocument`), `ownerUserId: Long?`(`Facility.kt:47`) 1인 단일 소유. **Event/Product = MySQL JPA**(`Event.kt:15`·`Product.kt:14` `@Entity`), ownerId(Long) | 소유자=개인. organizationId 부여 시 **Facility는 Flyway 아님(Mongo 컬렉션 필드+백필 스크립트)**, Event/Product만 Flyway(발번 큐) |
 | 멤버 등급 게이팅 | 없음 | 구독/멤버십(별도 APPROVED PRD)이 등급을 만들어도 **그 등급이 무엇을 잠금해제하는지 강제하는 계층이 없음** |
 | 핸드오프 노트 (2026-05-21) | "권한 세분화 ← 여기부터", "멤버 등급 미구현 — User에 grade/tier 없음, 마이그레이션 필요", "Role 전역 — 조직별 스코프 미구현", "facility-owner ownership은 OwnershipGuard로 임시 처리 중" | 본 PRD가 이어받는 지점 명시 |
 
@@ -146,8 +146,8 @@
 
 ### FR-05. Organization(기업) 도메인 신설
 - **결과**: `Organization`(기업) Entity 신설(MySQL/JPA) — 사업자명/식별정보/상태. B2B의 루트 aggregate. 리소스에 `organizationId` 부여:
-  - **Event/Product (MySQL/JPA)**: Flyway(V34~)로 `organization_id` 컬럼 추가.
-  - **Facility (MongoDB Document)**: Flyway 아님 — 컬렉션 필드 추가 + 별도 백필 스크립트. no-db-fk·V34 제약은 **MySQL 리소스에만** 적용.
+  - **Event/Product (MySQL/JPA)**: Flyway(발번 번호)로 `organization_id` 컬럼 추가.
+  - **Facility (MongoDB Document)**: Flyway 아님 — 컬렉션 필드 추가 + 별도 백필 스크립트. no-db-fk 제약은 **MySQL 리소스에만** 적용.
 - 기존 `ownerUserId`(개인 소유)와 `organizationId`(조직 소유)의 공존·전환 전략(FR-07 연계). Organization 루트 soft-delete 시 OrganizationMember·Invitation 자식 **동반 soft-delete**(aggregate 고아 금지).
 
 ### FR-06. OrganizationMember + org-scoped 역할(OWNER/STAFF)
@@ -188,7 +188,7 @@
 - QueryDSL(`@Query` 금지), ZonedDateTime, 도메인 패키지 간 import 금지(`domain.common`만 허용).
 - 기존 RBAC 테이블/역할/가드 **재사용·확장** — 전면 재작성 금지.
 - 외부 호출(이메일·알림)은 트랜잭션 밖, Gateway 경유.
-- 다음 Flyway 마이그레이션 번호 = **V34**부터(현재 최신 V33).
+- Flyway 번호: 메인 dev는 V33이나 **in-flight 워크트리에 V34·V35가 이미 점유**(V34 2개 충돌 포함)되어 있고 **feature-flag PRD도 경합**한다. 특정 번호를 고정하지 말고 **머지 시점 단일 발번 주체가 가용 번호(추정 V36~)를 발급**받는다.
 
 ---
 
@@ -196,14 +196,14 @@
 
 | 레포 | 변경 유형 | 설명 |
 |---|---|---|
-| backend | 신규 | `domain/organization/`(Organization, OrganizationMember, Invitation), `domain/entitlement/`(Entitlement, grade 매핑), org-scoped 가드, 마이그레이션(V34~) |
+| backend | 신규 | `domain/organization/`(Organization, OrganizationMember, Invitation), `domain/entitlement/`(Entitlement, grade 매핑), org-scoped 가드, 마이그레이션(발번 큐) |
 | backend | 수정 | `User`(accountType, 등급 참조), **Event/Product(organization_id — Flyway)**, **Facility(organizationId — MongoDB 필드, Flyway 아님)**, 기존 `@PreAuthorize`·`OwnershipGuard.requireOwned` 호출부, AdminUser/Role 관리 API, OPERATIONS_MANAGER 유령 역할 정리 |
 | mobile / web(B2C) | 신규/수정 | 등급별 기능 표시·잠금 UI, 차단 안내 |
 | web(B2B 포털) | 신규/수정 | 기업 멤버 관리·초대 화면, OWNER/STAFF별 메뉴·페이지 게이팅 |
 | Kafka | 검토 | `member.grade.changed.v1`(멤버십 PRD 연계), `org.member.invited.v1` 필요 여부 검토(오픈이슈 #7) |
 
 데이터 모델 (저장소 구분):
-- 신규(MySQL/Flyway V34~): `organizations`/`organization_members`/`invitations`/`entitlements`/`grade_entitlements`.
+- 신규(MySQL/Flyway, 발번 큐 V36~): `organizations`/`organization_members`/`invitations`/`entitlements`/`grade_entitlements`.
 - 변경(MySQL/Flyway): `users`(account_type, grade 관련), `events`/`products`(organization_id).
 - 변경(MongoDB, **Flyway 아님**): `facilities` 컬렉션에 `organizationId` 필드 + 백필 스크립트.
 
@@ -212,7 +212,7 @@
 | 제목 | 레포 | 이유 |
 |---|---|---|
 | OPERATIONS_MANAGER 유령 역할 정리 (시드 추가 또는 `@PreAuthorize` 제거) | backend | `OperationKpiApiController.kt:37` 참조 있으나 시드 0건 — FR-07/09 선행 |
-| Facility(MongoDB) organizationId 백필 — Flyway 아님, 별도 스크립트 | backend | Facility는 Document라 V34~ Flyway 대상 아님 (M1) |
+| Facility(MongoDB) organizationId 백필 — Flyway 아님, 별도 스크립트 | backend | Facility는 Document라 Flyway 대상 아님 (M1) |
 | 이관 전후 (user, 접근가능 리소스) 권한 diff 스냅샷 산출 | backend | FR-07 "회귀 0건" 측정 증거 (N2) |
 | Organization 루트 soft-delete → Member/Invitation 자식 전파 | backend | aggregate 고아 금지 (N3) |
 
