@@ -17,8 +17,7 @@ class AuthorizationExpressions {
 
     fun isFacilityOwner(userId: Long): Boolean {
         val principal = currentPrincipal() ?: return false
-        val hasFacilityOwnerRole = principal.roles.contains(UserRoleName.FACILITY_OWNER.name)
-        return hasFacilityOwnerRole && principal.id == userId
+        return principal.hasRole(UserRoleName.FACILITY_OWNER) && principal.id == userId
     }
 
     /**

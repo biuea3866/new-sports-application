@@ -1,5 +1,6 @@
 package com.sportsapp.domain.user
 
+import com.sportsapp.domain.common.UserRoleName
 import com.sportsapp.domain.user.exceptions.DuplicateRoleException
 import com.sportsapp.domain.user.exceptions.SelfRevocationException
 import io.kotest.assertions.throwables.shouldThrow
@@ -43,8 +44,7 @@ class UserRoleAssignTest : BehaviorSpec({
             Then("[U-02] SelfRevocationException을 던진다") {
                 shouldThrow<SelfRevocationException> {
                     adminUser.validateCanRevokeAdminRole(
-                        adminRoleName = "ADMIN",
-                        targetRoleName = "ADMIN",
+                        targetRole = UserRoleName.ADMIN,
                         requesterId = 0L, // User.id 기본값 0 = 자기 자신
                     )
                 }
@@ -62,8 +62,7 @@ class UserRoleAssignTest : BehaviorSpec({
         When("validateCanRevokeAdminRole 호출 시") {
             Then("[U-02-happy] 예외 없이 통과한다") {
                 user.validateCanRevokeAdminRole(
-                    adminRoleName = "ADMIN",
-                    targetRoleName = "ADMIN",
+                    targetRole = UserRoleName.ADMIN,
                     requesterId = 99L,
                 )
             }

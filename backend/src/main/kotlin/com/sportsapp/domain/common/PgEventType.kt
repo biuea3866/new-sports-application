@@ -9,5 +9,7 @@ enum class PgEventType(val value: String) {
         fun fromValue(value: String): PgEventType =
             entries.find { it.value == value }
                 ?: throw IllegalArgumentException("Unknown PgEventType value: $value")
+
+        fun fromValueOrNull(value: String): PgEventType? = entries.find { it.value == value }
     }
 }

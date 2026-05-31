@@ -7,4 +7,9 @@ enum class UserRoleName {
     EVENT_HOST,
     GOODS_SELLER,
     OPERATIONS_MANAGER,
+    ;
+
+    companion object {
+        fun fromNameOrNull(name: String): UserRoleName? = entries.find { it.name == name }
+    }
 }

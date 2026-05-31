@@ -20,8 +20,8 @@ class UserDomainService(
         if (userRepository.findByEmail(email) != null) throw DuplicateEmailException(email)
         val user = User.create(email, passwordEncoder.encode(rawPassword))
         val savedUser = userRepository.save(user)
-        val defaultRole = roleRepository.findByName(UserRoleName.USER.name)
-            ?: throw ResourceNotFoundException("Role", UserRoleName.USER.name)
+        val defaultRole = roleRepository.findByName(UserRoleName.USER)
+            ?: throw ResourceNotFoundException("Role", UserRoleName.USER)
         if (!userRoleRepository.existsByUserIdAndRoleId(savedUser.id, defaultRole.id)) {
             userRoleRepository.save(UserRole(userId = savedUser.id, roleId = defaultRole.id, grantedBy = null))
         }
@@ -56,8 +56,7 @@ class UserDomainService(
         val user = getUser(userId)
         val role = getRole(roleName)
         user.validateCanRevokeAdminRole(
-            adminRoleName = UserRoleName.ADMIN.name,
-            targetRoleName = roleName,
+            targetRole = UserRoleName.fromNameOrNull(roleName),
             requesterId = adminId,
         )
         val activeRoles = userRoleRepository.findActiveByUserId(userId)

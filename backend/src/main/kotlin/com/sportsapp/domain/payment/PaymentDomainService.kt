@@ -176,8 +176,8 @@ class PaymentDomainService(
         val payment = paymentRepository.findByPgTransactionId(tid)
             ?: throw PaymentNotFoundException(-1L)
 
-        return when (eventType) {
-            PgEventType.PAYMENT_APPROVED.value -> {
+        return when (PgEventType.fromValueOrNull(eventType)) {
+            PgEventType.PAYMENT_APPROVED -> {
                 if (payment.status == PaymentStatus.COMPLETED) return payment
                 payment.markCompleted(ZonedDateTime.now())
                 val saved = paymentRepository.save(payment)
@@ -189,7 +189,7 @@ class PaymentDomainService(
                 domainEventPublisher.publishAll(saved.pullDomainEvents())
                 saved
             }
-            PgEventType.PAYMENT_CANCELED.value -> {
+            PgEventType.PAYMENT_CANCELED -> {
                 if (payment.status == PaymentStatus.CANCELLED) return payment
                 payment.markCancelled()
                 paymentRepository.save(payment)
