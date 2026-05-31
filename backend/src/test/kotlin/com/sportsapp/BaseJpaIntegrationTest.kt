@@ -33,10 +33,6 @@ abstract class BaseJpaIntegrationTest : BehaviorSpec() {
     companion object {
         @Container
         @ServiceConnection
-        val mysqlContainer: MySQLContainer<*> = MySQLContainer("mysql:8.0")
-            .withDatabaseName("sports")
-            .withUsername("test")
-            .withPassword("test")
-            .also { it.start() }
+        val mysqlContainer: MySQLContainer<*> = SharedTestContainers.mysql
     }
 }
