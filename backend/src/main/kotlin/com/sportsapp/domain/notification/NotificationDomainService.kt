@@ -1,6 +1,6 @@
 package com.sportsapp.domain.notification
 
-import com.sportsapp.application.notification.NotificationResponse
+import com.sportsapp.domain.common.DomainEventPublisher
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
@@ -21,6 +21,7 @@ class NotificationDomainService(
     private val notificationCustomRepository: NotificationCustomRepository,
     private val channelGateways: List<NotificationChannelGateway>,
     private val templateRenderer: TemplateRenderer,
+    private val domainEventPublisher: DomainEventPublisher,
 ) {
     @Transactional
     fun send(
@@ -28,7 +29,11 @@ class NotificationDomainService(
         channel: NotificationChannel,
         templateId: String,
         payload: NotificationPayload?,
-    ): NotificationResponse = NotificationResponse.of(dispatchNotification(Notification.queue(userId, channel, templateId, payload)))
+    ): NotificationResult {
+        val notification = persistQueued(Notification.queue(userId, channel, templateId, payload))
+        domainEventPublisher.publish(NotificationDispatchRequestedEvent(notificationId = notification.id))
+        return NotificationResult.of(notification)
+    }
 
     @Transactional(noRollbackFor = [DataIntegrityViolationException::class])
     fun enqueueOrSkip(
@@ -41,15 +46,16 @@ class NotificationDomainService(
         if (channel !in SUPPORTED_ENQUEUE_CHANNELS) throw UnsupportedChannelException(channel)
         if (notificationRepository.findByEventId(eventId) != null) return null
         return try {
-            dispatchNotification(
-                Notification.queue(
-                    userId = userId,
-                    channel = channel,
-                    templateId = templateId,
-                    payload = enrichPayload(templateId, payload),
-                    eventId = eventId,
-                )
+            val queued = Notification.queue(
+                userId = userId,
+                channel = channel,
+                templateId = templateId,
+                payload = enrichPayload(templateId, payload),
+                eventId = eventId,
             )
+            val notification = persistQueued(queued)
+            domainEventPublisher.publish(NotificationDispatchRequestedEvent(notificationId = notification.id))
+            notification
         } catch (e: DataIntegrityViolationException) {
             notificationRepository.findByEventId(eventId)
         }
@@ -68,18 +74,29 @@ class NotificationDomainService(
         }
     }
 
-    private fun dispatchNotification(queued: Notification): Notification {
-        val notification = notificationRepository.save(queued)
-        val gateway = channelGateways.find { it.supportedChannel == notification.channel }
-            ?: return markFailedAndSave(notification)
+    private fun persistQueued(queued: Notification): Notification =
+        notificationRepository.save(queued)
 
-        val sendResult = gateway.send(notification)
-        return if (sendResult.success) {
-            notification.markSent()
+    /**
+     * AFTER_COMMIT 시점에 gateway 발송을 수행한다.
+     * @Transactional 을 달지 않는다 — 발송 결과만 DB 에 반영하므로 별도 트랜잭션으로 처리한다.
+     */
+    @Transactional
+    fun dispatchById(notificationId: Long) {
+        val notification = notificationRepository.findById(notificationId) ?: return
+        val gateway = channelGateways.find { it.supportedChannel == notification.channel }
+        if (gateway == null) {
+            notification.markFailed()
             notificationRepository.save(notification)
-        } else {
-            markFailedAndSave(notification)
+            return
         }
+        val sendResult = gateway.send(notification)
+        if (sendResult.success) {
+            notification.markSent()
+        } else {
+            notification.markFailed()
+        }
+        notificationRepository.save(notification)
     }
 
     fun listMyNotifications(userId: Long, onlyUnread: Boolean, page: Int, size: Int): Page<Notification> {
@@ -88,12 +105,12 @@ class NotificationDomainService(
     }
 
     @Transactional
-    fun markRead(notificationId: Long, userId: Long): NotificationResponse {
+    fun markRead(notificationId: Long, userId: Long): NotificationResult {
         val notification = notificationRepository.findById(notificationId)
             ?: throw NotificationNotFoundException(notificationId)
         notification.requireOwnedBy(userId)
         notification.markRead()
-        return NotificationResponse.of(notificationRepository.save(notification))
+        return NotificationResult.of(notificationRepository.save(notification))
     }
 
     @Transactional
@@ -102,7 +119,7 @@ class NotificationDomainService(
         channel: NotificationChannel,
         templateId: String,
         payload: Map<String, Any>,
-    ): NotificationResponse {
+    ): NotificationResult {
         val rendered = templateRenderer.render(templateId, payload)
         val enrichedPayload = NotificationPayload(
             payload + mapOf("_title" to rendered.title, "_body" to rendered.body)
@@ -112,9 +129,4 @@ class NotificationDomainService(
 
     fun countUnread(userId: Long): Long =
         notificationRepository.countUnreadByUserId(userId)
-
-    private fun markFailedAndSave(notification: Notification): Notification {
-        notification.markFailed()
-        return notificationRepository.save(notification)
-    }
 }

@@ -2,6 +2,7 @@ package com.sportsapp.application.notification
 
 import com.sportsapp.domain.notification.NotificationChannel
 import com.sportsapp.domain.notification.NotificationDomainService
+import com.sportsapp.domain.notification.NotificationResult
 import com.sportsapp.domain.notification.NotificationStatus
 import com.sportsapp.domain.notification.UnknownTemplateException
 import io.kotest.assertions.throwables.shouldThrow
@@ -28,13 +29,13 @@ class SendNotificationUseCaseTest : BehaviorSpec({
             payload = mapOf("amount" to 30000),
         )
 
-        val notificationResponse = NotificationResponse(
+        val notificationResult = NotificationResult(
             id = 1L,
             userId = 1L,
             channel = NotificationChannel.IN_APP,
             templateId = "payment-completed",
-            status = NotificationStatus.SENT,
-            sentAt = baseTime,
+            status = NotificationStatus.QUEUED,
+            sentAt = null,
             readAt = null,
             createdAt = baseTime,
         )
@@ -46,7 +47,7 @@ class SendNotificationUseCaseTest : BehaviorSpec({
                 templateId = "payment-completed",
                 payload = mapOf("amount" to 30000),
             )
-        } returns notificationResponse
+        } returns notificationResult
 
         When("execute 를 호출하면") {
             val result = useCase.execute(command)
@@ -54,7 +55,7 @@ class SendNotificationUseCaseTest : BehaviorSpec({
             Then("NotificationResponse 가 반환되고 sendWithTemplate 이 호출된다") {
                 result.templateId shouldBe "payment-completed"
                 result.userId shouldBe 1L
-                result.status shouldBe NotificationStatus.SENT
+                result.status shouldBe NotificationStatus.QUEUED
                 verify(exactly = 1) {
                     notificationDomainService.sendWithTemplate(
                         userId = 1L,

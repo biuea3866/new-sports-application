@@ -1,23 +1,28 @@
 package com.sportsapp.application.notification
 
+import com.sportsapp.domain.common.DomainEventPublisher
+import com.sportsapp.domain.notification.Notification
 import com.sportsapp.domain.notification.NotificationChannel
-import com.sportsapp.domain.notification.NotificationChannelGateway
 import com.sportsapp.domain.notification.NotificationCustomRepository
+import com.sportsapp.domain.notification.NotificationDispatchRequestedEvent
 import com.sportsapp.domain.notification.NotificationDomainService
 import com.sportsapp.domain.notification.NotificationNotOwnedException
 import com.sportsapp.domain.notification.NotificationPayload
 import com.sportsapp.domain.notification.NotificationRepository
+import com.sportsapp.domain.notification.NotificationResult
 import com.sportsapp.domain.notification.NotificationStatus
-import com.sportsapp.domain.notification.Notification
 import com.sportsapp.domain.notification.RenderedNotification
-import com.sportsapp.domain.notification.SendResult
 import com.sportsapp.domain.notification.TemplateRenderer
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
+import io.mockk.justRun
 import io.mockk.mockk
+import io.mockk.slot
+import io.mockk.verify
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 
@@ -25,51 +30,38 @@ class NotificationDomainServiceDtoReturnTest : BehaviorSpec({
 
     val notificationRepository = mockk<NotificationRepository>()
     val notificationCustomRepository = mockk<NotificationCustomRepository>()
-    val channelGateway = mockk<NotificationChannelGateway>()
     val templateRenderer = mockk<TemplateRenderer>()
+    val domainEventPublisher = mockk<DomainEventPublisher>()
 
     val service = NotificationDomainService(
         notificationRepository = notificationRepository,
         notificationCustomRepository = notificationCustomRepository,
-        channelGateways = listOf(channelGateway),
+        channelGateways = emptyList(),
         templateRenderer = templateRenderer,
+        domainEventPublisher = domainEventPublisher,
     )
 
     val baseTime = ZonedDateTime.now(ZoneOffset.UTC)
 
-    fun sentNotificationMock(userId: Long, sentAt: ZonedDateTime) = mockk<Notification> {
+    fun queuedNotificationMock(userId: Long) = mockk<Notification> {
         every { id } returns 1L
         every { this@mockk.userId } returns userId
         every { channel } returns NotificationChannel.IN_APP
         every { templateId } returns "welcome"
-        every { status } returns NotificationStatus.SENT
-        every { this@mockk.sentAt } returns sentAt
-        every { readAt } returns null
-        every { createdAt } returns baseTime
-    }
-
-    fun failedNotificationMock(userId: Long) = mockk<Notification> {
-        every { id } returns 2L
-        every { this@mockk.userId } returns userId
-        every { channel } returns NotificationChannel.IN_APP
-        every { templateId } returns "welcome"
-        every { status } returns NotificationStatus.FAILED
+        every { status } returns NotificationStatus.QUEUED
         every { sentAt } returns null
         every { readAt } returns null
         every { createdAt } returns baseTime
     }
 
-    Given("IN_APP 게이트웨이 발송이 성공하는 상황") {
-        every { channelGateway.supportedChannel } returns NotificationChannel.IN_APP
-        every { channelGateway.send(any()) } returns SendResult(success = true, errorMessage = null)
+    Given("IN_APP 채널로 send 를 호출하는 상황") {
+        val publishedEventSlot = slot<NotificationDispatchRequestedEvent>()
+        justRun { domainEventPublisher.publish(capture(publishedEventSlot)) }
         every { templateRenderer.render(any(), any()) } returns RenderedNotification("제목", "본문")
 
         When("send 를 호출하면") {
-            val savedNotification = sentNotificationMock(userId = 1L, sentAt = baseTime)
-            every { notificationRepository.save(any()) } returnsMany listOf(
-                mockk(relaxed = true) { every { channel } returns NotificationChannel.IN_APP },
-                savedNotification,
-            )
+            val queuedMock = queuedNotificationMock(userId = 1L)
+            every { notificationRepository.save(any()) } returns queuedMock
 
             val result = service.send(
                 userId = 1L,
@@ -78,19 +70,21 @@ class NotificationDomainServiceDtoReturnTest : BehaviorSpec({
                 payload = NotificationPayload(emptyMap()),
             )
 
-            Then("NotificationResponse 가 반환되고 status 가 SENT 이다") {
-                result.status shouldBe NotificationStatus.SENT
+            Then("NotificationResult 가 반환되고 status 가 QUEUED 이다 — 발송은 AFTER_COMMIT 에서 수행된다") {
+                result.shouldBeInstanceOf<NotificationResult>()
+                result.status shouldBe NotificationStatus.QUEUED
                 result.userId shouldBe 1L
-                result.sentAt.shouldNotBeNull()
+            }
+
+            Then("NotificationDispatchRequestedEvent 가 발행된다") {
+                verify(exactly = 1) { domainEventPublisher.publish(any()) }
+                publishedEventSlot.captured.notificationId shouldBe 1L
             }
         }
 
         When("sendWithTemplate 을 호출하면") {
-            val savedNotification = sentNotificationMock(userId = 2L, sentAt = baseTime)
-            every { notificationRepository.save(any()) } returnsMany listOf(
-                mockk(relaxed = true) { every { channel } returns NotificationChannel.IN_APP },
-                savedNotification,
-            )
+            val queuedMock = queuedNotificationMock(userId = 2L)
+            every { notificationRepository.save(any()) } returns queuedMock
 
             val result = service.sendWithTemplate(
                 userId = 2L,
@@ -99,33 +93,9 @@ class NotificationDomainServiceDtoReturnTest : BehaviorSpec({
                 payload = mapOf("key" to "value"),
             )
 
-            Then("NotificationResponse 가 반환되고 status 가 SENT 이다") {
-                result.status shouldBe NotificationStatus.SENT
-            }
-        }
-    }
-
-    Given("IN_APP 게이트웨이 발송이 실패하는 상황") {
-        every { channelGateway.supportedChannel } returns NotificationChannel.IN_APP
-        every { channelGateway.send(any()) } returns SendResult(success = false, errorMessage = null)
-
-        When("send 를 호출하면") {
-            val failedMock = failedNotificationMock(userId = 3L)
-            every { notificationRepository.save(any()) } returnsMany listOf(
-                mockk(relaxed = true) { every { channel } returns NotificationChannel.IN_APP },
-                failedMock,
-            )
-
-            val result = service.send(
-                userId = 3L,
-                channel = NotificationChannel.IN_APP,
-                templateId = "welcome",
-                payload = null,
-            )
-
-            Then("NotificationResponse 가 반환되고 status 가 FAILED 이다") {
-                result.status shouldBe NotificationStatus.FAILED
-                result.userId shouldBe 3L
+            Then("NotificationResult 가 반환되고 status 가 QUEUED 이다") {
+                result.shouldBeInstanceOf<NotificationResult>()
+                result.status shouldBe NotificationStatus.QUEUED
             }
         }
     }
@@ -158,7 +128,8 @@ class NotificationDomainServiceDtoReturnTest : BehaviorSpec({
         When("markRead 를 호출하면") {
             val result = service.markRead(notificationId = 5L, userId = 10L)
 
-            Then("NotificationResponse 가 반환되고 readAt 이 null 이 아니다") {
+            Then("NotificationResult 가 반환되고 readAt 이 null 이 아니다") {
+                result.shouldBeInstanceOf<NotificationResult>()
                 result.readAt.shouldNotBeNull()
                 result.userId shouldBe 10L
             }

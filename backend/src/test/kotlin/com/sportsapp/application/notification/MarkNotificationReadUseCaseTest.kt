@@ -1,11 +1,12 @@
 package com.sportsapp.application.notification
 
-import com.sportsapp.domain.notification.NotificationCustomRepository
+import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.notification.Notification
 import com.sportsapp.domain.notification.NotificationChannel
+import com.sportsapp.domain.notification.NotificationCustomRepository
 import com.sportsapp.domain.notification.NotificationDomainService
-import com.sportsapp.domain.notification.NotificationNotOwnedException
 import com.sportsapp.domain.notification.NotificationNotFoundException
+import com.sportsapp.domain.notification.NotificationNotOwnedException
 import com.sportsapp.domain.notification.NotificationPayload
 import com.sportsapp.domain.notification.NotificationRepository
 import com.sportsapp.domain.notification.NotificationStatus
@@ -15,6 +16,7 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.mockk.every
+import io.mockk.justRun
 import io.mockk.mockk
 import io.mockk.verify
 import java.time.ZoneOffset
@@ -25,11 +27,13 @@ class MarkNotificationReadUseCaseTest : BehaviorSpec({
     val notificationRepository = mockk<NotificationRepository>()
     val notificationCustomRepository = mockk<NotificationCustomRepository>()
     val templateRenderer = mockk<TemplateRenderer>()
+    val domainEventPublisher = mockk<DomainEventPublisher>()
     val notificationDomainService = NotificationDomainService(
         notificationRepository = notificationRepository,
         notificationCustomRepository = notificationCustomRepository,
         channelGateways = emptyList(),
         templateRenderer = templateRenderer,
+        domainEventPublisher = domainEventPublisher,
     )
 
     val baseTime = ZonedDateTime.now(ZoneOffset.UTC)
