@@ -15,16 +15,16 @@ class PurchaseTicketsUseCase(
     fun execute(command: PurchaseTicketsCommand): TicketOrderResponse {
         ticketingDomainService.verifyLockOwner(command.lockId, command.userId)
         val totalAmount = ticketingDomainService.calculateAmount(command.lockId)
-        val ticketOrder = ticketingDomainService.createPendingOrder(command.lockId, command.userId)
+        val ticketOrderResponse = ticketingDomainService.createPendingOrder(command.lockId, command.userId)
         paymentDomainService.create(
             userId = command.userId,
             idempotencyKey = command.idempotencyKey,
             orderType = OrderType.TICKETING,
-            orderId = ticketOrder.id,
+            orderId = ticketOrderResponse.ticketOrderId,
             method = command.method,
             amount = totalAmount,
             currency = command.currency,
         )
-        return TicketOrderResponse.of(ticketOrder)
+        return ticketOrderResponse
     }
 }

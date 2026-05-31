@@ -1,5 +1,6 @@
 package com.sportsapp.domain.ticketing
 
+import com.sportsapp.application.ticketing.TicketOrderResponse
 import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import com.sportsapp.domain.ticketing.exception.LockExpiredException
@@ -103,7 +104,7 @@ class TicketingDomainService(
             ?: throw ResourceNotFoundException("TicketOrder", ticketOrderId)
 
     @Transactional
-    fun createPendingOrder(lockId: String, userId: Long): TicketOrder {
+    fun createPendingOrder(lockId: String, userId: Long): TicketOrderResponse {
         val pairs = parseLockId(lockId)
         val eventId = pairs.first().first
         val seatIds = pairs.map { it.second }
@@ -112,21 +113,22 @@ class TicketingDomainService(
             lockedEventId = eventId,
             lockedSeatIds = seatIds,
         )
-        return ticketOrderRepository.save(order)
+        val saved = ticketOrderRepository.save(order)
+        return TicketOrderResponse.of(saved)
     }
 
     @Transactional
-    fun confirmOrder(orderId: Long, paymentId: Long): ConfirmOrderResult {
+    fun confirmOrder(orderId: Long, paymentId: Long): TicketOrderResponse {
         val order = ticketOrderRepository.findById(orderId)
             ?: throw ResourceNotFoundException("TicketOrder", orderId)
         if (order.status == OrderStatus.CONFIRMED) {
-            return ConfirmOrderResult(ticketOrderId = order.id, status = order.status)
+            return TicketOrderResponse.of(order)
         }
         val tickets = order.confirm(paymentId, order.lockedSeatIds)
         ticketOrderRepository.save(order)
         if (tickets.isNotEmpty()) ticketRepository.saveAll(tickets)
         domainEventPublisher.publish(TicketIssuedEvent(ticketOrderId = order.id))
-        return ConfirmOrderResult(ticketOrderId = order.id, status = order.status)
+        return TicketOrderResponse.of(order)
     }
 
     @Transactional
