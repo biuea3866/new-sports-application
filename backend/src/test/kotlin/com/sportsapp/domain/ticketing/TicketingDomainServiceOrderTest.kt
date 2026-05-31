@@ -81,7 +81,6 @@ class TicketingDomainServiceOrderTest : BehaviorSpec({
         )
         every { ticketOrderRepository.findById(100L) } returns pendingOrder
         every { ticketOrderRepository.save(any()) } returns pendingOrder
-        every { ticketRepository.saveAll(any()) } returns emptyList()
 
         When("confirmOrder(100L, 999L)를 호출하면") {
             val result: TicketOrderResponse = service.confirmOrder(100L, 999L)

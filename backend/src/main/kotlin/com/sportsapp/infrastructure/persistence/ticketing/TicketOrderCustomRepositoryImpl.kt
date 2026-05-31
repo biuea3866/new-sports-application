@@ -32,7 +32,7 @@ class TicketOrderCustomRepositoryImpl : TicketOrderCustomRepository {
     ): TicketSalesSummary {
         val confirmedCount = queryFactory.select(ticket.count())
                                          .from(ticket)
-                                         .join(ticketOrder).on(ticketOrder.id.eq(ticket.ticketOrderId))
+                                         .join(ticket.ticketOrder, ticketOrder)
                                          .join(event).on(event.id.eq(ticketOrder.lockedEventId))
                                          .where(
                                              event.ownerId.eq(ownerUserId),
@@ -45,7 +45,7 @@ class TicketOrderCustomRepositoryImpl : TicketOrderCustomRepository {
 
         val revenue = queryFactory.select(seat.price.sum())
                                   .from(ticket)
-                                  .join(ticketOrder).on(ticketOrder.id.eq(ticket.ticketOrderId))
+                                  .join(ticket.ticketOrder, ticketOrder)
                                   .join(event).on(event.id.eq(ticketOrder.lockedEventId))
                                   .join(seat).on(seat.id.eq(ticket.seatId))
                                   .where(
@@ -87,7 +87,7 @@ class TicketOrderCustomRepositoryImpl : TicketOrderCustomRepository {
                     .join(event).on(event.id.eq(seat.eventId))
                     .where(
                         event.ownerId.eq(ownerUserId),
-                        ticket.ticketOrderId.isNull,
+                        ticket.ticketOrder.isNull,
                         ticket.status.eq(TicketStatus.ISSUED),
                         ticket.createdAt.goe(from),
                         ticket.createdAt.loe(to),

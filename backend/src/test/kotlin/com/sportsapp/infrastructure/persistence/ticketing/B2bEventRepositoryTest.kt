@@ -59,13 +59,13 @@ class B2bEventRepositoryTest(
             val seat3 = seatJpaRepository.save(Seat(0L, event.id, "B", "1", "3", BigDecimal("30000")))
 
             ticketJpaRepository.save(Ticket(
-                ticketOrderId = 1L,
+                ticketOrder = null,
                 seatId = seat1.id,
                 status = TicketStatus.ISSUED,
                 code = UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", ""),
             ))
             ticketJpaRepository.save(Ticket(
-                ticketOrderId = 1L,
+                ticketOrder = null,
                 seatId = seat2.id,
                 status = TicketStatus.ISSUED,
                 code = UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", ""),
@@ -81,7 +81,7 @@ class B2bEventRepositoryTest(
 
             When("REVOKED 티켓이 있어도 sold count에는 포함되지 않는다") {
                 ticketJpaRepository.save(Ticket(
-                    ticketOrderId = 2L,
+                    ticketOrder = null,
                     seatId = seat3.id,
                     status = TicketStatus.REVOKED,
                     code = UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", ""),

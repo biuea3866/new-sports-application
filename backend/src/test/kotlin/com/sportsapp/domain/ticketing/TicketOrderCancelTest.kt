@@ -40,8 +40,15 @@ class BE08TicketOrderCancelTest : BehaviorSpec({
     }
 
     Given("[U-01] ISSUED 상태의 Ticket") {
+        val order = TicketOrder(
+            userId = 1L,
+            status = OrderStatus.PENDING,
+            paymentId = null,
+            lockedEventId = 10L,
+            lockedSeatIds = listOf(101L),
+        )
         val ticket = Ticket(
-            ticketOrderId = 1L,
+            ticketOrder = order,
             seatId = 101L,
             status = TicketStatus.ISSUED,
             code = "a".repeat(64),
@@ -57,8 +64,15 @@ class BE08TicketOrderCancelTest : BehaviorSpec({
     }
 
     Given("[U-02] REVOKED 상태의 Ticket") {
+        val order = TicketOrder(
+            userId = 1L,
+            status = OrderStatus.PENDING,
+            paymentId = null,
+            lockedEventId = 10L,
+            lockedSeatIds = listOf(101L),
+        )
         val ticket = Ticket(
-            ticketOrderId = 1L,
+            ticketOrder = order,
             seatId = 101L,
             status = TicketStatus.REVOKED,
             code = "b".repeat(64),

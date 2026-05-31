@@ -2,13 +2,16 @@ package com.sportsapp.domain.ticketing
 
 import com.sportsapp.domain.common.JpaAuditingBase
 import io.hypersistence.utils.hibernate.type.json.JsonStringType
+import jakarta.persistence.CascadeType
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
+import jakarta.persistence.FetchType
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
+import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
 import org.hibernate.annotations.Type
 
@@ -38,11 +41,24 @@ class TicketOrder(
     @Column(name = "id")
     val id: Long = 0
 
+    @OneToMany(
+        mappedBy = "ticketOrder",
+        cascade = [CascadeType.PERSIST, CascadeType.MERGE],
+        fetch = FetchType.LAZY,
+    )
+    val tickets: MutableList<Ticket> = mutableListOf()
+
+    fun attachTicket(ticket: Ticket) {
+        tickets.add(ticket)
+    }
+
     fun confirm(paymentId: Long, seatIds: List<Long>): List<Ticket> {
         status.requireCanTransitTo(OrderStatus.CONFIRMED)
         status = OrderStatus.CONFIRMED
         this.paymentId = paymentId
-        return seatIds.map { seatId -> Ticket.issue(ticketOrderId = id, seatId = seatId) }
+        val issued = seatIds.map { seatId -> Ticket.issue(ticketOrder = this, seatId = seatId) }
+        issued.forEach { attachTicket(it) }
+        return issued
     }
 
     fun cancel() {

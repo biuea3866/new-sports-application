@@ -124,9 +124,8 @@ class TicketingDomainService(
         if (order.status == OrderStatus.CONFIRMED) {
             return TicketOrderResponse.of(order)
         }
-        val tickets = order.confirm(paymentId, order.lockedSeatIds)
+        order.confirm(paymentId, order.lockedSeatIds)
         ticketOrderRepository.save(order)
-        if (tickets.isNotEmpty()) ticketRepository.saveAll(tickets)
         domainEventPublisher.publish(TicketIssuedEvent(ticketOrderId = order.id))
         return TicketOrderResponse.of(order)
     }
