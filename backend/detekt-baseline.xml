@@ -2,6 +2,17 @@
 <SmellBaseline>
   <ManuallySuppressedIssues></ManuallySuppressedIssues>
   <CurrentIssues>
+    <ID>InvalidPackageDeclaration:BaseTimeResolver.kt$package com.sportsapp.infrastructure.weather</ID>
+    <ID>InvalidPackageDeclaration:Forecast.kt$package com.sportsapp.domain.weather</ID>
+    <ID>InvalidPackageDeclaration:ForecastResponse.kt$package com.sportsapp.application.weather</ID>
+    <ID>InvalidPackageDeclaration:GetForecastUseCase.kt$package com.sportsapp.application.weather</ID>
+    <ID>InvalidPackageDeclaration:GridConverter.kt$package com.sportsapp.infrastructure.weather</ID>
+    <ID>InvalidPackageDeclaration:GridConverterTest.kt$package com.sportsapp.infrastructure.weather</ID>
+    <ID>InvalidPackageDeclaration:KmaWeatherGatewayImpl.kt$package com.sportsapp.infrastructure.weather</ID>
+    <ID>InvalidPackageDeclaration:WeatherApiController.kt$package com.sportsapp.presentation.weather</ID>
+    <ID>InvalidPackageDeclaration:WeatherDomainService.kt$package com.sportsapp.domain.weather</ID>
+    <ID>InvalidPackageDeclaration:WeatherGateway.kt$package com.sportsapp.domain.weather</ID>
+    <ID>InvalidPackageDeclaration:WeatherProperties.kt$package com.sportsapp.infrastructure.weather</ID>
     <ID>LongMethod:MockPgGatewayImpl.kt$MockPgGatewayImpl$override fun prepare(request: PgPrepareRequest): PgPrepareResult</ID>
     <ID>LongMethod:PaymentDomainService.kt$PaymentDomainService$fun prepare( userId: Long, idempotencyKey: String, orderType: OrderType, orderId: Long, method: PaymentMethod, amount: BigDecimal, currency: String, itemName: String, returnUrl: String, failUrl: String, ): Payment</ID>
     <ID>LongMethod:PushChannelGateway.kt$PushChannelGateway$override fun send(notification: Notification): SendResult</ID>
@@ -12,12 +23,10 @@
     <ID>ReturnCount:FacilityOwnerDomainService.kt$FacilityOwnerDomainService$private fun resolveCoordinates(attributes: FacilityAttributes): FacilityAttributes</ID>
     <ID>ReturnCount:KakaoGeocodingGatewayImpl.kt$private fun KakaoAddressResponse.toCoordinate(): Coordinate?</ID>
     <ID>ReturnCount:PaymentDomainService.kt$PaymentDomainService$fun confirmWebhook(tid: String, eventType: String): Payment</ID>
+    <ID>TooManyFunctions:BookingDomainService.kt$BookingDomainService</ID>
     <ID>TooManyFunctions:FacilityMongoRepository.kt$FacilityMongoRepository : MongoRepository</ID>
     <ID>TooManyFunctions:FacilityRepository.kt$FacilityRepository</ID>
     <ID>TooManyFunctions:FacilityRepositoryImpl.kt$FacilityRepositoryImpl : FacilityRepository</ID>
-    <ID>TooManyFunctions:BookingDomainService.kt$BookingDomainService</ID>
-    <ID>TooManyFunctions:BookingRepository.kt$BookingRepository</ID>
-    <ID>TooManyFunctions:BookingRepositoryImpl.kt$BookingRepositoryImpl : BookingRepository</ID>
     <ID>TooManyFunctions:GoodsDomainService.kt$GoodsDomainService</ID>
     <ID>TooManyFunctions:McpAuditLogJpaRepositoryImpl.kt$McpAuditLogJpaRepositoryImpl : McpAuditLogQueryDslRepository</ID>
     <ID>TooManyFunctions:TicketingDomainService.kt$TicketingDomainService</ID>

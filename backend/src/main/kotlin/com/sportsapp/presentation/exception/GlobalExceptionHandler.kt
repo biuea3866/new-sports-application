@@ -13,6 +13,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.MissingRequestHeaderException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
@@ -73,6 +74,21 @@ class GlobalExceptionHandler {
             status = ErrorStatus.BAD_REQUEST,
             code = "MISSING_REQUEST_HEADER",
             detail = "Required header is missing: ${exception.headerName}"
+        )
+        return ResponseEntity.status(ErrorStatus.BAD_REQUEST.httpStatus).body(problemDetail)
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException::class)
+    fun handleMethodArgumentTypeMismatchException(
+        exception: MethodArgumentTypeMismatchException,
+    ): ResponseEntity<ProblemDetail> {
+        val paramName = exception.name
+        val invalidValue = exception.value
+        val requiredType = exception.requiredType?.simpleName ?: "unknown"
+        val problemDetail = ProblemDetailBuilder.build(
+            status = ErrorStatus.BAD_REQUEST,
+            code = "INVALID_ENUM_VALUE",
+            detail = "Invalid value '$invalidValue' for parameter '$paramName'. Expected type: $requiredType",
         )
         return ResponseEntity.status(ErrorStatus.BAD_REQUEST.httpStatus).body(problemDetail)
     }
