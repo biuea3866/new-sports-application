@@ -1,6 +1,5 @@
 package com.sportsapp.domain.ticketing
 
-import com.sportsapp.application.ticketing.TicketOrderResponse
 import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import com.sportsapp.domain.ticketing.exception.MalformedLockIdException
@@ -41,10 +40,10 @@ class TicketingDomainServiceOrderTest : BehaviorSpec({
         }
 
         When("createPendingOrder를 호출하면") {
-            val result: TicketOrderResponse = service.createPendingOrder("1:10,1:20", userId = 7L)
+            val result: TicketOrderResult = service.createPendingOrder("1:10,1:20", userId = 7L)
 
-            Then("TicketOrderResponse가 반환되고 status가 PENDING이다") {
-                result.shouldBeInstanceOf<TicketOrderResponse>()
+            Then("TicketOrderResult가 반환되고 status가 PENDING이다") {
+                result.shouldBeInstanceOf<TicketOrderResult>()
                 result.status shouldBe OrderStatus.PENDING
             }
         }
@@ -83,10 +82,10 @@ class TicketingDomainServiceOrderTest : BehaviorSpec({
         every { ticketOrderRepository.save(any()) } returns pendingOrder
 
         When("confirmOrder(100L, 999L)를 호출하면") {
-            val result: TicketOrderResponse = service.confirmOrder(100L, 999L)
+            val result: TicketOrderResult = service.confirmOrder(100L, 999L)
 
-            Then("TicketOrderResponse가 반환되고 status가 CONFIRMED이다") {
-                result.shouldBeInstanceOf<TicketOrderResponse>()
+            Then("TicketOrderResult가 반환되고 status가 CONFIRMED이다") {
+                result.shouldBeInstanceOf<TicketOrderResult>()
                 result.status shouldBe OrderStatus.CONFIRMED
             }
         }
