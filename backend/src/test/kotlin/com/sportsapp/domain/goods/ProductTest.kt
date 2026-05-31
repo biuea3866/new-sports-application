@@ -97,6 +97,46 @@ class ProductTest : BehaviorSpec({
         }
     }
 
+    Given("INACTIVE 상태인 Product에 requireActive를 호출할 때") {
+        val product = Product(
+            name = "테니스 라켓",
+            category = ProductCategory.EQUIPMENT,
+            price = BigDecimal("50000"),
+            description = "고급 테니스 라켓",
+            imageUrl = "https://example.com/racket.jpg",
+            status = ProductStatus.INACTIVE,
+            ownerId = 1L,
+        )
+
+        When("requireActive를 호출하면") {
+            Then("ProductInactiveException을 던진다") {
+                shouldThrow<ProductInactiveException> {
+                    product.requireActive()
+                }
+            }
+        }
+    }
+
+    Given("ACTIVE 상태인 Product에 requireActive를 호출할 때") {
+        val product = Product(
+            name = "테니스 라켓",
+            category = ProductCategory.EQUIPMENT,
+            price = BigDecimal("50000"),
+            description = "고급 테니스 라켓",
+            imageUrl = "https://example.com/racket.jpg",
+            status = ProductStatus.ACTIVE,
+            ownerId = 1L,
+        )
+
+        When("requireActive를 호출하면") {
+            Then("예외 없이 통과한다") {
+                io.kotest.assertions.throwables.shouldNotThrowAny {
+                    product.requireActive()
+                }
+            }
+        }
+    }
+
     Given("ownerId=1L 인 Product") {
         val product = Product(
             name = "테니스 라켓",
