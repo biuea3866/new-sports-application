@@ -14,14 +14,12 @@ class BookingDomainServiceRequestBookingDtoTest : BehaviorSpec({
     val slotRepository = mockk<SlotRepository>()
     val distributedLock = mockk<DistributedLock>()
     val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
-    val paymentRefundGateway = mockk<PaymentRefundGateway>(relaxed = true)
 
     val service = BookingDomainService(
         bookingRepository,
         slotRepository,
         distributedLock,
         domainEventPublisher,
-        paymentRefundGateway,
     )
 
     Given("슬롯 잔여가 충분하고 락 획득에 성공하는 상황") {
@@ -35,7 +33,7 @@ class BookingDomainServiceRequestBookingDtoTest : BehaviorSpec({
         val booking = Booking.createPending(userId = 1L, slotId = 42L)
         every { distributedLock.tryLock(any(), any(), any<Duration>()) } returns true
         every { distributedLock.unlock(any(), any()) } returns true
-        every { slotRepository.findById(42L) } returns slot
+        every { slotRepository.findForUpdateById(42L) } returns slot
         every { bookingRepository.countBySlotIdAndStatusIn(42L, any()) } returns 0L
         every { bookingRepository.save(any()) } returns booking
 
@@ -61,7 +59,7 @@ class BookingDomainServiceRequestBookingDtoTest : BehaviorSpec({
         )
         every { distributedLock.tryLock(any(), any(), any<Duration>()) } returns true
         every { distributedLock.unlock(any(), any()) } returns true
-        every { slotRepository.findById(42L) } returns slot
+        every { slotRepository.findForUpdateById(42L) } returns slot
         every { bookingRepository.countBySlotIdAndStatusIn(42L, any()) } returns 1L
 
         When("requestBooking 을 호출하면") {

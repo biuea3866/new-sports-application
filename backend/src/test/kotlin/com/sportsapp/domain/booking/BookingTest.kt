@@ -22,9 +22,35 @@ class BookingTest : BehaviorSpec({
         When("confirm(paymentId)을 호출하면") {
             booking.confirm(paymentId = 999L)
 
-            Then("[U-02] PENDING → CONFIRMED 전이 시 paymentId가 채워진다") {
+            Then("[U-02] PENDING → CONFIRMED 전이 시 status=CONFIRMED, paymentId가 채워진다") {
                 booking.status shouldBe BookingStatus.CONFIRMED
                 booking.paymentId shouldBe 999L
+            }
+        }
+    }
+
+    Given("PENDING 상태에서 confirm 호출 후") {
+        val booking = Booking.createPending(userId = 1L, slotId = 10L)
+        booking.confirm(paymentId = 777L)
+
+        When("pullDomainEvents를 호출하면") {
+            val events = booking.pullDomainEvents()
+
+            Then("BookingConfirmedEvent가 1건 적재되어 있다") {
+                events.size shouldBe 1
+                val event = events[0] as BookingConfirmedEvent
+                event.paymentId shouldBe 777L
+            }
+        }
+
+        When("CONFIRMED 상태에서 confirm을 재호출하면") {
+            booking.pullDomainEvents() // clear
+            booking.confirm(paymentId = 888L)
+
+            Then("상태 변경 없이 이벤트도 추가되지 않는다") {
+                booking.status shouldBe BookingStatus.CONFIRMED
+                booking.paymentId shouldBe 777L
+                booking.pullDomainEvents().size shouldBe 0
             }
         }
     }

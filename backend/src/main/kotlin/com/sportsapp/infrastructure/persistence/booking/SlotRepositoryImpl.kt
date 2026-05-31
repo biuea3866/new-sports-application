@@ -19,6 +19,9 @@ class SlotRepositoryImpl(
     override fun findById(id: Long): Slot? =
         slotJpaRepository.findByIdOrNull(id)
 
+    override fun findForUpdateById(id: Long): Slot? =
+        slotJpaRepository.findForUpdateById(id)
+
     override fun findByFacilityId(facilityId: String): List<Slot> =
         slotJpaRepository.findByFacilityIdAndDeletedAtIsNull(facilityId)
 
