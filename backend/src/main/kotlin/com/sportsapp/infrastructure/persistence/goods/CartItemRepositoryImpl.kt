@@ -17,11 +17,11 @@ class CartItemRepositoryImpl(
     override fun findById(id: Long): CartItem? = cartItemJpaRepository.findByIdOrNull(id)
 
     override fun findByCartId(cartId: Long): List<CartItem> =
-        cartItemJpaRepository.findAllByCartIdAndDeletedAtIsNull(cartId)
+        cartItemJpaRepository.findAllByCart_IdAndDeletedAtIsNull(cartId)
 
     override fun findByCartIdAndProductId(cartId: Long, productId: Long): CartItem? =
-        cartItemJpaRepository.findByCartIdAndProductIdAndDeletedAtIsNull(cartId, productId)
+        cartItemJpaRepository.findByCart_IdAndProductIdAndDeletedAtIsNull(cartId, productId)
 
     override fun findAllByCartId(cartId: Long): List<CartItem> =
-        cartItemJpaRepository.findAllByCartId(cartId).filter { !it.isDeleted }
+        cartItemJpaRepository.findAllByCart_Id(cartId).filter { !it.isDeleted }
 }

@@ -68,7 +68,7 @@ class GoodsDomainService(
         val order = goodsOrderRepository.save(GoodsOrder.create(userId, totalAmount, idempotencyKey))
         val orderItems = items.map { item ->
             GoodsOrderItem(
-                orderId = order.id,
+                order = order,
                 productId = item.productId,
                 quantity = item.quantity,
                 unitPrice = products.getValue(item.productId).price,

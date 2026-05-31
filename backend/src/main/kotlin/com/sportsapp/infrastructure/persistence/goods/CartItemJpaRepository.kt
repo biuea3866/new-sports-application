@@ -4,7 +4,7 @@ import com.sportsapp.domain.goods.CartItem
 import org.springframework.data.jpa.repository.JpaRepository
 
 interface CartItemJpaRepository : JpaRepository<CartItem, Long> {
-    fun findAllByCartIdAndDeletedAtIsNull(cartId: Long): List<CartItem>
-    fun findByCartIdAndProductIdAndDeletedAtIsNull(cartId: Long, productId: Long): CartItem?
-    fun findAllByCartId(cartId: Long): List<CartItem>
+    fun findAllByCart_IdAndDeletedAtIsNull(cartId: Long): List<CartItem>
+    fun findByCart_IdAndProductIdAndDeletedAtIsNull(cartId: Long, productId: Long): CartItem?
+    fun findAllByCart_Id(cartId: Long): List<CartItem>
 }

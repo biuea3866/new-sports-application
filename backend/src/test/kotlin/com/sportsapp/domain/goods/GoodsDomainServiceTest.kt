@@ -37,7 +37,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
             status = ProductStatus.ACTIVE,
             ownerId = 1L,
         )
-        val stock = Stock(productId = 1L, quantity = 10)
+        val stock = testStock(quantity = 10)
 
         every { productRepository.findById(1L) } returns product
         every { stockRepository.findByProductId(1L) } returns stock
@@ -63,7 +63,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
             status = ProductStatus.ACTIVE,
             ownerId = 1L,
         )
-        val stock = Stock(productId = 2L, quantity = 2)
+        val stock = testStock(quantity = 2)
 
         every { productRepository.findById(2L) } returns product
         every { stockRepository.findByProductId(2L) } returns stock
@@ -137,7 +137,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
             status = ProductStatus.ACTIVE,
             ownerId = 1L,
         )
-        val stock = Stock(productId = 10L, quantity = 5)
+        val stock = testStock(quantity = 5)
         val savedOrder = GoodsOrder.create(userId = 1L, totalAmount = BigDecimal("160000"), idempotencyKey = "idem-create")
 
         every { goodsOrderRepository.findByIdempotencyKey("idem-create") } returns null

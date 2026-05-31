@@ -33,8 +33,8 @@ class BE11CancelPendingOrderPropagationTest : BehaviorSpec({
         val service = buildService(goodsOrderRepository, goodsOrderItemRepository, stockRepository)
 
         val order = GoodsOrder.create(userId = 1L, totalAmount = BigDecimal("10000"))
-        val item = GoodsOrderItem(orderId = 1L, productId = 10L, quantity = 2, unitPrice = BigDecimal("5000"))
-        val stock = Stock(productId = 10L, quantity = 5)
+        val item = GoodsOrderItem(order = order, productId = 10L, quantity = 2, unitPrice = BigDecimal("5000"))
+        val stock = testStock(quantity = 5)
 
         every { goodsOrderRepository.findById(1L) } returns order
         every { goodsOrderRepository.save(any()) } returns order

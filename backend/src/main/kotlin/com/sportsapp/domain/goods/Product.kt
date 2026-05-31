@@ -2,13 +2,16 @@ package com.sportsapp.domain.goods
 
 import com.sportsapp.domain.common.JpaAuditingBase
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
+import jakarta.persistence.CascadeType
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
+import jakarta.persistence.FetchType
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
+import jakarta.persistence.OneToOne
 import jakarta.persistence.Table
 import java.math.BigDecimal
 
@@ -43,6 +46,10 @@ class Product(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     val id: Long = 0
+
+    @OneToOne(mappedBy = "product", cascade = [CascadeType.PERSIST, CascadeType.MERGE], fetch = FetchType.LAZY)
+    var stock: Stock? = null
+        private set
 
     fun activate() {
         check(status == ProductStatus.INACTIVE) { "이미 활성화된 상품입니다." }

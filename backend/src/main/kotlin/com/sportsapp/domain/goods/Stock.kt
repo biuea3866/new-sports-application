@@ -3,7 +3,10 @@ package com.sportsapp.domain.goods
 import com.sportsapp.domain.common.JpaAuditingBase
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.FetchType
 import jakarta.persistence.Id
+import jakarta.persistence.OneToOne
+import jakarta.persistence.PrimaryKeyJoinColumn
 import jakarta.persistence.Table
 import jakarta.persistence.Version
 
@@ -21,6 +24,11 @@ class Stock(
     @Column(nullable = false)
     val version: Long = 0L,
 ) : JpaAuditingBase() {
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @PrimaryKeyJoinColumn(name = "product_id", referencedColumnName = "id")
+    val product: Product? = null
+
     fun deduct(amount: Int) {
         if (amount <= 0) throw InvalidQuantityException(amount)
         if (quantity < amount) throw OutOfStockException(productId, amount, quantity)

@@ -125,7 +125,7 @@ class GoodsOrderFromCartScenarioTest(
                     val cart = cartJpaRepository.findByUserIdAndDeletedAtIsNull(userId)
                     cart shouldNotBe null
                     val activeCartId = requireNotNull(cart).id
-                    val activeItems = cartItemJpaRepository.findAllByCartIdAndDeletedAtIsNull(activeCartId)
+                    val activeItems = cartItemJpaRepository.findAllByCart_IdAndDeletedAtIsNull(activeCartId)
                     activeItems.size shouldBe 2
                 }
             }
