@@ -1,0 +1,109 @@
+package com.sportsapp.application.payment
+
+import com.sportsapp.domain.payment.OrderType
+import com.sportsapp.domain.payment.Payment
+import com.sportsapp.domain.payment.PaymentDomainService
+import com.sportsapp.domain.payment.PaymentMethod
+import com.sportsapp.domain.payment.PaymentStatus
+import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.shouldBe
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
+import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.orm.ObjectOptimisticLockingFailureException
+import java.math.BigDecimal
+import java.time.ZonedDateTime
+
+class ConfirmPaymentWebhookUseCaseTest : BehaviorSpec({
+
+    fun buildCompletedPayment(tid: String): Payment {
+        val payment = Payment.create(
+            userId = 1L,
+            idempotencyKey = "webhook-uc-key-$tid",
+            orderType = OrderType.BOOKING,
+            orderId = 100L,
+            method = PaymentMethod.CREDIT_CARD,
+            amount = BigDecimal("10000"),
+            currency = "KRW",
+        ).also {
+            it.markReady(tid, "card", "http://checkout")
+            it.markCompleted(ZonedDateTime.now())
+        }
+        // JPA 감사 필드는 단위 테스트에서 직접 주입
+        listOf("createdAt", "updatedAt").forEach { fieldName ->
+            val field = payment.javaClass.superclass.getDeclaredField(fieldName)
+            field.isAccessible = true
+            field.set(payment, ZonedDateTime.now())
+        }
+        return payment
+    }
+
+    Given("DomainService가 DataIntegrityViolationException을 던질 때") {
+        val paymentDomainService = mockk<PaymentDomainService>()
+        val useCase = ConfirmPaymentWebhookUseCase(paymentDomainService)
+        val tid = "MOCK_CARD_concurrent_dive01"
+        val completedPayment = buildCompletedPayment(tid)
+
+        every {
+            paymentDomainService.confirmWebhook(tid = tid, eventType = "PAYMENT_APPROVED")
+        } throws DataIntegrityViolationException("unique constraint violation")
+
+        every {
+            paymentDomainService.findByPgTransactionIdOrThrow(tid)
+        } returns completedPayment
+
+        When("execute를 호출하면") {
+            val result = useCase.execute(ConfirmPaymentWebhookCommand(tid = tid, eventType = "PAYMENT_APPROVED"))
+
+            Then("findByPgTransactionIdOrThrow로 재조회한 payment의 상태가 반환된다") {
+                result.status shouldBe PaymentStatus.COMPLETED
+                verify(exactly = 1) { paymentDomainService.findByPgTransactionIdOrThrow(tid) }
+            }
+        }
+    }
+
+    Given("DomainService가 ObjectOptimisticLockingFailureException을 던질 때") {
+        val paymentDomainService = mockk<PaymentDomainService>()
+        val useCase = ConfirmPaymentWebhookUseCase(paymentDomainService)
+        val tid = "MOCK_CARD_concurrent_olfe01"
+        val completedPayment = buildCompletedPayment(tid)
+
+        every {
+            paymentDomainService.confirmWebhook(tid = tid, eventType = "PAYMENT_APPROVED")
+        } throws ObjectOptimisticLockingFailureException(Payment::class.java, 1L)
+
+        every {
+            paymentDomainService.findByPgTransactionIdOrThrow(tid)
+        } returns completedPayment
+
+        When("execute를 호출하면") {
+            val result = useCase.execute(ConfirmPaymentWebhookCommand(tid = tid, eventType = "PAYMENT_APPROVED"))
+
+            Then("findByPgTransactionIdOrThrow로 재조회한 payment의 상태가 반환된다") {
+                result.status shouldBe PaymentStatus.COMPLETED
+                verify(exactly = 1) { paymentDomainService.findByPgTransactionIdOrThrow(tid) }
+            }
+        }
+    }
+
+    Given("DomainService가 정상 처리하여 이미 COMPLETED early-return한 payment를 반환할 때") {
+        val paymentDomainService = mockk<PaymentDomainService>()
+        val useCase = ConfirmPaymentWebhookUseCase(paymentDomainService)
+        val tid = "MOCK_CARD_early_return01"
+        val completedPayment = buildCompletedPayment(tid)
+
+        every {
+            paymentDomainService.confirmWebhook(tid = tid, eventType = "PAYMENT_APPROVED")
+        } returns completedPayment
+
+        When("execute를 호출하면") {
+            val result = useCase.execute(ConfirmPaymentWebhookCommand(tid = tid, eventType = "PAYMENT_APPROVED"))
+
+            Then("재조회 없이 confirmWebhook이 반환한 payment의 상태가 그대로 반환된다") {
+                result.status shouldBe PaymentStatus.COMPLETED
+                verify(exactly = 0) { paymentDomainService.findByPgTransactionIdOrThrow(any()) }
+            }
+        }
+    }
+})
