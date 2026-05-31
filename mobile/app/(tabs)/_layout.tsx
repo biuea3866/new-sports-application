@@ -42,13 +42,6 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="store"
-        options={{
-          title: '스토어',
-          tabBarAccessibilityLabel: '스토어 탭',
-        }}
-      />
-      <Tabs.Screen
         name="me"
         options={{
           title: '마이',
