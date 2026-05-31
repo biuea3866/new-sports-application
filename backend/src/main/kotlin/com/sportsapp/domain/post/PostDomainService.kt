@@ -29,7 +29,11 @@ class PostDomainService(
         val post = postRepository.findById(postId)
             ?: throw ResourceNotFoundException("Post", postId)
         post.softDelete(userId)
-        return postRepository.save(post)
+        postRepository.save(post)
+        val comments = commentRepository.findAllActiveByPostId(postId)
+        comments.forEach { it.softDelete(userId) }
+        if (comments.isNotEmpty()) commentRepository.saveAll(comments)
+        return post
     }
 
     fun getPost(postId: Long): Post =

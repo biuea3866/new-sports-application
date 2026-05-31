@@ -13,10 +13,15 @@ class CommentRepositoryImpl(
 
     override fun save(comment: Comment): Comment = commentJpaRepository.save(comment)
 
+    override fun saveAll(comments: List<Comment>): List<Comment> = commentJpaRepository.saveAll(comments)
+
     override fun findById(id: Long): Comment? = commentJpaRepository.findByIdAndDeletedAtIsNull(id)
 
     override fun findByPostId(postId: Long): List<Comment> =
         commentJpaRepository.findByPostIdAndDeletedAtIsNull(postId)
+
+    override fun findAllActiveByPostId(postId: Long): List<Comment> =
+        commentJpaRepository.findAllByPostIdAndDeletedAtIsNull(postId)
 
     override fun findTop50ByPostId(postId: Long): List<Comment> =
         commentJpaRepository.findTop50ByPostIdAndDeletedAtIsNullOrderByCreatedAtAsc(postId)
