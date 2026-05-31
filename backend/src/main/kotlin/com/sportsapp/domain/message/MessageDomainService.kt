@@ -3,6 +3,7 @@ package com.sportsapp.domain.message
 import com.sportsapp.domain.common.exceptions.BusinessRuleViolationException
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class MessageDomainService(
@@ -69,6 +70,7 @@ class MessageDomainService(
         }
     }
 
+    @Transactional
     fun sendMessage(roomId: Long, userId: Long, content: String): Message {
         val room = roomRepository.findById(roomId)
             ?: throw ResourceNotFoundException("Room", roomId)
