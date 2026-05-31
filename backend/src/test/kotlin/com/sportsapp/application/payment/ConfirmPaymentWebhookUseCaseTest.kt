@@ -1,5 +1,6 @@
 package com.sportsapp.application.payment
 
+import com.sportsapp.domain.payment.ConfirmWebhookResult
 import com.sportsapp.domain.payment.OrderType
 import com.sportsapp.domain.payment.Payment
 import com.sportsapp.domain.payment.PaymentDomainService
@@ -17,33 +18,25 @@ import java.time.ZonedDateTime
 
 class ConfirmPaymentWebhookUseCaseTest : BehaviorSpec({
 
-    fun buildCompletedPayment(tid: String): Payment {
-        val payment = Payment.create(
-            userId = 1L,
-            idempotencyKey = "webhook-uc-key-$tid",
-            orderType = OrderType.BOOKING,
-            orderId = 100L,
-            method = PaymentMethod.CREDIT_CARD,
-            amount = BigDecimal("10000"),
-            currency = "KRW",
-        ).also {
-            it.markReady(tid, "card", "http://checkout")
-            it.markCompleted(ZonedDateTime.now())
-        }
-        // JPA 감사 필드는 단위 테스트에서 직접 주입
-        listOf("createdAt", "updatedAt").forEach { fieldName ->
-            val field = payment.javaClass.superclass.getDeclaredField(fieldName)
-            field.isAccessible = true
-            field.set(payment, ZonedDateTime.now())
-        }
-        return payment
-    }
+    fun buildCompletedResult(tid: String): ConfirmWebhookResult = ConfirmWebhookResult(
+        id = 1L,
+        orderType = OrderType.BOOKING,
+        orderId = 100L,
+        method = PaymentMethod.CREDIT_CARD,
+        amount = BigDecimal("10000"),
+        currency = "KRW",
+        status = PaymentStatus.COMPLETED,
+        pgTransactionId = tid,
+        checkoutUrl = "http://checkout",
+        paidAt = ZonedDateTime.now(),
+        createdAt = ZonedDateTime.now(),
+    )
 
     Given("DomainService가 DataIntegrityViolationException을 던질 때") {
         val paymentDomainService = mockk<PaymentDomainService>()
         val useCase = ConfirmPaymentWebhookUseCase(paymentDomainService)
         val tid = "MOCK_CARD_concurrent_dive01"
-        val completedPayment = buildCompletedPayment(tid)
+        val completedResult = buildCompletedResult(tid)
 
         every {
             paymentDomainService.confirmWebhook(tid = tid, eventType = "PAYMENT_APPROVED")
@@ -51,12 +44,12 @@ class ConfirmPaymentWebhookUseCaseTest : BehaviorSpec({
 
         every {
             paymentDomainService.findByPgTransactionIdOrThrow(tid)
-        } returns completedPayment
+        } returns completedResult
 
         When("execute를 호출하면") {
             val result = useCase.execute(ConfirmPaymentWebhookCommand(tid = tid, eventType = "PAYMENT_APPROVED"))
 
-            Then("findByPgTransactionIdOrThrow로 재조회한 payment의 상태가 반환된다") {
+            Then("findByPgTransactionIdOrThrow로 재조회한 결과의 상태가 반환된다") {
                 result.status shouldBe PaymentStatus.COMPLETED
                 verify(exactly = 1) { paymentDomainService.findByPgTransactionIdOrThrow(tid) }
             }
@@ -67,7 +60,7 @@ class ConfirmPaymentWebhookUseCaseTest : BehaviorSpec({
         val paymentDomainService = mockk<PaymentDomainService>()
         val useCase = ConfirmPaymentWebhookUseCase(paymentDomainService)
         val tid = "MOCK_CARD_concurrent_olfe01"
-        val completedPayment = buildCompletedPayment(tid)
+        val completedResult = buildCompletedResult(tid)
 
         every {
             paymentDomainService.confirmWebhook(tid = tid, eventType = "PAYMENT_APPROVED")
@@ -75,32 +68,32 @@ class ConfirmPaymentWebhookUseCaseTest : BehaviorSpec({
 
         every {
             paymentDomainService.findByPgTransactionIdOrThrow(tid)
-        } returns completedPayment
+        } returns completedResult
 
         When("execute를 호출하면") {
             val result = useCase.execute(ConfirmPaymentWebhookCommand(tid = tid, eventType = "PAYMENT_APPROVED"))
 
-            Then("findByPgTransactionIdOrThrow로 재조회한 payment의 상태가 반환된다") {
+            Then("findByPgTransactionIdOrThrow로 재조회한 결과의 상태가 반환된다") {
                 result.status shouldBe PaymentStatus.COMPLETED
                 verify(exactly = 1) { paymentDomainService.findByPgTransactionIdOrThrow(tid) }
             }
         }
     }
 
-    Given("DomainService가 정상 처리하여 이미 COMPLETED early-return한 payment를 반환할 때") {
+    Given("DomainService가 정상 처리하여 COMPLETED 상태의 결과를 반환할 때") {
         val paymentDomainService = mockk<PaymentDomainService>()
         val useCase = ConfirmPaymentWebhookUseCase(paymentDomainService)
         val tid = "MOCK_CARD_early_return01"
-        val completedPayment = buildCompletedPayment(tid)
+        val completedResult = buildCompletedResult(tid)
 
         every {
             paymentDomainService.confirmWebhook(tid = tid, eventType = "PAYMENT_APPROVED")
-        } returns completedPayment
+        } returns completedResult
 
         When("execute를 호출하면") {
             val result = useCase.execute(ConfirmPaymentWebhookCommand(tid = tid, eventType = "PAYMENT_APPROVED"))
 
-            Then("재조회 없이 confirmWebhook이 반환한 payment의 상태가 그대로 반환된다") {
+            Then("재조회 없이 confirmWebhook이 반환한 결과의 상태가 그대로 반환된다") {
                 result.status shouldBe PaymentStatus.COMPLETED
                 verify(exactly = 0) { paymentDomainService.findByPgTransactionIdOrThrow(any()) }
             }

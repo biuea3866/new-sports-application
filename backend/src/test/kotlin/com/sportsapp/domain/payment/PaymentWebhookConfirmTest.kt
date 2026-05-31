@@ -13,6 +13,14 @@ import java.time.ZonedDateTime
 
 class PaymentWebhookConfirmTest : BehaviorSpec({
 
+    fun setAuditFields(payment: Payment) {
+        listOf("createdAt", "updatedAt").forEach { fieldName ->
+            val field = payment.javaClass.superclass.getDeclaredField(fieldName)
+            field.isAccessible = true
+            field.set(payment, ZonedDateTime.now())
+        }
+    }
+
     fun buildReadyPayment(
         tid: String,
         idempotencyKey: String,
@@ -26,7 +34,10 @@ class PaymentWebhookConfirmTest : BehaviorSpec({
         method = PaymentMethod.CREDIT_CARD,
         amount = BigDecimal("15000"),
         currency = "KRW",
-    ).also { it.markReady(tid, "card", "http://checkout") }
+    ).also {
+        it.markReady(tid, "card", "http://checkout")
+        setAuditFields(it)
+    }
 
     Given("PAYMENT_APPROVED 웹훅 수신 — 도메인 이벤트 발행 확인") {
         val paymentRepository = mockk<PaymentRepository>()
@@ -44,7 +55,7 @@ class PaymentWebhookConfirmTest : BehaviorSpec({
         val tid = "MOCK_CARD_u04_01"
         val readyPayment = buildReadyPayment(tid = tid, idempotencyKey = "webhook-u04-key")
         every { paymentRepository.findByPgTransactionId(tid) } returns readyPayment
-        every { paymentRepository.save(any()) } answers { firstArg() }
+        every { paymentRepository.save(any()) } answers { firstArg<Payment>().also { p -> setAuditFields(p) } }
         justRun { orderConfirmationGateway.confirm(any(), any(), any()) }
 
         val capturedEvents = mutableListOf<DomainEvent>()
@@ -116,7 +127,7 @@ class PaymentWebhookConfirmTest : BehaviorSpec({
             orderId = orderId,
         )
         every { paymentRepository.findByPgTransactionId(tid) } returns readyPayment
-        every { paymentRepository.save(any()) } answers { firstArg() }
+        every { paymentRepository.save(any()) } answers { firstArg<Payment>().also { p -> setAuditFields(p) } }
         justRun { orderConfirmationGateway.confirm(any(), any(), any()) }
         every { domainEventPublisher.publishAll(any()) } returns Unit
 
@@ -151,7 +162,7 @@ class PaymentWebhookConfirmTest : BehaviorSpec({
         val tid = "MOCK_CARD_u07_01"
         val readyPayment = buildReadyPayment(tid = tid, idempotencyKey = "webhook-u07-key")
         every { paymentRepository.findByPgTransactionId(tid) } returns readyPayment
-        every { paymentRepository.save(any()) } answers { firstArg() }
+        every { paymentRepository.save(any()) } answers { firstArg<Payment>().also { p -> setAuditFields(p) } }
 
         When("confirmWebhook(eventType=PAYMENT_CANCELED) 를 호출하면") {
             service.confirmWebhook(tid = tid, eventType = "PAYMENT_CANCELED")

@@ -11,6 +11,14 @@ import java.time.ZonedDateTime
 
 class PaymentDomainServiceTest : BehaviorSpec({
 
+    fun setAuditFields(payment: Payment) {
+        listOf("createdAt", "updatedAt").forEach { fieldName ->
+            val field = payment.javaClass.superclass.getDeclaredField(fieldName)
+            field.isAccessible = true
+            field.set(payment, ZonedDateTime.now())
+        }
+    }
+
     fun buildPrepareRequest() = Triple(
         mockk<PaymentRepository>(),
         mockk<PaymentGateway>(),
@@ -125,9 +133,12 @@ class PaymentDomainServiceTest : BehaviorSpec({
             method = PaymentMethod.CREDIT_CARD,
             amount = BigDecimal("15000"),
             currency = "KRW",
-        ).also { it.markReady(tid, "card", "http://checkout") }
+        ).also {
+            it.markReady(tid, "card", "http://checkout")
+            setAuditFields(it)
+        }
         every { paymentRepository.findByPgTransactionId(tid) } returns readyPayment
-        every { paymentRepository.save(any()) } answers { firstArg() }
+        every { paymentRepository.save(any()) } answers { firstArg<Payment>().also { p -> setAuditFields(p) } }
 
         When("confirmWebhook(eventType=PAYMENT_APPROVED) 를 호출하면") {
             val result = service.confirmWebhook(tid = tid, eventType = "PAYMENT_APPROVED")
@@ -159,9 +170,12 @@ class PaymentDomainServiceTest : BehaviorSpec({
             method = PaymentMethod.CREDIT_CARD,
             amount = BigDecimal("20000"),
             currency = "KRW",
-        ).also { it.markReady(tid, "card", "http://checkout") }
+        ).also {
+            it.markReady(tid, "card", "http://checkout")
+            setAuditFields(it)
+        }
         every { paymentRepository.findByPgTransactionId(tid) } returns readyPayment
-        every { paymentRepository.save(any()) } answers { firstArg() }
+        every { paymentRepository.save(any()) } answers { firstArg<Payment>().also { p -> setAuditFields(p) } }
 
         When("confirmWebhook(eventType=PAYMENT_CANCELED) 를 호출하면") {
             val result = service.confirmWebhook(tid = tid, eventType = "PAYMENT_CANCELED")
@@ -195,13 +209,14 @@ class PaymentDomainServiceTest : BehaviorSpec({
         ).also {
             it.markReady(tid, "card", "http://checkout")
             it.markCompleted(ZonedDateTime.now())
+            setAuditFields(it)
         }
         every { paymentRepository.findByPgTransactionId(tid) } returns completedPayment
 
         When("이미 COMPLETED 상태에서 PAYMENT_APPROVED webhook 을 다시 수신하면") {
             val result = service.confirmWebhook(tid = tid, eventType = "PAYMENT_APPROVED")
 
-            Then("save 를 호출하지 않고 기존 Payment 를 반환한다 (멱등)") {
+            Then("save 를 호출하지 않고 기존 상태를 반환한다 (멱등)") {
                 result.status shouldBe PaymentStatus.COMPLETED
                 verify(exactly = 0) { paymentRepository.save(any()) }
             }
