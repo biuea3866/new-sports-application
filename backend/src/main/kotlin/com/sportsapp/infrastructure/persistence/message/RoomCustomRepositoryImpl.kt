@@ -19,12 +19,12 @@ class RoomCustomRepositoryImpl(
         val participantB = QRoomParticipant("participantB")
         return queryFactory.selectFrom(room)
             .join(participantA).on(
-                participantA.roomId.eq(room.id),
+                participantA.room.id.eq(room.id),
                 participantA.userId.eq(userIdA),
                 participantA.deletedAt.isNull,
             )
             .join(participantB).on(
-                participantB.roomId.eq(room.id),
+                participantB.room.id.eq(room.id),
                 participantB.userId.eq(userIdB),
                 participantB.deletedAt.isNull,
             )
@@ -40,7 +40,7 @@ class RoomCustomRepositoryImpl(
         val participant = QRoomParticipant.roomParticipant
         val query = queryFactory.selectFrom(room)
             .join(participant).on(
-                participant.roomId.eq(room.id),
+                participant.room.id.eq(room.id),
                 participant.userId.eq(userId),
                 participant.deletedAt.isNull,
             )

@@ -1,13 +1,16 @@
 package com.sportsapp.domain.message
 
 import com.sportsapp.domain.common.JpaAuditingBase
+import jakarta.persistence.CascadeType
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
+import jakarta.persistence.FetchType
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
+import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
 import java.time.ZonedDateTime
 
@@ -29,6 +32,12 @@ class Room(
     @Column(name = "last_message_at")
     var lastMessageAt: ZonedDateTime? = null
         private set
+
+    @OneToMany(mappedBy = "room", cascade = [CascadeType.PERSIST, CascadeType.MERGE], fetch = FetchType.LAZY)
+    val messages: MutableList<Message> = mutableListOf()
+
+    @OneToMany(mappedBy = "room", cascade = [CascadeType.PERSIST, CascadeType.MERGE], fetch = FetchType.LAZY)
+    val participants: MutableList<RoomParticipant> = mutableListOf()
 
     fun validateNotDeleted() {
         check(!isDeleted) { "Room is already deleted" }

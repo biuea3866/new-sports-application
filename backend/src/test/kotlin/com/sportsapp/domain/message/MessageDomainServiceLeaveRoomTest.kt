@@ -17,7 +17,7 @@ class MessageDomainServiceLeaveRoomTest : BehaviorSpec({
         val service = MessageDomainService(roomRepository, messageRepository, roomParticipantRepository)
 
         val room = Room.createDirect()
-        val participant = RoomParticipant.create(roomId = 1L, userId = 1L)
+        val participant = RoomParticipant.create(room = room, userId = 1L)
 
         every { roomRepository.findById(1L) } returns room
         every { roomParticipantRepository.findActiveByRoomIdAndUserId(1L, 1L) } returns participant
@@ -29,7 +29,7 @@ class MessageDomainServiceLeaveRoomTest : BehaviorSpec({
         When("leaveRoom 을 호출하면") {
             service.leaveRoom(roomId = 1L, userId = 1L)
 
-            Then("[U-03] Room 과 Message 가 함께 삭제된다") {
+            Then("Room 과 Message 가 함께 삭제된다") {
                 verify { messageRepository.softDeleteAllByRoomId(1L, 1L) }
                 verify { roomRepository.save(any()) }
             }
@@ -43,8 +43,8 @@ class MessageDomainServiceLeaveRoomTest : BehaviorSpec({
         val service = MessageDomainService(roomRepository, messageRepository, roomParticipantRepository)
 
         val room = Room.createGroup("테스트")
-        val participant = RoomParticipant.create(roomId = 2L, userId = 1L)
-        val remaining = listOf(RoomParticipant.create(roomId = 2L, userId = 2L))
+        val participant = RoomParticipant.create(room = room, userId = 1L)
+        val remaining = listOf(RoomParticipant.create(room = room, userId = 2L))
 
         every { roomRepository.findById(2L) } returns room
         every { roomParticipantRepository.findActiveByRoomIdAndUserId(2L, 1L) } returns participant
@@ -72,7 +72,7 @@ class MessageDomainServiceLeaveRoomTest : BehaviorSpec({
         every { roomParticipantRepository.findActiveByRoomIdAndUserId(3L, 99L) } returns null
 
         When("leaveRoom 을 호출하면") {
-            Then("[U-02] NotRoomParticipantException 이 발생한다") {
+            Then("NotRoomParticipantException 이 발생한다") {
                 shouldThrow<NotRoomParticipantException> {
                     service.leaveRoom(roomId = 3L, userId = 99L)
                 }
