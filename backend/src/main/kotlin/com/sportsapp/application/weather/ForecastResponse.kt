@@ -1,7 +1,7 @@
 package com.sportsapp.application.weather
 
-import com.sportsapp.domain.weather.Forecast
-import com.sportsapp.domain.weather.ForecastSlot
+import com.sportsapp.domain.weather.vo.Forecast
+import com.sportsapp.domain.weather.vo.ForecastSlot
 
 data class ForecastResponse(
     val slots: List<ForecastSlotResponse>,

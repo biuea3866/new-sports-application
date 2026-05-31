@@ -1,4 +1,6 @@
-package com.sportsapp.domain.weather
+package com.sportsapp.domain.weather.gateway
+
+import com.sportsapp.domain.weather.vo.Forecast
 
 /**
  * 위경도 좌표에 대한 단기예보를 조회하는 외부 Gateway.

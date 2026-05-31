@@ -1,4 +1,4 @@
-package com.sportsapp.infrastructure.weather
+package com.sportsapp.infrastructure.weather.gateway
 
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter

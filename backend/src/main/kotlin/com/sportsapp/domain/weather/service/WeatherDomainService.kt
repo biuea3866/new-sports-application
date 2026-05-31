@@ -1,5 +1,7 @@
-package com.sportsapp.domain.weather
+package com.sportsapp.domain.weather.service
 
+import com.sportsapp.domain.weather.gateway.WeatherGateway
+import com.sportsapp.domain.weather.vo.Forecast
 import org.springframework.stereotype.Service
 
 @Service

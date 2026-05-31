@@ -1,4 +1,4 @@
-package com.sportsapp.domain.weather
+package com.sportsapp.domain.weather.vo
 
 data class Forecast(
     val slots: List<ForecastSlot>,
