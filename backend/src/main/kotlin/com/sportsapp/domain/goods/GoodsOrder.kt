@@ -41,6 +41,7 @@ class GoodsOrder(
     }
 
     fun markPaid(paymentId: Long) {
+        if (status == GoodsOrderStatus.CONFIRMED && this.paymentId == paymentId) return
         if (!status.canTransitTo(GoodsOrderStatus.CONFIRMED)) {
             throw InvalidGoodsOrderStateException(status, GoodsOrderStatus.CONFIRMED)
         }

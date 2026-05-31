@@ -122,7 +122,7 @@ class GoodsOrderScenarioTest(
             }
 
             When("[S-list] GET /goods-orders/me로 내 주문 목록 조회하면") {
-                Then("해당 userId의 주문 목록만 반환된다") {
+                Then("해당 userId의 주문 목록만 반환되고 상태가 PENDING이다") {
                     mockMvc.perform(
                         post("/goods-orders")
                             .header("X-User-Id", "5")
@@ -136,7 +136,30 @@ class GoodsOrderScenarioTest(
                             .header("X-User-Id", "5")
                     ).andExpect(status().isOk)
                         .andExpect(jsonPath("$.content.length()").value(1))
-                        .andExpect(jsonPath("$.content[0].status").value("CONFIRMED"))
+                        .andExpect(jsonPath("$.content[0].status").value("PENDING"))
+                }
+            }
+
+            When("[S-03] 주문 생성 후 GET /goods-orders/{id}로 현재 상태를 조회하면") {
+                Then("PENDING 상태의 주문이 조회된다") {
+                    val result = mockMvc.perform(
+                        post("/goods-orders")
+                            .header("X-User-Id", "6")
+                            .header("Idempotency-Key", UUID.randomUUID().toString())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""{"method":"CREDIT_CARD","fromCart":false,"items":[{"productId":$productId,"quantity":1}]}""")
+                    ).andExpect(status().isAccepted)
+                        .andReturn()
+
+                    val orderId = objectMapper.readTree(result.response.contentAsString)
+                        .get("id").asLong()
+
+                    mockMvc.perform(
+                        get("/goods-orders/$orderId")
+                            .header("X-User-Id", "6")
+                    ).andExpect(status().isOk)
+                        .andExpect(jsonPath("$.status").value("PENDING"))
+                        .andExpect(jsonPath("$.id").value(orderId))
                 }
             }
         }

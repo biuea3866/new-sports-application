@@ -85,5 +85,54 @@ class GoodsOrderRepositoryTest(
                 }
             }
         }
+
+        Given("idempotencyKey로 주문 조회") {
+            When("존재하는 idempotencyKey로 findByIdempotencyKey를 호출하면") {
+                Then("정확히 1건이 반환된다") {
+                    val key = "test-idem-key-repo-01"
+                    goodsOrderRepository.save(GoodsOrder.create(userId = 20L, totalAmount = BigDecimal("15000"), idempotencyKey = key))
+
+                    val found = goodsOrderRepository.findByIdempotencyKey(key)
+                    found shouldNotBe null
+                    requireNotNull(found)
+                    found.userId shouldBe 20L
+                }
+            }
+
+            When("존재하지 않는 idempotencyKey로 findByIdempotencyKey를 호출하면") {
+                Then("null이 반환된다") {
+                    val found = goodsOrderRepository.findByIdempotencyKey("nonexistent-key-abc")
+                    found shouldBe null
+                }
+            }
+        }
+
+        Given("새로 생성된 주문 저장") {
+            When("GoodsOrder.create 후 save하면") {
+                Then("status가 PENDING이고 paymentId가 null인 상태로 저장된다") {
+                    val order = goodsOrderRepository.save(
+                        GoodsOrder.create(userId = 30L, totalAmount = BigDecimal("99000"))
+                    )
+                    val found = goodsOrderRepository.findById(order.id)
+                    requireNotNull(found)
+                    found.status shouldBe GoodsOrderStatus.PENDING
+                    found.paymentId shouldBe null
+                }
+            }
+        }
+
+        Given("동일 idempotencyKey로 두 번 insert 시도") {
+            When("동일 idempotencyKey로 insert를 두 번 시도하면") {
+                Then("unique 제약 위반으로 두 번째 저장이 실패한다") {
+                    val key = "dup-idem-key-unique-test"
+                    goodsOrderRepository.save(GoodsOrder.create(userId = 40L, totalAmount = BigDecimal("5000"), idempotencyKey = key))
+
+                    io.kotest.assertions.throwables.shouldThrow<Exception> {
+                        goodsOrderRepository.save(GoodsOrder.create(userId = 41L, totalAmount = BigDecimal("5000"), idempotencyKey = key))
+                        jdbcTemplate.execute("SELECT 1") // flush
+                    }
+                }
+            }
+        }
     }
 }
