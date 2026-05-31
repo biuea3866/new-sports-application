@@ -1,5 +1,6 @@
 package com.sportsapp.application.payment
 
+import com.sportsapp.domain.payment.ConfirmWebhookResult
 import com.sportsapp.domain.payment.OrderType
 import com.sportsapp.domain.payment.Payment
 import com.sportsapp.domain.payment.PaymentMethod
@@ -29,6 +30,18 @@ data class PaymentResponse(
             createdAt = payment.createdAt,
             paidAt = payment.paidAt,
             checkoutUrl = payment.checkoutUrl,
+        )
+
+        fun of(result: ConfirmWebhookResult): PaymentResponse = PaymentResponse(
+            id = result.id,
+            orderType = result.orderType,
+            orderId = result.orderId,
+            method = result.method,
+            amount = result.amount,
+            status = result.status,
+            createdAt = result.createdAt,
+            paidAt = result.paidAt,
+            checkoutUrl = result.checkoutUrl,
         )
     }
 }

@@ -172,13 +172,13 @@ class PaymentDomainService(
     )
 
     @Transactional
-    fun confirmWebhook(tid: String, eventType: String): Payment {
+    fun confirmWebhook(tid: String, eventType: String): ConfirmWebhookResult {
         val payment = paymentRepository.findByPgTransactionId(tid)
             ?: throw PaymentNotFoundException(-1L)
 
         return when (PgEventType.fromValueOrNull(eventType)) {
             PgEventType.PAYMENT_APPROVED -> {
-                if (payment.status == PaymentStatus.COMPLETED) return payment
+                if (payment.status == PaymentStatus.COMPLETED) return ConfirmWebhookResult.of(payment)
                 payment.markCompleted(ZonedDateTime.now())
                 val saved = paymentRepository.save(payment)
                 orderConfirmationGateway.confirm(
@@ -187,24 +187,26 @@ class PaymentDomainService(
                     paymentId = saved.id,
                 )
                 domainEventPublisher.publishAll(saved.pullDomainEvents())
-                saved
+                ConfirmWebhookResult.of(saved)
             }
             PgEventType.PAYMENT_CANCELED -> {
-                if (payment.status == PaymentStatus.CANCELLED) return payment
+                if (payment.status == PaymentStatus.CANCELLED) return ConfirmWebhookResult.of(payment)
                 payment.markCancelled()
-                paymentRepository.save(payment)
+                ConfirmWebhookResult.of(paymentRepository.save(payment))
             }
             else -> {
                 log.warn("confirmWebhook: 미인식 eventType={} tid={}", eventType, tid)
-                payment
+                ConfirmWebhookResult.of(payment)
             }
         }
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    fun findByPgTransactionIdOrThrow(pgTransactionId: String): Payment =
-        paymentRepository.findByPgTransactionId(pgTransactionId)
+    fun findByPgTransactionIdOrThrow(pgTransactionId: String): ConfirmWebhookResult {
+        val payment = paymentRepository.findByPgTransactionId(pgTransactionId)
             ?: throw PaymentNotFoundException(-1L)
+        return ConfirmWebhookResult.of(payment)
+    }
 
     fun findStatuses(paymentIds: List<Long>): Map<Long, PaymentStatus> {
         if (paymentIds.isEmpty()) return emptyMap()

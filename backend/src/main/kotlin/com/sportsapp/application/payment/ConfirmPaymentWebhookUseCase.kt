@@ -1,5 +1,6 @@
 package com.sportsapp.application.payment
 
+import com.sportsapp.domain.payment.ConfirmWebhookResult
 import com.sportsapp.domain.payment.PaymentDomainService
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.orm.ObjectOptimisticLockingFailureException
@@ -10,7 +11,7 @@ class ConfirmPaymentWebhookUseCase(
     private val paymentDomainService: PaymentDomainService,
 ) {
     fun execute(command: ConfirmPaymentWebhookCommand): PaymentResponse {
-        val payment = try {
+        val result: ConfirmWebhookResult = try {
             paymentDomainService.confirmWebhook(
                 tid = command.tid,
                 eventType = command.eventType,
@@ -20,6 +21,6 @@ class ConfirmPaymentWebhookUseCase(
         } catch (exception: ObjectOptimisticLockingFailureException) {
             paymentDomainService.findByPgTransactionIdOrThrow(command.tid)
         }
-        return PaymentResponse.of(payment)
+        return PaymentResponse.of(result)
     }
 }
