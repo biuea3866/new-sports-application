@@ -2,7 +2,7 @@
 
 > 작성일: 2026-05-31 | 작성자: biuea3866@gmail.com
 > 소스: B2 비즈니스 확장 — 정기결제로 LTV 상승 (시설 무제한·프리미엄·굿즈 할인)
-> 관련 PRD: [다이내믹 프라이싱](../20260531_dynamic-pricing/prd.md), [B2B 멀티테넌시](../20260531_b2b-multitenancy/prd.md)
+> 관련 PRD: [다이내믹 프라이싱](../20260531_dynamic-pricing/prd.md)
 > prd-reviewer 검수: 2026-05-31 NEEDS_REVISION → Must Fix 4건 반영 → **재검수 APPROVED** (하단 검수 이력)
 
 ---
@@ -62,7 +62,7 @@
 
 - 결제 엔진 재작성 — 기존 Payment 재사용, 정기결제 필드·스케줄만 추가
 - 실 PG 빌링 깊은 연동 — mock-pg 시뮬레이션 우선
-- B2B 조직 구독 — 멀티테넌시 PRD(C1 FR-05)와 엔진 공유, 본 PRD는 B2C 개인
+- B2B 조직 구독 — 본 PRD는 B2C 개인 구독에 집중
 - 복잡한 비례배분(proration) — 차기 주기 적용으로 시작
 
 ---
@@ -132,7 +132,6 @@
 - mock-pg로 빌링키 플로우 선완성, 실 PG는 `RecurringPaymentGateway` 교체.
 - 빌링키 암호화·키 관리 인프라(FR-00)가 FR-02 선행.
 - Hexagonal + Rich Domain, audit 6컬럼·soft delete, `@ManyToMany` 금지.
-- B2B 테넌트 구독(C1 FR-05)과 과금 엔진 공유 — 중복 구현 금지.
 
 ---
 
@@ -167,7 +166,6 @@
 | 2 | 해지 정책 — 즉시 환불 vs 주기말 | Legal/PO | FR-03 전 |
 | 3 | 결제 실패 유예 기간·재시도 횟수 | PO | FR-04 전 |
 | 4 | 혜택 충돌 — 구독 할인 + 쿠폰(B1) 스택 | PO | FR-05 전 |
-| 5 | B2B 테넌트 구독(C1)과 엔진 공유 범위 | 기술 리드 | FR-01 전 |
 | 6 | 정기청구 확정 방식 — 동기 응답 vs webhook | 기술 리드 | FR-04 전 |
 | 7 | 멱등키 포맷·재시도 키 차원 확정 (100자) | 기술 리드 | FR-04 전 |
 | 8 | 빌링키 암호화 키 관리 주체·로테이션 | 보안 | FR-00 전 |
