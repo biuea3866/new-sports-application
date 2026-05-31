@@ -2,22 +2,11 @@
 <SmellBaseline>
   <ManuallySuppressedIssues></ManuallySuppressedIssues>
   <CurrentIssues>
-    <ID>InvalidPackageDeclaration:BaseTimeResolver.kt$package com.sportsapp.infrastructure.weather</ID>
-    <ID>InvalidPackageDeclaration:Forecast.kt$package com.sportsapp.domain.weather</ID>
-    <ID>InvalidPackageDeclaration:ForecastResponse.kt$package com.sportsapp.application.weather</ID>
-    <ID>InvalidPackageDeclaration:GetForecastUseCase.kt$package com.sportsapp.application.weather</ID>
-    <ID>InvalidPackageDeclaration:GridConverter.kt$package com.sportsapp.infrastructure.weather</ID>
-    <ID>InvalidPackageDeclaration:GridConverterTest.kt$package com.sportsapp.infrastructure.weather</ID>
-    <ID>InvalidPackageDeclaration:KmaWeatherGatewayImpl.kt$package com.sportsapp.infrastructure.weather</ID>
-    <ID>InvalidPackageDeclaration:WeatherApiController.kt$package com.sportsapp.presentation.weather</ID>
-    <ID>InvalidPackageDeclaration:WeatherDomainService.kt$package com.sportsapp.domain.weather</ID>
-    <ID>InvalidPackageDeclaration:WeatherGateway.kt$package com.sportsapp.domain.weather</ID>
-    <ID>InvalidPackageDeclaration:WeatherProperties.kt$package com.sportsapp.infrastructure.weather</ID>
     <ID>LongMethod:MockPgGatewayImpl.kt$MockPgGatewayImpl$override fun prepare(request: PgPrepareRequest): PgPrepareResult</ID>
     <ID>LongMethod:PaymentDomainService.kt$PaymentDomainService$fun prepare( userId: Long, idempotencyKey: String, orderType: OrderType, orderId: Long, method: PaymentMethod, amount: BigDecimal, currency: String, itemName: String, returnUrl: String, failUrl: String, ): Payment</ID>
     <ID>LongMethod:PushChannelGateway.kt$PushChannelGateway$override fun send(notification: Notification): SendResult</ID>
     <ID>LongMethod:TicketOrderCustomRepositoryImpl.kt$TicketOrderCustomRepositoryImpl$override fun aggregateTicketSales( ownerUserId: Long, eventId: Long?, from: ZonedDateTime, to: ZonedDateTime, ): TicketSalesSummary</ID>
-    <ID>LongParameterList:Facility.kt$Facility$( @Id val id: String?, @Indexed @Field("code") val code: String, @Field("name") val name: String, @Indexed @Field("gu") val gu: String, @Field("type") val type: String, @Field("address") val address: String, @GeoSpatialIndexed(type = GeoSpatialIndexType.GEO_2DSPHERE) @Field("location") val location: Point, @Field("parking") val parking: Boolean, @Field("tel") val tel: String, @Field("home_page") val homePage: String, @Field("edu_yn") val eduYn: Boolean, @Field("meta") val meta: Map&lt;String, String&gt;, @Field("owner_user_id") var ownerUserId: Long? = null, )</ID>
+    <ID>LongParameterList:Facility.kt$Facility$( @Id val id: String?, @Indexed @Field("code") val code: String, @Field("name") val name: String, @Indexed @Field("gu") val gu: String, @Field("type") val type: String, @Field("address") val address: String, @GeoSpatialIndexed(type = GeoSpatialIndexType.GEO_2DSPHERE) @Field("location") val location: Point, @Field("parking") val parking: Boolean, @Field("tel") val tel: String, @Field("home_page") val homePage: String, @Field("edu_yn") val eduYn: Boolean, @Field("meta") val meta: Map&lt;String, String&gt;, ownerUserId: Long? = null, )</ID>
     <ID>LongParameterList:Payment.kt$Payment$( @Id @GeneratedValue(strategy = GenerationType.IDENTITY) val id: Long = 0L, @Column(name = "user_id", nullable = false) val userId: Long, @Column(name = "idempotency_key", nullable = false, unique = true, length = 100) val idempotencyKey: String, @Enumerated(EnumType.STRING) @Column(name = "order_type", nullable = false, length = 20) val orderType: OrderType, @Column(name = "order_id", nullable = false) val orderId: Long, @Enumerated(EnumType.STRING) @Column(name = "method", nullable = false, length = 30) val method: PaymentMethod, @Column(name = "amount", nullable = false, precision = 15, scale = 2) val amount: BigDecimal, @Column(name = "currency", nullable = false, length = 3) val currency: String, @Enumerated(EnumType.STRING) @Column(name = "status", nullable = false, length = 20) var status: PaymentStatus, @Column(name = "pg_transaction_id", nullable = true, length = 100) var pgTransactionId: String?, @Column(name = "provider", nullable = true, length = 32) var provider: String?, @Column(name = "checkout_url", nullable = true, length = 500) var checkoutUrl: String?, @Column(name = "paid_at", nullable = true) var paidAt: ZonedDateTime?, @Column(name = "failure_reason", nullable = true, length = 500) var failureReason: String?, @Version @Column(name = "version", nullable = false) val version: Long = 0, )</ID>
     <ID>LongParameterList:PaymentDomainService.kt$PaymentDomainService$( userId: Long, idempotencyKey: String, orderType: OrderType, orderId: Long, method: PaymentMethod, amount: BigDecimal, currency: String, itemName: String, returnUrl: String, failUrl: String, )</ID>
     <ID>MatchingDeclarationName:CancelPendingOrderPropagationTest.kt$BE11CancelPendingOrderPropagationTest : BehaviorSpec</ID>
@@ -29,13 +18,15 @@
     <ID>MatchingDeclarationName:TicketOrphanTest.kt$BE08TicketOrphanTest : BaseIntegrationTest</ID>
     <ID>ReturnCount:FacilityOwnerDomainService.kt$FacilityOwnerDomainService$private fun resolveCoordinates(attributes: FacilityAttributes): FacilityAttributes</ID>
     <ID>ReturnCount:KakaoGeocodingGatewayImpl.kt$private fun KakaoAddressResponse.toCoordinate(): Coordinate?</ID>
-    <ID>ReturnCount:PaymentDomainService.kt$PaymentDomainService$fun confirmWebhook(tid: String, eventType: String): Payment</ID>
+    <ID>ReturnCount:PaymentDomainService.kt$PaymentDomainService$@Transactional fun confirmWebhook(tid: String, eventType: String): Payment</ID>
+    <ID>ThrowsCount:CartDomainService.kt$CartDomainService$fun updateItem(userId: Long, itemId: Long, newQuantity: Int): Pair&lt;Cart, List&lt;CartItem&gt;&gt;</ID>
     <ID>TooManyFunctions:BookingDomainService.kt$BookingDomainService</ID>
     <ID>TooManyFunctions:FacilityMongoRepository.kt$FacilityMongoRepository : MongoRepository</ID>
     <ID>TooManyFunctions:FacilityRepository.kt$FacilityRepository</ID>
     <ID>TooManyFunctions:FacilityRepositoryImpl.kt$FacilityRepositoryImpl : FacilityRepository</ID>
     <ID>TooManyFunctions:GoodsDomainService.kt$GoodsDomainService</ID>
     <ID>TooManyFunctions:McpAuditLogJpaRepositoryImpl.kt$McpAuditLogJpaRepositoryImpl : McpAuditLogQueryDslRepository</ID>
+    <ID>TooManyFunctions:PaymentDomainService.kt$PaymentDomainService</ID>
     <ID>TooManyFunctions:TicketingDomainService.kt$TicketingDomainService</ID>
     <ID>UnusedParameter:GlobalExceptionHandler.kt$GlobalExceptionHandler$exception: ConstraintViolationException</ID>
   </CurrentIssues>

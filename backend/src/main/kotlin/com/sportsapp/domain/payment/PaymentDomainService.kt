@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionTemplate
 import java.time.ZonedDateTime
@@ -170,6 +171,7 @@ class PaymentDomainService(
         failUrl = "",
     )
 
+    @Transactional
     fun confirmWebhook(tid: String, eventType: String): Payment {
         val payment = paymentRepository.findByPgTransactionId(tid)
             ?: throw PaymentNotFoundException(-1L)
@@ -198,6 +200,11 @@ class PaymentDomainService(
             }
         }
     }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    fun findByPgTransactionIdOrThrow(pgTransactionId: String): Payment =
+        paymentRepository.findByPgTransactionId(pgTransactionId)
+            ?: throw PaymentNotFoundException(-1L)
 
     fun findStatuses(paymentIds: List<Long>): Map<Long, PaymentStatus> {
         if (paymentIds.isEmpty()) return emptyMap()
