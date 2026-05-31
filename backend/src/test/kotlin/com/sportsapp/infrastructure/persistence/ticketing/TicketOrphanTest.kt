@@ -60,7 +60,7 @@ class BE08TicketOrphanTest(
                     lockedSeatIds = listOf(seat.id),
                 )
             )
-            ticketRepositoryImpl.save(Ticket.issue(ticketOrderId = order.id, seatId = seat.id))
+            ticketRepositoryImpl.save(Ticket.issue(ticketOrder = order, seatId = seat.id))
 
             When("[R-01] cancelOrder를 호출하면") {
                 ticketingDomainService.cancelOrder(order.id)
@@ -70,7 +70,7 @@ class BE08TicketOrphanTest(
                     activeTickets.size shouldBe 0
 
                     val allTickets = ticketJpaRepository.findAll()
-                        .filter { it.ticketOrderId == order.id }
+                        .filter { it.ticketOrder?.id == order.id }
                     allTickets.size shouldBe 1
                     allTickets.first().status shouldBe TicketStatus.REVOKED
                 }

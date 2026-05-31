@@ -5,6 +5,6 @@ import com.sportsapp.domain.ticketing.TicketStatus
 import org.springframework.data.jpa.repository.JpaRepository
 
 interface TicketJpaRepository : JpaRepository<Ticket, Long> {
-    fun findByTicketOrderIdAndDeletedAtIsNull(ticketOrderId: Long): List<Ticket>
-    fun findByTicketOrderIdAndStatusAndDeletedAtIsNull(ticketOrderId: Long, status: TicketStatus): List<Ticket>
+    fun findByTicketOrder_IdAndDeletedAtIsNull(ticketOrderId: Long): List<Ticket>
+    fun findByTicketOrder_IdAndStatusAndDeletedAtIsNull(ticketOrderId: Long, status: TicketStatus): List<Ticket>
 }

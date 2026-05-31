@@ -5,17 +5,21 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
+import jakarta.persistence.FetchType
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
+import jakarta.persistence.JoinColumn
+import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import java.util.UUID
 
 @Entity
 @Table(name = "tickets")
 class Ticket(
-    @Column(name = "ticket_order_id", nullable = true)
-    val ticketOrderId: Long?,
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ticket_order_id")
+    val ticketOrder: TicketOrder?,
 
     @Column(name = "seat_id", nullable = false)
     val seatId: Long,
@@ -33,7 +37,7 @@ class Ticket(
     @Column(name = "id")
     val id: Long = 0
 
-    val isComplimentary: Boolean get() = ticketOrderId == null
+    val isComplimentary: Boolean get() = ticketOrder == null
 
     fun revoke() {
         status.requireCanTransitTo(TicketStatus.REVOKED)
@@ -41,15 +45,15 @@ class Ticket(
     }
 
     companion object {
-        fun issue(ticketOrderId: Long, seatId: Long): Ticket = Ticket(
-            ticketOrderId = ticketOrderId,
+        fun issue(ticketOrder: TicketOrder, seatId: Long): Ticket = Ticket(
+            ticketOrder = ticketOrder,
             seatId = seatId,
             status = TicketStatus.ISSUED,
             code = generateCode(),
         )
 
         fun issueComplimentary(seatId: Long): Ticket = Ticket(
-            ticketOrderId = null,
+            ticketOrder = null,
             seatId = seatId,
             status = TicketStatus.ISSUED,
             code = generateCode(),

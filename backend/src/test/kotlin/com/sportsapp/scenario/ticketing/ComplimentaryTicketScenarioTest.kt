@@ -6,12 +6,15 @@ import com.sportsapp.application.ticketing.IssueComplimentaryTicketUseCase
 import com.sportsapp.domain.ticketing.Event
 import com.sportsapp.domain.ticketing.EventStatus
 import com.sportsapp.domain.ticketing.Seat
+import com.sportsapp.domain.ticketing.OrderStatus
 import com.sportsapp.domain.ticketing.Ticket
+import com.sportsapp.domain.ticketing.TicketOrder
 import com.sportsapp.domain.ticketing.TicketStatus
 import com.sportsapp.infrastructure.persistence.ticketing.EventJpaRepository
 import com.sportsapp.infrastructure.persistence.ticketing.SeatJpaRepository
 import com.sportsapp.infrastructure.persistence.ticketing.TicketJpaRepository
 import com.sportsapp.infrastructure.persistence.ticketing.TicketOrderJpaRepository
+import com.sportsapp.infrastructure.persistence.ticketing.TicketOrderRepositoryImpl
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.springframework.beans.factory.annotation.Autowired
@@ -31,6 +34,7 @@ class ComplimentaryTicketScenarioTest(
     @Autowired private val eventJpaRepository: EventJpaRepository,
     @Autowired private val seatJpaRepository: SeatJpaRepository,
     @Autowired private val ticketJpaRepository: TicketJpaRepository,
+    @Autowired private val ticketOrderRepositoryImpl: TicketOrderRepositoryImpl,
     @Autowired private val jdbcTemplate: JdbcTemplate,
 ) : BaseIntegrationTest() {
 
@@ -57,13 +61,13 @@ class ComplimentaryTicketScenarioTest(
                 )
                 val result = issueComplimentaryTicketUseCase.execute(command)
 
-                Then("[S-01] DB 에 ticketOrderId = null 인 Ticket 이 저장되고 응답의 status 가 ISSUED 이다") {
+                Then("[S-01] DB 에 ticketOrder = null 인 Ticket 이 저장되고 응답의 status 가 ISSUED 이다") {
                     result.status shouldBe TicketStatus.ISSUED
                     result.ticketId shouldNotBe 0L
 
                     val saved = ticketJpaRepository.findById(result.ticketId).orElse(null)
                     saved shouldNotBe null
-                    requireNotNull(saved).ticketOrderId shouldBe null
+                    requireNotNull(saved).ticketOrder shouldBe null
                     saved.status shouldBe TicketStatus.ISSUED
                 }
             }
@@ -84,14 +88,17 @@ class ComplimentaryTicketScenarioTest(
                 )
                 val complimentaryResult = issueComplimentaryTicketUseCase.execute(complimentaryCommand)
 
-                val normalTicket = ticketJpaRepository.save(Ticket.issue(ticketOrderId = 42L, seatId = seat2.id))
+                val normalOrder = ticketOrderRepositoryImpl.save(
+                    TicketOrder(userId = ownerUserId, status = OrderStatus.PENDING, paymentId = null, lockedEventId = event.id, lockedSeatIds = listOf(seat2.id))
+                )
+                val normalTicket = ticketJpaRepository.save(Ticket.issue(ticketOrder = normalOrder, seatId = seat2.id))
 
-                Then("[S-02] 두 Ticket 이 동시에 존재하며 ticketOrderId 가 각각 null / 42 이다") {
+                Then("[S-02] 두 Ticket 이 동시에 존재하며 ticketOrder 가 각각 null / normalOrder 이다") {
                     val complimentarySaved = ticketJpaRepository.findById(complimentaryResult.ticketId).orElse(null)
-                    requireNotNull(complimentarySaved).ticketOrderId shouldBe null
+                    requireNotNull(complimentarySaved).ticketOrder shouldBe null
 
                     val normalSaved = ticketJpaRepository.findById(normalTicket.id).orElse(null)
-                    requireNotNull(normalSaved).ticketOrderId shouldBe 42L
+                    requireNotNull(normalSaved).ticketOrder?.id shouldBe normalOrder.id
                 }
             }
         }
