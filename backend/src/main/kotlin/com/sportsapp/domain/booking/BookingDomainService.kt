@@ -100,6 +100,14 @@ class BookingDomainService(
         return saved
     }
 
+    fun cancelPending(bookingId: Long) {
+        val booking = bookingRepository.findById(bookingId)
+            ?: throw ResourceNotFoundException("Booking", bookingId)
+        if (booking.status == BookingStatus.CANCELLED) return
+        booking.cancel()
+        bookingRepository.save(booking)
+    }
+
     fun cancel(bookingId: Long, cancelledByUserId: Long, reason: String?): Booking {
         val booking = bookingRepository.findById(bookingId)
             ?: throw ResourceNotFoundException("Booking", bookingId)

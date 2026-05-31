@@ -192,7 +192,13 @@ class PaymentDomainService(
             PgEventType.PAYMENT_CANCELED -> {
                 if (payment.status == PaymentStatus.CANCELLED) return ConfirmWebhookResult.of(payment)
                 payment.markCancelled()
-                ConfirmWebhookResult.of(paymentRepository.save(payment))
+                val saved = paymentRepository.save(payment)
+                orderConfirmationGateway.cancel(
+                    orderType = saved.orderType,
+                    orderId = saved.orderId,
+                    paymentId = saved.id,
+                )
+                ConfirmWebhookResult.of(saved)
             }
             else -> {
                 log.warn("confirmWebhook: 미인식 eventType={} tid={}", eventType, tid)
