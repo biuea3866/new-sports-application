@@ -12,7 +12,7 @@ class CartDomainService(
 ) {
 
     fun getOrCreateCart(userId: Long): Cart =
-        cartRepository.findByUserId(userId) ?: cartRepository.save(Cart(userId = userId))
+        cartRepository.findActiveByUserId(userId) ?: cartRepository.save(Cart(userId = userId))
 
     fun getCartWithItems(userId: Long): Pair<Cart, List<CartItem>> {
         val cart = getOrCreateCart(userId)
