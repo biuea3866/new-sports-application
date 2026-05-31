@@ -146,7 +146,7 @@ class PaymentWebhookConfirmTest : BehaviorSpec({
         }
     }
 
-    Given("PAYMENT_CANCELED 처리 시 도메인 이벤트 미발행 확인") {
+    Given("PAYMENT_CANCELED 처리 시 orderConfirmationGateway.cancel 호출 확인") {
         val paymentRepository = mockk<PaymentRepository>()
         val paymentGateway = mockk<PaymentGateway>()
         val orderConfirmationGateway = mockk<OrderConfirmationGateway>()
@@ -160,14 +160,26 @@ class PaymentWebhookConfirmTest : BehaviorSpec({
         )
 
         val tid = "MOCK_CARD_u07_01"
-        val readyPayment = buildReadyPayment(tid = tid, idempotencyKey = "webhook-u07-key")
+        val orderId = 300L
+        val readyPayment = buildReadyPayment(tid = tid, idempotencyKey = "webhook-u07-key", orderType = OrderType.BOOKING, orderId = orderId)
         every { paymentRepository.findByPgTransactionId(tid) } returns readyPayment
         every { paymentRepository.save(any()) } answers { firstArg<Payment>().also { p -> setAuditFields(p) } }
+        justRun { orderConfirmationGateway.cancel(any(), any(), any()) }
 
         When("confirmWebhook(eventType=PAYMENT_CANCELED) 를 호출하면") {
             service.confirmWebhook(tid = tid, eventType = "PAYMENT_CANCELED")
 
-            Then("PaymentCompletedEvent 가 발행되지 않는다 (publishAll 미호출)") {
+            Then("orderConfirmationGateway.cancel 이 payment.orderType 과 orderId 로 1회 호출된다") {
+                verify(exactly = 1) {
+                    orderConfirmationGateway.cancel(
+                        orderType = OrderType.BOOKING,
+                        orderId = orderId,
+                        paymentId = readyPayment.id,
+                    )
+                }
+            }
+
+            Then("PaymentCompletedEvent 는 발행되지 않는다 (publishAll 미호출)") {
                 verify(exactly = 0) { domainEventPublisher.publishAll(any()) }
                 verify(exactly = 0) { orderConfirmationGateway.confirm(any(), any(), any()) }
             }

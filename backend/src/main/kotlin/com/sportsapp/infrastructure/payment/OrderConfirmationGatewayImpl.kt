@@ -21,4 +21,12 @@ class OrderConfirmationGatewayImpl(
             OrderType.TICKETING -> ticketingDomainService.confirmOrder(orderId, paymentId)
         }
     }
+
+    override fun cancel(orderType: OrderType, orderId: Long, paymentId: Long) {
+        when (orderType) {
+            OrderType.BOOKING -> bookingDomainService.cancelPending(orderId)
+            OrderType.GOODS -> goodsDomainService.cancelPendingOrder(orderId)
+            OrderType.TICKETING -> ticketingDomainService.cancelOrder(orderId)
+        }
+    }
 }
