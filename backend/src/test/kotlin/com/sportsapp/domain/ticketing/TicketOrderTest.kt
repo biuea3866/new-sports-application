@@ -23,15 +23,15 @@ class TicketOrderTest : BehaviorSpec({
         When("confirm(paymentId, seatIds)를 호출하면") {
             val tickets = order.confirm(paymentId = 999L, seatIds = listOf(101L, 102L))
 
-            Then("[U-01] 상태가 CONFIRMED로 전이된다") {
+            Then("상태가 CONFIRMED로 전이된다") {
                 order.status shouldBe OrderStatus.CONFIRMED
             }
 
-            Then("[U-01] paymentId가 설정된다") {
+            Then("paymentId가 설정된다") {
                 order.paymentId shouldBe 999L
             }
 
-            Then("[U-01] seatIds 수만큼 Ticket이 반환된다") {
+            Then("seatIds 수만큼 Ticket이 반환된다") {
                 tickets shouldHaveSize 2
                 tickets[0].seatId shouldBe 101L
                 tickets[1].seatId shouldBe 102L
@@ -43,7 +43,7 @@ class TicketOrderTest : BehaviorSpec({
         val order = buildOrder(OrderStatus.CONFIRMED)
 
         When("confirm()을 다시 호출하면") {
-            Then("[U-01] InvalidOrderStateException을 던진다") {
+            Then("InvalidOrderStateException을 던진다") {
                 shouldThrow<InvalidOrderStateException> {
                     order.confirm(paymentId = 999L, seatIds = listOf(101L))
                 }
@@ -55,7 +55,7 @@ class TicketOrderTest : BehaviorSpec({
         val order = buildOrder(OrderStatus.CANCELLED)
 
         When("confirm()을 호출하면") {
-            Then("[U-01] InvalidOrderStateException을 던진다") {
+            Then("InvalidOrderStateException을 던진다") {
                 shouldThrow<InvalidOrderStateException> {
                     order.confirm(paymentId = 999L, seatIds = listOf(101L))
                 }
@@ -63,13 +63,23 @@ class TicketOrderTest : BehaviorSpec({
         }
     }
 
-    Given("PENDING 상태의 TicketOrder") {
+    Given("PENDING 상태의 TicketOrder에 cancel()을 호출하면") {
         val order = buildOrder(OrderStatus.PENDING)
 
         When("cancel()을 호출하면") {
             order.cancel()
             Then("상태가 CANCELLED로 전이된다") {
                 order.status shouldBe OrderStatus.CANCELLED
+            }
+        }
+    }
+
+    Given("CONFIRMED 상태의 TicketOrder에 cancel()을 호출하면") {
+        val order = buildOrder(OrderStatus.CONFIRMED)
+
+        Then("InvalidOrderStateException이 발생한다") {
+            shouldThrow<InvalidOrderStateException> {
+                order.cancel()
             }
         }
     }
@@ -96,7 +106,7 @@ class TicketOrderTest : BehaviorSpec({
         val order = buildOrder(OrderStatus.PENDING)
         val tickets = order.confirm(paymentId = 1L, seatIds = listOf(201L, 202L))
 
-        Then("[U-03] 각 Ticket code가 64자 unique 식별자로 생성된다") {
+        Then("각 Ticket code가 64자 unique 식별자로 생성된다") {
             tickets.forEach { ticket ->
                 ticket.code shouldNotBe null
                 ticket.code.length shouldBe 64

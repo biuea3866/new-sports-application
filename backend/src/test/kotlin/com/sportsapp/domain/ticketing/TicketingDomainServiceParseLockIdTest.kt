@@ -1,5 +1,6 @@
 package com.sportsapp.domain.ticketing
 
+import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.ticketing.exception.MalformedLockIdException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
@@ -21,6 +22,7 @@ class TicketingDomainServiceParseLockIdTest : BehaviorSpec({
         seatLockStore = seatLockStore,
         ticketOrderRepository = ticketOrderRepository,
         ticketRepository = mockk(relaxed = true),
+        domainEventPublisher = mockk(relaxed = true),
     )
 
     Given("non-numeric lockId 토큰") {
