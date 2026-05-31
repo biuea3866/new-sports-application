@@ -7,7 +7,7 @@ import io.kotest.matchers.shouldBe
 class CartItemTest : BehaviorSpec({
 
     Given("quantity 3짜리 CartItem이 있을 때") {
-        val cartItem = CartItem(cartId = 1L, productId = 10L, quantity = 3)
+        val cartItem = CartItem(cart = Cart(userId = 1L), productId = 10L, quantity = 3)
 
         When("addQuantity(2)를 호출하면") {
             Then("[U-02 merge] quantity가 5로 병합된다") {

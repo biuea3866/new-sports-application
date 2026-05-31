@@ -36,7 +36,7 @@ class CartDomainService(
             existingItem.addQuantity(quantity)
             cartItemRepository.save(existingItem)
         } else {
-            cartItemRepository.save(CartItem(cartId = cart.id, productId = productId, quantity = quantity))
+            cartItemRepository.save(CartItem(cart = cart, productId = productId, quantity = quantity))
         }
 
         return cart to cartItemRepository.findByCartId(cart.id)
@@ -46,7 +46,7 @@ class CartDomainService(
         val cart = getOrCreateCart(userId)
         val item = cartItemRepository.findById(itemId)
             ?: throw ResourceNotFoundException("CartItem", itemId)
-        if (item.cartId != cart.id) throw CartAccessDeniedException(itemId)
+        if (item.cart.id != cart.id) throw CartAccessDeniedException(itemId)
 
         val stock = stockRepository.findByProductId(item.productId)
             ?: throw ResourceNotFoundException("Stock", item.productId)
@@ -61,7 +61,7 @@ class CartDomainService(
         val cart = getOrCreateCart(userId)
         val item = cartItemRepository.findById(itemId)
             ?: throw ResourceNotFoundException("CartItem", itemId)
-        if (item.cartId != cart.id) throw CartAccessDeniedException(itemId)
+        if (item.cart.id != cart.id) throw CartAccessDeniedException(itemId)
 
         item.softDelete(userId)
         cartItemRepository.save(item)

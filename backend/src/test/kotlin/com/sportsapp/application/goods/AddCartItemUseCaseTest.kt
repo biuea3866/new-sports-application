@@ -50,7 +50,7 @@ class AddCartItemUseCaseTest : BehaviorSpec({
 
     Given("유효한 AddCartItemCommand가 주어졌을 때") {
         val cart = Cart(userId = 1L)
-        val cartItem = CartItem(cartId = 0L, productId = 10L, quantity = 2)
+        val cartItem = CartItem(cart = Cart(userId = 1L), productId = 10L, quantity = 2)
         val command = AddCartItemCommand(userId = 1L, productId = 10L, quantity = 2)
 
         every {

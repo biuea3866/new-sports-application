@@ -66,7 +66,7 @@ class CartRepositoryTest(
                 Then("findByCartId는 삭제된 항목을 반환하지 않는다") {
                     val cart = cartRepository.save(Cart(userId = 3L))
                     val item = cartItemRepository.save(
-                        CartItem(cartId = cart.id, productId = 100L, quantity = 2)
+                        CartItem(cart = cart, productId = 100L, quantity = 2)
                     )
 
                     val beforeDelete = cartItemRepository.findByCartId(cart.id)
@@ -83,11 +83,11 @@ class CartRepositoryTest(
             When("soft-delete된 CartItem과 동일 (cartId, productId)로 새 CartItem을 insert하면") {
                 Then("unique 제약 위반 없이 저장된다") {
                     val cart = cartRepository.save(Cart(userId = 999L))
-                    val item = cartItemRepository.save(CartItem(cartId = cart.id, productId = 200L, quantity = 1))
+                    val item = cartItemRepository.save(CartItem(cart = cart, productId = 200L, quantity = 1))
                     item.softDelete(userId = 999L)
                     cartItemRepository.save(item)
 
-                    val newItem = cartItemRepository.save(CartItem(cartId = cart.id, productId = 200L, quantity = 2))
+                    val newItem = cartItemRepository.save(CartItem(cart = cart, productId = 200L, quantity = 2))
                     newItem.id shouldNotBe item.id
                 }
             }
