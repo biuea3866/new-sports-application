@@ -8,6 +8,7 @@ plugins {
     kotlin("plugin.jpa")
     kotlin("kapt")
     id("io.gitlab.arturbosch.detekt")
+    id("org.jetbrains.kotlinx.kover")
 }
 
 val javaVersion: String by project
