@@ -23,6 +23,9 @@ class Comment private constructor(
     @JoinColumn(name = "post_id", nullable = false)
     val post: Post,
 
+    @Column(name = "post_id", insertable = false, updatable = false)
+    val postId: Long,
+
     @Column(name = "user_id", nullable = false)
     val userId: Long,
 
@@ -47,6 +50,7 @@ class Comment private constructor(
             require(content.length <= 2000) { "content must not exceed 2000 characters" }
             return Comment(
                 post = post,
+                postId = post.id,
                 userId = userId,
                 content = content,
             )

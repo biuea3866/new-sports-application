@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class PostDomainService(
@@ -43,6 +44,7 @@ class PostDomainService(
     fun search(criteria: PostSearchCriteria, pageable: Pageable): Page<Post> =
         postCustomRepository.findByCriteria(criteria, pageable)
 
+    @Transactional(readOnly = true)
     fun getDetail(postId: Long): Pair<Post, List<Comment>> {
         val post = postRepository.findById(postId)
             ?: throw ResourceNotFoundException("Post", postId)
