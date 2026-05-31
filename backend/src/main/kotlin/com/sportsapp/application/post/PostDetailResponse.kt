@@ -37,7 +37,7 @@ data class CommentResponse(
     companion object {
         fun of(comment: Comment): CommentResponse = CommentResponse(
             id = comment.id,
-            postId = comment.post.id,
+            postId = comment.postId,
             userId = comment.userId,
             content = comment.content,
             createdAt = comment.createdAt,
