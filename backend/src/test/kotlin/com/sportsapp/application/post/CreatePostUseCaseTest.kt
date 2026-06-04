@@ -1,8 +1,11 @@
 package com.sportsapp.application.post
 
-import com.sportsapp.domain.post.Post
-import com.sportsapp.domain.post.PostDomainService
-import com.sportsapp.domain.post.PostType
+import com.sportsapp.application.post.dto.CreatePostCommand
+import com.sportsapp.application.post.usecase.CreatePostUseCase
+
+import com.sportsapp.domain.post.entity.Post
+import com.sportsapp.domain.post.service.PostDomainService
+import com.sportsapp.domain.post.vo.PostType
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every

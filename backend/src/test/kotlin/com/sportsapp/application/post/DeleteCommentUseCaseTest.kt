@@ -1,8 +1,11 @@
 package com.sportsapp.application.post
 
+import com.sportsapp.application.post.dto.DeleteCommentCommand
+import com.sportsapp.application.post.usecase.DeleteCommentUseCase
+
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
-import com.sportsapp.domain.post.NotCommentOwnerException
-import com.sportsapp.domain.post.PostDomainService
+import com.sportsapp.domain.post.exception.NotCommentOwnerException
+import com.sportsapp.domain.post.service.PostDomainService
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every

@@ -1,6 +1,9 @@
 package com.sportsapp.domain.post
 
-import com.sportsapp.domain.post.NotCommentOwnerException
+import com.sportsapp.domain.post.entity.Comment
+import com.sportsapp.domain.post.entity.Post
+
+import com.sportsapp.domain.post.exception.NotCommentOwnerException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe

@@ -1,10 +1,12 @@
 package com.sportsapp.application.post
 
+import com.sportsapp.application.post.usecase.GetPostUseCase
+
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
-import com.sportsapp.domain.post.Comment
-import com.sportsapp.domain.post.Post
-import com.sportsapp.domain.post.PostDomainService
-import com.sportsapp.domain.post.PostType
+import com.sportsapp.domain.post.entity.Comment
+import com.sportsapp.domain.post.entity.Post
+import com.sportsapp.domain.post.service.PostDomainService
+import com.sportsapp.domain.post.vo.PostType
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -50,8 +52,8 @@ class GetPostUseCaseTest : BehaviorSpec({
         When("execute를 호출하면") {
             val result = getPostUseCase.execute(1L)
 
-            Then("[U-03] 댓글 3건이 포함된 PostDetailResponse가 반환된다") {
-                result.comments.size shouldBe 3
+            Then("[U-03] 댓글 3건이 포함된 Pair가 반환된다") {
+                result.second.size shouldBe 3
             }
         }
     }

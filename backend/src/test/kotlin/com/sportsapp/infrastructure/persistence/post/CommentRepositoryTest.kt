@@ -1,10 +1,10 @@
 package com.sportsapp.infrastructure.persistence.post
 
 import com.sportsapp.BaseJpaIntegrationTest
-import com.sportsapp.domain.post.Comment
-import com.sportsapp.domain.post.CommentRepository
-import com.sportsapp.domain.post.Post
-import com.sportsapp.domain.post.PostRepository
+import com.sportsapp.domain.post.entity.Comment
+import com.sportsapp.domain.post.repository.CommentRepository
+import com.sportsapp.domain.post.entity.Post
+import com.sportsapp.domain.post.repository.PostRepository
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe

@@ -1,8 +1,10 @@
 package com.sportsapp.application.post
 
-import com.sportsapp.domain.post.Comment
-import com.sportsapp.domain.post.Post
-import com.sportsapp.domain.post.PostDomainService
+import com.sportsapp.application.post.usecase.ListCommentsUseCase
+
+import com.sportsapp.domain.post.entity.Comment
+import com.sportsapp.domain.post.entity.Post
+import com.sportsapp.domain.post.service.PostDomainService
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -37,10 +39,10 @@ class ListCommentsUseCaseTest : BehaviorSpec({
         When("execute를 호출하면") {
             val result = listCommentsUseCase.execute(postId = 1L, page = 0, size = 20)
 
-            Then("[U-03] 댓글 3건이 담긴 CommentPageResponse가 반환된다") {
+            Then("[U-03] 댓글 3건이 담긴 Page가 반환된다") {
                 result.totalElements shouldBe 3
                 result.content.size shouldBe 3
-                result.page shouldBe 0
+                result.number shouldBe 0
                 result.size shouldBe 20
             }
         }

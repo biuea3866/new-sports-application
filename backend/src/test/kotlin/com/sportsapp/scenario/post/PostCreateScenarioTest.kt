@@ -1,7 +1,7 @@
 package com.sportsapp.scenario.post
 
 import com.sportsapp.BaseJpaIntegrationTest
-import com.sportsapp.infrastructure.persistence.post.PostJpaRepository
+import com.sportsapp.infrastructure.post.mysql.PostJpaRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.http.MediaType
