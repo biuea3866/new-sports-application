@@ -2,7 +2,7 @@ package com.sportsapp.presentation.dashboard
 
 import com.sportsapp.application.dashboard.DashboardSummaryResponse
 import com.sportsapp.application.dashboard.GetMyDashboardSummaryUseCase
-import com.sportsapp.domain.user.vo.UserPrincipal
+import com.sportsapp.domain.user.UserPrincipal
 import org.springframework.context.annotation.Profile
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
