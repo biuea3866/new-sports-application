@@ -1,4 +1,4 @@
-package com.sportsapp.application.image
+package com.sportsapp.application.image.dto
 
 data class CreatePresignedUploadUrlCommand(
     val filename: String,

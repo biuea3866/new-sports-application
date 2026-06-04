@@ -1,6 +1,6 @@
-package com.sportsapp.presentation.image
+package com.sportsapp.presentation.image.dto.request
 
-import com.sportsapp.application.image.CreatePresignedUploadUrlCommand
+import com.sportsapp.application.image.dto.CreatePresignedUploadUrlCommand
 
 data class PresignedUploadRequest(
     val filename: String,

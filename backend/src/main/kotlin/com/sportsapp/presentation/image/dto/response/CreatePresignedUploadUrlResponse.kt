@@ -1,4 +1,4 @@
-package com.sportsapp.application.image
+package com.sportsapp.presentation.image.dto.response
 
 import com.sportsapp.domain.common.storage.PresignedUpload
 import java.time.ZonedDateTime

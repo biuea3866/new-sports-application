@@ -1,7 +1,8 @@
-package com.sportsapp.presentation.image
+package com.sportsapp.presentation.image.controller
 
-import com.sportsapp.application.image.CreatePresignedUploadUrlResponse
-import com.sportsapp.application.image.CreatePresignedUploadUrlUseCase
+import com.sportsapp.application.image.usecase.CreatePresignedUploadUrlUseCase
+import com.sportsapp.presentation.image.dto.request.PresignedUploadRequest
+import com.sportsapp.presentation.image.dto.response.CreatePresignedUploadUrlResponse
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -19,5 +20,5 @@ class ImageApiController(
     fun createPresignedUploadUrl(
         @RequestBody request: PresignedUploadRequest,
     ): CreatePresignedUploadUrlResponse =
-        createPresignedUploadUrlUseCase.execute(request.toCommand())
+        CreatePresignedUploadUrlResponse.of(createPresignedUploadUrlUseCase.execute(request.toCommand()))
 }
