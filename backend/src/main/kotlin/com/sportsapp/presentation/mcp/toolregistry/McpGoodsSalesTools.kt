@@ -1,7 +1,7 @@
 package com.sportsapp.presentation.mcp.toolregistry
 
 import com.sportsapp.application.goods.usecase.GetGoodsSalesUseCase
-import com.sportsapp.presentation.goods.dto.response.GoodsSalesResponse
+import com.sportsapp.application.goods.dto.GoodsSalesResult
 import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
 import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.audit.McpToolAuditHelper.withAudit
@@ -34,7 +34,7 @@ class McpGoodsSalesTools(
         name = "getGoodsSales",
         description = "인증된 B2B 운영자의 상품 판매 통계를 조회합니다. 활성 상품 수·품절 상품 수·확정 주문 수·총 매출액을 반환합니다.",
     )
-    fun getGoodsSales(): McpResponse<GoodsSalesResponse> =
+    fun getGoodsSales(): McpResponse<GoodsSalesResult> =
         mcpAuditLogAsyncRecorder.withAudit("getGoodsSales", emptyMap()) {
             val principal = SecurityContextHolder.getContext().authentication?.principal as? McpAuthenticatedPrincipal
                 ?: throw AccessDeniedException("MCP authentication required")

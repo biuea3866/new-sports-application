@@ -1,10 +1,10 @@
 package com.sportsapp.domain.notification
 
-import com.sportsapp.domain.notification.entity.Notification
-import com.sportsapp.domain.notification.entity.NotificationStatus
-import com.sportsapp.domain.notification.exception.InvalidNotificationStateException
-import com.sportsapp.domain.notification.vo.NotificationChannel
-import com.sportsapp.domain.notification.vo.NotificationPayload
+import com.sportsapp.domain.notification.Notification
+import com.sportsapp.domain.notification.NotificationStatus
+import com.sportsapp.domain.notification.InvalidNotificationStateException
+import com.sportsapp.domain.notification.NotificationChannel
+import com.sportsapp.domain.notification.NotificationPayload
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldNotBeNull

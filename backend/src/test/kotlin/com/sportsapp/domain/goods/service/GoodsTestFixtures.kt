@@ -1,5 +1,9 @@
 package com.sportsapp.domain.goods.service
 
+import com.sportsapp.domain.goods.entity.Product
+import com.sportsapp.domain.goods.vo.ProductCategory
+import com.sportsapp.domain.goods.entity.ProductStatus
+import com.sportsapp.domain.goods.entity.Stock
 import java.math.BigDecimal
 
 internal fun testProduct(ownerId: Long = 1L): Product = Product(

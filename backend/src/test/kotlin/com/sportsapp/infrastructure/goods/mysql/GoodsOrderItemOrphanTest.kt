@@ -32,8 +32,8 @@ class BE11GoodsOrderItemOrphanTest(
             val order = goodsOrderRepository.save(GoodsOrder.create(userId = 1L, totalAmount = BigDecimal("10000")))
             val items = goodsOrderItemRepository.saveAll(
                 listOf(
-                    GoodsOrderItem(order = order, productId = 10L, quantity = 1, unitPrice = BigDecimal("5000")),
-                    GoodsOrderItem(order = order, productId = 20L, quantity = 2, unitPrice = BigDecimal("2500")),
+                    GoodsOrderItem(orderId = order.id, productId = 10L, quantity = 1, unitPrice = BigDecimal("5000")),
+                    GoodsOrderItem(orderId = order.id, productId = 20L, quantity = 2, unitPrice = BigDecimal("2500")),
                 )
             )
 
@@ -52,10 +52,10 @@ class BE11GoodsOrderItemOrphanTest(
             val orderA = goodsOrderRepository.save(GoodsOrder.create(userId = 1L, totalAmount = BigDecimal("5000")))
             val orderB = goodsOrderRepository.save(GoodsOrder.create(userId = 2L, totalAmount = BigDecimal("3000")))
             goodsOrderItemRepository.saveAll(
-                listOf(GoodsOrderItem(order = orderA, productId = 10L, quantity = 1, unitPrice = BigDecimal("5000")))
+                listOf(GoodsOrderItem(orderId = orderA.id, productId = 10L, quantity = 1, unitPrice = BigDecimal("5000")))
             )
             goodsOrderItemRepository.saveAll(
-                listOf(GoodsOrderItem(order = orderB, productId = 20L, quantity = 1, unitPrice = BigDecimal("3000")))
+                listOf(GoodsOrderItem(orderId = orderB.id, productId = 20L, quantity = 1, unitPrice = BigDecimal("3000")))
             )
 
             When("[R-02] orderA 아이템만 softDelete하면") {
@@ -73,7 +73,7 @@ class BE11GoodsOrderItemOrphanTest(
         Given("[R-03] softDelete 후 deletedAt이 현재 시각 이내로 저장된다") {
             val order = goodsOrderRepository.save(GoodsOrder.create(userId = 1L, totalAmount = BigDecimal("5000")))
             goodsOrderItemRepository.saveAll(
-                listOf(GoodsOrderItem(order = order, productId = 10L, quantity = 1, unitPrice = BigDecimal("5000")))
+                listOf(GoodsOrderItem(orderId = order.id, productId = 10L, quantity = 1, unitPrice = BigDecimal("5000")))
             )
 
             When("[R-03] findByOrderId 후 softDelete + saveAll 하면") {

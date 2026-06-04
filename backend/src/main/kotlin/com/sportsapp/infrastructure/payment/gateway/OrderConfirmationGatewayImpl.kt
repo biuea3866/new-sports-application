@@ -1,7 +1,7 @@
 package com.sportsapp.infrastructure.payment.gateway
 
 import com.sportsapp.domain.booking.service.BookingDomainService
-import com.sportsapp.domain.goods.GoodsDomainService
+import com.sportsapp.domain.goods.service.GoodsDomainService
 import com.sportsapp.domain.payment.gateway.OrderConfirmationGateway
 import com.sportsapp.domain.payment.vo.OrderType
 import com.sportsapp.domain.ticketing.TicketingDomainService

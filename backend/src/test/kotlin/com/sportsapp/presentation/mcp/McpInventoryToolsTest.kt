@@ -1,7 +1,7 @@
 package com.sportsapp.presentation.mcp
 
-import com.sportsapp.application.goods.GetInventoryUseCase
-import com.sportsapp.application.goods.InventoryResponse
+import com.sportsapp.application.goods.usecase.GetInventoryUseCase
+import com.sportsapp.application.goods.dto.InventoryResult
 import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
 import com.sportsapp.domain.mcp.McpScope
 import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
@@ -41,7 +41,7 @@ class McpInventoryToolsTest : BehaviorSpec({
     }
 
     Given("getInventory tool") {
-        val inventoryResponse = InventoryResponse(
+        val inventoryResult = InventoryResult(
             ownerUserId = 10L,
             activeProductCount = 5L,
             outOfStockProductCount = 2L,
@@ -49,7 +49,7 @@ class McpInventoryToolsTest : BehaviorSpec({
 
         When("[U-05] 인증된 운영자(userId=10)로 getInventory를 호출하면") {
             setupPrincipal(10L)
-            every { getInventoryUseCase.execute(10L) } returns inventoryResponse
+            every { getInventoryUseCase.execute(10L) } returns inventoryResult
 
             val result = mcpInventoryTools.getInventory()
 
@@ -65,7 +65,7 @@ class McpInventoryToolsTest : BehaviorSpec({
 
         When("[U-06] getInventory를 호출하면 UseCase가 principal.userId를 인자로 호출된다") {
             setupPrincipal(10L)
-            every { getInventoryUseCase.execute(10L) } returns inventoryResponse
+            every { getInventoryUseCase.execute(10L) } returns inventoryResult
 
             mcpInventoryTools.getInventory()
 
@@ -76,7 +76,7 @@ class McpInventoryToolsTest : BehaviorSpec({
 
         When("[U-07] 재고가 없는 운영자(userId=99)로 getInventory를 호출하면") {
             setupPrincipal(99L)
-            every { getInventoryUseCase.execute(99L) } returns InventoryResponse(
+            every { getInventoryUseCase.execute(99L) } returns InventoryResult(
                 ownerUserId = 99L,
                 activeProductCount = 0L,
                 outOfStockProductCount = 0L,
@@ -108,7 +108,7 @@ class McpInventoryToolsTest : BehaviorSpec({
 
         When("[U-audit-05] getInventory 호출 시 audit recorder가 1회 호출된다") {
             setupPrincipal(10L)
-            every { getInventoryUseCase.execute(10L) } returns inventoryResponse
+            every { getInventoryUseCase.execute(10L) } returns inventoryResult
 
             mcpInventoryTools.getInventory()
 

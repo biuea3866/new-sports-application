@@ -2,8 +2,8 @@ package com.sportsapp.application.dashboard
 
 import com.sportsapp.domain.booking.service.BookingDomainService
 import com.sportsapp.domain.booking.dto.FacilityKpiSummary
-import com.sportsapp.domain.goods.GoodsDomainService
-import com.sportsapp.domain.goods.GoodsKpiSummary
+import com.sportsapp.domain.goods.service.GoodsDomainService
+import com.sportsapp.domain.goods.dto.GoodsKpiSummary
 import com.sportsapp.domain.ticketing.TicketingDomainService
 import com.sportsapp.domain.ticketing.TicketKpiSummary
 import io.kotest.core.spec.style.BehaviorSpec

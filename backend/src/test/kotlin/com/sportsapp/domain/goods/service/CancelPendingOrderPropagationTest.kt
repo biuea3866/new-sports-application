@@ -1,5 +1,12 @@
 package com.sportsapp.domain.goods.service
 
+import com.sportsapp.domain.goods.entity.GoodsOrder
+import com.sportsapp.domain.goods.entity.GoodsOrderItem
+import com.sportsapp.domain.goods.entity.GoodsOrderStatus
+import com.sportsapp.domain.goods.exception.InvalidGoodsOrderStateException
+import com.sportsapp.domain.goods.repository.GoodsOrderItemRepository
+import com.sportsapp.domain.goods.repository.GoodsOrderRepository
+import com.sportsapp.domain.goods.repository.StockRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -33,7 +40,7 @@ class BE11CancelPendingOrderPropagationTest : BehaviorSpec({
         val service = buildService(goodsOrderRepository, goodsOrderItemRepository, stockRepository)
 
         val order = GoodsOrder.create(userId = 1L, totalAmount = BigDecimal("10000"))
-        val item = GoodsOrderItem(order = order, productId = 10L, quantity = 2, unitPrice = BigDecimal("5000"))
+        val item = GoodsOrderItem(orderId = order.id, productId = 10L, quantity = 2, unitPrice = BigDecimal("5000"))
         val stock = testStock(quantity = 5)
 
         every { goodsOrderRepository.findById(1L) } returns order

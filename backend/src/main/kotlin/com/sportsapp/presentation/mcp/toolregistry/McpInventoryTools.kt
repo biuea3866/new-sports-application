@@ -1,7 +1,7 @@
 package com.sportsapp.presentation.mcp.toolregistry
 
 import com.sportsapp.application.goods.usecase.GetInventoryUseCase
-import com.sportsapp.presentation.goods.dto.response.InventoryResponse
+import com.sportsapp.application.goods.dto.InventoryResult
 import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
 import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.audit.McpToolAuditHelper.withAudit
@@ -34,7 +34,7 @@ class McpInventoryTools(
         name = "getInventory",
         description = "인증된 B2B 운영자의 상품 재고 현황을 조회합니다. 활성 상품 수와 품절 상품 수를 반환합니다.",
     )
-    fun getInventory(): McpResponse<InventoryResponse> =
+    fun getInventory(): McpResponse<InventoryResult> =
         mcpAuditLogAsyncRecorder.withAudit("getInventory", emptyMap()) {
             val principal = SecurityContextHolder.getContext().authentication?.principal as? McpAuthenticatedPrincipal
                 ?: throw AccessDeniedException("MCP authentication required")

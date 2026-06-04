@@ -1,16 +1,16 @@
 package com.sportsapp.infrastructure.persistence.dashboard
 
 import com.sportsapp.BaseJpaIntegrationTest
-import com.sportsapp.domain.goods.Product
-import com.sportsapp.domain.goods.ProductCategory
-import com.sportsapp.domain.goods.ProductStatus
-import com.sportsapp.domain.goods.Stock
-import com.sportsapp.domain.goods.StockCustomRepository
+import com.sportsapp.domain.goods.entity.Product
+import com.sportsapp.domain.goods.vo.ProductCategory
+import com.sportsapp.domain.goods.entity.ProductStatus
+import com.sportsapp.domain.goods.entity.Stock
+import com.sportsapp.domain.goods.repository.StockCustomRepository
 import com.sportsapp.domain.ticketing.Event
 import com.sportsapp.domain.ticketing.EventStatus
-import com.sportsapp.infrastructure.persistence.goods.ProductJpaRepository
-import com.sportsapp.infrastructure.persistence.goods.StockCustomRepositoryImpl
-import com.sportsapp.infrastructure.persistence.goods.StockJpaRepository
+import com.sportsapp.infrastructure.goods.mysql.ProductJpaRepository
+import com.sportsapp.infrastructure.goods.mysql.StockCustomRepositoryImpl
+import com.sportsapp.infrastructure.goods.mysql.StockJpaRepository
 import com.sportsapp.infrastructure.persistence.ticketing.EventCustomRepositoryImpl
 import com.sportsapp.infrastructure.persistence.ticketing.EventJpaRepository
 import io.kotest.matchers.shouldBe

@@ -1,6 +1,6 @@
 package com.sportsapp.presentation.consumer
 
-import com.sportsapp.application.notification.EnqueueNotificationUseCase
+import com.sportsapp.application.notification.usecase.EnqueueNotificationUseCase
 import org.springframework.kafka.annotation.KafkaListener
 import org.springframework.stereotype.Component
 

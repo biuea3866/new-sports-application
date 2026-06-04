@@ -1,6 +1,6 @@
 package com.sportsapp.presentation.notification.controller
 
-import com.sportsapp.presentation.notification.dto.request.SendNotificationRequest
+import com.sportsapp.presentation.notification.SendNotificationRequest
 import com.sportsapp.presentation.notification.dto.response.NotificationResponse
 import com.sportsapp.application.notification.usecase.SendNotificationUseCase
 import org.springframework.http.ResponseEntity

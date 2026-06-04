@@ -3,8 +3,8 @@ package com.sportsapp.infrastructure.payment.gateway
 import com.sportsapp.domain.ticketing.TicketOrderResult
 import com.sportsapp.domain.booking.entity.Booking
 import com.sportsapp.domain.booking.service.BookingDomainService
-import com.sportsapp.domain.goods.GoodsDomainService
-import com.sportsapp.domain.goods.GoodsOrder
+import com.sportsapp.domain.goods.service.GoodsDomainService
+import com.sportsapp.domain.goods.entity.GoodsOrder
 import com.sportsapp.domain.payment.vo.OrderType
 import com.sportsapp.domain.ticketing.TicketingDomainService
 import io.kotest.core.spec.style.BehaviorSpec

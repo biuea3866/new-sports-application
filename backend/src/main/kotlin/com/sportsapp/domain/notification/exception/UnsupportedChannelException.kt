@@ -2,7 +2,7 @@ package com.sportsapp.domain.notification.exception
 
 import com.sportsapp.domain.common.BusinessException
 import com.sportsapp.domain.common.ErrorStatus
-import com.sportsapp.domain.notification.vo.NotificationChannel
+import com.sportsapp.domain.notification.NotificationChannel
 
 class UnsupportedChannelException(
     channel: NotificationChannel,

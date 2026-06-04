@@ -1,6 +1,6 @@
 package com.sportsapp.application.notification.usecase
 
-import com.sportsapp.domain.notification.service.NotificationDomainService
+import com.sportsapp.domain.notification.NotificationDomainService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 

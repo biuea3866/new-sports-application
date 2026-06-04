@@ -1,4 +1,4 @@
-package com.sportsapp.application.notification
+package com.sportsapp.presentation.notification.dto.response
 
 import com.sportsapp.domain.notification.PushToken
 

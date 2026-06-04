@@ -1,7 +1,7 @@
 package com.sportsapp.scenario.notification
 
-import com.sportsapp.infrastructure.notification.mysql.NotificationJpaRepository
-import com.sportsapp.presentation.notification.worker.PaymentCompletedEvent
+import com.sportsapp.infrastructure.notification.NotificationJpaRepository
+import com.sportsapp.presentation.consumer.PaymentCompletedEvent
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import org.apache.kafka.clients.producer.ProducerConfig

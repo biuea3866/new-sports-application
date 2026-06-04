@@ -1,10 +1,10 @@
 package com.sportsapp.presentation.notification.dto.response
 
 import com.sportsapp.application.notification.dto.NotificationPageResult
-import com.sportsapp.domain.notification.entity.Notification
-import com.sportsapp.domain.notification.vo.NotificationChannel
-import com.sportsapp.domain.notification.dto.NotificationResult
-import com.sportsapp.domain.notification.entity.NotificationStatus
+import com.sportsapp.domain.notification.Notification
+import com.sportsapp.domain.notification.NotificationChannel
+import com.sportsapp.domain.notification.NotificationResult
+import com.sportsapp.domain.notification.NotificationStatus
 import org.springframework.data.domain.Page
 import java.time.ZonedDateTime
 

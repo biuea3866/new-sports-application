@@ -1,8 +1,8 @@
 package com.sportsapp.application.notification.usecase
 
-import com.sportsapp.application.notification.dto.EnqueueNotificationCommand
-import com.sportsapp.domain.notification.service.NotificationDomainService
-import com.sportsapp.domain.notification.entity.NotificationStatus
+import com.sportsapp.application.notification.EnqueueNotificationCommand
+import com.sportsapp.domain.notification.NotificationDomainService
+import com.sportsapp.domain.notification.NotificationStatus
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional

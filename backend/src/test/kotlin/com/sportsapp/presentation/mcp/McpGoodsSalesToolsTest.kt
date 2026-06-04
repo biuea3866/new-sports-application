@@ -1,7 +1,7 @@
 package com.sportsapp.presentation.mcp
 
-import com.sportsapp.application.goods.GetGoodsSalesUseCase
-import com.sportsapp.application.goods.GoodsSalesResponse
+import com.sportsapp.application.goods.usecase.GetGoodsSalesUseCase
+import com.sportsapp.application.goods.dto.GoodsSalesResult
 import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
 import com.sportsapp.domain.mcp.McpScope
 import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
@@ -42,7 +42,7 @@ class McpGoodsSalesToolsTest : BehaviorSpec({
     }
 
     Given("getGoodsSales tool") {
-        val salesResponse = GoodsSalesResponse(
+        val salesResponse = GoodsSalesResult(
             ownerUserId = 10L,
             activeProductCount = 5L,
             outOfStockProductCount = 2L,
@@ -80,7 +80,7 @@ class McpGoodsSalesToolsTest : BehaviorSpec({
 
         When("[U-03] 판매 실적이 없는 운영자(userId=99)로 getGoodsSales를 호출하면") {
             setupPrincipal(99L)
-            every { getGoodsSalesUseCase.execute(99L) } returns GoodsSalesResponse(
+            every { getGoodsSalesUseCase.execute(99L) } returns GoodsSalesResult(
                 ownerUserId = 99L,
                 activeProductCount = 0L,
                 outOfStockProductCount = 0L,
