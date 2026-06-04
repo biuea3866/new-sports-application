@@ -39,7 +39,7 @@ class CreateMyProductUseCaseTest : BehaviorSpec({
             status = ProductStatus.INACTIVE,
             ownerId = ownerUserId,
         )
-        val stock = Stock(productId = 0L, quantity = 0)
+        val stock = Stock(productId = product.id, quantity = 0)
 
         every { ownershipGuard.authUserId() } returns ownerUserId
         every {

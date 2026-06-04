@@ -21,6 +21,7 @@ class CartRepositoryImpl(
         return saved
     }
 
-    override fun findByUserId(userId: Long): Cart? =
-        cartJpaRepository.findByUserIdAndDeletedAtIsNull(userId)
+    override fun findActiveByUserId(userId: Long): Cart? = cartJpaRepository.findByUserIdAndDeletedAtIsNull(userId)
+
+    override fun findByUserId(userId: Long): Cart? = cartJpaRepository.findByUserIdAndDeletedAtIsNull(userId)
 }

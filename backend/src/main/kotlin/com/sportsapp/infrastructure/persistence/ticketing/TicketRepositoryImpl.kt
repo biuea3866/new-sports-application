@@ -16,5 +16,5 @@ class TicketRepositoryImpl(
         ticketJpaRepository.saveAll(tickets)
 
     override fun findByTicketOrderId(ticketOrderId: Long): List<Ticket> =
-        ticketJpaRepository.findByTicketOrderIdAndDeletedAtIsNull(ticketOrderId)
+        ticketJpaRepository.findByTicketOrder_IdAndStatusAndDeletedAtIsNull(ticketOrderId, com.sportsapp.domain.ticketing.TicketStatus.ISSUED)
 }

@@ -1,4 +1,4 @@
-package com.sportsapp.infrastructure.weather
+package com.sportsapp.infrastructure.weather.gateway
 
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe

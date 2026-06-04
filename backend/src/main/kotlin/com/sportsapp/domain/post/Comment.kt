@@ -3,9 +3,12 @@ package com.sportsapp.domain.post
 import com.sportsapp.domain.common.JpaAuditingBase
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.FetchType
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
+import jakarta.persistence.JoinColumn
+import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 
 @Entity
@@ -16,7 +19,11 @@ class Comment private constructor(
     @Column(name = "id")
     val id: Long = 0L,
 
-    @Column(name = "post_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "post_id", nullable = false)
+    val post: Post,
+
+    @Column(name = "post_id", insertable = false, updatable = false)
     val postId: Long,
 
     @Column(name = "user_id", nullable = false)
@@ -38,11 +45,12 @@ class Comment private constructor(
     }
 
     companion object {
-        fun create(postId: Long, userId: Long, content: String): Comment {
+        fun create(post: Post, userId: Long, content: String): Comment {
             require(content.isNotBlank()) { "content must not be blank" }
             require(content.length <= 2000) { "content must not exceed 2000 characters" }
             return Comment(
-                postId = postId,
+                post = post,
+                postId = post.id,
                 userId = userId,
                 content = content,
             )

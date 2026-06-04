@@ -17,14 +17,12 @@ class BookingDomainServiceLockTest : BehaviorSpec({
     val slotRepository = mockk<SlotRepository>()
     val distributedLock = mockk<DistributedLock>()
     val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
-    val paymentRefundGateway = mockk<PaymentRefundGateway>(relaxed = true)
 
     val service = BookingDomainService(
         bookingRepository,
         slotRepository,
         distributedLock,
         domainEventPublisher,
-        paymentRefundGateway,
     )
 
     Given("[U-01] tryLock이 false를 반환하는 상황") {
@@ -50,7 +48,7 @@ class BookingDomainServiceLockTest : BehaviorSpec({
         )
         every { distributedLock.tryLock(any(), any(), any<Duration>()) } returns true
         every { distributedLock.unlock(any(), any()) } returns true
-        every { slotRepository.findById(42L) } returns slot
+        every { slotRepository.findForUpdateById(42L) } returns slot
         every { bookingRepository.countBySlotIdAndStatusIn(42L, any()) } returns 1L
 
         When("requestBooking을 호출하면") {
@@ -65,7 +63,7 @@ class BookingDomainServiceLockTest : BehaviorSpec({
     Given("[U-03] 락 획득 성공 + slot 조회 실패 (중간 예외 발생)") {
         every { distributedLock.tryLock(any(), any(), any<Duration>()) } returns true
         every { distributedLock.unlock(any(), any()) } returns true
-        every { slotRepository.findById(999L) } returns null
+        every { slotRepository.findForUpdateById(999L) } returns null
 
         When("requestBooking을 호출하면") {
             Then("[U-03] 예외 발생 시에도 unlock이 finally에서 호출된다") {
@@ -88,14 +86,14 @@ class BookingDomainServiceLockTest : BehaviorSpec({
         val booking = Booking.createPending(userId = 1L, slotId = 42L)
         every { distributedLock.tryLock(any(), any(), any<Duration>()) } returns true
         every { distributedLock.unlock(any(), any()) } returns true
-        every { slotRepository.findById(42L) } returns slot
+        every { slotRepository.findForUpdateById(42L) } returns slot
         every { bookingRepository.countBySlotIdAndStatusIn(42L, any()) } returns 2L
         every { bookingRepository.save(any()) } returns booking
 
-        When("requestBooking을 호출하면") {
+        When("requestBooking 을 호출하면") {
             val result = service.requestBooking(userId = 1L, slotId = 42L)
 
-            Then("PENDING 상태의 Booking이 반환된다") {
+            Then("PENDING 상태의 BookingResult 가 반환된다") {
                 result.status shouldBe BookingStatus.PENDING
                 result.userId shouldBe 1L
                 result.slotId shouldBe 42L

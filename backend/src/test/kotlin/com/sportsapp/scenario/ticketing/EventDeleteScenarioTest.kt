@@ -145,7 +145,7 @@ class EventDeleteScenarioTest(
 
             ticketJpaRepository.save(
                 Ticket(
-                    ticketOrderId = 999L,
+                    ticketOrder = null,
                     seatId = 1L,
                     status = TicketStatus.ISSUED,
                     code = UUID.randomUUID().toString().replace("-", "") +

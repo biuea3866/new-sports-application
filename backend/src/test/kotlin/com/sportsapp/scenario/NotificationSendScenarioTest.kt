@@ -29,16 +29,16 @@ class NotificationSendScenarioTest(
                     payload = payload,
                 )
 
-                Then("[S-01] DB 에 status=SENT, sentAt 이 채워진 row 가 저장된다") {
-                    result.status shouldBe NotificationStatus.SENT
-                    result.sentAt.shouldNotBeNull()
+                Then("DB 에 QUEUED 상태로 row 가 저장되고 dispatch 이벤트가 발행된다") {
+                    // send() 는 트랜잭션 내에서 QUEUED 로 저장하고 이벤트를 발행한다.
+                    // 실제 발송(gateway.send) 은 AFTER_COMMIT 이벤트 핸들러에서 비동기 수행된다.
+                    result.status shouldBe NotificationStatus.QUEUED
                     result.userId shouldBe userId
                     result.templateId shouldBe templateId
 
                     val stored = notificationRepository.findById(result.id)
                     stored.shouldNotBeNull()
-                    stored.status shouldBe NotificationStatus.SENT
-                    stored.sentAt.shouldNotBeNull()
+                    stored.status shouldBe NotificationStatus.QUEUED
                 }
             }
         }
@@ -54,13 +54,13 @@ class NotificationSendScenarioTest(
                     payload = null,
                 )
 
-                Then("[S-02] throw 하지 않고 FAILED status 로 반환되며 DB 에도 FAILED 로 저장된다") {
-                    result.status shouldBe NotificationStatus.FAILED
+                Then("throw 하지 않고 QUEUED 상태로 row 가 저장된다 — gateway 없는 채널은 dispatchById 에서 FAILED 처리된다") {
+                    result.status shouldBe NotificationStatus.QUEUED
                     result.channel shouldBe NotificationChannel.EMAIL
 
                     val stored = notificationRepository.findById(result.id)
                     stored.shouldNotBeNull()
-                    stored.status shouldBe NotificationStatus.FAILED
+                    stored.status shouldBe NotificationStatus.QUEUED
                 }
             }
         }

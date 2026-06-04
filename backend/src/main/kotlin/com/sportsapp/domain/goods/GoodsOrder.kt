@@ -1,13 +1,16 @@
 package com.sportsapp.domain.goods
 
 import com.sportsapp.domain.common.JpaAuditingBase
+import jakarta.persistence.CascadeType
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
+import jakarta.persistence.FetchType
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
+import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
 import java.math.BigDecimal
 
@@ -36,11 +39,19 @@ class GoodsOrder(
     @Column(name = "id")
     val id: Long = 0
 
+    @OneToMany(mappedBy = "order", cascade = [CascadeType.PERSIST, CascadeType.MERGE], fetch = FetchType.LAZY)
+    val items: MutableList<GoodsOrderItem> = mutableListOf()
+
+    fun addItem(item: GoodsOrderItem) {
+        items.add(item)
+    }
+
     fun requireOwnedBy(requesterId: Long) {
         if (userId != requesterId) throw NotGoodsOrderOwnerException(id)
     }
 
     fun markPaid(paymentId: Long) {
+        if (status == GoodsOrderStatus.CONFIRMED && this.paymentId == paymentId) return
         if (!status.canTransitTo(GoodsOrderStatus.CONFIRMED)) {
             throw InvalidGoodsOrderStateException(status, GoodsOrderStatus.CONFIRMED)
         }

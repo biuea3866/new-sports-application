@@ -63,6 +63,7 @@ class Notification(
     }
 
     fun markFailed() {
+        if (!status.canTransitToFailed()) throw InvalidNotificationStateException(status)
         status = NotificationStatus.FAILED
     }
 

@@ -2,6 +2,7 @@ package com.sportsapp.application.notification
 
 import com.sportsapp.domain.notification.Notification
 import com.sportsapp.domain.notification.NotificationChannel
+import com.sportsapp.domain.notification.NotificationResult
 import com.sportsapp.domain.notification.NotificationStatus
 import org.springframework.data.domain.Page
 import java.time.ZonedDateTime
@@ -17,6 +18,17 @@ data class NotificationResponse(
     val createdAt: ZonedDateTime,
 ) {
     companion object {
+        fun of(result: NotificationResult) = NotificationResponse(
+            id = result.id,
+            userId = result.userId,
+            channel = result.channel,
+            templateId = result.templateId,
+            status = result.status,
+            sentAt = result.sentAt,
+            readAt = result.readAt,
+            createdAt = result.createdAt,
+        )
+
         fun of(notification: Notification) = NotificationResponse(
             id = notification.id,
             userId = notification.userId,

@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired
 class RoomRepositoryTest(
     @Autowired private val roomJpaRepository: RoomJpaRepository,
     @Autowired private val roomParticipantJpaRepository: RoomParticipantJpaRepository,
+    @Autowired private val roomParticipantCustomRepositoryImpl: RoomParticipantCustomRepositoryImpl,
 ) : BaseIntegrationTest() {
 
     init {
@@ -21,7 +22,7 @@ class RoomRepositoryTest(
 
             When("findByIdAndDeletedAtIsNull 로 조회하면") {
                 val found = roomJpaRepository.findByIdAndDeletedAtIsNull(saved.id)
-                Then("[R-01] ZonedDateTime 이 UTC 로 저장되고 조회 시 복원된다") {
+                Then("ZonedDateTime 이 UTC 로 저장되고 조회 시 복원된다") {
                     found.shouldNotBeNull()
                     found.createdAt.shouldNotBeNull()
                     found.updatedAt.shouldNotBeNull()
@@ -39,7 +40,7 @@ class RoomRepositoryTest(
 
             When("findByIdAndDeletedAtIsNull 로 조회하면") {
                 val found = roomJpaRepository.findByIdAndDeletedAtIsNull(saved.id)
-                Then("[R-02] deleted_at 필터가 적용되어 null 을 반환한다") {
+                Then("deleted_at 필터가 적용되어 null 을 반환한다") {
                     found.shouldBeNull()
                 }
             }
@@ -47,12 +48,11 @@ class RoomRepositoryTest(
 
         Given("UNIQUE(room_id, user_id, deleted_at) 제약 검증") {
             val room = roomJpaRepository.save(Room.createDirect())
-            roomParticipantJpaRepository.save(RoomParticipant.create(room.id, 100L))
+            roomParticipantJpaRepository.save(RoomParticipant.create(room, 100L))
 
-            When("동일 (room_id, user_id) 로 existsByRoomIdAndUserIdAndDeletedAtIsNull 를 조회하면") {
-                val exists = roomParticipantJpaRepository
-                    .existsByRoomIdAndUserIdAndDeletedAtIsNull(room.id, 100L)
-                Then("[R-03] true 를 반환해 application 레벨에서 중복을 차단한다") {
+            When("동일 (room_id, user_id) 로 existsByRoomIdAndUserId 를 조회하면") {
+                val exists = roomParticipantCustomRepositoryImpl.existsByRoomIdAndUserId(room.id, 100L)
+                Then("true 를 반환해 application 레벨에서 중복을 차단한다") {
                     exists shouldBe true
                 }
             }

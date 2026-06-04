@@ -122,7 +122,7 @@ class EventHostApiScenarioTest(
             val seatToIssue = seats.first()
             ticketJpaRepository.save(
                 Ticket(
-                    ticketOrderId = 1L,
+                    ticketOrder = null,
                     seatId = seatToIssue.id,
                     status = TicketStatus.ISSUED,
                     code = UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", ""),

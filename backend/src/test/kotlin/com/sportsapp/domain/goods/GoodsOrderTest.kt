@@ -52,8 +52,17 @@ class GoodsOrderTest : BehaviorSpec({
             }
         }
 
-        When("markPaid를 다시 호출하면") {
-            Then("[U-02] InvalidGoodsOrderStateException이 발생한다") {
+        When("동일 paymentId로 markPaid를 재호출하면 (웹훅 중복 처리)") {
+            Then("상태가 CONFIRMED로 유지되고 예외가 발생하지 않는다") {
+                val order = confirmedOrder()
+                order.markPaid(10L)
+                order.status shouldBe GoodsOrderStatus.CONFIRMED
+                order.paymentId shouldBe 10L
+            }
+        }
+
+        When("다른 paymentId로 markPaid를 호출하면") {
+            Then("InvalidGoodsOrderStateException이 발생한다") {
                 val order = confirmedOrder()
                 shouldThrow<InvalidGoodsOrderStateException> { order.markPaid(20L) }
             }

@@ -1,6 +1,7 @@
 package com.sportsapp.application.post
 
 import com.sportsapp.domain.post.Comment
+import com.sportsapp.domain.post.Post
 import com.sportsapp.domain.post.PostDomainService
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -15,8 +16,10 @@ class ListCommentsUseCaseTest : BehaviorSpec({
     val postDomainService = mockk<PostDomainService>()
     val listCommentsUseCase = ListCommentsUseCase(postDomainService)
 
-    fun makeComment(postId: Long, userId: Long, content: String): Comment {
-        val comment = Comment.create(postId = postId, userId = userId, content = content)
+    val post = Post.create(userId = 1L, title = "제목", content = "내용")
+
+    fun makeComment(post: Post, userId: Long, content: String): Comment {
+        val comment = Comment.create(post = post, userId = userId, content = content)
         val superclass = comment.javaClass.superclass
         listOf("createdAt", "updatedAt").forEach { fieldName ->
             val field = superclass.getDeclaredField(fieldName)
@@ -27,7 +30,7 @@ class ListCommentsUseCaseTest : BehaviorSpec({
     }
 
     Given("[U-03] Post에 댓글이 3건 있는 상태에서") {
-        val comments = (1..3).map { makeComment(postId = 1L, userId = it.toLong(), content = "댓글 $it") }
+        val comments = (1..3).map { makeComment(post = post, userId = it.toLong(), content = "댓글 $it") }
         val commentPage = PageImpl(comments, PageRequest.of(0, 20), 3)
         every { postDomainService.listComments(postId = 1L, page = 0, size = 20) } returns commentPage
 

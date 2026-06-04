@@ -8,11 +8,14 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.transaction.support.TransactionTemplate
 
 class MessageDomainServiceScenarioTest(
     @Autowired private val messageDomainService: MessageDomainService,
     @Autowired private val roomRepository: RoomRepository,
     @Autowired private val roomParticipantRepository: RoomParticipantRepository,
+    @Autowired private val messageRepository: MessageRepository,
+    @Autowired private val transactionTemplate: TransactionTemplate,
 ) : BaseIntegrationTest() {
 
     init {
@@ -27,11 +30,11 @@ class MessageDomainServiceScenarioTest(
                     content = "안녕하세요!",
                 )
 
-                Then("[S-01] room, participant, message 가 모두 저장된다") {
+                Then("room, participant, message 가 모두 저장된다") {
                     roomRepository.findById(room.id).shouldNotBeNull()
                     roomParticipantRepository.findActiveByRoomId(room.id) shouldHaveSize 2
                     message.content shouldBe "안녕하세요!"
-                    message.roomId shouldBe room.id
+                    message.room.id shouldBe room.id
                 }
             }
         }
@@ -44,7 +47,7 @@ class MessageDomainServiceScenarioTest(
             roomRepository.save(savedRoom)
 
             When("삭제된 Room 에 메시지를 보내면") {
-                Then("[S-02] ResourceNotFoundException 을 던진다") {
+                Then("ResourceNotFoundException 을 던진다") {
                     shouldThrow<ResourceNotFoundException> {
                         messageDomainService.sendMessage(
                             roomId = room.id,
@@ -61,7 +64,7 @@ class MessageDomainServiceScenarioTest(
             messageDomainService.joinRoom(room.id, userId = 5L)
 
             When("동일 userId 로 다시 joinRoom 을 호출하면") {
-                Then("[S-03] BusinessRuleViolationException 을 던진다") {
+                Then("BusinessRuleViolationException 을 던진다") {
                     shouldThrow<BusinessRuleViolationException> {
                         messageDomainService.joinRoom(room.id, userId = 5L)
                     }
@@ -71,10 +74,49 @@ class MessageDomainServiceScenarioTest(
 
         Given("존재하지 않는 Room 에 joinRoom 요청") {
             When("존재하지 않는 roomId 로 joinRoom 을 호출하면") {
-                Then("[S-02] ResourceNotFoundException 을 던진다") {
+                Then("ResourceNotFoundException 을 던진다") {
                     shouldThrow<ResourceNotFoundException> {
                         messageDomainService.joinRoom(roomId = 999999L, userId = 1L)
                     }
+                }
+            }
+        }
+
+        Given("마지막 참가자가 탈퇴하면 Room soft-delete 시 Message 도 soft-delete 된다") {
+            val room = messageDomainService.createDirectRoom()
+            messageDomainService.joinRoom(room.id, userId = 100L)
+            messageDomainService.sendMessage(roomId = room.id, userId = 100L, content = "안녕")
+            messageDomainService.sendMessage(roomId = room.id, userId = 100L, content = "잘가")
+
+            When("마지막 참가자가 leaveRoom 을 호출하면") {
+                transactionTemplate.execute {
+                    messageDomainService.leaveRoom(roomId = room.id, userId = 100L)
+                }
+
+                Then("Room 이 soft-delete 되고 해당 Room 의 Message 조회가 0건이다") {
+                    roomRepository.findById(room.id) shouldBe null
+                    messageRepository.findByRoomId(room.id) shouldHaveSize 0
+                }
+            }
+        }
+
+        Given("sendMessage 호출 후 createdAt 초기화 및 room.lastMessageAt 원자적 갱신 검증") {
+            val room = messageDomainService.createDirectRoom()
+            messageDomainService.joinRoom(room.id, userId = 200L)
+
+            When("sendMessage 를 호출하면") {
+                val message = messageDomainService.sendMessage(
+                    roomId = room.id,
+                    userId = 200L,
+                    content = "원자성 확인",
+                )
+
+                Then("message.createdAt 이 초기화되어 있고 room.lastMessageAt 도 함께 갱신된다") {
+                    message.createdAt.shouldNotBeNull()
+                    val updatedRoom = roomRepository.findById(room.id)
+                    updatedRoom.shouldNotBeNull()
+                    updatedRoom.lastMessageAt.shouldNotBeNull()
+                    updatedRoom.lastMessageAt shouldBe message.createdAt
                 }
             }
         }

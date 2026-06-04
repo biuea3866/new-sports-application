@@ -10,12 +10,12 @@ class SendNotificationUseCase(
 ) {
     @Transactional
     fun execute(command: SendNotificationCommand): NotificationResponse {
-        val notification = notificationDomainService.sendWithTemplate(
+        val result = notificationDomainService.sendWithTemplate(
             userId = command.userId,
             channel = command.channel,
             templateId = command.templateId,
             payload = command.payload,
         )
-        return NotificationResponse.of(notification)
+        return NotificationResponse.of(result)
     }
 }

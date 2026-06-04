@@ -37,7 +37,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
             status = ProductStatus.ACTIVE,
             ownerId = 1L,
         )
-        val stock = Stock(productId = 1L, quantity = 10)
+        val stock = testStock(quantity = 10)
 
         every { productRepository.findById(1L) } returns product
         every { stockRepository.findByProductId(1L) } returns stock
@@ -63,7 +63,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
             status = ProductStatus.ACTIVE,
             ownerId = 1L,
         )
-        val stock = Stock(productId = 2L, quantity = 2)
+        val stock = testStock(quantity = 2)
 
         every { productRepository.findById(2L) } returns product
         every { stockRepository.findByProductId(2L) } returns stock
@@ -137,7 +137,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
             status = ProductStatus.ACTIVE,
             ownerId = 1L,
         )
-        val stock = Stock(productId = 10L, quantity = 5)
+        val stock = testStock(quantity = 5)
         val savedOrder = GoodsOrder.create(userId = 1L, totalAmount = BigDecimal("160000"), idempotencyKey = "idem-create")
 
         every { goodsOrderRepository.findByIdempotencyKey("idem-create") } returns null
@@ -160,9 +160,9 @@ class GoodsDomainServiceTest : BehaviorSpec({
         }
     }
 
-    Given("GoodsDomainService 메서드 시그니처 (B2B-17 fix: @Transactional UseCase 레이어로 이전)") {
+    Given("GoodsDomainService 메서드 시그니처") {
         When("public 메서드 어노테이션을 검사하면") {
-            Then("[U-03] @Transactional 어노테이션은 어느 public 메서드에도 선언돼 있지 않다") {
+            Then("@Transactional 이 선언된 public 메서드는 cancelPendingOrder 단 하나다") {
                 val transactionalAnnotated = GoodsDomainService::class.java.declaredMethods
                     .filter { java.lang.reflect.Modifier.isPublic(it.modifiers) }
                     .filter { method ->
@@ -170,7 +170,8 @@ class GoodsDomainServiceTest : BehaviorSpec({
                             it.annotationClass.simpleName == "Transactional"
                         }
                     }
-                transactionalAnnotated.size shouldBe 0
+                    .map { it.name }
+                transactionalAnnotated shouldBe listOf("cancelPendingOrder")
             }
         }
     }

@@ -7,7 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface CommentJpaRepository : JpaRepository<Comment, Long> {
     fun findByIdAndDeletedAtIsNull(id: Long): Comment?
-    fun findByPostIdAndDeletedAtIsNull(postId: Long): List<Comment>
-    fun findTop50ByPostIdAndDeletedAtIsNullOrderByCreatedAtAsc(postId: Long): List<Comment>
-    fun findByPostIdAndDeletedAtIsNull(postId: Long, pageable: Pageable): Page<Comment>
+    fun findByPost_IdAndDeletedAtIsNull(postId: Long): List<Comment>
+    fun findTop50ByPost_IdAndDeletedAtIsNullOrderByCreatedAtAsc(postId: Long): List<Comment>
+    fun findByPost_IdAndDeletedAtIsNull(postId: Long, pageable: Pageable): Page<Comment>
+    fun findAllByPost_IdAndDeletedAtIsNull(postId: Long): List<Comment>
 }

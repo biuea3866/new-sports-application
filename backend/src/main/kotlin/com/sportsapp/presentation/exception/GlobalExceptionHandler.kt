@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail
 import org.springframework.http.ResponseEntity
+import org.springframework.orm.ObjectOptimisticLockingFailureException
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.authorization.AuthorizationDeniedException
 import jakarta.validation.ConstraintViolationException
@@ -108,6 +109,17 @@ class GlobalExceptionHandler {
         val problemDetail = ProblemDetail.forStatus(HttpStatus.FORBIDDEN)
         problemDetail.detail = exception.message ?: "Access denied"
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(problemDetail)
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException::class)
+    fun handleOptimisticLockException(exception: ObjectOptimisticLockingFailureException): ResponseEntity<ProblemDetail> {
+        logger.debug("Optimistic lock conflict: {}", exception.message)
+        val problemDetail = ProblemDetailBuilder.build(
+            status = ErrorStatus.CONFLICT,
+            code = "OPTIMISTIC_LOCK_CONFLICT",
+            detail = "Resource was modified concurrently. Please retry."
+        )
+        return ResponseEntity.status(ErrorStatus.CONFLICT.httpStatus).body(problemDetail)
     }
 
     @ExceptionHandler(Exception::class)

@@ -1,11 +1,11 @@
-package com.sportsapp.infrastructure.weather
+package com.sportsapp.infrastructure.weather.gateway
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
-import com.sportsapp.domain.weather.Forecast
-import com.sportsapp.domain.weather.ForecastSlot
-import com.sportsapp.domain.weather.PrecipitationType
-import com.sportsapp.domain.weather.SkyState
-import com.sportsapp.domain.weather.WeatherGateway
+import com.sportsapp.domain.weather.gateway.WeatherGateway
+import com.sportsapp.domain.weather.vo.Forecast
+import com.sportsapp.domain.weather.vo.ForecastSlot
+import com.sportsapp.domain.weather.vo.PrecipitationType
+import com.sportsapp.domain.weather.vo.SkyState
 import com.sportsapp.infrastructure.external.ExternalRestClientFactory
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient

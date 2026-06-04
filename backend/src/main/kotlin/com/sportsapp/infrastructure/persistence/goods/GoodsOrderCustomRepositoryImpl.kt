@@ -18,7 +18,7 @@ class GoodsOrderCustomRepositoryImpl(
     override fun countConfirmedByProductOwnerUserId(ownerUserId: Long): Long =
         queryFactory.select(goodsOrder.id.countDistinct())
                     .from(goodsOrder)
-                    .join(goodsOrderItem).on(goodsOrderItem.orderId.eq(goodsOrder.id))
+                    .join(goodsOrderItem).on(goodsOrderItem.order.id.eq(goodsOrder.id))
                     .join(product).on(product.id.eq(goodsOrderItem.productId))
                     .where(
                         product.ownerId.eq(ownerUserId),
@@ -34,7 +34,7 @@ class GoodsOrderCustomRepositoryImpl(
             goodsOrderItem.unitPrice.multiply(goodsOrderItem.quantity.castToNum(BigDecimal::class.java)).sum()
         )
                     .from(goodsOrderItem)
-                    .join(goodsOrder).on(goodsOrder.id.eq(goodsOrderItem.orderId))
+                    .join(goodsOrder).on(goodsOrder.id.eq(goodsOrderItem.order.id))
                     .join(product).on(product.id.eq(goodsOrderItem.productId))
                     .where(
                         product.ownerId.eq(ownerUserId),
@@ -56,7 +56,7 @@ class GoodsOrderCustomRepositoryImpl(
             goodsOrderItem.unitPrice.multiply(goodsOrderItem.quantity.castToNum(BigDecimal::class.java)).sum()
         )
                     .from(goodsOrderItem)
-                    .join(goodsOrder).on(goodsOrder.id.eq(goodsOrderItem.orderId))
+                    .join(goodsOrder).on(goodsOrder.id.eq(goodsOrderItem.order.id))
                     .join(product).on(product.id.eq(goodsOrderItem.productId))
                     .where(
                         product.ownerId.eq(ownerUserId),

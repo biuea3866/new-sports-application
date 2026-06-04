@@ -1,11 +1,12 @@
 package com.sportsapp.application.notification
 
-import com.sportsapp.domain.notification.NotificationCustomRepository
+import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.notification.Notification
 import com.sportsapp.domain.notification.NotificationChannel
+import com.sportsapp.domain.notification.NotificationCustomRepository
 import com.sportsapp.domain.notification.NotificationDomainService
-import com.sportsapp.domain.notification.NotificationNotOwnedException
 import com.sportsapp.domain.notification.NotificationNotFoundException
+import com.sportsapp.domain.notification.NotificationNotOwnedException
 import com.sportsapp.domain.notification.NotificationPayload
 import com.sportsapp.domain.notification.NotificationRepository
 import com.sportsapp.domain.notification.NotificationStatus
@@ -15,8 +16,10 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.mockk.every
+import io.mockk.justRun
 import io.mockk.mockk
 import io.mockk.verify
+import java.time.ZoneOffset
 import java.time.ZonedDateTime
 
 class MarkNotificationReadUseCaseTest : BehaviorSpec({
@@ -24,12 +27,16 @@ class MarkNotificationReadUseCaseTest : BehaviorSpec({
     val notificationRepository = mockk<NotificationRepository>()
     val notificationCustomRepository = mockk<NotificationCustomRepository>()
     val templateRenderer = mockk<TemplateRenderer>()
+    val domainEventPublisher = mockk<DomainEventPublisher>()
     val notificationDomainService = NotificationDomainService(
         notificationRepository = notificationRepository,
         notificationCustomRepository = notificationCustomRepository,
         channelGateways = emptyList(),
         templateRenderer = templateRenderer,
+        domainEventPublisher = domainEventPublisher,
     )
+
+    val baseTime = ZonedDateTime.now(ZoneOffset.UTC)
 
     Given("다른 사용자(userId=999)가 소유한 알림") {
         val notification = Notification(
@@ -45,7 +52,7 @@ class MarkNotificationReadUseCaseTest : BehaviorSpec({
         every { notificationRepository.findById(1L) } returns notification
 
         When("userId=1 사용자가 읽음 처리를 시도하면") {
-            Then("[U-01] NotificationNotOwnedException 이 발생한다") {
+            Then("NotificationNotOwnedException 이 발생한다") {
                 shouldThrow<NotificationNotOwnedException> {
                     notificationDomainService.markRead(notificationId = 1L, userId = 1L)
                 }
@@ -65,13 +72,23 @@ class MarkNotificationReadUseCaseTest : BehaviorSpec({
             readAt = originalReadAt,
             eventId = null,
         )
+        val savedMock = mockk<Notification> {
+            every { id } returns 2L
+            every { userId } returns 1L
+            every { channel } returns NotificationChannel.IN_APP
+            every { templateId } returns "test"
+            every { status } returns NotificationStatus.SENT
+            every { sentAt } returns null
+            every { readAt } returns originalReadAt
+            every { createdAt } returns baseTime
+        }
         every { notificationRepository.findById(2L) } returns notification
-        every { notificationRepository.save(any()) } answers { firstArg() }
+        every { notificationRepository.save(any()) } returns savedMock
 
         When("다시 읽음 처리를 호출하면") {
             val result = notificationDomainService.markRead(notificationId = 2L, userId = 1L)
 
-            Then("[U-02] readAt 은 변경되지 않고 멱등하게 처리된다") {
+            Then("readAt 은 변경되지 않고 멱등하게 처리된다") {
                 result.readAt.shouldNotBeNull()
                 result.readAt shouldBe originalReadAt
                 verify(exactly = 1) { notificationRepository.save(any()) }

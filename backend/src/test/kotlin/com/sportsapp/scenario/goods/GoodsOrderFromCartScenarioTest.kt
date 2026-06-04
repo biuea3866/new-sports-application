@@ -94,7 +94,7 @@ class GoodsOrderFromCartScenarioTest(
             }
 
             When("[S-cart-01] fromCart=true로 POST /goods-orders 호출하면") {
-                Then("GoodsOrder PENDING + Payment 발급 + Cart 비워짐이 검증된다") {
+                Then("GoodsOrder PENDING + Payment 발급이 확인되고 주문은 PENDING 상태로 남는다") {
                     val idempotencyKey = UUID.randomUUID().toString()
                     val result = mockMvc.perform(
                         post("/goods-orders")
@@ -121,12 +121,12 @@ class GoodsOrderFromCartScenarioTest(
                     payment.isPresent shouldBe true
                     payment.get().idempotencyKey shouldBe idempotencyKey
 
-                    // Cart 비워짐 확인 (soft-delete: deletedAt IS NULL 기준)
+                    // 주문 생성 시 카트는 아직 비워지지 않는다 (웹훅 확정 이후 처리)
                     val cart = cartJpaRepository.findByUserIdAndDeletedAtIsNull(userId)
                     cart shouldNotBe null
                     val activeCartId = requireNotNull(cart).id
-                    val activeItems = cartItemJpaRepository.findAllByCartIdAndDeletedAtIsNull(activeCartId)
-                    activeItems.size shouldBe 0
+                    val activeItems = cartItemJpaRepository.findAllByCart_IdAndDeletedAtIsNull(activeCartId)
+                    activeItems.size shouldBe 2
                 }
             }
         }

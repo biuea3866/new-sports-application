@@ -26,10 +26,9 @@ class BookingDomainService(
     private val slotRepository: SlotRepository,
     private val distributedLock: DistributedLock,
     private val domainEventPublisher: DomainEventPublisher,
-    private val paymentRefundGateway: PaymentRefundGateway,
 ) {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    fun requestBooking(userId: Long, slotId: Long): Booking {
+    fun requestBooking(userId: Long, slotId: Long): BookingResult {
         val lockKey = "booking:slot:$slotId"
         val lockValue = "user:$userId"
         if (!spinLock(lockKey, lockValue)) throw SlotBusyException(slotId)
@@ -37,19 +36,25 @@ class BookingDomainService(
         return doBooking(userId, slotId, lockKey, lockValue)
     }
 
-    private fun doBooking(userId: Long, slotId: Long, lockKey: String, lockValue: String): Booking {
+    private fun doBooking(userId: Long, slotId: Long, lockKey: String, lockValue: String): BookingResult {
         try {
-            val slot = slotRepository.findById(slotId)
+            val slot = slotRepository.findForUpdateById(slotId)
                 ?: throw ResourceNotFoundException("Slot", slotId)
             val activeCount = bookingRepository.countBySlotIdAndStatusIn(
                 slotId,
                 listOf(BookingStatus.PENDING, BookingStatus.CONFIRMED),
             )
             if (activeCount >= slot.capacity) throw SlotFullException(slotId)
-            val booking = bookingRepository.save(Booking.createPending(userId, slotId))
+            val booking = Booking.createPending(userId, slotId)
             booking.registerEvent(BookingRequestedEvent(bookingId = booking.id, slotId = slotId, userId = userId))
-            domainEventPublisher.publishAll(booking.pullDomainEvents())
-            return booking
+            val saved = bookingRepository.save(booking)
+            domainEventPublisher.publishAll(saved.pullDomainEvents())
+            return BookingResult(
+                bookingId = saved.id,
+                slotId = saved.slotId,
+                userId = saved.userId,
+                status = saved.status,
+            )
         } finally {
             if (!TransactionSynchronizationManager.isActualTransactionActive()) {
                 distributedLock.unlock(lockKey, lockValue)
@@ -88,8 +93,19 @@ class BookingDomainService(
     fun confirmBooking(bookingId: Long, paymentId: Long): Booking {
         val booking = bookingRepository.findById(bookingId)
             ?: throw ResourceNotFoundException("Booking", bookingId)
+        if (booking.status == BookingStatus.CONFIRMED) return booking
         booking.confirm(paymentId)
-        return bookingRepository.save(booking)
+        val saved = bookingRepository.save(booking)
+        domainEventPublisher.publishAll(saved.pullDomainEvents())
+        return saved
+    }
+
+    fun cancelPending(bookingId: Long) {
+        val booking = bookingRepository.findById(bookingId)
+            ?: throw ResourceNotFoundException("Booking", bookingId)
+        if (booking.status == BookingStatus.CANCELLED) return
+        booking.cancel()
+        bookingRepository.save(booking)
     }
 
     fun cancel(bookingId: Long, cancelledByUserId: Long, reason: String?): Booking {
@@ -149,9 +165,19 @@ class BookingDomainService(
             ?: throw ResourceNotFoundException("Booking", bookingId)
         booking.requireOwnedBy(callerUserId)
         val paymentId = booking.requireHasPayment()
-        paymentRefundGateway.requestRefund(paymentId.toString(), refundAmount, reason)
         booking.refund()
-        return bookingRepository.save(booking)
+        val saved = bookingRepository.save(booking)
+        domainEventPublisher.publishAll(
+            listOf(
+                BookingRefundRequestedEvent(
+                    bookingId = saved.id,
+                    paymentId = paymentId,
+                    refundAmount = refundAmount,
+                    reason = reason,
+                ),
+            ),
+        )
+        return saved
     }
 
 }

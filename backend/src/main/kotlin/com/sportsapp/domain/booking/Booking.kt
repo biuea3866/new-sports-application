@@ -64,6 +64,7 @@ class Booking(
         }
         this.status = BookingStatus.CONFIRMED
         this.paymentId = paymentId
+        registerEvent(BookingConfirmedEvent(bookingId = id, paymentId = paymentId))
     }
 
     fun cancel() {

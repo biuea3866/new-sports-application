@@ -1,5 +1,6 @@
 package com.sportsapp.infrastructure.security
 
+import com.sportsapp.domain.common.UserRoleName
 import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
 import com.sportsapp.domain.mcp.McpScope
 import com.sportsapp.domain.user.UserPrincipal
@@ -16,8 +17,7 @@ class AuthorizationExpressions {
 
     fun isFacilityOwner(userId: Long): Boolean {
         val principal = currentPrincipal() ?: return false
-        val hasFacilityOwnerRole = principal.roles.contains("FACILITY_OWNER")
-        return hasFacilityOwnerRole && principal.id == userId
+        return principal.hasRole(UserRoleName.FACILITY_OWNER) && principal.id == userId
     }
 
     /**

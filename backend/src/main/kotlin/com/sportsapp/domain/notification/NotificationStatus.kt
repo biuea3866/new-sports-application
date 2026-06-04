@@ -6,4 +6,6 @@ enum class NotificationStatus {
     FAILED;
 
     fun canTransitToSent(): Boolean = this == QUEUED
+
+    fun canTransitToFailed(): Boolean = this != FAILED
 }

@@ -1,12 +1,9 @@
 package com.sportsapp.application.ticketing
 
 import com.sportsapp.domain.payment.OrderType
-import com.sportsapp.domain.payment.Payment
 import com.sportsapp.domain.payment.PaymentDomainService
-import com.sportsapp.domain.payment.PaymentStatus
-import com.sportsapp.domain.ticketing.TicketOrder
+import com.sportsapp.domain.payment.PgInitiateCommand
 import com.sportsapp.domain.ticketing.TicketingDomainService
-import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 @Service
@@ -14,35 +11,41 @@ class PurchaseTicketsUseCase(
     private val ticketingDomainService: TicketingDomainService,
     private val paymentDomainService: PaymentDomainService,
 ) {
-    private val logger = LoggerFactory.getLogger(javaClass)
+    /**
+     * 1단계(tx): 좌석 락 검증 + 주문 생성 + 결제 PENDING 저장
+     * 2단계(no-tx): PG 호출 — 외부 IO를 트랜잭션 밖으로 분리
+     */
     fun execute(command: PurchaseTicketsCommand): TicketOrderResponse {
         ticketingDomainService.verifyLockOwner(command.lockId, command.userId)
         val totalAmount = ticketingDomainService.calculateAmount(command.lockId)
-        val ticketOrder = ticketingDomainService.createPendingOrder(command.lockId, command.userId)
-        val payment = paymentDomainService.create(
+        val orderResult = ticketingDomainService.createPendingOrder(command.lockId, command.userId)
+        val paymentId = paymentDomainService.createPending(
             userId = command.userId,
             idempotencyKey = command.idempotencyKey,
             orderType = OrderType.TICKETING,
-            orderId = ticketOrder.id,
+            orderId = orderResult.ticketOrderId,
             method = command.method,
             amount = totalAmount,
             currency = command.currency,
         )
-        val finalOrder = processPaymentResult(ticketOrder, payment)
-        return TicketOrderResponse.of(finalOrder)
+        paymentDomainService.initiatePg(
+            PgInitiateCommand(
+                paymentId = paymentId,
+                method = command.method,
+                idempotencyKey = command.idempotencyKey,
+                userId = command.userId,
+                orderType = OrderType.TICKETING,
+                orderId = orderResult.ticketOrderId,
+                amount = totalAmount,
+                currency = command.currency,
+                itemName = "${OrderType.TICKETING} #${orderResult.ticketOrderId}",
+                returnUrl = "",
+                failUrl = "",
+            )
+        )
+        return TicketOrderResponse(
+            ticketOrderId = orderResult.ticketOrderId,
+            status = orderResult.status,
+        )
     }
-
-    private fun processPaymentResult(ticketOrder: TicketOrder, payment: Payment): TicketOrder =
-        when (payment.status) {
-            PaymentStatus.COMPLETED -> ticketingDomainService.confirmOrder(ticketOrder.id, payment.id)
-            PaymentStatus.FAILED -> {
-                ticketingDomainService.cancelOrder(ticketOrder.id)
-                ticketOrder
-            }
-            else -> {
-                logger.error("Unexpected payment status: ${payment.status}, ticketOrderId=${ticketOrder.id}")
-                ticketingDomainService.cancelOrder(ticketOrder.id)
-                ticketOrder
-            }
-        }
 }

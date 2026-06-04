@@ -1,6 +1,7 @@
 package com.sportsapp.application.dashboard
 
 import com.sportsapp.domain.booking.SlotDomainService
+import com.sportsapp.domain.common.UserRoleName
 import com.sportsapp.domain.facility.FacilityDomainService
 import com.sportsapp.domain.goods.GoodsDomainService
 import com.sportsapp.domain.ticketing.EventStatus
@@ -23,11 +24,13 @@ class GetMyDashboardSummaryUseCase(
     @Transactional(readOnly = true)
     @Cacheable(value = ["b2bDashboardSummary"], key = "#userId")
     fun execute(userId: Long): DashboardSummaryResponse {
-        val roleNames = userDomainService.getRolesForUser(userId).map { it.name }.toSet()
+        val roles = userDomainService.getRolesForUser(userId)
+            .mapNotNull { UserRoleName.fromNameOrNull(it.name) }
+            .toSet()
         return DashboardSummaryResponse(
-            facilities = if (roleNames.contains("FACILITY_OWNER")) buildFacilitiesSummary(userId) else null,
-            events = if (roleNames.contains("EVENT_HOST")) buildEventsSummary(userId) else null,
-            products = if (roleNames.contains("GOODS_SELLER")) buildProductsSummary(userId) else null,
+            facilities = if (roles.contains(UserRoleName.FACILITY_OWNER)) buildFacilitiesSummary(userId) else null,
+            events = if (roles.contains(UserRoleName.EVENT_HOST)) buildEventsSummary(userId) else null,
+            products = if (roles.contains(UserRoleName.GOODS_SELLER)) buildProductsSummary(userId) else null,
         )
     }
 

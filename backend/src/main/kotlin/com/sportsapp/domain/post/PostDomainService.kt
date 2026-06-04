@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class PostDomainService(
@@ -29,7 +30,11 @@ class PostDomainService(
         val post = postRepository.findById(postId)
             ?: throw ResourceNotFoundException("Post", postId)
         post.softDelete(userId)
-        return postRepository.save(post)
+        postRepository.save(post)
+        val comments = commentRepository.findAllActiveByPostId(postId)
+        comments.forEach { it.softDelete(userId) }
+        if (comments.isNotEmpty()) commentRepository.saveAll(comments)
+        return post
     }
 
     fun getPost(postId: Long): Post =
@@ -39,6 +44,7 @@ class PostDomainService(
     fun search(criteria: PostSearchCriteria, pageable: Pageable): Page<Post> =
         postCustomRepository.findByCriteria(criteria, pageable)
 
+    @Transactional(readOnly = true)
     fun getDetail(postId: Long): Pair<Post, List<Comment>> {
         val post = postRepository.findById(postId)
             ?: throw ResourceNotFoundException("Post", postId)
@@ -47,9 +53,9 @@ class PostDomainService(
     }
 
     fun addComment(postId: Long, userId: Long, content: String): Comment {
-        postRepository.findById(postId)
+        val post = postRepository.findById(postId)
             ?: throw ResourceNotFoundException("Post", postId)
-        val comment = Comment.create(postId = postId, userId = userId, content = content)
+        val comment = post.addComment(userId = userId, content = content)
         return commentRepository.save(comment)
     }
 

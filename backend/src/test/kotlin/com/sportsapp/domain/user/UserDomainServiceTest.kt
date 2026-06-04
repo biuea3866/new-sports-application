@@ -1,5 +1,6 @@
 package com.sportsapp.domain.user
 
+import com.sportsapp.domain.common.UserRoleName
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import com.sportsapp.domain.user.exceptions.DuplicateEmailException
 import io.kotest.assertions.throwables.shouldThrow
@@ -36,7 +37,7 @@ class UserDomainServiceTest : BehaviorSpec({
     Given("중복되지 않은 이메일로 가입 시도 시") {
         every { userRepository.findByEmail("new@example.com") } returns null
         every { userRepository.save(any()) } returns testUser
-        every { roleRepository.findByName("USER") } returns defaultRole
+        every { roleRepository.findByName(UserRoleName.USER) } returns defaultRole
         every { userRoleRepository.existsByUserIdAndRoleId(any(), any()) } returns false
         every { userRoleRepository.save(any()) } returns UserRole(userId = 0L, roleId = 0L, grantedBy = null)
 
@@ -49,7 +50,7 @@ class UserDomainServiceTest : BehaviorSpec({
             }
 
             Then("[U-03] 기본 USER Role 이 자동 부여된다") {
-                verify(exactly = 1) { roleRepository.findByName("USER") }
+                verify(exactly = 1) { roleRepository.findByName(UserRoleName.USER) }
                 verify(exactly = 1) { userRoleRepository.save(any()) }
             }
         }
@@ -70,7 +71,7 @@ class UserDomainServiceTest : BehaviorSpec({
     Given("USER Role 이 존재하지 않는 상태") {
         every { userRepository.findByEmail("noRole@example.com") } returns null
         every { userRepository.save(any()) } returns testUser
-        every { roleRepository.findByName("USER") } returns null
+        every { roleRepository.findByName(UserRoleName.USER) } returns null
 
         When("register 를 호출하면") {
             Then("[U-03] ResourceNotFoundException 이 발생한다") {

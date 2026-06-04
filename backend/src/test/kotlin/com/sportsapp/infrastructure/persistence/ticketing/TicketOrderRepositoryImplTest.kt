@@ -59,20 +59,18 @@ class TicketOrderRepositoryImplTest(
                 )
             )
 
-            val tickets = TransactionTemplate(transactionManager).execute {
-                val confirmedTickets = order.confirm(paymentId = 999L, seatIds = listOf(201L, 202L))
+            TransactionTemplate(transactionManager).execute {
+                order.confirm(paymentId = 999L, seatIds = listOf(201L, 202L))
                 ticketOrderRepositoryImpl.save(order)
-                ticketRepositoryImpl.saveAll(confirmedTickets)
             }
 
             When("ticketOrderId로 tickets를 조회하면") {
                 val foundTickets = ticketRepositoryImpl.findByTicketOrderId(order.id)
 
                 Then("[R-03] N개 Ticket이 단일 트랜잭션 내에서 처리된다") {
-                    requireNotNull(tickets)
                     foundTickets.size shouldBe 2
                     foundTickets.all { it.status == TicketStatus.ISSUED } shouldBe true
-                    foundTickets.all { it.ticketOrderId == order.id } shouldBe true
+                    foundTickets.all { it.ticketOrder?.id == order.id } shouldBe true
                 }
             }
         }
@@ -89,9 +87,8 @@ class TicketOrderRepositoryImplTest(
             )
 
             TransactionTemplate(transactionManager).execute {
-                val confirmedTickets = order1.confirm(paymentId = 111L, seatIds = listOf(301L))
+                order1.confirm(paymentId = 111L, seatIds = listOf(301L))
                 ticketOrderRepositoryImpl.save(order1)
-                ticketRepositoryImpl.saveAll(confirmedTickets)
             }
 
             val order2 = ticketOrderRepositoryImpl.save(
@@ -129,11 +126,13 @@ class TicketOrderRepositoryImplTest(
             )
 
             TransactionTemplate(transactionManager).execute {
-                val tickets = order1.confirm(paymentId = 333L, seatIds = listOf(401L))
+                order1.confirm(paymentId = 333L, seatIds = listOf(401L))
                 ticketOrderRepositoryImpl.save(order1)
-                val savedTickets = ticketRepositoryImpl.saveAll(tickets)
-                savedTickets.forEach { it.revoke() }
-                ticketRepositoryImpl.saveAll(savedTickets)
+            }
+            TransactionTemplate(transactionManager).execute {
+                val tickets = ticketRepositoryImpl.findByTicketOrderId(order1.id)
+                tickets.forEach { it.revoke() }
+                ticketRepositoryImpl.saveAll(tickets)
             }
 
             val order2 = ticketOrderRepositoryImpl.save(
@@ -148,14 +147,12 @@ class TicketOrderRepositoryImplTest(
 
             When("새 ISSUED 발권을 시도하면") {
                 Then("[R-02] 성공한다") {
-                    var savedCount = 0
                     TransactionTemplate(transactionManager).execute {
-                        val tickets = order2.confirm(paymentId = 444L, seatIds = listOf(401L))
+                        order2.confirm(paymentId = 444L, seatIds = listOf(401L))
                         ticketOrderRepositoryImpl.save(order2)
-                        val saved = ticketRepositoryImpl.saveAll(tickets)
-                        savedCount = saved.size
                     }
-                    savedCount shouldBe 1
+                    val foundTickets = ticketRepositoryImpl.findByTicketOrderId(order2.id)
+                    foundTickets.size shouldBe 1
                 }
             }
         }

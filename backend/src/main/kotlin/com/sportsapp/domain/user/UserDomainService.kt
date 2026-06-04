@@ -1,5 +1,6 @@
 package com.sportsapp.domain.user
 
+import com.sportsapp.domain.common.UserRoleName
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import com.sportsapp.domain.user.exceptions.DuplicateEmailException
 import org.springframework.data.domain.Page
@@ -19,8 +20,8 @@ class UserDomainService(
         if (userRepository.findByEmail(email) != null) throw DuplicateEmailException(email)
         val user = User.create(email, passwordEncoder.encode(rawPassword))
         val savedUser = userRepository.save(user)
-        val defaultRole = roleRepository.findByName("USER")
-            ?: throw ResourceNotFoundException("Role", "USER")
+        val defaultRole = roleRepository.findByName(UserRoleName.USER)
+            ?: throw ResourceNotFoundException("Role", UserRoleName.USER)
         if (!userRoleRepository.existsByUserIdAndRoleId(savedUser.id, defaultRole.id)) {
             userRoleRepository.save(UserRole(userId = savedUser.id, roleId = defaultRole.id, grantedBy = null))
         }
@@ -55,8 +56,7 @@ class UserDomainService(
         val user = getUser(userId)
         val role = getRole(roleName)
         user.validateCanRevokeAdminRole(
-            adminRoleName = "ADMIN",
-            targetRoleName = roleName,
+            targetRole = UserRoleName.fromNameOrNull(roleName),
             requesterId = adminId,
         )
         val activeRoles = userRoleRepository.findActiveByUserId(userId)

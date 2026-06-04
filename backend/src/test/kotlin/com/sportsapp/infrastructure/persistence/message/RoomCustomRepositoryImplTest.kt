@@ -19,13 +19,13 @@ class RoomCustomRepositoryImplTest(
     init {
         Given("1:1 룸과 두 참가자가 저장된 상태") {
             val room = roomJpaRepository.save(Room.createDirect())
-            roomParticipantJpaRepository.save(RoomParticipant.create(room.id, 101L))
-            roomParticipantJpaRepository.save(RoomParticipant.create(room.id, 102L))
+            roomParticipantJpaRepository.save(RoomParticipant.create(room, 101L))
+            roomParticipantJpaRepository.save(RoomParticipant.create(room, 102L))
 
             When("두 userId 로 findDirectRoomByParticipantIds 를 호출하면") {
                 val found = roomCustomRepositoryImpl.findDirectRoomByParticipantIds(101L, 102L)
 
-                Then("[R-01] 기존 1:1 룸이 반환된다") {
+                Then("기존 1:1 룸이 반환된다") {
                     found.shouldNotBeNull()
                     found.type shouldBe RoomType.DIRECT
                 }
@@ -34,7 +34,7 @@ class RoomCustomRepositoryImplTest(
             When("관련 없는 userId 로 검색하면") {
                 val notFound = roomCustomRepositoryImpl.findDirectRoomByParticipantIds(101L, 999L)
 
-                Then("[R-01] null 이 반환된다") {
+                Then("null 이 반환된다") {
                     notFound.shouldBeNull()
                 }
             }
@@ -43,13 +43,13 @@ class RoomCustomRepositoryImplTest(
         Given("userId=200 이 참여한 룸 중 이름이 '축구' 인 룸") {
             val matchedRoom = roomJpaRepository.save(Room.createGroup("축구 모임"))
             val unmatchedRoom = roomJpaRepository.save(Room.createGroup("농구 모임"))
-            roomParticipantJpaRepository.save(RoomParticipant.create(matchedRoom.id, 200L))
-            roomParticipantJpaRepository.save(RoomParticipant.create(unmatchedRoom.id, 200L))
+            roomParticipantJpaRepository.save(RoomParticipant.create(matchedRoom, 200L))
+            roomParticipantJpaRepository.save(RoomParticipant.create(unmatchedRoom, 200L))
 
             When("keyword='축구' 로 findMyRoomsByKeyword 를 호출하면") {
                 val result = roomCustomRepositoryImpl.findMyRoomsByKeyword(200L, "축구")
 
-                Then("[R-01] room.name 매칭 결과가 반환된다") {
+                Then("room.name 매칭 결과가 반환된다") {
                     result shouldHaveSize 1
                     result[0].name shouldBe "축구 모임"
                 }
@@ -64,16 +64,15 @@ class RoomCustomRepositoryImplTest(
             }
         }
 
-        Given("1000건의 Message 가 있는 Room") {
+        Given("soft-delete 된 Room") {
             val room = roomJpaRepository.save(Room.createDirect())
-            // 여기서는 Room soft-delete cascade 를 RoomParticipant 레벨에서 검증
             room.softDelete(null)
             roomJpaRepository.save(room)
 
             When("findDirectRoomByParticipantIds 로 삭제된 룸을 검색하면") {
                 val result = roomCustomRepositoryImpl.findDirectRoomByParticipantIds(300L, 301L)
 
-                Then("[R-02] 삭제된 룸은 반환되지 않는다") {
+                Then("삭제된 룸은 반환되지 않는다") {
                     result.shouldBeNull()
                 }
             }

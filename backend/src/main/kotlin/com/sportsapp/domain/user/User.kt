@@ -1,6 +1,7 @@
 package com.sportsapp.domain.user
 
 import com.sportsapp.domain.common.JpaAuditingBase
+import com.sportsapp.domain.common.UserRoleName
 import com.sportsapp.domain.user.exceptions.DuplicateRoleException
 import com.sportsapp.domain.user.exceptions.InvalidEmailException
 import com.sportsapp.domain.user.exceptions.SelfRevocationException
@@ -53,8 +54,8 @@ class User(
         if (roleId in existingRoleIds) throw DuplicateRoleException(roleId)
     }
 
-    fun validateCanRevokeAdminRole(adminRoleName: String, targetRoleName: String, requesterId: Long) {
-        if (targetRoleName == adminRoleName && id == requesterId) throw SelfRevocationException()
+    fun validateCanRevokeAdminRole(targetRole: UserRoleName?, requesterId: Long) {
+        if (targetRole == UserRoleName.ADMIN && id == requesterId) throw SelfRevocationException()
     }
 
     fun validateHasMinimumOneRole(activeRoleCount: Int) {
