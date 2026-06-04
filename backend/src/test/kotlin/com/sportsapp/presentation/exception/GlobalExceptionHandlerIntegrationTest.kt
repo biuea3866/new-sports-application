@@ -114,17 +114,18 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
         Given("@Valid 검증이 실패하는 요청") {
             When("POST /test/exceptions/validation 에 빈 name 으로 요청 시") {
                 Then("[S-03] 400 + fieldErrors 목록이 포함된 ProblemDetail 을 반환한다") {
-                    mockMvc.post("/test/exceptions/validation") {
-                        contentType = MediaType.APPLICATION_JSON
-                        content = """{"name": ""}"""
-                        accept(MediaType.APPLICATION_JSON)
-                    }.andExpect {
-                        status { isBadRequest() }
-                        content { contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON) }
-                        jsonPath("$.status") { value(400) }
-                        jsonPath("$.properties.fieldErrors") { exists() }
-                        jsonPath("$.properties.fieldErrors") { isArray() }
-                    }
+                    mockMvc.perform(
+                        post("/test/exceptions/validation")
+                            .with(user("testuser").roles("USER"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""{"name": ""}""")
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isBadRequest)
+                        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                        .andExpect(jsonPath("$.status").value(400))
+                        .andExpect(jsonPath("$.properties.fieldErrors").exists())
+                        .andExpect(jsonPath("$.properties.fieldErrors").isArray)
                 }
             }
         }
@@ -164,35 +165,38 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
         Given("enum 쿼리 파라미터에 정의되지 않은 값을 전달하는 요청") {
             When("GET /test/exceptions/enum-param?value=PAID 요청 시") {
                 Then("[DEF-001][S-06] 500 대신 400 + ProblemDetail (code=INVALID_ENUM_VALUE) 을 반환한다") {
-                    mockMvc.get("/test/exceptions/enum-param?value=PAID") {
-                        accept(MediaType.APPLICATION_JSON)
-                    }.andExpect {
-                        status { isBadRequest() }
-                        content { contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON) }
-                        jsonPath("$.status") { value(400) }
-                        jsonPath("$.properties.code") { value("INVALID_ENUM_VALUE") }
-                    }
+                    mockMvc.perform(
+                        get("/test/exceptions/enum-param?value=PAID")
+                            .with(user("testuser").roles("USER"))
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isBadRequest)
+                        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                        .andExpect(jsonPath("$.status").value(400))
+                        .andExpect(jsonPath("$.properties.code").value("INVALID_ENUM_VALUE"))
                 }
             }
 
             When("GET /test/exceptions/enum-param?value=INVALID_ANYTHING 요청 시") {
                 Then("[DEF-001][S-06] 임의의 무효 문자열도 400을 반환한다") {
-                    mockMvc.get("/test/exceptions/enum-param?value=INVALID_ANYTHING") {
-                        accept(MediaType.APPLICATION_JSON)
-                    }.andExpect {
-                        status { isBadRequest() }
-                        jsonPath("$.status") { value(400) }
-                    }
+                    mockMvc.perform(
+                        get("/test/exceptions/enum-param?value=INVALID_ANYTHING")
+                            .with(user("testuser").roles("USER"))
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isBadRequest)
+                        .andExpect(jsonPath("$.status").value(400))
                 }
             }
 
             When("GET /test/exceptions/enum-param?value=COMPLETED 요청 시") {
                 Then("[DEF-001][S-07] 유효한 enum 값이면 200을 반환한다 (회귀)") {
-                    mockMvc.get("/test/exceptions/enum-param?value=COMPLETED") {
-                        accept(MediaType.APPLICATION_JSON)
-                    }.andExpect {
-                        status { isOk() }
-                    }
+                    mockMvc.perform(
+                        get("/test/exceptions/enum-param?value=COMPLETED")
+                            .with(user("testuser").roles("USER"))
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isOk)
                 }
             }
         }
