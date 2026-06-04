@@ -1,11 +1,13 @@
 package com.sportsapp.application.notification
 
-import com.sportsapp.domain.notification.Notification
-import com.sportsapp.domain.notification.NotificationChannel
-import com.sportsapp.domain.notification.NotificationDomainService
-import com.sportsapp.domain.notification.NotificationPayload
-import com.sportsapp.domain.notification.NotificationStatus
-import com.sportsapp.domain.notification.UnsupportedChannelException
+import com.sportsapp.application.notification.dto.EnqueueNotificationCommand
+import com.sportsapp.application.notification.usecase.EnqueueNotificationUseCase
+import com.sportsapp.domain.notification.entity.Notification
+import com.sportsapp.domain.notification.vo.NotificationChannel
+import com.sportsapp.domain.notification.service.NotificationDomainService
+import com.sportsapp.domain.notification.vo.NotificationPayload
+import com.sportsapp.domain.notification.entity.NotificationStatus
+import com.sportsapp.domain.notification.exception.UnsupportedChannelException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every

@@ -1,13 +1,13 @@
 package com.sportsapp.presentation.mcp
 
-import com.sportsapp.application.notification.ListMyNotificationsCommand
-import com.sportsapp.application.notification.ListMyNotificationsUseCase
-import com.sportsapp.application.notification.NotificationPageResponse
-import com.sportsapp.application.notification.NotificationResponse
+import com.sportsapp.application.notification.dto.ListMyNotificationsCommand
+import com.sportsapp.application.notification.dto.NotificationPageResult
+import com.sportsapp.application.notification.usecase.ListMyNotificationsUseCase
 import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
+import com.sportsapp.domain.notification.dto.NotificationResult
 import com.sportsapp.domain.mcp.McpScope
-import com.sportsapp.domain.notification.NotificationChannel
-import com.sportsapp.domain.notification.NotificationStatus
+import com.sportsapp.domain.notification.vo.NotificationChannel
+import com.sportsapp.domain.notification.entity.NotificationStatus
 import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.response.McpResponseStatus
 import com.sportsapp.presentation.mcp.toolregistry.McpNotificationTools
@@ -31,7 +31,7 @@ class McpNotificationToolsTest : BehaviorSpec({
     val mcpAuditLogAsyncRecorder = mockk<McpAuditLogAsyncRecorder>(relaxed = true)
     val mcpNotificationTools = McpNotificationTools(listMyNotificationsUseCase, mcpAuditLogAsyncRecorder)
 
-    val notificationResponse = NotificationResponse(
+    val notificationResult = NotificationResult(
         id = 1L,
         userId = 42L,
         channel = NotificationChannel.IN_APP,
@@ -41,8 +41,8 @@ class McpNotificationToolsTest : BehaviorSpec({
         readAt = null,
         createdAt = ZonedDateTime.now(),
     )
-    val pageResponse = NotificationPageResponse(
-        content = listOf(notificationResponse),
+    val pageResponse = NotificationPageResult(
+        content = listOf(notificationResult),
         totalElements = 1L,
         totalPages = 1,
         page = 0,
@@ -97,7 +97,7 @@ class McpNotificationToolsTest : BehaviorSpec({
 
         When("[U-15] 결과가 없으면") {
             setupPrincipal(99L)
-            every { listMyNotificationsUseCase.execute(any()) } returns NotificationPageResponse(
+            every { listMyNotificationsUseCase.execute(any()) } returns NotificationPageResult(
                 content = emptyList(),
                 totalElements = 0L,
                 totalPages = 0,

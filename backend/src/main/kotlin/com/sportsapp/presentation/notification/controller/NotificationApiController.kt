@@ -1,15 +1,16 @@
-package com.sportsapp.presentation.notification
+package com.sportsapp.presentation.notification.controller
 
-import com.sportsapp.application.notification.GetUnreadCountUseCase
-import com.sportsapp.application.notification.ListMyNotificationsCommand
-import com.sportsapp.application.notification.ListMyNotificationsUseCase
-import com.sportsapp.application.notification.MarkNotificationReadCommand
-import com.sportsapp.application.notification.MarkNotificationReadUseCase
-import com.sportsapp.application.notification.NotificationPageResponse
-import com.sportsapp.application.notification.NotificationResponse
-import com.sportsapp.application.notification.PushTokenResponse
-import com.sportsapp.application.notification.RegisterPushTokenUseCase
-import com.sportsapp.application.notification.UnreadCountResponse
+import com.sportsapp.application.notification.usecase.GetUnreadCountUseCase
+import com.sportsapp.application.notification.dto.ListMyNotificationsCommand
+import com.sportsapp.application.notification.usecase.ListMyNotificationsUseCase
+import com.sportsapp.application.notification.dto.MarkNotificationReadCommand
+import com.sportsapp.application.notification.usecase.MarkNotificationReadUseCase
+import com.sportsapp.presentation.notification.dto.request.RegisterPushTokenRequest
+import com.sportsapp.presentation.notification.dto.response.NotificationPageResponse
+import com.sportsapp.presentation.notification.dto.response.NotificationResponse
+import com.sportsapp.presentation.notification.dto.response.PushTokenResponse
+import com.sportsapp.application.notification.usecase.RegisterPushTokenUseCase
+import com.sportsapp.presentation.notification.dto.response.UnreadCountResponse
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
@@ -33,8 +34,10 @@ class NotificationApiController(
     fun registerPushToken(
         @RequestHeader("X-User-Id") userId: Long,
         @RequestBody request: RegisterPushTokenRequest,
-    ): ResponseEntity<PushTokenResponse> =
-        ResponseEntity.ok(registerPushTokenUseCase.execute(request.toCommand(userId)))
+    ): ResponseEntity<PushTokenResponse> {
+        val result = registerPushTokenUseCase.execute(request.toCommand(userId))
+        return ResponseEntity.ok(PushTokenResponse(id = result.id, platform = result.platform))
+    }
     @GetMapping("/me")
     fun listMyNotifications(
         @RequestHeader("X-User-Id") userId: Long,
@@ -48,14 +51,15 @@ class NotificationApiController(
             page = page,
             size = size,
         )
-        return ResponseEntity.ok(listMyNotificationsUseCase.execute(command))
+        val result = listMyNotificationsUseCase.execute(command)
+        return ResponseEntity.ok(NotificationPageResponse.of(result))
     }
 
     @GetMapping("/me/unread-count")
     fun getUnreadCount(
         @RequestHeader("X-User-Id") userId: Long,
     ): ResponseEntity<UnreadCountResponse> =
-        ResponseEntity.ok(getUnreadCountUseCase.execute(userId))
+        ResponseEntity.ok(UnreadCountResponse(getUnreadCountUseCase.execute(userId)))
 
     @PatchMapping("/{id}/read")
     fun markRead(
@@ -63,6 +67,6 @@ class NotificationApiController(
         @RequestHeader("X-User-Id") userId: Long,
     ): ResponseEntity<NotificationResponse> {
         val command = MarkNotificationReadCommand(notificationId = id, userId = userId)
-        return ResponseEntity.ok(markNotificationReadUseCase.execute(command))
+        return ResponseEntity.ok(NotificationResponse.of(markNotificationReadUseCase.execute(command)))
     }
 }

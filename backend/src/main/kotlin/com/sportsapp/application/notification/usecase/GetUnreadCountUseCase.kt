@@ -1,6 +1,6 @@
-package com.sportsapp.application.notification
+package com.sportsapp.application.notification.usecase
 
-import com.sportsapp.domain.notification.NotificationDomainService
+import com.sportsapp.domain.notification.service.NotificationDomainService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -9,6 +9,6 @@ class GetUnreadCountUseCase(
     private val notificationDomainService: NotificationDomainService,
 ) {
     @Transactional(readOnly = true)
-    fun execute(userId: Long): UnreadCountResponse =
-        UnreadCountResponse(notificationDomainService.countUnread(userId))
+    fun execute(userId: Long): Long =
+        notificationDomainService.countUnread(userId)
 }

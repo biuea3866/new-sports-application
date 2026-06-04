@@ -1,7 +1,8 @@
-package com.sportsapp.presentation.notification
+package com.sportsapp.presentation.notification.controller
 
-import com.sportsapp.application.notification.NotificationResponse
-import com.sportsapp.application.notification.SendNotificationUseCase
+import com.sportsapp.presentation.notification.dto.request.SendNotificationRequest
+import com.sportsapp.presentation.notification.dto.response.NotificationResponse
+import com.sportsapp.application.notification.usecase.SendNotificationUseCase
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -17,5 +18,5 @@ class AdminNotificationApiController(
     fun send(
         @RequestBody request: SendNotificationRequest,
     ): ResponseEntity<NotificationResponse> =
-        ResponseEntity.ok(sendNotificationUseCase.execute(request.toCommand()))
+        ResponseEntity.ok(NotificationResponse.of(sendNotificationUseCase.execute(request.toCommand())))
 }

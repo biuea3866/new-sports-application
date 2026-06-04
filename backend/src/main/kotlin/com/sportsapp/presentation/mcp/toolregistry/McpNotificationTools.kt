@@ -1,7 +1,7 @@
 package com.sportsapp.presentation.mcp.toolregistry
 
-import com.sportsapp.application.notification.ListMyNotificationsCommand
-import com.sportsapp.application.notification.ListMyNotificationsUseCase
+import com.sportsapp.application.notification.dto.ListMyNotificationsCommand
+import com.sportsapp.application.notification.usecase.ListMyNotificationsUseCase
 import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
 import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.audit.McpToolAuditHelper.withAudit

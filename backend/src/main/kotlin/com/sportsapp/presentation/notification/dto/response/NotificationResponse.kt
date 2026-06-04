@@ -1,9 +1,10 @@
-package com.sportsapp.application.notification
+package com.sportsapp.presentation.notification.dto.response
 
-import com.sportsapp.domain.notification.Notification
-import com.sportsapp.domain.notification.NotificationChannel
-import com.sportsapp.domain.notification.NotificationResult
-import com.sportsapp.domain.notification.NotificationStatus
+import com.sportsapp.application.notification.dto.NotificationPageResult
+import com.sportsapp.domain.notification.entity.Notification
+import com.sportsapp.domain.notification.vo.NotificationChannel
+import com.sportsapp.domain.notification.dto.NotificationResult
+import com.sportsapp.domain.notification.entity.NotificationStatus
 import org.springframework.data.domain.Page
 import java.time.ZonedDateTime
 
@@ -56,6 +57,14 @@ data class NotificationPageResponse(
             totalPages = page.totalPages,
             page = page.number,
             size = page.size,
+        )
+
+        fun of(result: NotificationPageResult) = NotificationPageResponse(
+            content = result.content.map { NotificationResponse.of(it) },
+            totalElements = result.totalElements,
+            totalPages = result.totalPages,
+            page = result.page,
+            size = result.size,
         )
     }
 }

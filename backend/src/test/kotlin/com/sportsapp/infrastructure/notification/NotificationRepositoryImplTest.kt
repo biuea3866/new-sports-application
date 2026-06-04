@@ -1,11 +1,12 @@
 package com.sportsapp.infrastructure.notification
 
 import com.sportsapp.BaseJpaIntegrationTest
-import com.sportsapp.domain.notification.Notification
-import com.sportsapp.domain.notification.NotificationChannel
-import com.sportsapp.domain.notification.NotificationPayload
-import com.sportsapp.domain.notification.NotificationRepository
-import com.sportsapp.domain.notification.NotificationStatus
+import com.sportsapp.domain.notification.entity.Notification
+import com.sportsapp.domain.notification.vo.NotificationChannel
+import com.sportsapp.domain.notification.vo.NotificationPayload
+import com.sportsapp.domain.notification.repository.NotificationRepository
+import com.sportsapp.domain.notification.entity.NotificationStatus
+import com.sportsapp.infrastructure.notification.mysql.NotificationJpaRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull

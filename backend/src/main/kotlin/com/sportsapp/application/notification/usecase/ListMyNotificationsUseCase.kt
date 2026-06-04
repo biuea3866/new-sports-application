@@ -1,6 +1,8 @@
-package com.sportsapp.application.notification
+package com.sportsapp.application.notification.usecase
 
-import com.sportsapp.domain.notification.NotificationDomainService
+import com.sportsapp.application.notification.dto.ListMyNotificationsCommand
+import com.sportsapp.application.notification.dto.NotificationPageResult
+import com.sportsapp.domain.notification.service.NotificationDomainService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -9,13 +11,13 @@ class ListMyNotificationsUseCase(
     private val notificationDomainService: NotificationDomainService,
 ) {
     @Transactional(readOnly = true)
-    fun execute(command: ListMyNotificationsCommand): NotificationPageResponse {
+    fun execute(command: ListMyNotificationsCommand): NotificationPageResult {
         val page = notificationDomainService.listMyNotifications(
             userId = command.userId,
             onlyUnread = command.onlyUnread,
             page = command.page,
             size = command.size,
         )
-        return NotificationPageResponse.of(page)
+        return NotificationPageResult.of(page)
     }
 }
