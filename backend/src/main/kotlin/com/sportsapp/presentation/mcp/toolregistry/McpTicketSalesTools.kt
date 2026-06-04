@@ -1,8 +1,8 @@
 package com.sportsapp.presentation.mcp.toolregistry
 
-import com.sportsapp.application.ticketing.GetTicketSalesCommand
-import com.sportsapp.application.ticketing.GetTicketSalesUseCase
-import com.sportsapp.application.ticketing.TicketSalesResponse
+import com.sportsapp.application.ticketing.dto.GetTicketSalesCommand
+import com.sportsapp.application.ticketing.usecase.GetTicketSalesUseCase
+import com.sportsapp.application.ticketing.dto.TicketSalesResponse
 import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
 import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.audit.McpToolAuditHelper.withAudit

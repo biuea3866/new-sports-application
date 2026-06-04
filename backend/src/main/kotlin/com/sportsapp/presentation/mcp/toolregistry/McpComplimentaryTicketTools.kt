@@ -1,7 +1,7 @@
 package com.sportsapp.presentation.mcp.toolregistry
 
-import com.sportsapp.application.ticketing.IssueComplimentaryTicketCommand
-import com.sportsapp.application.ticketing.IssueComplimentaryTicketUseCase
+import com.sportsapp.application.ticketing.dto.IssueComplimentaryTicketCommand
+import com.sportsapp.application.ticketing.usecase.IssueComplimentaryTicketUseCase
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenGateway
 import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.audit.McpToolAuditHelper.withAudit
