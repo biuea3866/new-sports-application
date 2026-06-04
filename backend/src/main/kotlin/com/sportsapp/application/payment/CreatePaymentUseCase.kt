@@ -1,16 +1,15 @@
 package com.sportsapp.application.payment
 
 import com.sportsapp.domain.payment.PaymentDomainService
+import com.sportsapp.domain.payment.PgInitiateCommand
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 
 @Service
 class CreatePaymentUseCase(
     private val paymentDomainService: PaymentDomainService,
 ) {
-    @Transactional
     fun execute(command: CreatePaymentCommand): PaymentResponse {
-        val payment = paymentDomainService.prepare(
+        val paymentId = paymentDomainService.createPending(
             userId = command.userId,
             idempotencyKey = command.idempotencyKey,
             orderType = command.orderType,
@@ -18,10 +17,23 @@ class CreatePaymentUseCase(
             method = command.method,
             amount = command.amount,
             currency = command.currency,
-            itemName = "${command.orderType} #${command.orderId}",
-            returnUrl = "",
-            failUrl = "",
         )
+        paymentDomainService.initiatePg(
+            PgInitiateCommand(
+                paymentId = paymentId,
+                method = command.method,
+                idempotencyKey = command.idempotencyKey,
+                userId = command.userId,
+                orderType = command.orderType,
+                orderId = command.orderId,
+                amount = command.amount,
+                currency = command.currency,
+                itemName = "${command.orderType} #${command.orderId}",
+                returnUrl = "",
+                failUrl = "",
+            )
+        )
+        val payment = paymentDomainService.getPayment(userId = command.userId, paymentId = paymentId)
         return PaymentResponse.of(payment)
     }
 }
