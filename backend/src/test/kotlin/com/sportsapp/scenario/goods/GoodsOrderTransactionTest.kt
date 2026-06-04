@@ -34,6 +34,14 @@ class GoodsOrderTransactionTest(
 ) : BaseIntegrationTest() {
 
     init {
+        beforeEach {
+            jdbcTemplate.execute("DELETE FROM goods_order_items")
+            jdbcTemplate.execute("DELETE FROM goods_orders")
+            jdbcTemplate.execute("DELETE FROM payments")
+            jdbcTemplate.execute("DELETE FROM stocks")
+            jdbcTemplate.execute("DELETE FROM products")
+        }
+
         afterEach {
             jdbcTemplate.execute("DELETE FROM goods_order_items")
             jdbcTemplate.execute("DELETE FROM goods_orders")
