@@ -1,8 +1,8 @@
 package com.sportsapp.presentation.mcp.audit
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.sportsapp.application.mcp.RecordToolInvocationCommand
-import com.sportsapp.application.mcp.RecordToolInvocationUseCase
+import com.sportsapp.application.mcp.dto.RecordToolInvocationCommand
+import com.sportsapp.application.mcp.usecase.RecordToolInvocationUseCase
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component

@@ -1,11 +1,11 @@
 package com.sportsapp.infrastructure.security
 
-import com.sportsapp.domain.mcp.McpScope
-import com.sportsapp.domain.mcp.McpToken
-import com.sportsapp.domain.mcp.McpTokenDomainService
-import com.sportsapp.domain.mcp.McpTokenRepository
-import com.sportsapp.domain.mcp.McpTokenScopeRepository
-import com.sportsapp.domain.mcp.McpTokenStatus
+import com.sportsapp.domain.mcp.vo.McpScope
+import com.sportsapp.domain.mcp.entity.McpToken
+import com.sportsapp.domain.mcp.service.McpTokenDomainService
+import com.sportsapp.domain.mcp.repository.McpTokenRepository
+import com.sportsapp.domain.mcp.repository.McpTokenScopeRepository
+import com.sportsapp.domain.mcp.entity.McpTokenStatus
 import com.sportsapp.domain.common.Permission
 import com.sportsapp.domain.common.PermissionRepository
 import io.kotest.core.spec.style.BehaviorSpec
@@ -95,7 +95,7 @@ class McpTokenAuthenticationFilterTest : BehaviorSpec({
         val plainToken = "mcp_1_validrandomsecretstring1234567890"
         val token = makeToken(id = 1L, userId = 10L)
         val permission = makePermission("mcp.facility.read.own", 100L)
-        val scope = com.sportsapp.domain.mcp.McpTokenScope.create(1L, 100L).also { s ->
+        val scope = com.sportsapp.domain.mcp.entity.McpTokenScope.create(1L, 100L).also { s ->
             val superclass = s.javaClass.superclass
             listOf("createdAt", "updatedAt").forEach { fieldName ->
                 val field = superclass.getDeclaredField(fieldName)
