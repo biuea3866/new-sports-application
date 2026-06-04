@@ -1,8 +1,8 @@
 package com.sportsapp.infrastructure.security
 
 import com.sportsapp.domain.common.UserRoleName
-import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
-import com.sportsapp.domain.mcp.McpScope
+import com.sportsapp.domain.mcp.vo.McpAuthenticatedPrincipal
+import com.sportsapp.domain.mcp.vo.McpScope
 import com.sportsapp.domain.user.vo.UserPrincipal
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component

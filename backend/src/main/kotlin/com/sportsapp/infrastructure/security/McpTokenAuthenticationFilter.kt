@@ -1,10 +1,10 @@
 package com.sportsapp.infrastructure.security
 
 import com.sportsapp.domain.common.PermissionRepository
-import com.sportsapp.domain.mcp.McpScope
-import com.sportsapp.domain.mcp.McpTokenDomainService
-import com.sportsapp.domain.mcp.McpTokenRepository
-import com.sportsapp.domain.mcp.McpTokenScopeRepository
+import com.sportsapp.domain.mcp.vo.McpScope
+import com.sportsapp.domain.mcp.service.McpTokenDomainService
+import com.sportsapp.domain.mcp.repository.McpTokenRepository
+import com.sportsapp.domain.mcp.repository.McpTokenScopeRepository
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse

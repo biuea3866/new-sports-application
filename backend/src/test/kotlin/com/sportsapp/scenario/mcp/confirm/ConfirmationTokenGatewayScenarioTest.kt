@@ -1,10 +1,10 @@
 package com.sportsapp.scenario.mcp.confirm
 
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.domain.mcp.confirm.ConfirmationTokenAlreadyConsumedException
-import com.sportsapp.domain.mcp.confirm.ConfirmationTokenContext
-import com.sportsapp.domain.mcp.confirm.ConfirmationTokenExpiredException
-import com.sportsapp.domain.mcp.confirm.ConfirmationTokenGateway
+import com.sportsapp.domain.mcp.exception.ConfirmationTokenAlreadyConsumedException
+import com.sportsapp.domain.mcp.dto.ConfirmationTokenContext
+import com.sportsapp.domain.mcp.exception.ConfirmationTokenExpiredException
+import com.sportsapp.domain.mcp.gateway.ConfirmationTokenGateway
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe

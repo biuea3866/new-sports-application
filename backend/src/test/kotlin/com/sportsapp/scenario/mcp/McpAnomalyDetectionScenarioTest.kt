@@ -1,12 +1,12 @@
 package com.sportsapp.scenario.mcp
 
-import com.sportsapp.application.mcp.DetectMcpAnomalyUseCase
-import com.sportsapp.domain.mcp.McpAnomalyDetectedEvent
-import com.sportsapp.domain.mcp.McpAuditLog
-import com.sportsapp.domain.mcp.McpAuditLogRepository
-import com.sportsapp.domain.mcp.McpToken
-import com.sportsapp.domain.mcp.McpTokenRepository
-import com.sportsapp.domain.mcp.McpTokenStatus
+import com.sportsapp.application.mcp.usecase.DetectMcpAnomalyUseCase
+import com.sportsapp.domain.mcp.event.McpAnomalyDetectedEvent
+import com.sportsapp.domain.mcp.entity.McpAuditLog
+import com.sportsapp.domain.mcp.repository.McpAuditLogRepository
+import com.sportsapp.domain.mcp.entity.McpToken
+import com.sportsapp.domain.mcp.repository.McpTokenRepository
+import com.sportsapp.domain.mcp.entity.McpTokenStatus
 import com.sportsapp.infrastructure.messaging.KafkaDomainEventPublisher
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe

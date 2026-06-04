@@ -1,7 +1,7 @@
 package com.sportsapp.infrastructure.security
 
-import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
-import com.sportsapp.domain.mcp.McpScope
+import com.sportsapp.domain.mcp.vo.McpAuthenticatedPrincipal
+import com.sportsapp.domain.mcp.vo.McpScope
 import com.sportsapp.domain.user.vo.UserPrincipal
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe

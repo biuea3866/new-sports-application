@@ -1,7 +1,7 @@
 package com.sportsapp.infrastructure.config
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.sportsapp.application.dashboard.DashboardSummaryResponse
+import com.sportsapp.application.dashboard.dto.DashboardSummaryResponse
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer

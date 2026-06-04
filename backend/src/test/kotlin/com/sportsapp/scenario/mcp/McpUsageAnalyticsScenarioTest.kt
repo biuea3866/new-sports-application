@@ -2,9 +2,9 @@ package com.sportsapp.scenario.mcp
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.application.mcp.GetMcpUsageAnalyticsResponse
-import com.sportsapp.domain.mcp.McpAuditLog
-import com.sportsapp.domain.mcp.McpAuditLogRepository
+import com.sportsapp.application.mcp.dto.GetMcpUsageAnalyticsResponse
+import com.sportsapp.domain.mcp.entity.McpAuditLog
+import com.sportsapp.domain.mcp.repository.McpAuditLogRepository
 import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
