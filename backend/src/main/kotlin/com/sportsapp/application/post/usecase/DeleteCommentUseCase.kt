@@ -1,6 +1,7 @@
-package com.sportsapp.application.post
+package com.sportsapp.application.post.usecase
 
-import com.sportsapp.domain.post.PostDomainService
+import com.sportsapp.application.post.dto.DeleteCommentCommand
+import com.sportsapp.domain.post.service.PostDomainService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 

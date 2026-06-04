@@ -1,6 +1,7 @@
-package com.sportsapp.domain.post
+package com.sportsapp.domain.post.entity
 
 import com.sportsapp.domain.common.JpaAuditingBase
+import com.sportsapp.domain.post.vo.PostType
 import jakarta.persistence.CascadeType
 import jakarta.persistence.Column
 import jakarta.persistence.Entity

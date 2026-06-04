@@ -1,4 +1,4 @@
-package com.sportsapp.presentation.post
+package com.sportsapp.presentation.post.dto.request
 
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size

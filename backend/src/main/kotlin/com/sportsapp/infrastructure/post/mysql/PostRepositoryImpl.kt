@@ -1,7 +1,7 @@
-package com.sportsapp.infrastructure.persistence.post
+package com.sportsapp.infrastructure.post.mysql
 
-import com.sportsapp.domain.post.Post
-import com.sportsapp.domain.post.PostRepository
+import com.sportsapp.domain.post.entity.Post
+import com.sportsapp.domain.post.repository.PostRepository
 import org.springframework.stereotype.Repository
 
 @Repository

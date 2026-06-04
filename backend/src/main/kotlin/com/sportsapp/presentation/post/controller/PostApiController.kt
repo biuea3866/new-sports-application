@@ -1,12 +1,13 @@
-package com.sportsapp.presentation.post
+package com.sportsapp.presentation.post.controller
 
-import com.sportsapp.application.post.CreatePostUseCase
-import com.sportsapp.application.post.GetPostUseCase
-import com.sportsapp.application.post.PostCriteria
-import com.sportsapp.application.post.PostDetailResponse
-import com.sportsapp.application.post.PostResponse
-import com.sportsapp.application.post.SearchPostsUseCase
-import com.sportsapp.domain.post.PostType
+import com.sportsapp.application.post.usecase.CreatePostUseCase
+import com.sportsapp.application.post.usecase.GetPostUseCase
+import com.sportsapp.application.post.usecase.SearchPostsUseCase
+import com.sportsapp.application.post.dto.PostCriteria
+import com.sportsapp.domain.post.vo.PostType
+import com.sportsapp.presentation.post.dto.request.CreatePostRequest
+import com.sportsapp.presentation.post.dto.response.PostDetailResponse
+import com.sportsapp.presentation.post.dto.response.PostResponse
 import jakarta.validation.Valid
 import org.springframework.data.domain.Page
 import org.springframework.http.ResponseEntity
@@ -31,8 +32,8 @@ class PostApiController(
         @RequestHeader("X-User-Id") userId: Long,
         @Valid @RequestBody request: CreatePostRequest,
     ): ResponseEntity<PostResponse> {
-        val response = createPostUseCase.execute(request.toCommand(userId))
-        return ResponseEntity.status(201).body(response)
+        val post = createPostUseCase.execute(request.toCommand(userId))
+        return ResponseEntity.status(201).body(PostResponse.of(post))
     }
 
     @GetMapping
@@ -50,10 +51,12 @@ class PostApiController(
             page = page,
             size = size,
         )
-        return ResponseEntity.ok(searchPostsUseCase.execute(criteria))
+        return ResponseEntity.ok(searchPostsUseCase.execute(criteria).map { PostResponse.of(it) })
     }
 
     @GetMapping("/{id}")
-    fun getPost(@PathVariable id: Long): ResponseEntity<PostDetailResponse> =
-        ResponseEntity.ok(getPostUseCase.execute(id))
+    fun getPost(@PathVariable id: Long): ResponseEntity<PostDetailResponse> {
+        val (post, comments) = getPostUseCase.execute(id)
+        return ResponseEntity.ok(PostDetailResponse.of(post, comments))
+    }
 }

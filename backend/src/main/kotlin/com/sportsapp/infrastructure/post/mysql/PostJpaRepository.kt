@@ -1,6 +1,6 @@
-package com.sportsapp.infrastructure.persistence.post
+package com.sportsapp.infrastructure.post.mysql
 
-import com.sportsapp.domain.post.Post
+import com.sportsapp.domain.post.entity.Post
 import org.springframework.data.jpa.repository.JpaRepository
 
 interface PostJpaRepository : JpaRepository<Post, Long> {

@@ -1,6 +1,12 @@
-package com.sportsapp.domain.post
+package com.sportsapp.domain.post.service
 
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
+import com.sportsapp.domain.post.dto.PostSearchCriteria
+import com.sportsapp.domain.post.entity.Comment
+import com.sportsapp.domain.post.entity.Post
+import com.sportsapp.domain.post.repository.CommentRepository
+import com.sportsapp.domain.post.repository.PostCustomRepository
+import com.sportsapp.domain.post.repository.PostRepository
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service

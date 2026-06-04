@@ -1,4 +1,4 @@
-package com.sportsapp.domain.post
+package com.sportsapp.domain.post.vo
 
 enum class PostType {
     FREE,

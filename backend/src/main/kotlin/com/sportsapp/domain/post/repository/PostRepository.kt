@@ -1,4 +1,6 @@
-package com.sportsapp.domain.post
+package com.sportsapp.domain.post.repository
+
+import com.sportsapp.domain.post.entity.Post
 
 interface PostRepository {
     fun save(post: Post): Post

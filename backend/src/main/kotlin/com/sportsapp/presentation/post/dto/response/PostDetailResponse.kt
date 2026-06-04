@@ -1,8 +1,8 @@
-package com.sportsapp.application.post
+package com.sportsapp.presentation.post.dto.response
 
-import com.sportsapp.domain.post.Comment
-import com.sportsapp.domain.post.Post
-import com.sportsapp.domain.post.PostType
+import com.sportsapp.domain.post.entity.Comment
+import com.sportsapp.domain.post.entity.Post
+import com.sportsapp.domain.post.vo.PostType
 import java.time.ZonedDateTime
 
 data class PostDetailResponse(
@@ -23,24 +23,6 @@ data class PostDetailResponse(
             type = post.type,
             createdAt = post.createdAt,
             comments = comments.map { CommentResponse.of(it) },
-        )
-    }
-}
-
-data class CommentResponse(
-    val id: Long,
-    val postId: Long,
-    val userId: Long,
-    val content: String,
-    val createdAt: ZonedDateTime,
-) {
-    companion object {
-        fun of(comment: Comment): CommentResponse = CommentResponse(
-            id = comment.id,
-            postId = comment.postId,
-            userId = comment.userId,
-            content = comment.content,
-            createdAt = comment.createdAt,
         )
     }
 }

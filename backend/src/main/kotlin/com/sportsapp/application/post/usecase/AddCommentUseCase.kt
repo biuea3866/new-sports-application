@@ -1,6 +1,8 @@
-package com.sportsapp.application.post
+package com.sportsapp.application.post.usecase
 
-import com.sportsapp.domain.post.PostDomainService
+import com.sportsapp.application.post.dto.AddCommentCommand
+import com.sportsapp.domain.post.entity.Comment
+import com.sportsapp.domain.post.service.PostDomainService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -9,12 +11,10 @@ class AddCommentUseCase(
     private val postDomainService: PostDomainService,
 ) {
     @Transactional
-    fun execute(command: AddCommentCommand): CommentResponse {
-        val comment = postDomainService.addComment(
+    fun execute(command: AddCommentCommand): Comment =
+        postDomainService.addComment(
             postId = command.postId,
             userId = command.userId,
             content = command.content,
         )
-        return CommentResponse.of(comment)
-    }
 }

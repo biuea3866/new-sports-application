@@ -1,6 +1,8 @@
-package com.sportsapp.application.post
+package com.sportsapp.application.post.usecase
 
-import com.sportsapp.domain.post.PostDomainService
+import com.sportsapp.application.post.dto.CreatePostCommand
+import com.sportsapp.domain.post.entity.Post
+import com.sportsapp.domain.post.service.PostDomainService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -9,12 +11,10 @@ class CreatePostUseCase(
     private val postDomainService: PostDomainService,
 ) {
     @Transactional
-    fun execute(command: CreatePostCommand): PostResponse {
-        val post = postDomainService.createPost(
+    fun execute(command: CreatePostCommand): Post =
+        postDomainService.createPost(
             userId = command.userId,
             title = command.title,
             content = command.content,
         )
-        return PostResponse.of(post)
-    }
 }

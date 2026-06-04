@@ -1,11 +1,11 @@
-package com.sportsapp.infrastructure.persistence.post
+package com.sportsapp.infrastructure.post.mysql
 
 import com.querydsl.core.BooleanBuilder
 import com.querydsl.jpa.impl.JPAQueryFactory
-import com.sportsapp.domain.post.PostCustomRepository
-import com.sportsapp.domain.post.Post
-import com.sportsapp.domain.post.PostSearchCriteria
-import com.sportsapp.domain.post.QPost
+import com.sportsapp.domain.post.repository.PostCustomRepository
+import com.sportsapp.domain.post.entity.Post
+import com.sportsapp.domain.post.dto.PostSearchCriteria
+import com.sportsapp.domain.post.entity.QPost
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable

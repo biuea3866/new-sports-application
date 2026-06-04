@@ -1,6 +1,6 @@
-package com.sportsapp.infrastructure.persistence.post
+package com.sportsapp.infrastructure.post.mysql
 
-import com.sportsapp.domain.post.Comment
+import com.sportsapp.domain.post.entity.Comment
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository

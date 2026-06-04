@@ -1,6 +1,6 @@
-package com.sportsapp.application.post
+package com.sportsapp.presentation.post.dto.response
 
-import com.sportsapp.domain.post.Comment
+import com.sportsapp.domain.post.entity.Comment
 import org.springframework.data.domain.Page
 
 data class CommentPageResponse(

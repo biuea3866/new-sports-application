@@ -1,12 +1,13 @@
-package com.sportsapp.presentation.post
+package com.sportsapp.presentation.post.controller
 
-import com.sportsapp.application.post.AddCommentCommand
-import com.sportsapp.application.post.AddCommentUseCase
-import com.sportsapp.application.post.CommentPageResponse
-import com.sportsapp.application.post.CommentResponse
-import com.sportsapp.application.post.DeleteCommentCommand
-import com.sportsapp.application.post.DeleteCommentUseCase
-import com.sportsapp.application.post.ListCommentsUseCase
+import com.sportsapp.application.post.usecase.AddCommentUseCase
+import com.sportsapp.application.post.usecase.DeleteCommentUseCase
+import com.sportsapp.application.post.usecase.ListCommentsUseCase
+import com.sportsapp.application.post.dto.AddCommentCommand
+import com.sportsapp.application.post.dto.DeleteCommentCommand
+import com.sportsapp.presentation.post.dto.request.AddCommentRequest
+import com.sportsapp.presentation.post.dto.response.CommentPageResponse
+import com.sportsapp.presentation.post.dto.response.CommentResponse
 import jakarta.validation.Valid
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -36,8 +37,8 @@ class CommentApiController(
             userId = userId,
             content = request.content,
         )
-        val response = addCommentUseCase.execute(command)
-        return ResponseEntity.status(201).body(response)
+        val comment = addCommentUseCase.execute(command)
+        return ResponseEntity.status(201).body(CommentResponse.of(comment))
     }
 
     @DeleteMapping("/comments/{id}")
@@ -56,7 +57,7 @@ class CommentApiController(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
     ): ResponseEntity<CommentPageResponse> {
-        val response = listCommentsUseCase.execute(postId = postId, page = page, size = size)
-        return ResponseEntity.ok(response)
+        val commentPage = listCommentsUseCase.execute(postId = postId, page = page, size = size)
+        return ResponseEntity.ok(CommentPageResponse.of(commentPage))
     }
 }

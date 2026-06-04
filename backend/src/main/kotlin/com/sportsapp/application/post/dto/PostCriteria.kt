@@ -1,7 +1,7 @@
-package com.sportsapp.application.post
+package com.sportsapp.application.post.dto
 
-import com.sportsapp.domain.post.PostSearchCriteria
-import com.sportsapp.domain.post.PostType
+import com.sportsapp.domain.post.dto.PostSearchCriteria
+import com.sportsapp.domain.post.vo.PostType
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort

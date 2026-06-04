@@ -1,4 +1,4 @@
-package com.sportsapp.domain.post
+package com.sportsapp.domain.post.exception
 
 import com.sportsapp.domain.common.BusinessException
 import com.sportsapp.domain.common.ErrorStatus
