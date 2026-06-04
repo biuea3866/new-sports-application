@@ -258,6 +258,20 @@ grep -rn "!!" --include="*.kt" <모듈경로>/src/main
 
 티켓 md의 **테스트 케이스** 항목을 실제 테스트 코드와 대조. 누락된 시나리오가 있으면 추가.
 
+### 4. DDD / OO / 품질 자가 검증 (7대 기준 — 모두 ✅ 여야 완료)
+
+| # | 기준 | 통과 조건 |
+|---|---|---|
+| 1 | **객체지향** | Rich Domain·캡슐화·Tell-Don't-Ask. getter/setter 만 있는 Anemic Entity 금지. 검증/상태전이/계산이 Entity 메서드 안에 있다 |
+| 2 | **DDD 개념** | Entity / **VO(값 동등성·불변)** / DomainService / **Factory(`create()`)** / Aggregate / **DomainEvent** 역할이 분리돼 있다. 도메인 이벤트는 Entity 가 `registerEvent` 로 적재 → DomainService 가 `publishAll(pullDomainEvents())` 로 발행(AFTER_COMMIT) |
+| 3 | **클린코드** | UseCase `execute()` ≤10줄, DomainService 메서드 ≤15줄, guard clause, 중첩 depth ≤2, 매직값 금지. **detekt baseline 에 신규 위반을 억제(append)해서 통과시키지 않는다** — 실제로 고친다 |
+| 4 | **테스트 커버리지** | 단위/레포지토리/시나리오 3계층 + happy·불변식·상태전이·경계값·분기 + 동시성·멱등·보상 커버. Kover 로 변경 클래스 라인/브랜치 확인. 시나리오/Testcontainers 테스트를 "느려서" 생략하지 않는다 |
+| 5 | **동시성** | capacity/좌석/재고/예약은 **DB unique 또는 비관락을 최종 방어선**으로 둔다. `@Version` 낙관락 충돌은 409/재시도로 처리(500 노출 금지). `@Transactional` 안에서 외부 Gateway(PG·SMS·푸시) 호출 금지 |
+| 6 | **JPA Aggregate 매핑** | **같은 aggregate 내부 자식**은 `@OneToMany`/`@ManyToOne`/`@OneToOne` 연관관계 + `cascade=[PERSIST, MERGE]` 로 연결한다. **다른 aggregate** 는 FK id(Long). soft-delete 코드베이스이므로 **`orphanRemoval`/`CascadeType.REMOVE`(hard delete) 금지** |
+| 7 | **Aggregate 트랜잭션 / 고아 금지** | 루트 생명주기 종료(soft-delete·취소) 시 자식 `softDelete()` 를 **같은 트랜잭션에서 전파**. "루트 soft-delete → 자식 조회 0건" 테스트 필수. **정의만 하고 호출 안 한 전파 메서드 금지**(고아 신호) |
+
+7개 중 하나라도 미충족이면 **완료 단언 금지** — `in-progress` 로 보고하고 보완한다.
+
 ---
 
 ## Step 7 — 커밋 & PR
