@@ -1,5 +1,4 @@
-package com.sportsapp.presentation.consumer
-
+package com.sportsapp.presentation.notification.worker
 import com.sportsapp.application.notification.usecase.EnqueueNotificationUseCase
 import org.springframework.kafka.annotation.KafkaListener
 import org.springframework.stereotype.Component

@@ -1,8 +1,8 @@
 package com.sportsapp.presentation.mcp.toolregistry
 
-import com.sportsapp.domain.notification.NotificationResult
-import com.sportsapp.domain.notification.NotificationChannel
-import com.sportsapp.domain.notification.NotificationStatus
+import com.sportsapp.domain.notification.dto.NotificationResult
+import com.sportsapp.domain.notification.vo.NotificationChannel
+import com.sportsapp.domain.notification.entity.NotificationStatus
 import java.time.ZonedDateTime
 
 /**

@@ -1,5 +1,4 @@
-package com.sportsapp.domain.notification
-
+package com.sportsapp.domain.notification.entity
 import com.sportsapp.domain.common.JpaAuditingBase
 import jakarta.persistence.Column
 import jakarta.persistence.Entity

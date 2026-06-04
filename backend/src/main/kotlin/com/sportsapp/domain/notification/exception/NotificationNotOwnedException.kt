@@ -1,5 +1,4 @@
-package com.sportsapp.domain.notification
-
+package com.sportsapp.domain.notification.exception
 import com.sportsapp.domain.common.BusinessException
 import com.sportsapp.domain.common.ErrorStatus
 

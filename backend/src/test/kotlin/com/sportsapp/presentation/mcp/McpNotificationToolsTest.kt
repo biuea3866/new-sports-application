@@ -1,13 +1,13 @@
 package com.sportsapp.presentation.mcp
 
-import com.sportsapp.application.notification.ListMyNotificationsCommand
+import com.sportsapp.application.notification.dto.ListMyNotificationsCommand
 import com.sportsapp.application.notification.dto.NotificationPageResult
 import com.sportsapp.application.notification.usecase.ListMyNotificationsUseCase
 import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
-import com.sportsapp.domain.notification.NotificationResult
+import com.sportsapp.domain.notification.dto.NotificationResult
 import com.sportsapp.domain.mcp.McpScope
-import com.sportsapp.domain.notification.NotificationChannel
-import com.sportsapp.domain.notification.NotificationStatus
+import com.sportsapp.domain.notification.vo.NotificationChannel
+import com.sportsapp.domain.notification.entity.NotificationStatus
 import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.response.McpResponseStatus
 import com.sportsapp.presentation.mcp.toolregistry.McpNotificationTools

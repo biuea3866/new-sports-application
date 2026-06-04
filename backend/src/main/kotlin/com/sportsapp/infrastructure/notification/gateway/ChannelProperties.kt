@@ -1,5 +1,4 @@
-package com.sportsapp.infrastructure.notification
-
+package com.sportsapp.infrastructure.notification.gateway
 import org.springframework.boot.context.properties.ConfigurationProperties
 
 @ConfigurationProperties(prefix = "external.push")

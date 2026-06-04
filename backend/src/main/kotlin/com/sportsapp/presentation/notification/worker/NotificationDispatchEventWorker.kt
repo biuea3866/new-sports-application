@@ -1,6 +1,5 @@
-package com.sportsapp.presentation.notification
-
-import com.sportsapp.application.notification.DispatchNotificationUseCase
+package com.sportsapp.presentation.notification.worker
+import com.sportsapp.application.notification.usecase.DispatchNotificationUseCase
 import com.sportsapp.domain.notification.NotificationDispatchRequestedEvent
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Async

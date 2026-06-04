@@ -1,5 +1,6 @@
-package com.sportsapp.domain.notification
-
+package com.sportsapp.domain.notification.repository
+import com.sportsapp.domain.notification.entity.Notification
+import com.sportsapp.domain.notification.entity.NotificationStatus
 interface NotificationRepository {
     fun save(notification: Notification): Notification
     fun findById(id: Long): Notification?

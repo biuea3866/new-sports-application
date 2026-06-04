@@ -1,16 +1,16 @@
 package com.sportsapp.application.notification
 
 import com.sportsapp.domain.common.DomainEventPublisher
-import com.sportsapp.domain.notification.Notification
-import com.sportsapp.domain.notification.NotificationChannel
-import com.sportsapp.domain.notification.NotificationCustomRepository
-import com.sportsapp.domain.notification.NotificationDomainService
-import com.sportsapp.domain.notification.NotificationNotFoundException
-import com.sportsapp.domain.notification.NotificationNotOwnedException
-import com.sportsapp.domain.notification.NotificationPayload
-import com.sportsapp.domain.notification.NotificationRepository
-import com.sportsapp.domain.notification.NotificationStatus
-import com.sportsapp.domain.notification.TemplateRenderer
+import com.sportsapp.domain.notification.entity.Notification
+import com.sportsapp.domain.notification.vo.NotificationChannel
+import com.sportsapp.domain.notification.repository.NotificationCustomRepository
+import com.sportsapp.domain.notification.service.NotificationDomainService
+import com.sportsapp.domain.notification.exception.NotificationNotFoundException
+import com.sportsapp.domain.notification.exception.NotificationNotOwnedException
+import com.sportsapp.domain.notification.vo.NotificationPayload
+import com.sportsapp.domain.notification.repository.NotificationRepository
+import com.sportsapp.domain.notification.entity.NotificationStatus
+import com.sportsapp.domain.notification.gateway.TemplateRenderer
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldNotBeNull

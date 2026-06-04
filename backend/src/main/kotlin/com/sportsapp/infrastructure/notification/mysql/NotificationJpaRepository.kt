@@ -1,7 +1,6 @@
-package com.sportsapp.infrastructure.notification
-
-import com.sportsapp.domain.notification.Notification
-import com.sportsapp.domain.notification.NotificationStatus
+package com.sportsapp.infrastructure.notification.mysql
+import com.sportsapp.domain.notification.entity.Notification
+import com.sportsapp.domain.notification.entity.NotificationStatus
 import org.springframework.data.jpa.repository.JpaRepository
 
 interface NotificationJpaRepository : JpaRepository<Notification, Long> {

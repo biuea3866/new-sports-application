@@ -1,6 +1,8 @@
-package com.sportsapp.domain.notification
-
+package com.sportsapp.domain.notification.dto
 import java.time.ZonedDateTime
+import com.sportsapp.domain.notification.entity.Notification
+import com.sportsapp.domain.notification.vo.NotificationChannel
+import com.sportsapp.domain.notification.entity.NotificationStatus
 
 data class NotificationResult(
     val id: Long,

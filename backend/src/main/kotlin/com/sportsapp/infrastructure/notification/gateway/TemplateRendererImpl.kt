@@ -1,8 +1,7 @@
-package com.sportsapp.infrastructure.notification
-
-import com.sportsapp.domain.notification.RenderedNotification
-import com.sportsapp.domain.notification.TemplateRenderer
-import com.sportsapp.domain.notification.UnknownTemplateException
+package com.sportsapp.infrastructure.notification.gateway
+import com.sportsapp.domain.notification.vo.RenderedNotification
+import com.sportsapp.domain.notification.gateway.TemplateRenderer
+import com.sportsapp.domain.notification.exception.UnknownTemplateException
 import org.slf4j.LoggerFactory
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.stereotype.Component

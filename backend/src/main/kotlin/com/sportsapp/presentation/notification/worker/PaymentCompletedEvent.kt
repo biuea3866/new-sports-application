@@ -1,9 +1,7 @@
-package com.sportsapp.presentation.consumer
-
-import com.sportsapp.application.notification.EnqueueNotificationCommand
-import com.sportsapp.domain.notification.NotificationChannel
-import com.sportsapp.domain.notification.NotificationPayload
-
+package com.sportsapp.presentation.notification.worker
+import com.sportsapp.application.notification.dto.EnqueueNotificationCommand
+import com.sportsapp.domain.notification.vo.NotificationChannel
+import com.sportsapp.domain.notification.vo.NotificationPayload
 data class PaymentCompletedEvent(
     val paymentId: String,
     val userId: Long,

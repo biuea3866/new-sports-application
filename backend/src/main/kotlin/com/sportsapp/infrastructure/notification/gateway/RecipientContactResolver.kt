@@ -1,6 +1,5 @@
-package com.sportsapp.infrastructure.notification
-
-import com.sportsapp.domain.notification.Notification
+package com.sportsapp.infrastructure.notification.gateway
+import com.sportsapp.domain.notification.entity.Notification
 import com.sportsapp.domain.user.repository.UserRepository
 import org.springframework.stereotype.Component
 

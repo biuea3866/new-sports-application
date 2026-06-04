@@ -2,9 +2,9 @@ package com.sportsapp.scenario.notification
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseJpaIntegrationTest
-import com.sportsapp.domain.notification.NotificationChannel
-import com.sportsapp.domain.notification.NotificationStatus
-import com.sportsapp.infrastructure.notification.NotificationJpaRepository
+import com.sportsapp.domain.notification.vo.NotificationChannel
+import com.sportsapp.domain.notification.entity.NotificationStatus
+import com.sportsapp.infrastructure.notification.mysql.NotificationJpaRepository
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc

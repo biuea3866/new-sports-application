@@ -1,9 +1,8 @@
-package com.sportsapp.infrastructure.notification
-
-import com.sportsapp.domain.notification.Notification
-import com.sportsapp.domain.notification.NotificationChannel
-import com.sportsapp.domain.notification.NotificationChannelGateway
-import com.sportsapp.domain.notification.SendResult
+package com.sportsapp.infrastructure.notification.gateway
+import com.sportsapp.domain.notification.entity.Notification
+import com.sportsapp.domain.notification.vo.NotificationChannel
+import com.sportsapp.domain.notification.gateway.NotificationChannelGateway
+import com.sportsapp.domain.notification.gateway.SendResult
 import com.sportsapp.infrastructure.external.ExternalRestClientFactory
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType

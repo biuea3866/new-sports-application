@@ -1,5 +1,4 @@
-package com.sportsapp.domain.notification
-
+package com.sportsapp.domain.notification.entity
 import com.sportsapp.domain.common.JpaAuditingBase
 import io.hypersistence.utils.hibernate.type.json.JsonStringType
 import jakarta.persistence.Column
@@ -14,6 +13,10 @@ import jakarta.persistence.Version
 import org.hibernate.annotations.Type
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
+import com.sportsapp.domain.notification.exception.InvalidNotificationStateException
+import com.sportsapp.domain.notification.vo.NotificationChannel
+import com.sportsapp.domain.notification.exception.NotificationNotOwnedException
+import com.sportsapp.domain.notification.vo.NotificationPayload
 
 @Entity
 @Table(name = "notifications")

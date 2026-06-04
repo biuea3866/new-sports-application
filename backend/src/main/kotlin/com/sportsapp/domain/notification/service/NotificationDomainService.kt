@@ -1,5 +1,4 @@
-package com.sportsapp.domain.notification
-
+package com.sportsapp.domain.notification.service
 import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.notification.exception.UnsupportedChannelException
 import org.springframework.dao.DataIntegrityViolationException
@@ -8,6 +7,17 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import com.sportsapp.domain.notification.entity.Notification
+import com.sportsapp.domain.notification.vo.NotificationChannel
+import com.sportsapp.domain.notification.gateway.NotificationChannelGateway
+import com.sportsapp.domain.notification.repository.NotificationCustomRepository
+import com.sportsapp.domain.notification.NotificationDispatchRequestedEvent
+import com.sportsapp.domain.notification.exception.NotificationNotFoundException
+import com.sportsapp.domain.notification.vo.NotificationPayload
+import com.sportsapp.domain.notification.repository.NotificationRepository
+import com.sportsapp.domain.notification.dto.NotificationResult
+import com.sportsapp.domain.notification.gateway.TemplateRenderer
+import com.sportsapp.domain.notification.exception.UnknownTemplateException
 
 private val SUPPORTED_ENQUEUE_CHANNELS = setOf(
     NotificationChannel.IN_APP,

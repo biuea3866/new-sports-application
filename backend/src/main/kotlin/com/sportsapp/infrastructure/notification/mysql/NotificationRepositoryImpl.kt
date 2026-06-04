@@ -1,8 +1,7 @@
-package com.sportsapp.infrastructure.notification
-
-import com.sportsapp.domain.notification.Notification
-import com.sportsapp.domain.notification.NotificationRepository
-import com.sportsapp.domain.notification.NotificationStatus
+package com.sportsapp.infrastructure.notification.mysql
+import com.sportsapp.domain.notification.entity.Notification
+import com.sportsapp.domain.notification.repository.NotificationRepository
+import com.sportsapp.domain.notification.entity.NotificationStatus
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 

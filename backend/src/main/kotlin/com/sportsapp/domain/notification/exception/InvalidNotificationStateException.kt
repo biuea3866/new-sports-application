@@ -1,7 +1,7 @@
-package com.sportsapp.domain.notification
-
+package com.sportsapp.domain.notification.exception
 import com.sportsapp.domain.common.BusinessException
 import com.sportsapp.domain.common.ErrorStatus
+import com.sportsapp.domain.notification.entity.NotificationStatus
 
 class InvalidNotificationStateException(
     currentStatus: NotificationStatus,

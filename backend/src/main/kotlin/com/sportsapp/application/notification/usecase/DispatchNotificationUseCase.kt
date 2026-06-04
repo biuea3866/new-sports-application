@@ -1,6 +1,5 @@
-package com.sportsapp.application.notification
-
-import com.sportsapp.domain.notification.NotificationDomainService
+package com.sportsapp.application.notification.usecase
+import com.sportsapp.domain.notification.service.NotificationDomainService
 import org.springframework.stereotype.Service
 
 @Service

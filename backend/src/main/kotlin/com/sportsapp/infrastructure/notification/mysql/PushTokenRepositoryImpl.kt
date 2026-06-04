@@ -1,7 +1,6 @@
-package com.sportsapp.infrastructure.notification
-
-import com.sportsapp.domain.notification.PushToken
-import com.sportsapp.domain.notification.PushTokenRepository
+package com.sportsapp.infrastructure.notification.mysql
+import com.sportsapp.domain.notification.entity.PushToken
+import com.sportsapp.domain.notification.repository.PushTokenRepository
 import org.springframework.stereotype.Component
 
 @Component

@@ -1,11 +1,11 @@
 package com.sportsapp.presentation.notification.controller
 
 import com.sportsapp.application.notification.usecase.GetUnreadCountUseCase
-import com.sportsapp.application.notification.ListMyNotificationsCommand
+import com.sportsapp.application.notification.dto.ListMyNotificationsCommand
 import com.sportsapp.application.notification.usecase.ListMyNotificationsUseCase
-import com.sportsapp.application.notification.MarkNotificationReadCommand
+import com.sportsapp.application.notification.dto.MarkNotificationReadCommand
 import com.sportsapp.application.notification.usecase.MarkNotificationReadUseCase
-import com.sportsapp.presentation.notification.RegisterPushTokenRequest
+import com.sportsapp.presentation.notification.dto.request.RegisterPushTokenRequest
 import com.sportsapp.presentation.notification.dto.response.NotificationPageResponse
 import com.sportsapp.presentation.notification.dto.response.NotificationResponse
 import com.sportsapp.presentation.notification.dto.response.PushTokenResponse

@@ -1,9 +1,8 @@
-package com.sportsapp.infrastructure.notification
-
+package com.sportsapp.infrastructure.notification.mysql
 import com.querydsl.jpa.impl.JPAQueryFactory
-import com.sportsapp.domain.notification.NotificationCustomRepository
-import com.sportsapp.domain.notification.Notification
-import com.sportsapp.domain.notification.QNotification
+import com.sportsapp.domain.notification.repository.NotificationCustomRepository
+import com.sportsapp.domain.notification.entity.Notification
+import com.sportsapp.domain.notification.entity.QNotification
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable

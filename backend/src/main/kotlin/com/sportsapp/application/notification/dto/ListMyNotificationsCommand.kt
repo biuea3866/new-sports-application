@@ -1,5 +1,4 @@
-package com.sportsapp.application.notification
-
+package com.sportsapp.application.notification.dto
 data class ListMyNotificationsCommand(
     val userId: Long,
     val onlyUnread: Boolean,

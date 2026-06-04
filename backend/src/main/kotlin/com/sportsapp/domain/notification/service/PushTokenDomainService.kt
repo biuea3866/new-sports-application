@@ -1,6 +1,8 @@
-package com.sportsapp.domain.notification
-
+package com.sportsapp.domain.notification.service
 import org.springframework.stereotype.Service
+import com.sportsapp.domain.notification.entity.PushPlatform
+import com.sportsapp.domain.notification.entity.PushToken
+import com.sportsapp.domain.notification.repository.PushTokenRepository
 
 @Service
 class PushTokenDomainService(

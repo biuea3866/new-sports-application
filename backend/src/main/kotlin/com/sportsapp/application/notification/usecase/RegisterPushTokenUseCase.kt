@@ -1,8 +1,8 @@
 package com.sportsapp.application.notification.usecase
 
 import com.sportsapp.application.notification.dto.PushTokenResult
-import com.sportsapp.application.notification.RegisterPushTokenCommand
-import com.sportsapp.domain.notification.PushTokenDomainService
+import com.sportsapp.application.notification.dto.RegisterPushTokenCommand
+import com.sportsapp.domain.notification.service.PushTokenDomainService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 

@@ -1,5 +1,4 @@
-package com.sportsapp.domain.notification
-
+package com.sportsapp.domain.notification.entity
 enum class NotificationStatus {
     QUEUED,
     SENT,

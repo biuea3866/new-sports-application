@@ -1,7 +1,5 @@
-package com.sportsapp.application.notification
-
-import com.sportsapp.domain.notification.NotificationChannel
-
+package com.sportsapp.application.notification.dto
+import com.sportsapp.domain.notification.vo.NotificationChannel
 data class SendNotificationCommand(
     val userId: Long,
     val channel: NotificationChannel,

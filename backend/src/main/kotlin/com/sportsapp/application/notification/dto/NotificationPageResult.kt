@@ -1,7 +1,7 @@
 package com.sportsapp.application.notification.dto
 
-import com.sportsapp.domain.notification.NotificationResult
-import com.sportsapp.domain.notification.Notification
+import com.sportsapp.domain.notification.dto.NotificationResult
+import com.sportsapp.domain.notification.entity.Notification
 import org.springframework.data.domain.Page
 
 data class NotificationPageResult(

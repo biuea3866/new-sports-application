@@ -1,12 +1,12 @@
 package com.sportsapp.application.notification
 
-import com.sportsapp.application.notification.SendNotificationCommand
+import com.sportsapp.application.notification.dto.SendNotificationCommand
 import com.sportsapp.application.notification.usecase.SendNotificationUseCase
-import com.sportsapp.domain.notification.NotificationChannel
-import com.sportsapp.domain.notification.NotificationDomainService
-import com.sportsapp.domain.notification.NotificationResult
-import com.sportsapp.domain.notification.NotificationStatus
-import com.sportsapp.domain.notification.UnknownTemplateException
+import com.sportsapp.domain.notification.vo.NotificationChannel
+import com.sportsapp.domain.notification.service.NotificationDomainService
+import com.sportsapp.domain.notification.dto.NotificationResult
+import com.sportsapp.domain.notification.entity.NotificationStatus
+import com.sportsapp.domain.notification.exception.UnknownTemplateException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe

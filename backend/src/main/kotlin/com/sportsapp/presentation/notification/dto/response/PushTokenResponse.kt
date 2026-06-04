@@ -1,7 +1,6 @@
 package com.sportsapp.presentation.notification.dto.response
 
-import com.sportsapp.domain.notification.PushToken
-
+import com.sportsapp.domain.notification.entity.PushToken
 data class PushTokenResponse(
     val id: Long,
     val platform: String,
