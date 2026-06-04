@@ -5,8 +5,8 @@ import com.sportsapp.domain.facility.FacilityDomainService
 import com.sportsapp.domain.goods.GoodsDomainService
 import com.sportsapp.domain.ticketing.EventStatus
 import com.sportsapp.domain.ticketing.TicketingDomainService
-import com.sportsapp.domain.user.Role
-import com.sportsapp.domain.user.UserDomainService
+import com.sportsapp.domain.user.entity.Role
+import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.nulls.shouldBeNull

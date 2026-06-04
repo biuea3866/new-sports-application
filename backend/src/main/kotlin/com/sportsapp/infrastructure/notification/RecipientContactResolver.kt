@@ -1,7 +1,7 @@
 package com.sportsapp.infrastructure.notification
 
 import com.sportsapp.domain.notification.Notification
-import com.sportsapp.domain.user.UserRepository
+import com.sportsapp.domain.user.repository.UserRepository
 import org.springframework.stereotype.Component
 
 /**

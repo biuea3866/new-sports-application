@@ -4,7 +4,7 @@ import com.sportsapp.application.dashboard.GetOperationKpiCommand
 import com.sportsapp.application.dashboard.GetOperationKpiResponse
 import com.sportsapp.application.dashboard.GetOperationKpiUseCase
 import com.sportsapp.domain.common.exceptions.InvalidRequestException
-import com.sportsapp.domain.user.UserPrincipal
+import com.sportsapp.domain.user.vo.UserPrincipal
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize

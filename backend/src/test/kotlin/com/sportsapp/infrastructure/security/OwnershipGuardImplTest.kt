@@ -2,7 +2,7 @@ package com.sportsapp.infrastructure.security
 
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import com.sportsapp.domain.common.exceptions.UnauthorizedException
-import com.sportsapp.domain.user.UserPrincipal
+import com.sportsapp.domain.user.vo.UserPrincipal
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec

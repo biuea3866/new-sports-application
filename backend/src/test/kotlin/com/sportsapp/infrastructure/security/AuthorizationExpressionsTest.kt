@@ -2,7 +2,7 @@ package com.sportsapp.infrastructure.security
 
 import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
 import com.sportsapp.domain.mcp.McpScope
-import com.sportsapp.domain.user.UserPrincipal
+import com.sportsapp.domain.user.vo.UserPrincipal
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken

@@ -3,7 +3,7 @@ package com.sportsapp.presentation.mcp.admin
 import com.sportsapp.application.mcp.GetMcpUsageAnalyticsCommand
 import com.sportsapp.application.mcp.GetMcpUsageAnalyticsResponse
 import com.sportsapp.application.mcp.GetMcpUsageAnalyticsUseCase
-import com.sportsapp.domain.user.UserPrincipal
+import com.sportsapp.domain.user.vo.UserPrincipal
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal

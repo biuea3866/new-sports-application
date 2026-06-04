@@ -1,7 +1,7 @@
 package com.sportsapp.scenario
 
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.application.user.RegisterUserResponse
+import com.sportsapp.presentation.user.dto.response.RegisterUserResponse
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired

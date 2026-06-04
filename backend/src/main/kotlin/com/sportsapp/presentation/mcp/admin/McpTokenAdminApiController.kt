@@ -6,7 +6,7 @@ import com.sportsapp.application.mcp.ListMcpTokensResponse
 import com.sportsapp.application.mcp.ListMcpTokensUseCase
 import com.sportsapp.application.mcp.RevokeMcpTokenCommand
 import com.sportsapp.application.mcp.RevokeMcpTokenUseCase
-import com.sportsapp.domain.user.UserPrincipal
+import com.sportsapp.domain.user.vo.UserPrincipal
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity

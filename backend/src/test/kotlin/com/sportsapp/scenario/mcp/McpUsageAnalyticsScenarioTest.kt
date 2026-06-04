@@ -5,7 +5,7 @@ import com.sportsapp.BaseIntegrationTest
 import com.sportsapp.application.mcp.GetMcpUsageAnalyticsResponse
 import com.sportsapp.domain.mcp.McpAuditLog
 import com.sportsapp.domain.mcp.McpAuditLogRepository
-import com.sportsapp.domain.user.UserDomainService
+import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.apache.hc.client5.http.impl.classic.HttpClients

@@ -2,8 +2,8 @@ package com.sportsapp.scenario.b2b
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.application.user.LoginResponse
-import com.sportsapp.domain.user.UserDomainService
+import com.sportsapp.presentation.user.dto.response.LoginResponse
+import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.matchers.shouldBe
 import org.apache.hc.client5.http.impl.classic.HttpClients
 import org.springframework.beans.factory.annotation.Autowired

@@ -2,8 +2,8 @@ package com.sportsapp.scenario.goods
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.application.user.LoginResponse
-import com.sportsapp.domain.user.UserDomainService
+import com.sportsapp.presentation.user.dto.response.LoginResponse
+import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.apache.hc.client5.http.impl.classic.HttpClients

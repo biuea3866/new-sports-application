@@ -6,7 +6,7 @@ import com.sportsapp.application.mcp.ListMyAnomalyEventsUseCase
 import com.sportsapp.application.mcp.MarkAnomalyFalsePositiveCommand
 import com.sportsapp.application.mcp.MarkAnomalyFalsePositiveUseCase
 import com.sportsapp.application.mcp.McpAnomalyEventResponse
-import com.sportsapp.domain.user.UserPrincipal
+import com.sportsapp.domain.user.vo.UserPrincipal
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
 import org.springframework.http.ResponseEntity

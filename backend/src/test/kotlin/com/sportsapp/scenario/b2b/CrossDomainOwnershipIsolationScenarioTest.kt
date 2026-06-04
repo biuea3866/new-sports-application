@@ -2,7 +2,7 @@ package com.sportsapp.scenario.b2b
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.application.user.LoginResponse
+import com.sportsapp.presentation.user.dto.response.LoginResponse
 import com.sportsapp.domain.facility.Facility
 import com.sportsapp.domain.facility.FacilityAttributes
 import com.sportsapp.domain.facility.FacilityRepository
@@ -12,7 +12,7 @@ import com.sportsapp.domain.goods.ProductStatus
 import com.sportsapp.domain.goods.Stock
 import com.sportsapp.domain.ticketing.Event
 import com.sportsapp.domain.ticketing.EventStatus
-import com.sportsapp.domain.user.UserDomainService
+import com.sportsapp.domain.user.service.UserDomainService
 import com.sportsapp.infrastructure.persistence.goods.ProductJpaRepository
 import com.sportsapp.infrastructure.persistence.goods.StockJpaRepository
 import com.sportsapp.infrastructure.persistence.ticketing.EventJpaRepository

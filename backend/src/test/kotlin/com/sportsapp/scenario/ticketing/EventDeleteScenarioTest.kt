@@ -2,12 +2,12 @@ package com.sportsapp.scenario.ticketing
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.application.user.LoginResponse
+import com.sportsapp.presentation.user.dto.response.LoginResponse
 import com.sportsapp.domain.ticketing.Event
 import com.sportsapp.domain.ticketing.EventStatus
 import com.sportsapp.domain.ticketing.Ticket
 import com.sportsapp.domain.ticketing.TicketStatus
-import com.sportsapp.domain.user.UserDomainService
+import com.sportsapp.domain.user.service.UserDomainService
 import com.sportsapp.infrastructure.persistence.ticketing.EventJpaRepository
 import com.sportsapp.infrastructure.persistence.ticketing.TicketJpaRepository
 import io.kotest.matchers.shouldBe

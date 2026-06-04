@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
 import com.sportsapp.application.mcp.PersistAnomalyEventCommand
 import com.sportsapp.application.mcp.PersistAnomalyEventUseCase
-import com.sportsapp.domain.user.UserDomainService
+import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import org.apache.hc.client5.http.impl.classic.HttpClients

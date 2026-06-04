@@ -6,7 +6,7 @@ import com.sportsapp.domain.facility.FacilityDomainService
 import com.sportsapp.domain.goods.GoodsDomainService
 import com.sportsapp.domain.ticketing.EventStatus
 import com.sportsapp.domain.ticketing.TicketingDomainService
-import com.sportsapp.domain.user.UserDomainService
+import com.sportsapp.domain.user.service.UserDomainService
 import org.springframework.cache.annotation.Cacheable
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Service

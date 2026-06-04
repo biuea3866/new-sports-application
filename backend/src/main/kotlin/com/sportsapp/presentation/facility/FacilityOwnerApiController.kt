@@ -7,7 +7,7 @@ import com.sportsapp.application.facility.GetMyFacilityUseCase
 import com.sportsapp.application.facility.ListMyFacilitiesUseCase
 import com.sportsapp.application.facility.RegisterMyFacilityUseCase
 import com.sportsapp.application.facility.UpdateMyFacilityUseCase
-import com.sportsapp.domain.user.UserPrincipal
+import com.sportsapp.domain.user.vo.UserPrincipal
 import org.springframework.context.annotation.Profile
 import org.springframework.data.domain.Page
 import org.springframework.http.ResponseEntity

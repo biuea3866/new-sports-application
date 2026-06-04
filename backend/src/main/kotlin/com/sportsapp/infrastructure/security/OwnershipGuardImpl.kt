@@ -3,7 +3,7 @@ package com.sportsapp.infrastructure.security
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import com.sportsapp.domain.common.exceptions.UnauthorizedException
 import com.sportsapp.domain.common.security.OwnershipGuard
-import com.sportsapp.domain.user.UserPrincipal
+import com.sportsapp.domain.user.vo.UserPrincipal
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
 
