@@ -23,8 +23,11 @@
     <ID>ReturnCount:FacilityOwnerDomainService.kt$FacilityOwnerDomainService$private fun resolveCoordinates(attributes: FacilityAttributes): FacilityAttributes</ID>
     <ID>ReturnCount:KakaoGeocodingGatewayImpl.kt$private fun KakaoAddressResponse.toCoordinate(): Coordinate?</ID>
     <ID>ReturnCount:PaymentDomainService.kt$PaymentDomainService$@Transactional fun confirmWebhook(tid: String, eventType: String): Payment</ID>
+    <ID>ReturnCount:PaymentDomainService.kt$PaymentDomainService$fun confirmWebhook(tid: String, eventType: String): Payment</ID>
     <ID>ThrowsCount:CartDomainService.kt$CartDomainService$fun updateItem(userId: Long, itemId: Long, newQuantity: Int): Pair&lt;Cart, List&lt;CartItem&gt;&gt;</ID>
     <ID>TooManyFunctions:BookingDomainService.kt$BookingDomainService</ID>
+    <ID>TooManyFunctions:BookingRepository.kt$BookingRepository</ID>
+    <ID>TooManyFunctions:BookingRepositoryImpl.kt$BookingRepositoryImpl : BookingRepository</ID>
     <ID>TooManyFunctions:FacilityMongoRepository.kt$FacilityMongoRepository : MongoRepository</ID>
     <ID>TooManyFunctions:FacilityRepository.kt$FacilityRepository</ID>
     <ID>TooManyFunctions:FacilityRepositoryImpl.kt$FacilityRepositoryImpl : FacilityRepository</ID>

@@ -13,6 +13,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.orm.ObjectOptimisticLockingFailureException
+import org.springframework.security.test.context.support.WithMockUser
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.testcontainers.containers.MySQLContainer
 import org.testcontainers.junit.jupiter.Container
@@ -31,13 +33,16 @@ import org.testcontainers.junit.jupiter.Container
 /**
  * S-01: 의도적 BusinessException 발생 시 Controller가 정확한 ProblemDetail + 매핑된 HTTP 상태를 반환한다.
  * S-02: RuntimeException은 500 + INTERNAL_ERROR 코드의 ProblemDetail로 변환된다.
- * S-03: @Valid 실패 시 422 + 필드별 에러 목록 포함 ProblemDetail이 반환된다.
+ * S-03: @Valid 실패 시 400 + 필드별 에러 목록 포함 ProblemDetail이 반환된다.
  * S-04: ObjectOptimisticLockingFailureException 발생 시 409 + OPTIMISTIC_LOCK_CONFLICT 코드의 ProblemDetail이 반환된다.
  * S-05: 등록되지 않은 일반 RuntimeException은 여전히 500 + INTERNAL_ERROR로 응답된다.
+ * [DEF-001] S-06: 무효 enum 쿼리 파라미터 전달 시 500 대신 400을 반환한다.
+ * [DEF-001] S-07: 유효 enum 쿼리 파라미터 전달 시 200을 반환한다 (회귀).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @Import(ExceptionTriggerController::class)
+@WithMockUser
 class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
 
     override fun extensions() = listOf(SpringExtension)
@@ -109,25 +114,24 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
         Given("@Valid 검증이 실패하는 요청") {
             When("POST /test/exceptions/validation 에 빈 name 으로 요청 시") {
                 Then("[S-03] 400 + fieldErrors 목록이 포함된 ProblemDetail 을 반환한다") {
-                    mockMvc.perform(
-                        post("/test/exceptions/validation")
-                            .with(user("testuser").roles("USER"))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("""{"name": ""}""")
-                            .accept(MediaType.APPLICATION_JSON)
-                    )
-                        .andExpect(status().isBadRequest)
-                        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-                        .andExpect(jsonPath("$.status").value(400))
-                        .andExpect(jsonPath("$.properties.fieldErrors").exists())
-                        .andExpect(jsonPath("$.properties.fieldErrors").isArray)
+                    mockMvc.post("/test/exceptions/validation") {
+                        contentType = MediaType.APPLICATION_JSON
+                        content = """{"name": ""}"""
+                        accept(MediaType.APPLICATION_JSON)
+                    }.andExpect {
+                        status { isBadRequest() }
+                        content { contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON) }
+                        jsonPath("$.status") { value(400) }
+                        jsonPath("$.properties.fieldErrors") { exists() }
+                        jsonPath("$.properties.fieldErrors") { isArray() }
+                    }
                 }
             }
         }
 
         Given("ObjectOptimisticLockingFailureException이 발생하는 엔드포인트") {
             When("GET /test/exceptions/optimistic-lock-conflict 요청 시") {
-                Then("409 + ProblemDetail (code=OPTIMISTIC_LOCK_CONFLICT) 을 반환한다") {
+                Then("[S-04] 409 + ProblemDetail (code=OPTIMISTIC_LOCK_CONFLICT) 을 반환한다") {
                     mockMvc.perform(
                         get("/test/exceptions/optimistic-lock-conflict")
                             .with(user("testuser").roles("USER"))
@@ -143,7 +147,7 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
 
         Given("등록되지 않은 일반 RuntimeException이 발생하는 엔드포인트") {
             When("GET /test/exceptions/unknown-error 요청 시") {
-                Then("낙관락 매핑 추가 후에도 여전히 500 + INTERNAL_ERROR 로 응답한다") {
+                Then("[S-05] 낙관락 매핑 추가 후에도 여전히 500 + INTERNAL_ERROR 로 응답한다") {
                     mockMvc.perform(
                         get("/test/exceptions/unknown-error")
                             .with(user("testuser").roles("USER"))
@@ -153,6 +157,42 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
                         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                         .andExpect(jsonPath("$.status").value(500))
                         .andExpect(jsonPath("$.properties.code").value("INTERNAL_ERROR"))
+                }
+            }
+        }
+
+        Given("enum 쿼리 파라미터에 정의되지 않은 값을 전달하는 요청") {
+            When("GET /test/exceptions/enum-param?value=PAID 요청 시") {
+                Then("[DEF-001][S-06] 500 대신 400 + ProblemDetail (code=INVALID_ENUM_VALUE) 을 반환한다") {
+                    mockMvc.get("/test/exceptions/enum-param?value=PAID") {
+                        accept(MediaType.APPLICATION_JSON)
+                    }.andExpect {
+                        status { isBadRequest() }
+                        content { contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON) }
+                        jsonPath("$.status") { value(400) }
+                        jsonPath("$.properties.code") { value("INVALID_ENUM_VALUE") }
+                    }
+                }
+            }
+
+            When("GET /test/exceptions/enum-param?value=INVALID_ANYTHING 요청 시") {
+                Then("[DEF-001][S-06] 임의의 무효 문자열도 400을 반환한다") {
+                    mockMvc.get("/test/exceptions/enum-param?value=INVALID_ANYTHING") {
+                        accept(MediaType.APPLICATION_JSON)
+                    }.andExpect {
+                        status { isBadRequest() }
+                        jsonPath("$.status") { value(400) }
+                    }
+                }
+            }
+
+            When("GET /test/exceptions/enum-param?value=COMPLETED 요청 시") {
+                Then("[DEF-001][S-07] 유효한 enum 값이면 200을 반환한다 (회귀)") {
+                    mockMvc.get("/test/exceptions/enum-param?value=COMPLETED") {
+                        accept(MediaType.APPLICATION_JSON)
+                    }.andExpect {
+                        status { isOk() }
+                    }
                 }
             }
         }
@@ -187,6 +227,13 @@ class ExceptionTriggerController {
     fun throwOptimisticLockConflict(): String {
         throw ObjectOptimisticLockingFailureException("Stock", 1L)
     }
+
+    @GetMapping("/enum-param")
+    fun receiveEnumParam(@RequestParam value: TestEnum): String {
+        return value.name
+    }
 }
+
+enum class TestEnum { READY, COMPLETED, CANCELLED }
 
 data class ValidatableRequest(@field:NotBlank val name: String)

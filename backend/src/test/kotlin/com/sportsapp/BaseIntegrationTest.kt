@@ -8,7 +8,6 @@ import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.support.TestPropertySourceUtils
 import org.testcontainers.containers.GenericContainer
-import org.testcontainers.containers.MongoDBContainer
 import org.testcontainers.containers.MySQLContainer
 import org.testcontainers.junit.jupiter.Container
 
@@ -20,8 +19,8 @@ abstract class BaseIntegrationTest : BehaviorSpec() {
         override fun initialize(applicationContext: ConfigurableApplicationContext) {
             TestPropertySourceUtils.addInlinedPropertiesToEnvironment(
                 applicationContext,
-                "spring.data.mongodb.uri=${mongoContainer.replicaSetUrl}",
-                "storage.image.endpoint=http://${minioContainer.host}:${minioContainer.getMappedPort(9000)}",
+                "spring.data.mongodb.uri=${SharedTestContainers.mongo.replicaSetUrl}",
+                "storage.image.endpoint=http://${SharedTestContainers.minio.host}:${SharedTestContainers.minio.getMappedPort(9000)}",
                 "storage.image.access-key=minioadmin",
                 "storage.image.secret-key=minioadmin",
                 "storage.image.bucket=sports-app",
@@ -33,26 +32,10 @@ abstract class BaseIntegrationTest : BehaviorSpec() {
     companion object {
         @Container
         @ServiceConnection
-        val mysqlContainer: MySQLContainer<*> = MySQLContainer("mysql:8.0")
-            .withDatabaseName("sports")
-            .withUsername("test")
-            .withPassword("test")
-            .also { it.start() }
-
-        val mongoContainer: MongoDBContainer = MongoDBContainer("mongo:7.0")
-            .also { it.start() }
+        val mysqlContainer: MySQLContainer<*> = SharedTestContainers.mysql
 
         @Container
         @ServiceConnection
-        val redisContainer: GenericContainer<*> = GenericContainer("redis:7-alpine")
-            .withExposedPorts(6379)
-            .also { it.start() }
-
-        val minioContainer: GenericContainer<*> = GenericContainer("minio/minio:latest")
-            .withExposedPorts(9000)
-            .withEnv("MINIO_ROOT_USER", "minioadmin")
-            .withEnv("MINIO_ROOT_PASSWORD", "minioadmin")
-            .withCommand("server", "/data")
-            .also { it.start() }
+        val redisContainer: GenericContainer<*> = SharedTestContainers.redis
     }
 }
