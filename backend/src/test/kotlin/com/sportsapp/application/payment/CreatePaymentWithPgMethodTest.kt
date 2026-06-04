@@ -5,6 +5,8 @@ import com.sportsapp.domain.payment.Payment
 import com.sportsapp.domain.payment.PaymentDomainService
 import com.sportsapp.domain.payment.PaymentMethod
 import com.sportsapp.domain.payment.PaymentStatus
+import com.sportsapp.domain.payment.PgInitiateCommand
+import com.sportsapp.domain.payment.PgInitiateResult
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -52,7 +54,7 @@ class CreatePaymentWithPgMethodTest : BehaviorSpec({
         Given("method=$method 로 결제 요청 — PG 성공") {
             val readyPayment = buildMockPayment(method, PaymentStatus.READY)
             every {
-                paymentDomainService.prepare(
+                paymentDomainService.createPending(
                     userId = any(),
                     idempotencyKey = any(),
                     orderType = any(),
@@ -60,16 +62,24 @@ class CreatePaymentWithPgMethodTest : BehaviorSpec({
                     method = method,
                     amount = any(),
                     currency = any(),
-                    itemName = any(),
-                    returnUrl = any(),
-                    failUrl = any(),
                 )
-            } returns readyPayment
+            } returns 1L
+
+            every {
+                paymentDomainService.initiatePg(any<PgInitiateCommand>())
+            } returns PgInitiateResult(
+                paymentId = 1L,
+                status = PaymentStatus.READY,
+                pgTransactionId = "MOCK_tid",
+                checkoutUrl = "http://localhost:9090/pg/card/checkout?tid=MOCK_tid",
+            )
+
+            every { paymentDomainService.getPayment(userId = 1L, paymentId = 1L) } returns readyPayment
 
             When("execute 를 호출하면") {
                 val result = useCase.execute(buildCommand(method))
 
-                Then("[U-01] method=$method 로 READY 상태의 PaymentResponse 를 반환한다") {
+                Then("method=$method 로 READY 상태의 PaymentResponse 를 반환한다") {
                     result.status shouldBe PaymentStatus.READY
                     result.method shouldBe method
                 }
@@ -79,7 +89,7 @@ class CreatePaymentWithPgMethodTest : BehaviorSpec({
         Given("method=$method 로 결제 요청 — PG 실패(FAILED 상태)") {
             val failedPayment = buildMockPayment(method, PaymentStatus.FAILED)
             every {
-                paymentDomainService.prepare(
+                paymentDomainService.createPending(
                     userId = any(),
                     idempotencyKey = any(),
                     orderType = any(),
@@ -87,16 +97,24 @@ class CreatePaymentWithPgMethodTest : BehaviorSpec({
                     method = method,
                     amount = any(),
                     currency = any(),
-                    itemName = any(),
-                    returnUrl = any(),
-                    failUrl = any(),
                 )
-            } returns failedPayment
+            } returns 1L
+
+            every {
+                paymentDomainService.initiatePg(any<PgInitiateCommand>())
+            } returns PgInitiateResult(
+                paymentId = 1L,
+                status = PaymentStatus.FAILED,
+                pgTransactionId = null,
+                checkoutUrl = null,
+            )
+
+            every { paymentDomainService.getPayment(userId = 1L, paymentId = 1L) } returns failedPayment
 
             When("execute 를 호출하면") {
                 val result = useCase.execute(buildCommand(method))
 
-                Then("[U-02] method=$method 로 FAILED 상태의 PaymentResponse 를 반환한다") {
+                Then("method=$method 로 FAILED 상태의 PaymentResponse 를 반환한다") {
                     result.status shouldBe PaymentStatus.FAILED
                     result.method shouldBe method
                 }

@@ -109,13 +109,13 @@ class PaymentCreateScenarioTest(
             """.trimIndent()
 
             When("amount = -100 요청을 전송하면") {
-                Then("[S-03] 422 Unprocessable Entity 응답이 반환된다") {
+                Then("[S-03] 400 Bad Request 응답이 반환된다 (bean-validation 위반)") {
                     mockMvc.post("/payments") {
                         contentType = MediaType.APPLICATION_JSON
                         header("Idempotency-Key", "scenario-invalid-01")
                         content = invalidBody
                     }.andExpect {
-                        status { isUnprocessableEntity() }
+                        status { isBadRequest() }
                     }
                 }
             }
