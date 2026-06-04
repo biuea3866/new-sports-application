@@ -3,7 +3,7 @@ package com.sportsapp.application.goods
 import com.sportsapp.domain.goods.GoodsOrder
 import com.sportsapp.domain.goods.GoodsOrderItem
 import com.sportsapp.domain.goods.GoodsOrderStatus
-import com.sportsapp.domain.payment.PaymentStatus
+import com.sportsapp.domain.payment.entity.PaymentStatus
 import java.math.BigDecimal
 
 data class GoodsOrderResponse(

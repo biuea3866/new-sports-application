@@ -2,9 +2,9 @@ package com.sportsapp.application.booking
 
 import com.sportsapp.domain.booking.BookingDomainService
 import com.sportsapp.domain.booking.BookingResult
-import com.sportsapp.domain.payment.OrderType
-import com.sportsapp.domain.payment.PaymentDomainService
-import com.sportsapp.domain.payment.PgInitiateCommand
+import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.payment.service.PaymentDomainService
+import com.sportsapp.domain.payment.dto.PgInitiateCommand
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import java.util.UUID

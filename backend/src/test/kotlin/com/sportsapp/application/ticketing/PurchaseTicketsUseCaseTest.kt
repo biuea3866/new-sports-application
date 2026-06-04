@@ -1,11 +1,11 @@
 package com.sportsapp.application.ticketing
 
-import com.sportsapp.domain.payment.OrderType
-import com.sportsapp.domain.payment.PaymentDomainService
-import com.sportsapp.domain.payment.PaymentMethod
-import com.sportsapp.domain.payment.PgInitiateCommand
-import com.sportsapp.domain.payment.PgInitiateResult
-import com.sportsapp.domain.payment.PaymentStatus
+import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.payment.service.PaymentDomainService
+import com.sportsapp.domain.payment.vo.PaymentMethod
+import com.sportsapp.domain.payment.dto.PgInitiateCommand
+import com.sportsapp.domain.payment.dto.PgInitiateResult
+import com.sportsapp.domain.payment.entity.PaymentStatus
 import com.sportsapp.domain.ticketing.OrderStatus
 import com.sportsapp.domain.ticketing.TicketOrderResult
 import com.sportsapp.domain.ticketing.TicketingDomainService

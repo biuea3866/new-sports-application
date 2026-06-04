@@ -9,7 +9,7 @@ import com.sportsapp.domain.goods.Product
 import com.sportsapp.domain.goods.ProductCategory
 import com.sportsapp.domain.goods.ProductStatus
 import com.sportsapp.domain.goods.Stock
-import com.sportsapp.domain.payment.PaymentMethod
+import com.sportsapp.domain.payment.vo.PaymentMethod
 import com.sportsapp.infrastructure.persistence.goods.GoodsOrderJpaRepository
 import com.sportsapp.infrastructure.persistence.goods.ProductJpaRepository
 import com.sportsapp.infrastructure.persistence.goods.StockJpaRepository

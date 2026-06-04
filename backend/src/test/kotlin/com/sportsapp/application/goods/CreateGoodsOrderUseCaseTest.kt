@@ -6,10 +6,10 @@ import com.sportsapp.domain.goods.GoodsOrder
 import com.sportsapp.domain.goods.GoodsOrderStatus
 import com.sportsapp.domain.goods.OrderItemInput
 import com.sportsapp.domain.goods.ProductInactiveException
-import com.sportsapp.domain.payment.PaymentDomainService
-import com.sportsapp.domain.payment.PaymentMethod
-import com.sportsapp.domain.payment.PaymentStatus
-import com.sportsapp.domain.payment.PgInitiateResult
+import com.sportsapp.domain.payment.service.PaymentDomainService
+import com.sportsapp.domain.payment.vo.PaymentMethod
+import com.sportsapp.domain.payment.entity.PaymentStatus
+import com.sportsapp.domain.payment.dto.PgInitiateResult
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe

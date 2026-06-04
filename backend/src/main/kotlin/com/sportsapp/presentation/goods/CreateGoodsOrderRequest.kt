@@ -2,7 +2,7 @@ package com.sportsapp.presentation.goods
 
 import com.sportsapp.application.goods.CreateGoodsOrderCommand
 import com.sportsapp.domain.goods.OrderItemInput
-import com.sportsapp.domain.payment.PaymentMethod
+import com.sportsapp.domain.payment.vo.PaymentMethod
 
 data class CreateGoodsOrderRequest(
     val method: PaymentMethod,

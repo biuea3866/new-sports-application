@@ -2,7 +2,7 @@ package com.sportsapp.application.booking
 
 import com.sportsapp.domain.booking.Booking
 import com.sportsapp.domain.booking.BookingStatus
-import com.sportsapp.domain.payment.PaymentStatus
+import com.sportsapp.domain.payment.entity.PaymentStatus
 import java.time.ZonedDateTime
 
 data class BookingResponse(

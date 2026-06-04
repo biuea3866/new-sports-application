@@ -4,9 +4,9 @@ import com.sportsapp.domain.common.Currency
 import com.sportsapp.domain.goods.GoodsDomainService
 import com.sportsapp.domain.goods.GoodsOrder
 import com.sportsapp.domain.goods.GoodsOrderStatus
-import com.sportsapp.domain.payment.OrderType
-import com.sportsapp.domain.payment.PaymentDomainService
-import com.sportsapp.domain.payment.PgInitiateCommand
+import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.payment.service.PaymentDomainService
+import com.sportsapp.domain.payment.dto.PgInitiateCommand
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 

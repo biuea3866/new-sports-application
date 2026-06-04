@@ -1,8 +1,8 @@
 package com.sportsapp.application.ticketing
 
-import com.sportsapp.domain.payment.OrderType
-import com.sportsapp.domain.payment.PaymentDomainService
-import com.sportsapp.domain.payment.PgInitiateCommand
+import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.payment.service.PaymentDomainService
+import com.sportsapp.domain.payment.dto.PgInitiateCommand
 import com.sportsapp.domain.ticketing.TicketingDomainService
 import org.springframework.stereotype.Service
 

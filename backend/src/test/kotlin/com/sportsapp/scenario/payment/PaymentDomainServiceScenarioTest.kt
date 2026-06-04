@@ -1,8 +1,8 @@
 package com.sportsapp.scenario.payment
 
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.domain.payment.PaymentDomainService
-import com.sportsapp.domain.payment.PaymentGateway
+import com.sportsapp.domain.payment.service.PaymentDomainService
+import com.sportsapp.domain.payment.gateway.PaymentGateway
 import io.kotest.matchers.nulls.shouldNotBeNull
 import org.springframework.beans.factory.annotation.Autowired
 

@@ -1,7 +1,7 @@
 package com.sportsapp.application.goods
 
 import com.sportsapp.domain.goods.OrderItemInput
-import com.sportsapp.domain.payment.PaymentMethod
+import com.sportsapp.domain.payment.vo.PaymentMethod
 
 data class CreateGoodsOrderCommand(
     val userId: Long,

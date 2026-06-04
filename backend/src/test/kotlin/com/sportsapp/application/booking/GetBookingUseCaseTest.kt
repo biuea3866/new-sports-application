@@ -4,8 +4,8 @@ import com.sportsapp.domain.booking.Booking
 import com.sportsapp.domain.booking.BookingDomainService
 import com.sportsapp.domain.booking.BookingStatus
 import com.sportsapp.domain.booking.UnauthorizedBookingAccessException
-import com.sportsapp.domain.payment.PaymentDomainService
-import com.sportsapp.domain.payment.PaymentStatus
+import com.sportsapp.domain.payment.service.PaymentDomainService
+import com.sportsapp.domain.payment.entity.PaymentStatus
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe

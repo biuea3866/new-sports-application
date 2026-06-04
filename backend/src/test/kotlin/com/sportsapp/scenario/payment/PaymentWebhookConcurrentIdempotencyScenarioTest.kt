@@ -1,13 +1,13 @@
 package com.sportsapp.scenario.payment
 
 import com.sportsapp.BaseJpaIntegrationTest
-import com.sportsapp.application.payment.ConfirmPaymentWebhookCommand
-import com.sportsapp.application.payment.ConfirmPaymentWebhookUseCase
-import com.sportsapp.domain.payment.OrderType
-import com.sportsapp.domain.payment.Payment
-import com.sportsapp.domain.payment.PaymentMethod
-import com.sportsapp.domain.payment.PaymentRepository
-import com.sportsapp.domain.payment.PaymentStatus
+import com.sportsapp.application.payment.dto.ConfirmPaymentWebhookCommand
+import com.sportsapp.application.payment.usecase.ConfirmPaymentWebhookUseCase
+import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.payment.entity.Payment
+import com.sportsapp.domain.payment.vo.PaymentMethod
+import com.sportsapp.domain.payment.repository.PaymentRepository
+import com.sportsapp.domain.payment.entity.PaymentStatus
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.jdbc.core.JdbcTemplate

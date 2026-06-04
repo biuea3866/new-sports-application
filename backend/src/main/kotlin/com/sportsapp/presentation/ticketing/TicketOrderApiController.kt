@@ -4,7 +4,7 @@ import com.sportsapp.application.ticketing.GetTicketOrderUseCase
 import com.sportsapp.application.ticketing.PurchaseTicketsCommand
 import com.sportsapp.application.ticketing.PurchaseTicketsUseCase
 import com.sportsapp.application.ticketing.TicketOrderResponse
-import com.sportsapp.domain.payment.MissingIdempotencyKeyException
+import com.sportsapp.domain.payment.exception.MissingIdempotencyKeyException
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable

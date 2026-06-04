@@ -1,6 +1,6 @@
 package com.sportsapp.application.booking
 
-import com.sportsapp.domain.payment.PaymentMethod
+import com.sportsapp.domain.payment.vo.PaymentMethod
 import java.math.BigDecimal
 
 data class CreateBookingCommand(

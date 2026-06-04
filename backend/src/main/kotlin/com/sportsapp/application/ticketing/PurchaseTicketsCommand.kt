@@ -1,6 +1,6 @@
 package com.sportsapp.application.ticketing
 
-import com.sportsapp.domain.payment.PaymentMethod
+import com.sportsapp.domain.payment.vo.PaymentMethod
 
 data class PurchaseTicketsCommand(
     val userId: Long,

@@ -10,7 +10,7 @@ import com.sportsapp.infrastructure.persistence.goods.CartItemJpaRepository
 import com.sportsapp.infrastructure.persistence.goods.CartJpaRepository
 import com.sportsapp.infrastructure.persistence.goods.ProductJpaRepository
 import com.sportsapp.infrastructure.persistence.goods.StockJpaRepository
-import com.sportsapp.infrastructure.persistence.payment.PaymentJpaRepository
+import com.sportsapp.infrastructure.payment.mysql.PaymentJpaRepository
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.springframework.beans.factory.annotation.Autowired

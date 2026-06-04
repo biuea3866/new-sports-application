@@ -1,6 +1,6 @@
 package com.sportsapp.application.goods
 
-import com.sportsapp.domain.payment.PaymentStatus
+import com.sportsapp.domain.payment.entity.PaymentStatus
 import java.math.BigDecimal
 
 data class OrderWithPayment(

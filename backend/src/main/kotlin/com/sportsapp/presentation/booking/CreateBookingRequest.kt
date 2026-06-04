@@ -1,7 +1,7 @@
 package com.sportsapp.presentation.booking
 
 import com.sportsapp.application.booking.CreateBookingCommand
-import com.sportsapp.domain.payment.PaymentMethod
+import com.sportsapp.domain.payment.vo.PaymentMethod
 import java.math.BigDecimal
 
 data class CreateBookingRequest(

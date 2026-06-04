@@ -1,12 +1,12 @@
 package com.sportsapp.scenario.payment
 
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.domain.payment.OrderConfirmationGateway
-import com.sportsapp.domain.payment.OrderType
-import com.sportsapp.domain.payment.Payment
-import com.sportsapp.domain.payment.PaymentMethod
-import com.sportsapp.domain.payment.PaymentRepository
-import com.sportsapp.domain.payment.PaymentStatus
+import com.sportsapp.domain.payment.gateway.OrderConfirmationGateway
+import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.payment.entity.Payment
+import com.sportsapp.domain.payment.vo.PaymentMethod
+import com.sportsapp.domain.payment.repository.PaymentRepository
+import com.sportsapp.domain.payment.entity.PaymentStatus
 import com.sportsapp.infrastructure.messaging.KafkaDomainEventPublisher
 import io.kotest.matchers.shouldBe
 import io.mockk.mockk
