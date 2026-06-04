@@ -1,11 +1,10 @@
 package com.sportsapp.application.dashboard
 
 import com.sportsapp.domain.booking.service.SlotDomainService
-import com.sportsapp.domain.common.UserRoleName
 import com.sportsapp.domain.facility.service.FacilityDomainService
-import com.sportsapp.domain.goods.GoodsDomainService
+import com.sportsapp.domain.goods.service.GoodsDomainService
 import com.sportsapp.domain.ticketing.EventStatus
-import com.sportsapp.domain.ticketing.TicketingDomainService
+import com.sportsapp.domain.ticketing.service.TicketingDomainService
 import com.sportsapp.domain.user.service.UserDomainService
 import org.springframework.cache.annotation.Cacheable
 import org.springframework.context.annotation.Profile
@@ -24,13 +23,11 @@ class GetMyDashboardSummaryUseCase(
     @Transactional(readOnly = true)
     @Cacheable(value = ["b2bDashboardSummary"], key = "#userId")
     fun execute(userId: Long): DashboardSummaryResponse {
-        val roles = userDomainService.getRolesForUser(userId)
-            .mapNotNull { UserRoleName.fromNameOrNull(it.name) }
-            .toSet()
+        val roleNames = userDomainService.getRolesForUser(userId).map { it.name }.toSet()
         return DashboardSummaryResponse(
-            facilities = if (roles.contains(UserRoleName.FACILITY_OWNER)) buildFacilitiesSummary(userId) else null,
-            events = if (roles.contains(UserRoleName.EVENT_HOST)) buildEventsSummary(userId) else null,
-            products = if (roles.contains(UserRoleName.GOODS_SELLER)) buildProductsSummary(userId) else null,
+            facilities = if (roleNames.contains("FACILITY_OWNER")) buildFacilitiesSummary(userId) else null,
+            events = if (roleNames.contains("EVENT_HOST")) buildEventsSummary(userId) else null,
+            products = if (roleNames.contains("GOODS_SELLER")) buildProductsSummary(userId) else null,
         )
     }
 

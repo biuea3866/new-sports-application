@@ -1,7 +1,7 @@
 package com.sportsapp.presentation.mcp.toolregistry
 
-import com.sportsapp.application.goods.GetInventoryUseCase
-import com.sportsapp.application.goods.InventoryResponse
+import com.sportsapp.application.goods.usecase.GetInventoryUseCase
+import com.sportsapp.presentation.goods.dto.response.InventoryResponse
 import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
 import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.audit.McpToolAuditHelper.withAudit
