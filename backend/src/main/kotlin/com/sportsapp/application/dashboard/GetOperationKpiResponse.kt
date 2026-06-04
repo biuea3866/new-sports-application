@@ -2,7 +2,7 @@ package com.sportsapp.application.dashboard
 
 import com.sportsapp.domain.booking.dto.FacilityKpiSummary
 import com.sportsapp.domain.goods.dto.GoodsKpiSummary
-import com.sportsapp.domain.ticketing.TicketKpiSummary
+import com.sportsapp.domain.ticketing.dto.TicketKpiSummary
 import java.math.BigDecimal
 
 data class GetOperationKpiResponse(

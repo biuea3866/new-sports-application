@@ -1,13 +1,19 @@
 package com.sportsapp.infrastructure.persistence.ticketing
+import com.sportsapp.infrastructure.ticketing.mysql.TicketOrderRepositoryImpl
+import com.sportsapp.infrastructure.ticketing.mysql.SeatJpaRepository
+import com.sportsapp.infrastructure.ticketing.mysql.TicketJpaRepository
+import com.sportsapp.infrastructure.ticketing.mysql.EventRepositoryImpl
+import com.sportsapp.infrastructure.ticketing.mysql.SeatRepositoryImpl
+import com.sportsapp.infrastructure.ticketing.mysql.TicketRepositoryImpl
 
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.domain.ticketing.Event
-import com.sportsapp.domain.ticketing.EventStatus
-import com.sportsapp.domain.ticketing.Seat
-import com.sportsapp.domain.ticketing.Ticket
-import com.sportsapp.domain.ticketing.TicketOrder
-import com.sportsapp.domain.ticketing.TicketStatus
-import com.sportsapp.domain.ticketing.TicketingDomainService
+import com.sportsapp.domain.ticketing.entity.Event
+import com.sportsapp.domain.ticketing.entity.EventStatus
+import com.sportsapp.domain.ticketing.entity.Seat
+import com.sportsapp.domain.ticketing.entity.Ticket
+import com.sportsapp.domain.ticketing.entity.TicketOrder
+import com.sportsapp.domain.ticketing.entity.TicketStatus
+import com.sportsapp.domain.ticketing.service.TicketingDomainService
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.jdbc.core.JdbcTemplate

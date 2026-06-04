@@ -1,7 +1,7 @@
 package com.sportsapp.infrastructure.lock
 
 import com.sportsapp.domain.common.DistributedLock
-import com.sportsapp.domain.ticketing.SeatLockStore
+import com.sportsapp.domain.ticketing.gateway.SeatLockStore
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Component
 import java.time.Duration

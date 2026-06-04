@@ -1,10 +1,11 @@
 package com.sportsapp.application.ticketing
+import com.sportsapp.application.ticketing.usecase.DeleteMyEventUseCase
 
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import com.sportsapp.domain.common.security.OwnershipGuard
-import com.sportsapp.domain.ticketing.Event
-import com.sportsapp.domain.ticketing.EventStatus
-import com.sportsapp.domain.ticketing.TicketingDomainService
+import com.sportsapp.domain.ticketing.entity.Event
+import com.sportsapp.domain.ticketing.entity.EventStatus
+import com.sportsapp.domain.ticketing.service.TicketingDomainService
 import com.sportsapp.domain.ticketing.exception.InvalidEventStateException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec

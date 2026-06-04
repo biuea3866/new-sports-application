@@ -1,9 +1,11 @@
 package com.sportsapp.infrastructure.persistence.ticketing
+import com.sportsapp.infrastructure.ticketing.mysql.EventCustomRepositoryImpl
+import com.sportsapp.infrastructure.ticketing.mysql.EventJpaRepository
 
 import com.sportsapp.BaseJpaIntegrationTest
-import com.sportsapp.domain.ticketing.EventCriteria
-import com.sportsapp.domain.ticketing.Event
-import com.sportsapp.domain.ticketing.EventStatus
+import com.sportsapp.domain.ticketing.dto.EventCriteria
+import com.sportsapp.domain.ticketing.entity.Event
+import com.sportsapp.domain.ticketing.entity.EventStatus
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.domain.PageRequest

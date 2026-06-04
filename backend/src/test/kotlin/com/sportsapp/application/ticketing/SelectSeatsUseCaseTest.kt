@@ -1,6 +1,10 @@
 package com.sportsapp.application.ticketing
+import com.sportsapp.application.ticketing.dto.ReleaseSeatsCommand
+import com.sportsapp.application.ticketing.dto.SelectSeatsCommand
+import com.sportsapp.application.ticketing.usecase.ReleaseSeatsUseCase
+import com.sportsapp.application.ticketing.usecase.SelectSeatsUseCase
 
-import com.sportsapp.domain.ticketing.TicketingDomainService
+import com.sportsapp.domain.ticketing.service.TicketingDomainService
 import com.sportsapp.domain.ticketing.exception.SeatAlreadyLockedException
 import com.sportsapp.domain.ticketing.exception.SeatNotLockOwnerException
 import io.kotest.assertions.throwables.shouldThrow

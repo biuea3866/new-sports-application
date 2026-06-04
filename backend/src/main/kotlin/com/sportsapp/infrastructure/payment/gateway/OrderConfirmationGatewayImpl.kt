@@ -4,7 +4,7 @@ import com.sportsapp.domain.booking.service.BookingDomainService
 import com.sportsapp.domain.goods.service.GoodsDomainService
 import com.sportsapp.domain.payment.gateway.OrderConfirmationGateway
 import com.sportsapp.domain.payment.vo.OrderType
-import com.sportsapp.domain.ticketing.TicketingDomainService
+import com.sportsapp.domain.ticketing.service.TicketingDomainService
 import org.springframework.stereotype.Component
 
 @Component

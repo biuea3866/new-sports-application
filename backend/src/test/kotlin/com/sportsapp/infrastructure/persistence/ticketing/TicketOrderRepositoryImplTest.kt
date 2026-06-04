@@ -1,9 +1,12 @@
 package com.sportsapp.infrastructure.persistence.ticketing
+import com.sportsapp.infrastructure.ticketing.mysql.TicketJpaRepository
+import com.sportsapp.infrastructure.ticketing.mysql.TicketRepositoryImpl
+import com.sportsapp.infrastructure.ticketing.mysql.TicketOrderRepositoryImpl
 
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.domain.ticketing.OrderStatus
-import com.sportsapp.domain.ticketing.TicketOrder
-import com.sportsapp.domain.ticketing.TicketStatus
+import com.sportsapp.domain.ticketing.entity.OrderStatus
+import com.sportsapp.domain.ticketing.entity.TicketOrder
+import com.sportsapp.domain.ticketing.entity.TicketStatus
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe

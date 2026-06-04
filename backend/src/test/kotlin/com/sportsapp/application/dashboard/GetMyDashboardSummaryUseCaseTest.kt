@@ -3,8 +3,8 @@ package com.sportsapp.application.dashboard
 import com.sportsapp.domain.booking.service.SlotDomainService
 import com.sportsapp.domain.facility.service.FacilityDomainService
 import com.sportsapp.domain.goods.service.GoodsDomainService
-import com.sportsapp.domain.ticketing.EventStatus
-import com.sportsapp.domain.ticketing.TicketingDomainService
+import com.sportsapp.domain.ticketing.entity.EventStatus
+import com.sportsapp.domain.ticketing.service.TicketingDomainService
 import com.sportsapp.domain.user.entity.Role
 import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.core.spec.style.BehaviorSpec

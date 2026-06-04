@@ -1,7 +1,7 @@
 package com.sportsapp.presentation.mcp
 
-import com.sportsapp.application.ticketing.IssueComplimentaryTicketResponse
-import com.sportsapp.application.ticketing.IssueComplimentaryTicketUseCase
+import com.sportsapp.application.ticketing.dto.IssueComplimentaryTicketResponse
+import com.sportsapp.application.ticketing.usecase.IssueComplimentaryTicketUseCase
 import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
 import com.sportsapp.domain.mcp.McpScope
 import com.sportsapp.domain.mcp.confirm.ConfirmationParamsMismatchException
@@ -9,7 +9,7 @@ import com.sportsapp.domain.mcp.confirm.ConfirmationTokenAlreadyConsumedExceptio
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenContext
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenExpiredException
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenGateway
-import com.sportsapp.domain.ticketing.TicketStatus
+import com.sportsapp.domain.ticketing.entity.TicketStatus
 import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.confirm.McpParamsHasher
 import com.sportsapp.presentation.mcp.response.McpResponseStatus

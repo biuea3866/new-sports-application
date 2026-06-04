@@ -1,4 +1,12 @@
 package com.sportsapp.domain.ticketing
+import com.sportsapp.domain.ticketing.dto.TicketOrderResult
+import com.sportsapp.domain.ticketing.entity.TicketStatus
+import com.sportsapp.domain.ticketing.entity.OrderStatus
+import com.sportsapp.domain.ticketing.entity.TicketOrder
+import com.sportsapp.domain.ticketing.repository.TicketRepository
+import com.sportsapp.domain.ticketing.repository.TicketOrderRepository
+import com.sportsapp.domain.ticketing.gateway.SeatLockStore
+import com.sportsapp.domain.ticketing.service.TicketingDomainService
 
 import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException

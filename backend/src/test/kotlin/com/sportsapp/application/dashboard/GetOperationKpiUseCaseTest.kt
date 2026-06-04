@@ -4,8 +4,8 @@ import com.sportsapp.domain.booking.service.BookingDomainService
 import com.sportsapp.domain.booking.dto.FacilityKpiSummary
 import com.sportsapp.domain.goods.service.GoodsDomainService
 import com.sportsapp.domain.goods.dto.GoodsKpiSummary
-import com.sportsapp.domain.ticketing.TicketingDomainService
-import com.sportsapp.domain.ticketing.TicketKpiSummary
+import com.sportsapp.domain.ticketing.service.TicketingDomainService
+import com.sportsapp.domain.ticketing.dto.TicketKpiSummary
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every

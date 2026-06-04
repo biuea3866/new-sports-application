@@ -6,13 +6,13 @@ import com.sportsapp.domain.goods.vo.ProductCategory
 import com.sportsapp.domain.goods.entity.ProductStatus
 import com.sportsapp.domain.goods.entity.Stock
 import com.sportsapp.domain.goods.repository.StockCustomRepository
-import com.sportsapp.domain.ticketing.Event
-import com.sportsapp.domain.ticketing.EventStatus
+import com.sportsapp.domain.ticketing.entity.Event
+import com.sportsapp.domain.ticketing.entity.EventStatus
 import com.sportsapp.infrastructure.goods.mysql.ProductJpaRepository
 import com.sportsapp.infrastructure.goods.mysql.StockCustomRepositoryImpl
 import com.sportsapp.infrastructure.goods.mysql.StockJpaRepository
-import com.sportsapp.infrastructure.persistence.ticketing.EventCustomRepositoryImpl
-import com.sportsapp.infrastructure.persistence.ticketing.EventJpaRepository
+import com.sportsapp.infrastructure.ticketing.mysql.EventCustomRepositoryImpl
+import com.sportsapp.infrastructure.ticketing.mysql.EventJpaRepository
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.jdbc.core.JdbcTemplate

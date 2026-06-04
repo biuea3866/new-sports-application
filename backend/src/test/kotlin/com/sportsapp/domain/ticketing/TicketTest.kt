@@ -1,4 +1,8 @@
 package com.sportsapp.domain.ticketing
+import com.sportsapp.domain.ticketing.entity.OrderStatus
+import com.sportsapp.domain.ticketing.entity.TicketStatus
+import com.sportsapp.domain.ticketing.entity.TicketOrder
+import com.sportsapp.domain.ticketing.entity.Ticket
 
 import com.sportsapp.domain.ticketing.exception.InvalidTicketStateException
 import io.kotest.assertions.throwables.shouldThrow

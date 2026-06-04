@@ -1,4 +1,6 @@
 package com.sportsapp.domain.ticketing
+import com.sportsapp.domain.ticketing.entity.EventStatus
+import com.sportsapp.domain.ticketing.entity.Event
 
 import com.sportsapp.domain.ticketing.exception.InvalidEventStateException
 import io.kotest.assertions.throwables.shouldThrow
