@@ -66,7 +66,7 @@ class Payment private constructor(
 
     @Version
     @Column(name = "version", nullable = false)
-    val version: Long = 0,
+    var version: Long = 0,
 ) : JpaAuditingBase() {
 
     @Transient

@@ -23,5 +23,5 @@ class CartItemRepositoryImpl(
         cartItemJpaRepository.findByCart_IdAndProductIdAndDeletedAtIsNull(cartId, productId)
 
     override fun findAllByCartId(cartId: Long): List<CartItem> =
-        cartItemJpaRepository.findAllByCart_Id(cartId).filter { !it.isDeleted }
+        cartItemJpaRepository.findAllByCart_IdAndDeletedAtIsNull(cartId)
 }

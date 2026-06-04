@@ -22,7 +22,7 @@ class Stock(
 
     @Version
     @Column(nullable = false)
-    val version: Long = 0L,
+    var version: Long = 0L,
 ) : JpaAuditingBase() {
 
     @OneToOne(fetch = FetchType.LAZY)

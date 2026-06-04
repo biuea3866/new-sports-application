@@ -2,7 +2,6 @@ package com.sportsapp.domain.goods
 
 import com.sportsapp.domain.common.JpaAuditingBase
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
-import jakarta.persistence.CascadeType
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -47,7 +46,7 @@ class Product(
     @Column(name = "id")
     val id: Long = 0
 
-    @OneToOne(mappedBy = "product", cascade = [CascadeType.PERSIST, CascadeType.MERGE], fetch = FetchType.LAZY)
+    @OneToOne(mappedBy = "product", fetch = FetchType.LAZY)
     var stock: Stock? = null
         private set
 

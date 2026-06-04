@@ -9,6 +9,8 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.OneToMany
+import jakarta.persistence.PrePersist
+import jakarta.persistence.PreUpdate
 import jakarta.persistence.Table
 
 @Entity
@@ -35,12 +37,22 @@ class Cart(
      * - 활성 상태: active_marker = 1 (상수 — user_id 당 활성 cart 1건만 허용)
      * - 비활성(soft-delete): active_marker = null (null 은 unique 체크 제외)
      *
-     * CartRepositoryImpl.save() 에서 저장 직후 markActive() 를 호출하고,
-     * soft-delete 처리 후 markInactive() 를 호출한다.
+     * markActive()는 @PrePersist에서 자동 호출된다.
+     * softDelete() 호출 시 markInactive()가 함께 호출된다.
      */
     @Column(name = "active_marker")
     var activeMarker: Long? = null
         private set
+
+    @PrePersist
+    private fun onPrePersist() {
+        if (!isDeleted) markActive()
+    }
+
+    @PreUpdate
+    private fun onPreUpdate() {
+        if (isDeleted) markInactive()
+    }
 
     fun markActive() {
         activeMarker = ACTIVE_MARKER

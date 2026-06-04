@@ -1,14 +1,21 @@
 package com.sportsapp.scenario.payment
 
-import com.sportsapp.BaseJpaIntegrationTest
+import com.sportsapp.BaseIntegrationTest
+import com.sportsapp.domain.payment.OrderConfirmationGateway
 import com.sportsapp.domain.payment.OrderType
 import com.sportsapp.domain.payment.Payment
 import com.sportsapp.domain.payment.PaymentMethod
 import com.sportsapp.domain.payment.PaymentRepository
 import com.sportsapp.domain.payment.PaymentStatus
+import com.sportsapp.infrastructure.messaging.KafkaDomainEventPublisher
 import io.kotest.matchers.shouldBe
+import io.mockk.mockk
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Import
+import org.springframework.context.annotation.Primary
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.web.servlet.MockMvc
@@ -17,21 +24,43 @@ import java.math.BigDecimal
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 
+@TestConfiguration
+class PaymentWebhookTestConfig {
+    /**
+     * KafkaDomainEventPublisher 를 mockk 로 대체 — 실제 Kafka 브로커 없이 webhook 시나리오 실행.
+     * allow-bean-definition-overriding=true 로 등록된 기존 bean 을 덮어씀.
+     */
+    @Bean
+    fun kafkaDomainEventPublisher(): KafkaDomainEventPublisher = mockk(relaxed = true)
+
+    /**
+     * OrderConfirmationGatewayImpl 대신 no-op 구현을 등록.
+     * 테스트에 실제 Booking/Goods/Ticketing 데이터가 없으므로 confirm/cancel 을 무시한다.
+     */
+    @Bean
+    @Primary
+    fun orderConfirmationGateway(): OrderConfirmationGateway = object : OrderConfirmationGateway {
+        override fun confirm(orderType: OrderType, orderId: Long, paymentId: Long) {}
+        override fun cancel(orderType: OrderType, orderId: Long, paymentId: Long) {}
+    }
+}
+
 @AutoConfigureMockMvc
+@Import(PaymentWebhookTestConfig::class)
 class PaymentWebhookScenarioTest(
     @Autowired private val mockMvc: MockMvc,
     @Autowired private val paymentRepository: PaymentRepository,
     @Autowired private val jdbcTemplate: JdbcTemplate,
-) : BaseJpaIntegrationTest() {
+) : BaseIntegrationTest() {
 
     init {
-        beforeEach {
+        afterEach {
             jdbcTemplate.execute("DELETE FROM payments")
         }
 
         Given("READY 상태 Payment 가 존재할 때 PAYMENT_APPROVED webhook 수신") {
             val tid = "MOCK_CARD_webhook_approve01"
-            val payment = saveReadyPayment(tid = tid, idempotencyKey = "webhook-scenario-01")
+            saveReadyPayment(tid = tid, idempotencyKey = "webhook-scenario-01")
 
             When("POST /payments/webhook 을 한 번 호출하면") {
                 mockMvc.post("/payments/webhook") {
@@ -39,16 +68,20 @@ class PaymentWebhookScenarioTest(
                     content = buildWebhookBody(eventType = "PAYMENT_APPROVED", tid = tid)
                 }.andExpect { status { isOk() } }
 
-                Then("[S-01] DB 상태가 COMPLETED 로 변경된다") {
-                    val updated = paymentRepository.findById(payment.id)
-                    updated?.status shouldBe PaymentStatus.COMPLETED
+                Then("DB 상태가 COMPLETED 로 변경된다") {
+                    val status = jdbcTemplate.queryForObject(
+                        "SELECT status FROM payments WHERE pg_transaction_id = ?",
+                        String::class.java,
+                        tid,
+                    )
+                    status shouldBe PaymentStatus.COMPLETED.name
                 }
             }
         }
 
         Given("READY 상태 Payment 에 PAYMENT_APPROVED webhook 을 serial 2회 수신 (멱등)") {
             val tid = "MOCK_CARD_webhook_idem01"
-            val payment = saveReadyPayment(tid = tid, idempotencyKey = "webhook-scenario-02")
+            saveReadyPayment(tid = tid, idempotencyKey = "webhook-scenario-02")
 
             When("동일 tid 로 webhook 을 순차 2회 호출하면") {
                 repeat(2) {
@@ -58,9 +91,13 @@ class PaymentWebhookScenarioTest(
                     }.andExpect { status { isOk() } }
                 }
 
-                Then("[S-02] 상태는 COMPLETED 1회만 반영되고 DB row 는 1건이다") {
-                    val updated = paymentRepository.findById(payment.id)
-                    updated?.status shouldBe PaymentStatus.COMPLETED
+                Then("상태는 COMPLETED 1회만 반영되고 DB row 는 1건이다") {
+                    val status = jdbcTemplate.queryForObject(
+                        "SELECT status FROM payments WHERE pg_transaction_id = ?",
+                        String::class.java,
+                        tid,
+                    )
+                    status shouldBe PaymentStatus.COMPLETED.name
 
                     val count = jdbcTemplate.queryForObject(
                         "SELECT COUNT(*) FROM payments WHERE pg_transaction_id = ?",
@@ -94,8 +131,8 @@ class PaymentWebhookScenarioTest(
                 futures.forEach { statusCodes.add(it.get()) }
                 executor.shutdown()
 
-                Then("[S-04] DB 상태가 COMPLETED 로 정확히 1건 수렴한다 (낙관락이 이중 반영 차단)") {
-                    // 두 트랜잭션 중 하나는 200(성공), 하나는 200(조기반환) 또는 500(OptimisticLockException).
+                Then("DB 상태가 COMPLETED 로 정확히 1건 수렴한다 (낙관락이 이중 반영 차단)") {
+                    // 두 트랜잭션 중 하나는 200(성공), 하나는 200(조기반환) 또는 409(OptimisticLock).
                     // 어느 경우든 COMPLETED row 는 반드시 1건이어야 한다.
                     val completedCount = jdbcTemplate.queryForObject(
                         "SELECT COUNT(*) FROM payments WHERE pg_transaction_id = ? AND status = 'COMPLETED'",
@@ -109,7 +146,7 @@ class PaymentWebhookScenarioTest(
 
         Given("READY 상태 Payment 에 PAYMENT_CANCELED webhook 수신") {
             val tid = "MOCK_CARD_webhook_cancel01"
-            val payment = saveReadyPayment(tid = tid, idempotencyKey = "webhook-scenario-03")
+            saveReadyPayment(tid = tid, idempotencyKey = "webhook-scenario-03")
 
             When("POST /payments/webhook 에 PAYMENT_CANCELED 를 전송하면") {
                 mockMvc.post("/payments/webhook") {
@@ -117,9 +154,13 @@ class PaymentWebhookScenarioTest(
                     content = buildWebhookBody(eventType = "PAYMENT_CANCELED", tid = tid)
                 }.andExpect { status { isOk() } }
 
-                Then("[S-03] DB 상태가 CANCELLED 로 변경된다") {
-                    val updated = paymentRepository.findById(payment.id)
-                    updated?.status shouldBe PaymentStatus.CANCELLED
+                Then("DB 상태가 CANCELLED 로 변경된다") {
+                    val status = jdbcTemplate.queryForObject(
+                        "SELECT status FROM payments WHERE pg_transaction_id = ?",
+                        String::class.java,
+                        tid,
+                    )
+                    status shouldBe PaymentStatus.CANCELLED.name
                 }
             }
         }
