@@ -1,7 +1,7 @@
 package com.sportsapp.presentation.mcp
 
-import com.sportsapp.application.facility.GetGuTypeStatsUseCase
-import com.sportsapp.application.facility.GuTypeCountResponse
+import com.sportsapp.application.facility.usecase.GetGuTypeStatsUseCase
+import com.sportsapp.domain.facility.dto.GuTypeCount
 import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.response.McpResponseStatus
 import com.sportsapp.presentation.mcp.toolregistry.McpFacilityStatsTools
@@ -23,9 +23,9 @@ class McpFacilityStatsToolsTest : BehaviorSpec({
 
     Given("getFacilityStats tool") {
         val statsList = listOf(
-            GuTypeCountResponse(gu = "강남구", type = "FUTSAL", count = 5L),
-            GuTypeCountResponse(gu = "강남구", type = "TENNIS", count = 3L),
-            GuTypeCountResponse(gu = "마포구", type = "FUTSAL", count = 2L),
+            GuTypeCount(gu = "강남구", type = "FUTSAL", count = 5L),
+            GuTypeCount(gu = "강남구", type = "TENNIS", count = 3L),
+            GuTypeCount(gu = "마포구", type = "FUTSAL", count = 2L),
         )
 
         When("[U-07] getFacilityStats를 호출하면") {

@@ -1,7 +1,7 @@
 package com.sportsapp.presentation.mcp.toolregistry
 
-import com.sportsapp.application.facility.GetGuTypeStatsUseCase
-import com.sportsapp.application.facility.GuTypeCountResponse
+import com.sportsapp.application.facility.usecase.GetGuTypeStatsUseCase
+import com.sportsapp.presentation.facility.dto.response.GuTypeCountResponse
 import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.audit.McpToolAuditHelper.withAudit
 import com.sportsapp.presentation.mcp.response.McpResponse
@@ -33,7 +33,7 @@ class McpFacilityStatsTools(
     )
     fun getFacilityStats(): McpResponse<List<GuTypeCountResponse>> =
         mcpAuditLogAsyncRecorder.withAudit("getFacilityStats", emptyMap()) {
-            val stats = getGuTypeStatsUseCase.execute()
+            val stats = getGuTypeStatsUseCase.execute().map { GuTypeCountResponse.of(it) }
             McpResponse.ok(data = stats)
         }
 }

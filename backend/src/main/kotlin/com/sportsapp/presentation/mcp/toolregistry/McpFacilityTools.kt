@@ -1,8 +1,8 @@
 package com.sportsapp.presentation.mcp.toolregistry
 
-import com.sportsapp.application.facility.FacilityCriteria
-import com.sportsapp.application.facility.FacilityResponse
-import com.sportsapp.application.facility.ListFacilitiesUseCase
+import com.sportsapp.application.facility.dto.FacilityCriteria
+import com.sportsapp.presentation.facility.dto.response.FacilityResponse
+import com.sportsapp.application.facility.usecase.ListFacilitiesUseCase
 import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.audit.McpToolAuditHelper.withAudit
 import com.sportsapp.presentation.mcp.response.McpPagination
@@ -50,6 +50,6 @@ class McpFacilityTools(
                 size = resultPage.size,
                 total = resultPage.totalElements,
             )
-            McpResponse.ok(data = resultPage.content, pagination = pagination)
+            McpResponse.ok(data = resultPage.content.map { FacilityResponse.of(it) }, pagination = pagination)
         }
 }

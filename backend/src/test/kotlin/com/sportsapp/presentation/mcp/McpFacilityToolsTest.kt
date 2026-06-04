@@ -1,8 +1,8 @@
 package com.sportsapp.presentation.mcp
 
-import com.sportsapp.application.facility.FacilityCriteria
-import com.sportsapp.application.facility.FacilityResponse
-import com.sportsapp.application.facility.ListFacilitiesUseCase
+import com.sportsapp.application.facility.dto.FacilityCriteria
+import com.sportsapp.application.facility.usecase.ListFacilitiesUseCase
+import com.sportsapp.domain.facility.entity.Facility
 import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.response.McpResponseStatus
 import com.sportsapp.presentation.mcp.toolregistry.McpFacilityTools
@@ -22,18 +22,19 @@ class McpFacilityToolsTest : BehaviorSpec({
     val mcpFacilityTools = McpFacilityTools(listFacilitiesUseCase, mcpAuditLogAsyncRecorder)
 
     Given("getFacilities tool") {
-        val facility = FacilityResponse(
+        val facility = Facility(
             id = "FAC-001",
+            code = "CODE-FAC-001",
             name = "서울 강남 풋살장",
             gu = "강남구",
             type = "FUTSAL",
             address = "서울 강남구 역삼동 123",
-            lat = 37.4979,
-            lng = 127.0276,
+            location = org.springframework.data.geo.Point(127.0276, 37.4979),
             parking = true,
             tel = "02-1234-5678",
             homePage = "https://example.com",
             eduYn = false,
+            meta = emptyMap(),
         )
 
         When("[U-01] gu, type 필터 없이 getFacilities를 호출하면") {

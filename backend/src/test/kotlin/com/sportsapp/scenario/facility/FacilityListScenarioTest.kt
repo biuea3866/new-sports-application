@@ -1,9 +1,9 @@
 package com.sportsapp.scenario.facility
 
 import com.sportsapp.BaseMongoIntegrationTest
-import com.sportsapp.domain.facility.Facility
-import com.sportsapp.domain.facility.FacilityAttributes
-import com.sportsapp.domain.facility.FacilityRepository
+import com.sportsapp.domain.facility.entity.Facility
+import com.sportsapp.domain.facility.vo.FacilityAttributes
+import com.sportsapp.domain.facility.repository.FacilityRepository
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc

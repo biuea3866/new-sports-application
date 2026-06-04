@@ -3,9 +3,9 @@ package com.sportsapp.scenario.b2b
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
 import com.sportsapp.presentation.user.dto.response.LoginResponse
-import com.sportsapp.domain.facility.Facility
-import com.sportsapp.domain.facility.FacilityAttributes
-import com.sportsapp.domain.facility.FacilityRepository
+import com.sportsapp.domain.facility.entity.Facility
+import com.sportsapp.domain.facility.vo.FacilityAttributes
+import com.sportsapp.domain.facility.repository.FacilityRepository
 import com.sportsapp.domain.goods.Product
 import com.sportsapp.domain.goods.ProductCategory
 import com.sportsapp.domain.goods.ProductStatus

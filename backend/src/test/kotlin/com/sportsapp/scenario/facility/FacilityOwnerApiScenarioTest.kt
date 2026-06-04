@@ -3,12 +3,12 @@ package com.sportsapp.scenario.facility
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
 import com.sportsapp.presentation.user.dto.response.LoginResponse
-import com.sportsapp.domain.facility.Facility
-import com.sportsapp.domain.facility.FacilityAttributes
-import com.sportsapp.domain.facility.FacilityRepository
+import com.sportsapp.domain.facility.entity.Facility
+import com.sportsapp.domain.facility.vo.FacilityAttributes
+import com.sportsapp.domain.facility.repository.FacilityRepository
 import com.sportsapp.domain.user.service.UserDomainService
-import com.sportsapp.presentation.facility.RegisterFacilityRequest
-import com.sportsapp.presentation.facility.UpdateFacilityRequest
+import com.sportsapp.presentation.facility.dto.request.RegisterFacilityRequest
+import com.sportsapp.presentation.facility.dto.request.UpdateFacilityRequest
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotBeBlank
 import org.apache.hc.client5.http.impl.classic.HttpClients
