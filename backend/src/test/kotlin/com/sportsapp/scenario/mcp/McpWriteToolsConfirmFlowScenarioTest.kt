@@ -1,19 +1,17 @@
 package com.sportsapp.scenario.mcp
 
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.application.booking.BookingResponse
-import com.sportsapp.application.booking.CancelBookingCommand
-import com.sportsapp.application.booking.CancelBookingUseCase
-import com.sportsapp.application.booking.CreateSlotCommand
-import com.sportsapp.application.booking.CreateSlotUseCase
-import com.sportsapp.application.booking.DeleteSlotCommand
-import com.sportsapp.application.booking.DeleteSlotUseCase
-import com.sportsapp.application.booking.SlotResponse
-import com.sportsapp.domain.booking.Booking
-import com.sportsapp.domain.booking.BookingRepository
-import com.sportsapp.domain.booking.BookingStatus
-import com.sportsapp.domain.booking.Slot
-import com.sportsapp.domain.booking.SlotRepository
+import com.sportsapp.application.booking.dto.CancelBookingCommand
+import com.sportsapp.application.booking.usecase.CancelBookingUseCase
+import com.sportsapp.application.booking.dto.CreateSlotCommand
+import com.sportsapp.application.booking.usecase.CreateSlotUseCase
+import com.sportsapp.application.booking.dto.DeleteSlotCommand
+import com.sportsapp.application.booking.usecase.DeleteSlotUseCase
+import com.sportsapp.domain.booking.entity.Booking
+import com.sportsapp.domain.booking.entity.BookingStatus
+import com.sportsapp.domain.booking.entity.Slot
+import com.sportsapp.domain.booking.repository.BookingRepository
+import com.sportsapp.domain.booking.repository.SlotRepository
 import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
 import com.sportsapp.domain.mcp.McpScope
 import com.sportsapp.domain.mcp.confirm.ConfirmationParamsMismatchException
@@ -97,7 +95,7 @@ class McpWriteToolsConfirmFlowScenarioTest(
 
             When("토큰을 소진하고 UseCase 를 실행하면") {
                 val context = confirmationTokenGateway.consume(token)
-                val result: BookingResponse = cancelBookingUseCase.execute(
+                val result: Booking = cancelBookingUseCase.execute(
                     CancelBookingCommand(bookingId = booking.id, cancelledByUserId = 1L, reason = "운영 취소")
                 )
 
@@ -150,7 +148,7 @@ class McpWriteToolsConfirmFlowScenarioTest(
 
             When("토큰을 소진하고 UseCase 를 실행하면") {
                 val context = confirmationTokenGateway.consume(token)
-                val result: SlotResponse = createSlotUseCase.execute(
+                val result: Slot = createSlotUseCase.execute(
                     CreateSlotCommand(ownerId = 1L, facilityId = "FAC-03",
                         date = ZonedDateTime.parse("2026-07-01T09:00:00+09:00"),
                         timeRange = "09:00-10:00", capacity = 10)

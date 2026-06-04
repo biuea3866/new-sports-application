@@ -1,11 +1,11 @@
 package com.sportsapp.presentation.mcp.toolregistry
 
-import com.sportsapp.application.booking.CreateSlotCommand
-import com.sportsapp.application.booking.CreateSlotUseCase
-import com.sportsapp.application.booking.DeleteSlotCommand
-import com.sportsapp.application.booking.DeleteSlotUseCase
-import com.sportsapp.application.booking.UpdateSlotCommand
-import com.sportsapp.application.booking.UpdateSlotUseCase
+import com.sportsapp.application.booking.dto.CreateSlotCommand
+import com.sportsapp.application.booking.usecase.CreateSlotUseCase
+import com.sportsapp.application.booking.dto.DeleteSlotCommand
+import com.sportsapp.application.booking.usecase.DeleteSlotUseCase
+import com.sportsapp.application.booking.dto.UpdateSlotCommand
+import com.sportsapp.application.booking.usecase.UpdateSlotUseCase
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenGateway
 import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.audit.McpToolAuditHelper.withAudit

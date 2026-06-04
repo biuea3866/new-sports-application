@@ -1,13 +1,13 @@
 package com.sportsapp.scenario.booking
 
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.application.booking.CancelBookingCommand
-import com.sportsapp.application.booking.CancelBookingUseCase
-import com.sportsapp.domain.booking.BookingDomainService
-import com.sportsapp.domain.booking.BookingStatus
-import com.sportsapp.domain.booking.InvalidBookingStateException
-import com.sportsapp.domain.booking.Slot
-import com.sportsapp.domain.booking.SlotRepository
+import com.sportsapp.application.booking.dto.CancelBookingCommand
+import com.sportsapp.application.booking.usecase.CancelBookingUseCase
+import com.sportsapp.domain.booking.service.BookingDomainService
+import com.sportsapp.domain.booking.entity.BookingStatus
+import com.sportsapp.domain.booking.exception.InvalidBookingStateException
+import com.sportsapp.domain.booking.entity.Slot
+import com.sportsapp.domain.booking.repository.SlotRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired

@@ -1,6 +1,6 @@
 package com.sportsapp.application.facility
 
-import com.sportsapp.domain.booking.SlotDomainService
+import com.sportsapp.domain.booking.service.SlotDomainService
 import com.sportsapp.domain.facility.FacilityHasActiveSlotException
 import com.sportsapp.domain.facility.FacilityOwnerDomainService
 import org.springframework.context.annotation.Profile

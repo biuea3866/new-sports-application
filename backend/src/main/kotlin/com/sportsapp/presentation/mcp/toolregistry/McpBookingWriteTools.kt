@@ -1,7 +1,7 @@
 package com.sportsapp.presentation.mcp.toolregistry
 
-import com.sportsapp.application.booking.CancelBookingCommand
-import com.sportsapp.application.booking.CancelBookingUseCase
+import com.sportsapp.application.booking.dto.CancelBookingCommand
+import com.sportsapp.application.booking.usecase.CancelBookingUseCase
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenGateway
 import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.audit.McpToolAuditHelper.withAudit

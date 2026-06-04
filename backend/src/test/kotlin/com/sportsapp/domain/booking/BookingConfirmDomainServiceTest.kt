@@ -11,6 +11,13 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import java.math.BigDecimal
+import com.sportsapp.domain.booking.entity.Booking
+import com.sportsapp.domain.booking.entity.BookingStatus
+import com.sportsapp.domain.booking.service.BookingDomainService
+import com.sportsapp.domain.booking.repository.BookingRepository
+import com.sportsapp.domain.booking.repository.SlotRepository
+import com.sportsapp.domain.booking.event.BookingConfirmedEvent
+import com.sportsapp.domain.booking.event.BookingRefundRequestedEvent
 
 class BookingConfirmDomainServiceTest : BehaviorSpec({
 

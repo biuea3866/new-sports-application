@@ -1,9 +1,9 @@
 package com.sportsapp.presentation.mcp.toolregistry
 
-import com.sportsapp.application.booking.BookingResponse
-import com.sportsapp.application.booking.ListBookingsCommand
-import com.sportsapp.application.booking.ListMyBookingsUseCase
-import com.sportsapp.domain.booking.BookingStatus
+import com.sportsapp.presentation.booking.dto.response.BookingResponse
+import com.sportsapp.application.booking.dto.ListBookingsCommand
+import com.sportsapp.application.booking.usecase.ListMyBookingsUseCase
+import com.sportsapp.domain.booking.entity.BookingStatus
 import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.audit.McpToolAuditHelper.withAudit
 import com.sportsapp.presentation.mcp.response.McpPagination
@@ -52,6 +52,6 @@ class McpBookingTools(
             )
             val result = listMyBookingsUseCase.execute(command)
             val pagination = McpPagination.of(page = result.page, size = result.size, total = result.totalElements)
-            McpResponse.ok(data = result.bookings, pagination = pagination)
+            McpResponse.ok(data = result.bookings.map { BookingResponse.of(it) }, pagination = pagination)
         }
 }

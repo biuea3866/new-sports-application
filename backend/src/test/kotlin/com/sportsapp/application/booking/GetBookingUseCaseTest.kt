@@ -1,9 +1,9 @@
 package com.sportsapp.application.booking
 
-import com.sportsapp.domain.booking.Booking
-import com.sportsapp.domain.booking.BookingDomainService
-import com.sportsapp.domain.booking.BookingStatus
-import com.sportsapp.domain.booking.UnauthorizedBookingAccessException
+import com.sportsapp.domain.booking.entity.Booking
+import com.sportsapp.domain.booking.service.BookingDomainService
+import com.sportsapp.domain.booking.entity.BookingStatus
+import com.sportsapp.domain.booking.exception.UnauthorizedBookingAccessException
 import com.sportsapp.domain.payment.service.PaymentDomainService
 import com.sportsapp.domain.payment.entity.PaymentStatus
 import io.kotest.assertions.throwables.shouldThrow
@@ -11,6 +11,7 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import com.sportsapp.application.booking.usecase.GetBookingUseCase
 
 class GetBookingUseCaseTest : BehaviorSpec({
 

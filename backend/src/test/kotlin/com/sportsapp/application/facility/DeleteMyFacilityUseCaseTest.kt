@@ -1,6 +1,6 @@
 package com.sportsapp.application.facility
 
-import com.sportsapp.domain.booking.SlotDomainService
+import com.sportsapp.domain.booking.service.SlotDomainService
 import com.sportsapp.domain.facility.FacilityHasActiveSlotException
 import com.sportsapp.domain.facility.FacilityNotFoundException
 import com.sportsapp.domain.facility.FacilityOwnerDomainService

@@ -1,11 +1,11 @@
 package com.sportsapp.presentation.booking
 
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.domain.booking.BookingDomainService
-import com.sportsapp.domain.booking.BookingRepository
-import com.sportsapp.domain.booking.BookingStatus
-import com.sportsapp.domain.booking.Slot
-import com.sportsapp.domain.booking.SlotRepository
+import com.sportsapp.domain.booking.service.BookingDomainService
+import com.sportsapp.domain.booking.repository.BookingRepository
+import com.sportsapp.domain.booking.entity.BookingStatus
+import com.sportsapp.domain.booking.entity.Slot
+import com.sportsapp.domain.booking.repository.SlotRepository
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import org.springframework.beans.factory.annotation.Autowired

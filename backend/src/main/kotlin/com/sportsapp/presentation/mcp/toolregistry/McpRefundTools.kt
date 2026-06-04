@@ -1,7 +1,7 @@
 package com.sportsapp.presentation.mcp.toolregistry
 
-import com.sportsapp.application.booking.RefundBookingCommand
-import com.sportsapp.application.booking.RefundBookingUseCase
+import com.sportsapp.application.booking.dto.RefundBookingCommand
+import com.sportsapp.application.booking.usecase.RefundBookingUseCase
 import com.sportsapp.domain.mcp.confirm.ConfirmationTokenGateway
 import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.audit.McpToolAuditHelper.withAudit

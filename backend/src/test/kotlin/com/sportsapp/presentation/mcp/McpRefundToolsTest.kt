@@ -1,8 +1,8 @@
 package com.sportsapp.presentation.mcp
 
-import com.sportsapp.application.booking.BookingResponse
-import com.sportsapp.application.booking.RefundBookingUseCase
-import com.sportsapp.domain.booking.BookingStatus
+import com.sportsapp.application.booking.usecase.RefundBookingUseCase
+import com.sportsapp.domain.booking.entity.Booking
+import com.sportsapp.domain.booking.entity.BookingStatus
 import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
 import com.sportsapp.domain.mcp.McpScope
 import com.sportsapp.domain.mcp.confirm.ConfirmationParamsMismatchException
@@ -18,7 +18,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import com.sportsapp.application.booking.RefundBookingCommand
+import com.sportsapp.application.booking.dto.RefundBookingCommand
 import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
@@ -26,8 +26,6 @@ import io.mockk.slot
 import io.mockk.verify
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
-import java.time.ZonedDateTime
-
 class McpRefundToolsTest : BehaviorSpec({
 
     val refundBookingUseCase = mockk<RefundBookingUseCase>()
@@ -52,16 +50,13 @@ class McpRefundToolsTest : BehaviorSpec({
         clearMocks(mcpAuditLogAsyncRecorder)
     }
 
-    val bookingResponse = BookingResponse(
-        id = 1L,
-        slotId = 100L,
-        userId = callerUserId,
-        status = BookingStatus.REFUNDED,
-        paymentId = 10L,
-        paymentStatus = null,
-        createdAt = ZonedDateTime.now(),
-        updatedAt = ZonedDateTime.now(),
-    )
+    val bookingResponse = mockk<Booking> {
+        every { id } returns 1L
+        every { slotId } returns 100L
+        every { userId } returns callerUserId
+        every { status } returns BookingStatus.REFUNDED
+        every { paymentId } returns 10L
+    }
 
     Given("[U-01] confirmationToken 없이 refundBooking 1차 호출 시") {
         val issuedToken = "refund-confirm-token"
@@ -108,9 +103,9 @@ class McpRefundToolsTest : BehaviorSpec({
                 confirmationToken = token,
             )
 
-            Then("[U-02] OK 상태와 REFUNDED BookingResponse 가 반환되고 Command 에 callerUserId 가 포함된다") {
+            Then("[U-02] OK 상태와 REFUNDED Booking 이 반환되고 Command 에 callerUserId 가 포함된다") {
                 result.status shouldBe McpResponseStatus.OK
-                val data = requireNotNull(result.data) as BookingResponse
+                val data = requireNotNull(result.data) as Booking
                 data.status shouldBe BookingStatus.REFUNDED
                 commandSlot.captured.callerUserId shouldBe callerUserId
                 commandSlot.captured.bookingId shouldBe 1L

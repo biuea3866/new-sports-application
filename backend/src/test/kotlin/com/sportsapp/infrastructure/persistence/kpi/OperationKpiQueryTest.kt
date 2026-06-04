@@ -1,16 +1,16 @@
 package com.sportsapp.infrastructure.persistence.kpi
 
 import com.sportsapp.BaseJpaIntegrationTest
-import com.sportsapp.domain.booking.Booking
-import com.sportsapp.domain.booking.BookingStatus
-import com.sportsapp.domain.booking.Slot
+import com.sportsapp.domain.booking.entity.Booking
+import com.sportsapp.domain.booking.entity.BookingStatus
+import com.sportsapp.domain.booking.entity.Slot
 import com.sportsapp.domain.ticketing.Event
 import com.sportsapp.domain.ticketing.EventStatus
 import com.sportsapp.domain.ticketing.Seat
 import com.sportsapp.domain.ticketing.Ticket
-import com.sportsapp.infrastructure.persistence.booking.BookingJpaRepository
-import com.sportsapp.infrastructure.persistence.booking.BookingKpiQueryRepositoryImpl
-import com.sportsapp.infrastructure.persistence.booking.SlotJpaRepository
+import com.sportsapp.infrastructure.booking.mysql.BookingJpaRepository
+import com.sportsapp.infrastructure.booking.mysql.BookingKpiQueryRepositoryImpl
+import com.sportsapp.infrastructure.booking.mysql.SlotJpaRepository
 import com.sportsapp.infrastructure.persistence.ticketing.EventJpaRepository
 import com.sportsapp.infrastructure.persistence.ticketing.SeatJpaRepository
 import com.sportsapp.infrastructure.persistence.ticketing.TicketJpaRepository

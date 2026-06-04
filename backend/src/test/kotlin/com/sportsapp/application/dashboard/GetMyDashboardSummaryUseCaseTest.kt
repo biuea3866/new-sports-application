@@ -1,6 +1,6 @@
 package com.sportsapp.application.dashboard
 
-import com.sportsapp.domain.booking.SlotDomainService
+import com.sportsapp.domain.booking.service.SlotDomainService
 import com.sportsapp.domain.facility.FacilityDomainService
 import com.sportsapp.domain.goods.GoodsDomainService
 import com.sportsapp.domain.ticketing.EventStatus

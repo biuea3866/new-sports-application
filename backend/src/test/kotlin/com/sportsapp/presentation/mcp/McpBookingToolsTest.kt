@@ -1,10 +1,10 @@
 package com.sportsapp.presentation.mcp
 
-import com.sportsapp.application.booking.BookingResponse
-import com.sportsapp.application.booking.ListBookingsCommand
-import com.sportsapp.application.booking.ListBookingsResponse
-import com.sportsapp.application.booking.ListMyBookingsUseCase
-import com.sportsapp.domain.booking.BookingStatus
+import com.sportsapp.application.booking.dto.GetBookingResult
+import com.sportsapp.application.booking.dto.ListBookingsCommand
+import com.sportsapp.application.booking.dto.ListBookingsResult
+import com.sportsapp.application.booking.usecase.ListMyBookingsUseCase
+import com.sportsapp.domain.booking.entity.BookingStatus
 import com.sportsapp.presentation.mcp.audit.McpAuditLogAsyncRecorder
 import com.sportsapp.presentation.mcp.response.McpResponseStatus
 import com.sportsapp.presentation.mcp.toolregistry.McpBookingTools
@@ -23,7 +23,7 @@ class McpBookingToolsTest : BehaviorSpec({
     val mcpBookingTools = McpBookingTools(listMyBookingsUseCase, mcpAuditLogAsyncRecorder)
 
     Given("getBookings tool") {
-        val bookingResponse = BookingResponse(
+        val bookingResult = GetBookingResult(
             id = 1L,
             slotId = 100L,
             userId = 42L,
@@ -33,8 +33,8 @@ class McpBookingToolsTest : BehaviorSpec({
             createdAt = ZonedDateTime.now(),
             updatedAt = ZonedDateTime.now(),
         )
-        val listResponse = ListBookingsResponse(
-            bookings = listOf(bookingResponse),
+        val listResult = ListBookingsResult(
+            bookings = listOf(bookingResult),
             totalElements = 1L,
             totalPages = 1,
             page = 0,
@@ -43,7 +43,7 @@ class McpBookingToolsTest : BehaviorSpec({
 
         When("[U-04] userId로 getBookings를 호출하면") {
             val commandSlot = slot<ListBookingsCommand>()
-            every { listMyBookingsUseCase.execute(capture(commandSlot)) } returns listResponse
+            every { listMyBookingsUseCase.execute(capture(commandSlot)) } returns listResult
 
             val result = mcpBookingTools.getBookings(userId = 42L, status = null, page = 0, size = 20)
 
@@ -59,7 +59,7 @@ class McpBookingToolsTest : BehaviorSpec({
 
         When("[U-05] status 필터를 지정해 getBookings를 호출하면") {
             val commandSlot = slot<ListBookingsCommand>()
-            every { listMyBookingsUseCase.execute(capture(commandSlot)) } returns listResponse
+            every { listMyBookingsUseCase.execute(capture(commandSlot)) } returns listResult
 
             mcpBookingTools.getBookings(userId = 42L, status = "CONFIRMED", page = 0, size = 20)
 
@@ -70,7 +70,7 @@ class McpBookingToolsTest : BehaviorSpec({
         }
 
         When("[U-06] 결과가 없으면") {
-            every { listMyBookingsUseCase.execute(any()) } returns ListBookingsResponse(
+            every { listMyBookingsUseCase.execute(any()) } returns ListBookingsResult(
                 bookings = emptyList(),
                 totalElements = 0L,
                 totalPages = 0,

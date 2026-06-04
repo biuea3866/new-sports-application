@@ -1,6 +1,6 @@
 package com.sportsapp.application.dashboard
 
-import com.sportsapp.domain.booking.BookingDomainService
+import com.sportsapp.domain.booking.service.BookingDomainService
 import com.sportsapp.domain.goods.GoodsDomainService
 import com.sportsapp.domain.ticketing.TicketingDomainService
 import org.springframework.stereotype.Service

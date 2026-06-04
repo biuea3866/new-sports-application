@@ -1,9 +1,9 @@
 package com.sportsapp.presentation.mcp
 
-import com.sportsapp.application.booking.CreateSlotUseCase
-import com.sportsapp.application.booking.DeleteSlotUseCase
-import com.sportsapp.application.booking.SlotResponse
-import com.sportsapp.application.booking.UpdateSlotUseCase
+import com.sportsapp.application.booking.usecase.CreateSlotUseCase
+import com.sportsapp.application.booking.usecase.DeleteSlotUseCase
+import com.sportsapp.application.booking.usecase.UpdateSlotUseCase
+import com.sportsapp.domain.booking.entity.Slot
 import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
 import com.sportsapp.domain.mcp.McpScope
 import com.sportsapp.domain.mcp.confirm.ConfirmationParamsMismatchException
@@ -26,7 +26,6 @@ import io.mockk.slot
 import io.mockk.verify
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
-import java.time.ZonedDateTime
 
 class McpSlotWriteToolsTest : BehaviorSpec({
 
@@ -60,14 +59,13 @@ class McpSlotWriteToolsTest : BehaviorSpec({
         clearMocks(mcpAuditLogAsyncRecorder)
     }
 
-    val slotResponse = SlotResponse(
-        id = 10L,
-        facilityId = "FAC-01",
-        date = ZonedDateTime.now(),
-        timeRange = "09:00-10:00",
-        capacity = 5,
-        ownerId = callerUserId,
-    )
+    val slotResponse = mockk<Slot> {
+        every { id } returns 10L
+        every { facilityId } returns "FAC-01"
+        every { timeRange } returns "09:00-10:00"
+        every { capacity } returns 5
+        every { ownerId } returns callerUserId
+    }
 
     @Suppress("UNCHECKED_CAST")
     fun extractToken(data: Any?): String = (data as Map<String, Any>)["confirmationToken"] as String
@@ -119,9 +117,9 @@ class McpSlotWriteToolsTest : BehaviorSpec({
                 confirmationToken = token,
             )
 
-            Then("[U-07] OK 상태와 SlotResponse 가 반환된다") {
+            Then("[U-07] OK 상태와 Slot 이 반환된다") {
                 result.status shouldBe McpResponseStatus.OK
-                val data = requireNotNull(result.data) as SlotResponse
+                val data = requireNotNull(result.data) as Slot
                 data.id shouldBe 10L
                 verify(exactly = 1) { createSlotUseCase.execute(any()) }
             }
@@ -193,9 +191,9 @@ class McpSlotWriteToolsTest : BehaviorSpec({
                 confirmationToken = token,
             )
 
-            Then("[U-10] OK 상태와 업데이트된 SlotResponse 가 반환된다") {
+            Then("[U-10] OK 상태와 업데이트된 Slot 이 반환된다") {
                 result.status shouldBe McpResponseStatus.OK
-                val data = requireNotNull(result.data) as SlotResponse
+                val data = requireNotNull(result.data) as Slot
                 data.id shouldBe 10L
                 verify(exactly = 1) { updateSlotUseCase.execute(any()) }
             }
