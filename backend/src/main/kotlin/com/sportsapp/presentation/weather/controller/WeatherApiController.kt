@@ -1,7 +1,7 @@
 package com.sportsapp.presentation.weather.controller
 
-import com.sportsapp.application.weather.ForecastResponse
 import com.sportsapp.application.weather.usecase.GetForecastUseCase
+import com.sportsapp.presentation.weather.dto.response.ForecastResponse
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
@@ -18,5 +18,5 @@ class WeatherApiController(
         @RequestParam lat: Double,
         @RequestParam lng: Double,
     ): ResponseEntity<ForecastResponse> =
-        ResponseEntity.ok(getForecastUseCase.execute(lat, lng))
+        ResponseEntity.ok(ForecastResponse.of(getForecastUseCase.execute(lat, lng)))
 }

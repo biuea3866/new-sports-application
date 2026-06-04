@@ -1,4 +1,4 @@
-package com.sportsapp.application.weather
+package com.sportsapp.presentation.weather.dto.response
 
 import com.sportsapp.domain.weather.vo.Forecast
 import com.sportsapp.domain.weather.vo.ForecastSlot
