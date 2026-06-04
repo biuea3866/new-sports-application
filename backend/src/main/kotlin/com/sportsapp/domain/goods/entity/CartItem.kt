@@ -1,7 +1,6 @@
 package com.sportsapp.domain.goods.entity
 
 import com.sportsapp.domain.common.JpaAuditingBase
-import com.sportsapp.domain.goods.exception.InvalidQuantityException
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
@@ -35,11 +34,5 @@ class CartItem(
     fun updateQuantity(newQuantity: Int) {
         require(newQuantity > 0) { "수량은 0보다 커야 합니다: $newQuantity" }
         quantity = newQuantity
-    }
-
-    companion object {
-        fun requirePositiveQuantity(quantity: Int) {
-            if (quantity <= 0) throw InvalidQuantityException(quantity)
-        }
     }
 }

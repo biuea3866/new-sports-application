@@ -50,8 +50,6 @@ class CartDomainService(
     }
 
     fun updateItem(userId: Long, itemId: Long, newQuantity: Int): Pair<Cart, List<CartItem>> {
-        CartItem.requirePositiveQuantity(newQuantity)
-
         val cart = getOrCreateCart(userId)
         val item = cartItemRepository.findById(itemId)
             ?: throw ResourceNotFoundException("CartItem", itemId)

@@ -27,6 +27,7 @@ import java.time.temporal.ChronoUnit
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class GoodsDomainService(
@@ -109,6 +110,7 @@ class GoodsDomainService(
         return product
     }
 
+    @Transactional
     fun cancelPendingOrder(orderId: Long) {
         val order = goodsOrderRepository.findById(orderId)
             ?: throw GoodsOrderNotFoundException(orderId)
@@ -121,6 +123,8 @@ class GoodsDomainService(
             stock.restore(item.quantity)
             stockRepository.save(stock)
         }
+        items.forEach { it.softDelete(null) }
+        if (items.isNotEmpty()) goodsOrderItemRepository.saveAll(items)
     }
 
     fun markPaid(orderId: Long, paymentId: Long): GoodsOrder {

@@ -25,7 +25,7 @@ class MockPaymentGatewayTest : BehaviorSpec({
     )
 
     Given("MockPaymentGateway (성공 케이스)") {
-        val gateway: PaymentGateway = MockPaymentGateway(pgBaseUrl = "http://localhost:9090")
+        val gateway: PaymentGateway = MockPaymentGateway(pgBaseUrl = "http://localhost:9090", successRate = 1.0)
 
         When("양수 amount 로 prepare 를 요청하면") {
             val result = gateway.prepare(buildRequest(BigDecimal("10000")))
@@ -39,7 +39,7 @@ class MockPaymentGatewayTest : BehaviorSpec({
     }
 
     Given("MockPaymentGateway (amount 검증 케이스)") {
-        val gateway: PaymentGateway = MockPaymentGateway(pgBaseUrl = "http://localhost:9090")
+        val gateway: PaymentGateway = MockPaymentGateway(pgBaseUrl = "http://localhost:9090", successRate = 1.0)
 
         When("amount=0 으로 요청하면") {
             Then("[U-01] IllegalArgumentException 을 던진다") {
