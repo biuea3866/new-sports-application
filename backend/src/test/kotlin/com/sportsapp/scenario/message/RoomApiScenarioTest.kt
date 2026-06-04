@@ -1,12 +1,12 @@
 package com.sportsapp.scenario.message
 
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.application.message.CreateRoomCommand
-import com.sportsapp.application.message.CreateRoomUseCase
-import com.sportsapp.application.message.DeleteRoomUseCase
-import com.sportsapp.application.message.GetRoomUseCase
+import com.sportsapp.application.message.dto.CreateRoomCommand
+import com.sportsapp.application.message.usecase.CreateRoomUseCase
+import com.sportsapp.application.message.usecase.DeleteRoomUseCase
+import com.sportsapp.application.message.usecase.GetRoomUseCase
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
-import com.sportsapp.domain.message.NotRoomParticipantException
+import com.sportsapp.domain.message.exception.NotRoomParticipantException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
