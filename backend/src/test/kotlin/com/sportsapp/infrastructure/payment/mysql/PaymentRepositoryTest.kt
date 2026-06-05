@@ -18,6 +18,7 @@ import java.time.ZonedDateTime
 class PaymentRepositoryTest(
     @Autowired private val paymentRepository: PaymentRepository,
     @Autowired private val jdbcTemplate: JdbcTemplate,
+    @Autowired private val paymentJpaRepository: PaymentJpaRepository,
 ) : BaseJpaIntegrationTest() {
 
     init {
@@ -25,32 +26,33 @@ class PaymentRepositoryTest(
             jdbcTemplate.execute("DELETE FROM payments")
         }
 
-        Given("동일 idempotencyKey 로 두 건을 저장하면") {
+        Given("동일 idempotencyKey 로 두 건을 저장할 때") {
             val key = "idem-dup-01"
-            val first = Payment.create(
-                userId = 1L,
-                idempotencyKey = key,
-                orderType = OrderType.BOOKING,
-                orderId = 100L,
-                method = PaymentMethod.CREDIT_CARD,
-                amount = BigDecimal("10000"),
-                currency = "KRW",
-            )
-            paymentRepository.save(first)
-
-            val second = Payment.create(
-                userId = 2L,
-                idempotencyKey = key,
-                orderType = OrderType.BOOKING,
-                orderId = 101L,
-                method = PaymentMethod.CREDIT_CARD,
-                amount = BigDecimal("10000"),
-                currency = "KRW",
-            )
 
             Then("[R-01] DataIntegrityViolationException 이 발생한다") {
+                val first = Payment.create(
+                    userId = 1L,
+                    idempotencyKey = key,
+                    orderType = OrderType.BOOKING,
+                    orderId = 100L,
+                    method = PaymentMethod.CREDIT_CARD,
+                    amount = BigDecimal("10000"),
+                    currency = "KRW",
+                )
+                paymentJpaRepository.saveAndFlush(first)
+
+                val second = Payment.create(
+                    userId = 2L,
+                    idempotencyKey = key,
+                    orderType = OrderType.BOOKING,
+                    orderId = 101L,
+                    method = PaymentMethod.CREDIT_CARD,
+                    amount = BigDecimal("10000"),
+                    currency = "KRW",
+                )
+
                 shouldThrow<DataIntegrityViolationException> {
-                    paymentRepository.save(second)
+                    paymentJpaRepository.saveAndFlush(second)
                 }
             }
         }

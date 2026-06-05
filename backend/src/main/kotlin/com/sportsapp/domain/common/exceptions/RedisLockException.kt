@@ -16,8 +16,4 @@ class RedisLockException(
     cause = cause,
 ) {
     override val status: ErrorStatus = ErrorStatus.INTERNAL
-
-    init {
-        cause?.let { initCause(it) }
-    }
 }

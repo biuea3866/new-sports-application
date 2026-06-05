@@ -55,7 +55,7 @@ class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException::class)
     fun handleValidationException(exception: MethodArgumentNotValidException): ResponseEntity<ProblemDetail> {
         val problemDetail = ProblemDetailBuilder.build(
-            status = ErrorStatus.BAD_REQUEST,
+            status = ErrorStatus.UNPROCESSABLE,
             code = "VALIDATION_ERROR",
             detail = "Request validation failed"
         )
@@ -66,7 +66,7 @@ class GlobalExceptionHandler {
             )
         }
         problemDetail.setProperty("fieldErrors", fieldErrors)
-        return ResponseEntity.status(ErrorStatus.BAD_REQUEST.httpStatus).body(problemDetail)
+        return ResponseEntity.status(ErrorStatus.UNPROCESSABLE.httpStatus).body(problemDetail)
     }
 
     @ExceptionHandler(MissingRequestHeaderException::class)

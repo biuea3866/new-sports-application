@@ -139,7 +139,7 @@ class OperatorDashboardScenarioTest(
                 )
             )
 
-            stringRedisTemplate.delete("b2b:b2bDashboardSummary::${user.id}")
+            stringRedisTemplate.delete("b2b:b2bDashboardSummary:${user.id}")
 
             When("[S-04] GET /api/operator/dashboard/summary 첫 번째 호출") {
                 val accessToken = login("dashboard-multi-role@example.com", password)
@@ -172,11 +172,11 @@ class OperatorDashboardScenarioTest(
             jdbcTemplate.execute("DELETE FROM stocks WHERE product_id IN (SELECT id FROM products WHERE owner_id = ${user.id})")
             jdbcTemplate.execute("DELETE FROM products WHERE owner_id = ${user.id}")
 
-            stringRedisTemplate.delete("b2b:b2bDashboardSummary::${user.id}")
+            stringRedisTemplate.delete("b2b:b2bDashboardSummary:${user.id}")
 
             When("[S-01] 같은 userId로 2회 호출 시 두 번째는 캐시 히트") {
                 val accessToken = login("dashboard-cache@example.com", password)
-                val cacheKey = "b2b:b2bDashboardSummary::${user.id}"
+                val cacheKey = "b2b:b2bDashboardSummary:${user.id}"
 
                 val firstResponse = getDashboard(accessToken)
                 val secondResponse = getDashboard(accessToken)

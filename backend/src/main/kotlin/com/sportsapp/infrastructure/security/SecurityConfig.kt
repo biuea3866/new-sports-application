@@ -2,6 +2,7 @@ package com.sportsapp.infrastructure.security
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
@@ -26,8 +27,10 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 @EnableMethodSecurity(prePostEnabled = true)
 class SecurityConfig(
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
-    private val mcpTokenAuthenticationFilter: McpTokenAuthenticationFilter,
 ) {
+    @Autowired(required = false)
+    private var mcpTokenAuthenticationFilter: McpTokenAuthenticationFilter? = null
+
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http
@@ -41,7 +44,11 @@ class SecurityConfig(
                 it.accessDeniedHandler(jsonAccessDeniedHandler())
             }
             .authorizeHttpRequests { configureAuthorization(it) }
-            .addFilterBefore(mcpTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
+            .also { config ->
+                mcpTokenAuthenticationFilter?.let {
+                    config.addFilterBefore(it, UsernamePasswordAuthenticationFilter::class.java)
+                }
+            }
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
         return http.build()
     }
