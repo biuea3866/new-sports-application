@@ -49,13 +49,13 @@ class UserRegisterScenarioTest(
 
         Given("잘못된 이메일 형식 입력") {
             When("POST /users/register 를 호출하면") {
-                Then("[S-03] 422 응답이 반환된다") {
+                Then("[S-03] 400 응답이 반환된다") {
                     val response = restTemplate.postForEntity(
                         "/users/register",
                         mapOf("email" to "not-an-email", "password" to "password1234"),
                         String::class.java,
                     )
-                    response.statusCode shouldBe HttpStatus.UNPROCESSABLE_ENTITY
+                    response.statusCode shouldBe HttpStatus.BAD_REQUEST
                 }
             }
         }
