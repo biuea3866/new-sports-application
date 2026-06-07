@@ -1,4 +1,4 @@
-package com.sportsapp.presentation.operator.dto.response
+package com.sportsapp.application.operator.dto
 
 import com.sportsapp.domain.operator.entity.OperatorInboxNotification
 import com.sportsapp.domain.operator.entity.OperatorInboxNotificationStatus

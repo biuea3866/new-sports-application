@@ -7,9 +7,9 @@ import com.sportsapp.application.operator.usecase.ListOperatorInboxNotifications
 import com.sportsapp.application.operator.usecase.UpdateOperatorInboxNotificationStatusUseCase
 import com.sportsapp.domain.operator.entity.OperatorInboxNotificationStatus
 import com.sportsapp.domain.operator.vo.OperatorInboxNotificationType
-import com.sportsapp.presentation.operator.dto.response.OperatorInboxNotificationPageResponse
-import com.sportsapp.presentation.operator.dto.response.OperatorInboxNotificationResponse
-import com.sportsapp.presentation.operator.dto.response.OperatorInboxUnreadCountResponse
+import com.sportsapp.application.operator.dto.OperatorInboxNotificationPageResponse
+import com.sportsapp.application.operator.dto.OperatorInboxNotificationResponse
+import com.sportsapp.application.operator.dto.OperatorInboxUnreadCountResponse
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping

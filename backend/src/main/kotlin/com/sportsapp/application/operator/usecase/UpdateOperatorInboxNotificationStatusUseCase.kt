@@ -2,7 +2,7 @@ package com.sportsapp.application.operator.usecase
 
 import com.sportsapp.application.operator.dto.UpdateOperatorInboxNotificationStatusCommand
 import com.sportsapp.domain.operator.service.OperatorInboxNotificationDomainService
-import com.sportsapp.presentation.operator.dto.response.OperatorInboxNotificationResponse
+import com.sportsapp.application.operator.dto.OperatorInboxNotificationResponse
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 

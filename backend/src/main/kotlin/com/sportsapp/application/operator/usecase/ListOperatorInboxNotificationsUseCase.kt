@@ -2,7 +2,7 @@ package com.sportsapp.application.operator.usecase
 
 import com.sportsapp.application.operator.dto.ListOperatorInboxNotificationsCommand
 import com.sportsapp.domain.operator.service.OperatorInboxNotificationDomainService
-import com.sportsapp.presentation.operator.dto.response.OperatorInboxNotificationPageResponse
+import com.sportsapp.application.operator.dto.OperatorInboxNotificationPageResponse
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service

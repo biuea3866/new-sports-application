@@ -1,7 +1,7 @@
 package com.sportsapp.application.operator.usecase
 
 import com.sportsapp.domain.operator.service.OperatorInboxNotificationDomainService
-import com.sportsapp.presentation.operator.dto.response.OperatorInboxUnreadCountResponse
+import com.sportsapp.application.operator.dto.OperatorInboxUnreadCountResponse
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
