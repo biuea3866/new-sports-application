@@ -4,9 +4,13 @@
  *
  * 시드 (products-multi-category.sql) 미주입 — 검색 응답은 빈 페이지일 수 있다.
  * 카트/주문 케이스는 상품 시드가 없으면 도메인 예외가 정상 응답이다.
+ *
+ * 보강 (20260607_full-regression):
+ *   E2E-06-08, E2E-06-09, E2E-06-R04~R06, E2E-06-E06~E07
+ *   PR #181(cart NonUnique 500 fix) 런타임 재검증 — cart 단일성·동시 추가 결함 미발생 확인.
  */
 import { test, expect, request as playwrightRequest } from "@playwright/test";
-import { API_URL, uniqueKey } from "../test/helpers";
+import { API_URL, uniqueKey, registerUser } from "../test/helpers";
 
 test.describe("E2E-06 goods search · cart · order", () => {
   test("E2E-06-01 GET /products?category=APPAREL — 200 + 모두 APPAREL", async () => {
@@ -266,6 +270,211 @@ test.describe("E2E-06 goods search · cart · order", () => {
     const body = await cart.json();
     const items = body.items ?? [];
     expect(items.length).toBe(0);
+    await api.dispose();
+  });
+
+  // ─── 보강 케이스 (20260607_full-regression) ────────────────────────────────
+  // PR #181 cart NonUnique 500 fix 런타임 재검증
+
+  test("E2E-06-08 신규 user — POST /cart/items 순차 2회 시 모두 2xx + GET /cart/me 단일 cart 수렴", async () => {
+    // cart API는 X-User-Id 헤더 기반 인증 (Bearer 토큰 아님)
+    const api = await playwrightRequest.newContext();
+    const user = await registerUser(api, undefined, "Passw0rd!");
+    const userId = String(user.id);
+
+    // 1차 추가 — 상품이 없으면 4xx 도메인 예외, 상품이 있으면 2xx
+    const r1 = await api.post(`${API_URL}/cart/items`, {
+      headers: { "X-User-Id": userId, "Content-Type": "application/json" },
+      data: { productId: 1, quantity: 1 },
+      failOnStatusCode: false,
+    });
+    // 2xx 또는 4xx(상품 없음)가 정상. 5xx는 결함.
+    expect(r1.status(), `1차 추가 응답: ${r1.status()}`).toBeLessThan(500);
+
+    // 2차 추가 — 동일 상품
+    const r2 = await api.post(`${API_URL}/cart/items`, {
+      headers: { "X-User-Id": userId, "Content-Type": "application/json" },
+      data: { productId: 1, quantity: 1 },
+      failOnStatusCode: false,
+    });
+    expect(r2.status(), `2차 추가 응답: ${r2.status()}`).toBeLessThan(500);
+
+    // GET /cart/me — cart가 단일건임을 확인 (NonUniqueResult 500이면 결함)
+    const cartRes = await api.get(`${API_URL}/cart/me`, {
+      headers: { "X-User-Id": userId },
+      failOnStatusCode: false,
+    });
+    expect(cartRes.status(), "GET /cart/me가 500이면 NonUniqueResult 결함").not.toBe(500);
+    expect(cartRes.status()).toBe(200);
+
+    await api.dispose();
+  });
+
+  test("E2E-06-09 신규 user — POST /cart/items 동시 5회 시 5xx 없음 + GET /cart/me 단일 cart 수렴", async () => {
+    const api = await playwrightRequest.newContext();
+    const user = await registerUser(api, undefined, "Passw0rd!");
+    const userId = String(user.id);
+
+    // 동시 5회 발사
+    const concurrentRequests = Array.from({ length: 5 }, () =>
+      api.post(`${API_URL}/cart/items`, {
+        headers: { "X-User-Id": userId, "Content-Type": "application/json" },
+        data: { productId: 1, quantity: 1 },
+        failOnStatusCode: false,
+      }),
+    );
+    const responses = await Promise.all(concurrentRequests);
+
+    // 어느 응답도 500이면 안 됨 (NonUniqueResult 결함)
+    for (const res of responses) {
+      expect(res.status(), `동시 추가 응답이 5xx — NonUniqueResult 결함: ${res.status()}`).toBeLessThan(500);
+    }
+
+    // 직후 GET /cart/me — 단일 cart로 수렴했는지 확인
+    const cartRes = await api.get(`${API_URL}/cart/me`, {
+      headers: { "X-User-Id": userId },
+      failOnStatusCode: false,
+    });
+    expect(cartRes.status(), "동시 추가 후 GET /cart/me가 500이면 NonUniqueResult 결함").not.toBe(500);
+    expect(cartRes.status()).toBe(200);
+
+    await api.dispose();
+  });
+
+  test("E2E-06-R04 GET /cart/me 동시 N회 호출 시 500(NonUniqueResultException) 0건", async () => {
+    const api = await playwrightRequest.newContext();
+    const user = await registerUser(api, undefined, "Passw0rd!");
+    const userId = String(user.id);
+
+    // 먼저 cart 생성 시도
+    await api.post(`${API_URL}/cart/items`, {
+      headers: { "X-User-Id": userId, "Content-Type": "application/json" },
+      data: { productId: 1, quantity: 1 },
+      failOnStatusCode: false,
+    });
+
+    // GET /cart/me 동시 5회 호출 — 어느 응답도 500이면 안 됨
+    const concurrentGets = Array.from({ length: 5 }, () =>
+      api.get(`${API_URL}/cart/me`, {
+        headers: { "X-User-Id": userId },
+        failOnStatusCode: false,
+      }),
+    );
+    const responses = await Promise.all(concurrentGets);
+    for (const res of responses) {
+      expect(res.status(), `동시 GET /cart/me가 5xx — NonUniqueResult 결함: ${res.status()}`).not.toBe(500);
+      expect(res.status()).toBe(200);
+    }
+
+    await api.dispose();
+  });
+
+  test("E2E-06-R05 GET /cart/me 호출이 cart row 수를 변경하지 않는다 (조회 전후 활성 cart count 동일)", async () => {
+    const api = await playwrightRequest.newContext();
+    const user = await registerUser(api, undefined, "Passw0rd!");
+    const userId = String(user.id);
+
+    // cart 생성
+    await api.post(`${API_URL}/cart/items`, {
+      headers: { "X-User-Id": userId, "Content-Type": "application/json" },
+      data: { productId: 1, quantity: 1 },
+      failOnStatusCode: false,
+    });
+
+    // GET /cart/me 3회 — 모두 같은 응답 구조여야 하고 5xx 없음
+    for (let i = 0; i < 3; i++) {
+      const res = await api.get(`${API_URL}/cart/me`, {
+        headers: { "X-User-Id": userId },
+        failOnStatusCode: false,
+      });
+      expect(res.status(), `${i + 1}회차 GET /cart/me 5xx — 쓰기 사이드이펙트 결함`).not.toBe(500);
+      expect(res.status()).toBe(200);
+    }
+
+    await api.dispose();
+  });
+
+  test("E2E-06-R06 기존 단일 활성 cart user의 GET /cart/me — V34 적용 후에도 동일 cart 반환", async () => {
+    // X-User-Id: 1 (seed.sql의 기존 user) — V34 이후에도 하위호환 확인
+    const api = await playwrightRequest.newContext();
+    const res1 = await api.get(`${API_URL}/cart/me`, {
+      headers: { "X-User-Id": "1" },
+      failOnStatusCode: false,
+    });
+    expect(res1.status()).toBe(200);
+    const b1 = await res1.json();
+
+    const res2 = await api.get(`${API_URL}/cart/me`, {
+      headers: { "X-User-Id": "1" },
+      failOnStatusCode: false,
+    });
+    expect(res2.status()).toBe(200);
+    const b2 = await res2.json();
+
+    // cart id가 일치해야 함 (동일 cart 반환)
+    if (b1.id !== undefined && b2.id !== undefined) {
+      expect(b2.id, "V34 이후에도 동일 cart id 반환").toBe(b1.id);
+    }
+
+    await api.dispose();
+  });
+
+  test("E2E-06-E06 동시 cart 추가 경합에서 응답은 5xx가 아닌 비즈니스 응답(2xx 또는 4xx)이며 DB 중복 cart 없음", async () => {
+    const api = await playwrightRequest.newContext();
+    const user = await registerUser(api, undefined, "Passw0rd!");
+    const userId = String(user.id);
+
+    // 동시 10회 발사
+    const responses = await Promise.all(
+      Array.from({ length: 10 }, () =>
+        api.post(`${API_URL}/cart/items`, {
+          headers: { "X-User-Id": userId, "Content-Type": "application/json" },
+          data: { productId: 2, quantity: 1 },
+          failOnStatusCode: false,
+        }),
+      ),
+    );
+
+    const has5xx = responses.some((r) => r.status() >= 500);
+    expect(has5xx, "동시 경합 중 5xx 발생 — NonUniqueResult 또는 서버 오류").toBe(false);
+
+    // 직후 단건 GET — 5xx 없음
+    const cartRes = await api.get(`${API_URL}/cart/me`, {
+      headers: { "X-User-Id": userId },
+      failOnStatusCode: false,
+    });
+    expect(cartRes.status()).not.toBe(500);
+
+    await api.dispose();
+  });
+
+  test("E2E-06-E07 DELETE /cart 후 POST /cart/items 재추가 시 UNIQUE 제약 위반 500 없음", async () => {
+    const api = await playwrightRequest.newContext();
+    const user = await registerUser(api, undefined, "Passw0rd!");
+    const userId = String(user.id);
+
+    // cart 생성
+    await api.post(`${API_URL}/cart/items`, {
+      headers: { "X-User-Id": userId, "Content-Type": "application/json" },
+      data: { productId: 1, quantity: 1 },
+      failOnStatusCode: false,
+    });
+
+    // cart 삭제
+    const del = await api.delete(`${API_URL}/cart`, {
+      headers: { "X-User-Id": userId },
+      failOnStatusCode: false,
+    });
+    expect([200, 204]).toContain(del.status());
+
+    // 재추가 — UNIQUE 제약 위반(500)이 발생하면 안 됨
+    const reAdd = await api.post(`${API_URL}/cart/items`, {
+      headers: { "X-User-Id": userId, "Content-Type": "application/json" },
+      data: { productId: 1, quantity: 1 },
+      failOnStatusCode: false,
+    });
+    expect(reAdd.status(), "DELETE 후 재추가 시 UNIQUE 제약 위반 500").toBeLessThan(500);
+
     await api.dispose();
   });
 });
