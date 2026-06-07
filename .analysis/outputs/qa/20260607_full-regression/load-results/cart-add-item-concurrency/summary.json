@@ -1,0 +1,208 @@
+{
+    "metrics": {
+        "LOAD_04_5xx_rate": {
+            "passes": 1172,
+            "fails": 55689,
+            "thresholds": {
+                "rate<0.001": true
+            },
+            "value": 0.020611667047712844
+        },
+        "http_req_waiting": {
+            "avg": 131.70482311047002,
+            "min": 8.402,
+            "med": 122.985,
+            "max": 721.586,
+            "p(90)": 215.76800000000003,
+            "p(95)": 254.15749999999997
+        },
+        "LOAD_04_failures": {
+            "passes": 1172,
+            "fails": 54552,
+            "value": 0.021032230277797718
+        },
+        "http_req_failed": {
+            "passes": 1172,
+            "fails": 55694,
+            "thresholds": {
+                "rate<0.05": false
+            },
+            "value": 0.02060985474624556
+        },
+        "vus_max": {
+            "value": 50,
+            "min": 50,
+            "max": 50
+        },
+        "http_reqs": {
+            "count": 56866,
+            "rate": 314.99797616043736
+        },
+        "iterations": {
+            "count": 55724,
+            "rate": 308.6720927015125
+        },
+        "group_duration": {
+            "avg": 132.16805931193718,
+            "min": 8.527458,
+            "med": 123.440833,
+            "max": 721.866792,
+            "p(90)": 216.285042,
+            "p(95)": 254.59825
+        },
+        "vus": {
+            "min": 1,
+            "max": 50,
+            "value": 1
+        },
+        "http_req_sending": {
+            "avg": 0.018391358632572206,
+            "min": 0.002,
+            "med": 0.012,
+            "max": 7.673,
+            "p(90)": 0.03,
+            "p(95)": 0.043
+        },
+        "LOAD_04_latency": {
+            "avg": 132.29161065250122,
+            "min": 10.531,
+            "med": 123.529,
+            "max": 721.685,
+            "p(90)": 216.3287,
+            "p(95)": 254.54455,
+            "thresholds": {
+                "p(99)<1500": false,
+                "p(95)<500": false
+            }
+        },
+        "iteration_duration": {
+            "avg": 134.89695826873393,
+            "min": 10.65025,
+            "med": 124.7735835,
+            "max": 774.548375,
+            "p(90)": 222.6697627,
+            "p(95)": 264.17202055
+        },
+        "data_received": {
+            "rate": 257218.29832804351,
+            "count": 46435142
+        },
+        "data_sent": {
+            "rate": 54826.98586875186,
+            "count": 9897814
+        },
+        "http_req_tls_handshaking": {
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "max": 0,
+            "p(90)": 0,
+            "p(95)": 0
+        },
+        "http_req_duration": {
+            "avg": 132.00061836598272,
+            "min": 8.452,
+            "med": 123.26050000000001,
+            "max": 721.685,
+            "p(90)": 216.155,
+            "p(95)": 254.43924999999996
+        },
+        "http_req_duration{expected_response:true}": {
+            "p(90)": 216.2041,
+            "p(95)": 254.43164999999996,
+            "avg": 132.113454196143,
+            "min": 8.452,
+            "med": 123.39850000000001,
+            "max": 721.685
+        },
+        "http_req_blocked": {
+            "p(95)": 0.013,
+            "avg": 0.016347079098229012,
+            "min": 0,
+            "med": 0.003,
+            "max": 4.822,
+            "p(90)": 0.006
+        },
+        "http_req_connecting": {
+            "med": 0,
+            "max": 4.777,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0.010960802588541489,
+            "min": 0
+        },
+        "http_req_receiving": {
+            "min": 0.008,
+            "med": 0.16,
+            "max": 82.1,
+            "p(90)": 0.537,
+            "p(95)": 0.714,
+            "avg": 0.27740389688039196
+        },
+        "checks": {
+            "passes": 111375,
+            "fails": 2344,
+            "value": 0.9793877891996939
+        }
+    },
+    "setup_data": {},
+    "root_group": {
+            "id": "d41d8cd98f00b204e9800998ecf8427e",
+            "groups": {
+                "[LOAD-04] POST /cart/items concurrency": {
+                    "id": "548468d96cc13f8196f95acc3dc05bb1",
+                    "groups": {},
+                    "checks": {
+                            "not 5xx (NonUniqueResult/IllegalState 방어)": {
+                                "name": "not 5xx (NonUniqueResult/IllegalState 방어)",
+                                "path": "::[LOAD-04] POST /cart/items concurrency::not 5xx (NonUniqueResult/IllegalState 방어)",
+                                "id": "68281dda76ebc0bd54a7893f2dbfc9c4",
+                                "passes": 54552,
+                                "fails": 1172
+                            },
+                            "2xx or 4xx (정상 비즈니스 응답)": {
+                                "passes": 54552,
+                                "fails": 1172,
+                                "name": "2xx or 4xx (정상 비즈니스 응답)",
+                                "path": "::[LOAD-04] POST /cart/items concurrency::2xx or 4xx (정상 비즈니스 응답)",
+                                "id": "9d46d30e96a3050a25835d7983b74fc8"
+                            },
+                            "has cartId": {
+                                "name": "has cartId",
+                                "path": "::[LOAD-04] POST /cart/items concurrency::has cartId",
+                                "id": "da17cfcd0e5ce64a19c8f05e79ac1473",
+                                "passes": 567,
+                                "fails": 0
+                            },
+                            "has items array": {
+                                "passes": 567,
+                                "fails": 0,
+                                "name": "has items array",
+                                "path": "::[LOAD-04] POST /cart/items concurrency::has items array",
+                                "id": "82dea399bea4c4adb249a3816f7e2ad7"
+                            }
+                        },
+                    "name": "[LOAD-04] POST /cart/items concurrency",
+                    "path": "::[LOAD-04] POST /cart/items concurrency"
+                },
+                "[LOAD-04] GET /cart/me state-check": {
+                    "groups": {},
+                    "checks": {
+                            "GET /cart/me not 5xx": {
+                                "id": "aed16d145af472a38a8b2a042e773635",
+                                "passes": 1137,
+                                "fails": 0,
+                                "name": "GET /cart/me not 5xx",
+                                "path": "::[LOAD-04] GET /cart/me state-check::GET /cart/me not 5xx"
+                            }
+                        },
+                    "name": "[LOAD-04] GET /cart/me state-check",
+                    "path": "::[LOAD-04] GET /cart/me state-check",
+                    "id": "be45e03458a6a77b2febd394f3466efe"
+                }
+            },
+            "checks": {},
+            "name": "",
+            "path": ""
+        }
+}

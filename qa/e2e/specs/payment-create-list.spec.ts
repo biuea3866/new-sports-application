@@ -4,6 +4,12 @@
  *
  * 주의: 시드 (booking-pending.sql) 미주입 — 결제 생성은 booking 의존성이 있어
  * 응답 상태 코드/스키마/멱등 헤더 동작 위주로 검증.
+ *
+ * 보강 (20260607_full-regression):
+ *   E2E-04-06~07, E2E-04-R03~R04, E2E-04-E05~E07
+ *   PR #182(payments status 무효 enum → 500 fix) 런타임 재검증.
+ *   주의: E2E-04-05의 status=PAID는 실제 PaymentStatus enum에 없는 값.
+ *   보강 케이스는 실제 enum 값(COMPLETED/READY 등)을 사용.
  */
 import { test, expect, request as playwrightRequest } from "@playwright/test";
 import { API_URL, uniqueKey } from "../test/helpers";
@@ -204,5 +210,117 @@ test.describe("E2E-04 payment create · idempotency · list", () => {
         "결제 게이트웨이 5xx stub 주입 메커니즘 (예: WireMock 또는 profile 토글) 이 환경에 없어 회귀 미실행",
     });
     test.skip();
+  });
+
+  // ─── 보강 케이스 (20260607_full-regression) ────────────────────────────────
+  // PR #182 payments status 무효 enum → 400 fix 런타임 재검증
+
+  test("E2E-04-06 유효 status COMPLETED 필터 — 200 반환 (회귀 깨짐 없음)", async () => {
+    const api = await playwrightRequest.newContext();
+    const res = await api.get(`${API_URL}/payments/me?status=COMPLETED`, {
+      headers: { "X-User-Id": "1" },
+      failOnStatusCode: false,
+    });
+    expect(res.status(), "COMPLETED 필터 — 유효 enum이므로 200이어야 함").toBe(200);
+    const body = await res.json();
+    expect(body).toHaveProperty("content");
+    // 결과가 있으면 status가 모두 COMPLETED인지 확인
+    for (const p of body.content ?? []) {
+      if (p.status !== undefined) {
+        expect(p.status).toBe("COMPLETED");
+      }
+    }
+    await api.dispose();
+  });
+
+  test("E2E-04-07 유효 status READY 필터 — 200 반환", async () => {
+    const api = await playwrightRequest.newContext();
+    const res = await api.get(`${API_URL}/payments/me?status=READY`, {
+      headers: { "X-User-Id": "1" },
+      failOnStatusCode: false,
+    });
+    expect(res.status(), "READY 필터 — 유효 enum이므로 200이어야 함").toBe(200);
+    await api.dispose();
+  });
+
+  test("E2E-04-R03 유효한 모든 PaymentStatus 값으로 GET /payments/me 시 전부 200", async () => {
+    const api = await playwrightRequest.newContext();
+    const validStatuses = ["PENDING", "READY", "COMPLETED", "CANCELLED", "FAILED", "REFUNDED"];
+    for (const status of validStatuses) {
+      const res = await api.get(`${API_URL}/payments/me?status=${status}`, {
+        headers: { "X-User-Id": "1" },
+        failOnStatusCode: false,
+      });
+      expect(res.status(), `status=${status} — 유효 enum이므로 200이어야 함 (got ${res.status()})`).toBe(200);
+    }
+    await api.dispose();
+  });
+
+  test("E2E-04-R04 status 파라미터 미지정 GET /payments/me — 전체 결과 200 반환", async () => {
+    const api = await playwrightRequest.newContext();
+    const res = await api.get(`${API_URL}/payments/me`, {
+      headers: { "X-User-Id": "1" },
+      failOnStatusCode: false,
+    });
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(body).toHaveProperty("content");
+    await api.dispose();
+  });
+
+  test("E2E-04-E05 무효 status=INVALID_ANYTHING 호출 시 400 Bad Request (500이면 결함)", async () => {
+    const api = await playwrightRequest.newContext();
+    const res = await api.get(`${API_URL}/payments/me?status=INVALID_ANYTHING`, {
+      headers: { "X-User-Id": "1" },
+      failOnStatusCode: false,
+    });
+    // PR #182 fix: GlobalExceptionHandler가 MethodArgumentTypeMismatchException → 400 매핑
+    // 500이 나오면 fix가 적용 안 됐거나 회귀
+    expect(res.status(), "무효 status 값에 500이 반환됨 — PR #182 fix 회귀 또는 미적용").not.toBe(500);
+    expect(res.status(), "무효 status 값은 400이어야 함").toBe(400);
+    await api.dispose();
+  });
+
+  test("E2E-04-E06 소문자 무효 status=paid 호출 시 400 Bad Request", async () => {
+    const api = await playwrightRequest.newContext();
+    const res = await api.get(`${API_URL}/payments/me?status=paid`, {
+      headers: { "X-User-Id": "1" },
+      failOnStatusCode: false,
+    });
+    // 대소문자 불일치 — PAID도 없는 enum이므로 400이어야 함
+    expect(res.status(), "소문자 status=paid에 500이 반환됨").not.toBe(500);
+    expect(res.status(), "소문자 무효 status=paid는 400이어야 함").toBe(400);
+    await api.dispose();
+  });
+
+  test("E2E-04-E07 빈 status 값 GET /payments/me?status= — 500이 아닌 200 또는 400으로 일관 응답", async () => {
+    // NOTE: E2E-04-05의 status=PAID는 실제 enum에 없어 빈 200으로 마스킹됨을 확인하기 위한 케이스
+    // PAID enum 마스킹 확인: status=PAID가 200으로 빠져나가는지 단언
+    const api = await playwrightRequest.newContext();
+
+    // 빈 status
+    const emptyRes = await api.get(`${API_URL}/payments/me?status=`, {
+      headers: { "X-User-Id": "1" },
+      failOnStatusCode: false,
+    });
+    expect(emptyRes.status(), "빈 status 값에 500이 반환됨").not.toBe(500);
+    expect([200, 400]).toContain(emptyRes.status());
+
+    // PAID는 enum에 없음 — 200으로 빠져나가면 결함 마스킹, 400이 정상
+    const paidRes = await api.get(`${API_URL}/payments/me?status=PAID`, {
+      headers: { "X-User-Id": "1" },
+      failOnStatusCode: false,
+    });
+    // PAID가 400이 아니고 200(빈 결과)으로 오면 enum 매핑 누락으로 결함 마스킹 가능성
+    if (paidRes.status() === 200) {
+      test.info().annotations.push({
+        type: "enum-masking-warning",
+        description:
+          "status=PAID(enum 미존재)가 400 대신 200 빈 결과로 응답 — GlobalExceptionHandler가 PAID를 처리하지 않고 null로 통과시키는 결함 마스킹 가능성. E2E-04-05 시나리오가 PAID를 사용하나 이 값은 실제 enum에 없음.",
+      });
+    }
+    expect(paidRes.status(), "status=PAID에 500이 반환됨").not.toBe(500);
+
+    await api.dispose();
   });
 });
