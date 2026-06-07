@@ -2,12 +2,12 @@ package com.sportsapp.scenario.facility
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.application.user.LoginResponse
-import com.sportsapp.domain.facility.Facility
-import com.sportsapp.domain.facility.FacilityRepository
-import com.sportsapp.domain.user.UserDomainService
-import com.sportsapp.presentation.facility.ImportLegacyFacilitiesRequest
-import com.sportsapp.presentation.facility.LegacyRowRequest
+import com.sportsapp.presentation.user.dto.response.LoginResponse
+import com.sportsapp.domain.facility.entity.Facility
+import com.sportsapp.domain.facility.repository.FacilityRepository
+import com.sportsapp.domain.user.service.UserDomainService
+import com.sportsapp.presentation.facility.dto.request.ImportLegacyFacilitiesRequest
+import com.sportsapp.presentation.facility.dto.request.LegacyRowRequest
 import io.kotest.matchers.shouldBe
 import org.apache.hc.client5.http.impl.classic.HttpClients
 import org.springframework.beans.factory.annotation.Autowired

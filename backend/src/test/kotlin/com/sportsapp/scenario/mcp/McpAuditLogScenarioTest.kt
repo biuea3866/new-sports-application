@@ -1,8 +1,8 @@
 package com.sportsapp.scenario.mcp
 
 import com.sportsapp.BaseJpaIntegrationTest
-import com.sportsapp.domain.mcp.McpAuditLog
-import com.sportsapp.domain.mcp.McpAuditLogRepository
+import com.sportsapp.domain.mcp.entity.McpAuditLog
+import com.sportsapp.domain.mcp.repository.McpAuditLogRepository
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired

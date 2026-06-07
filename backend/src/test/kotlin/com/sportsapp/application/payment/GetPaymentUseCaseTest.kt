@@ -1,11 +1,12 @@
 package com.sportsapp.application.payment
 
-import com.sportsapp.domain.payment.NotPaymentOwnerException
-import com.sportsapp.domain.payment.OrderType
-import com.sportsapp.domain.payment.Payment
-import com.sportsapp.domain.payment.PaymentDomainService
-import com.sportsapp.domain.payment.PaymentMethod
-import com.sportsapp.domain.payment.PaymentStatus
+import com.sportsapp.domain.payment.exception.NotPaymentOwnerException
+import com.sportsapp.application.payment.usecase.GetPaymentUseCase
+import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.payment.entity.Payment
+import com.sportsapp.domain.payment.service.PaymentDomainService
+import com.sportsapp.domain.payment.vo.PaymentMethod
+import com.sportsapp.domain.payment.entity.PaymentStatus
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe

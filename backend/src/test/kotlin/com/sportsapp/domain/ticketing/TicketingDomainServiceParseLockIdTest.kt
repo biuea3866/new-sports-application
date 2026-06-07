@@ -1,4 +1,8 @@
 package com.sportsapp.domain.ticketing
+import com.sportsapp.domain.ticketing.repository.TicketRepository
+import com.sportsapp.domain.ticketing.repository.TicketOrderRepository
+import com.sportsapp.domain.ticketing.gateway.SeatLockStore
+import com.sportsapp.domain.ticketing.service.TicketingDomainService
 
 import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.ticketing.exception.MalformedLockIdException
@@ -7,6 +11,7 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import com.sportsapp.domain.ticketing.entity.TicketOrder
 
 class TicketingDomainServiceParseLockIdTest : BehaviorSpec({
 

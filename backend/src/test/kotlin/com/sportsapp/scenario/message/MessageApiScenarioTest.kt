@@ -1,12 +1,13 @@
 package com.sportsapp.scenario.message
 
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.application.message.CreateRoomCommand
-import com.sportsapp.application.message.CreateRoomUseCase
-import com.sportsapp.application.message.ListMessagesUseCase
-import com.sportsapp.application.message.SendMessageCommand
-import com.sportsapp.application.message.SendMessageUseCase
-import com.sportsapp.domain.message.NotRoomParticipantException
+import com.sportsapp.application.message.dto.CreateRoomCommand
+import com.sportsapp.application.message.dto.SendMessageCommand
+import com.sportsapp.application.message.usecase.CreateRoomUseCase
+import com.sportsapp.application.message.usecase.ListMessagesUseCase
+import com.sportsapp.application.message.usecase.SendMessageUseCase
+import com.sportsapp.domain.message.exception.NotRoomParticipantException
+import com.sportsapp.presentation.message.dto.response.ListMessagesResponse
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
@@ -28,7 +29,8 @@ class MessageApiScenarioTest(
             sendMessageUseCase.execute(SendMessageCommand(roomId = room.id, senderId = 100L, content = "첫 번째 메시지"))
 
             When("GET /rooms/{id}/messages 를 cursor 없이 호출하면") {
-                val response = listMessagesUseCase.execute(room.id, 100L, null)
+                val messages = listMessagesUseCase.execute(room.id, 100L, null)
+                val response = ListMessagesResponse.of(messages, 30)
 
                 Then("작성된 메시지가 첫 페이지에 즉시 노출된다") {
                     response.messages shouldHaveSize 1
@@ -49,7 +51,8 @@ class MessageApiScenarioTest(
             }
 
             When("첫 페이지를 조회하면") {
-                val firstPage = listMessagesUseCase.execute(room.id, 200L, null)
+                val firstMessages = listMessagesUseCase.execute(room.id, 200L, null)
+                val firstPage = ListMessagesResponse.of(firstMessages, 30)
 
                 Then("[S-01] 30건 + nextCursor 가 반환된다") {
                     firstPage.messages shouldHaveSize 30
@@ -57,7 +60,8 @@ class MessageApiScenarioTest(
                 }
 
                 And("nextCursor 로 두 번째 페이지를 조회하면") {
-                    val secondPage = listMessagesUseCase.execute(room.id, 200L, firstPage.nextCursor)
+                    val secondMessages = listMessagesUseCase.execute(room.id, 200L, firstPage.nextCursor)
+                    val secondPage = ListMessagesResponse.of(secondMessages, 30)
 
                     Then("나머지 1건이 반환되고 nextCursor 는 null 이다") {
                         secondPage.messages shouldHaveSize 1
@@ -92,7 +96,8 @@ class MessageApiScenarioTest(
             )
 
             When("메시지 목록을 조회하면") {
-                val response = listMessagesUseCase.execute(room.id, 400L, null)
+                val messages = listMessagesUseCase.execute(room.id, 400L, null)
+                val response = ListMessagesResponse.of(messages, 30)
 
                 Then("메시지가 1건 존재한다") {
                     response.messages shouldHaveSize 1

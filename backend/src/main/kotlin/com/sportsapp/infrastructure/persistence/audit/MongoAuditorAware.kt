@@ -1,6 +1,6 @@
 package com.sportsapp.infrastructure.persistence.audit
 
-import com.sportsapp.domain.user.UserPrincipal
+import com.sportsapp.domain.user.vo.UserPrincipal
 import org.springframework.context.annotation.Profile
 import org.springframework.data.domain.AuditorAware
 import org.springframework.security.core.context.SecurityContextHolder

@@ -1,6 +1,6 @@
 package com.sportsapp.infrastructure.security
 
-import com.sportsapp.domain.user.JwtBlacklistStore
+import com.sportsapp.domain.user.gateway.JwtBlacklistStore
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Component
 import java.time.Duration

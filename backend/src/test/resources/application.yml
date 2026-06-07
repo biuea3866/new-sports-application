@@ -1,4 +1,15 @@
+mcp:
+  external-url: http://localhost:8080
+
 spring:
+  ai:
+    mcp:
+      server:
+        enabled: true
+        name: sports-mcp-server-test
+        version: 1.0.0
+        sse-endpoint: /mcp/sse
+        sse-message-endpoint: /mcp/message
   main:
     allow-bean-definition-overriding: true
   kafka:
@@ -10,13 +21,19 @@ spring:
         spring.json.trusted.packages: "com.sportsapp.*"
     producer:
       acks: all
+    listener:
+      auto-startup: false
   data:
     mongodb:
       uri: ${MONGODB_URI:mongodb://localhost:27017/sports}
       auto-index-creation: true
+      repositories:
+        type: auto
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      repositories:
+        enabled: false
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/sports?serverTimezone=UTC}
     username: ${DB_USERNAME:root}
@@ -68,9 +85,13 @@ app:
 
 management:
   health:
+    defaults:
+      enabled: false
     mongo:
       enabled: false
     redis:
+      enabled: false
+    db:
       enabled: false
   endpoints:
     web:
@@ -79,3 +100,8 @@ management:
   endpoint:
     health:
       show-details: always
+
+logging:
+  level:
+    org.springframework.data.repository.config: DEBUG
+    org.springframework.cache: TRACE

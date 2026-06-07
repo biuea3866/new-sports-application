@@ -1,9 +1,11 @@
 package com.sportsapp.application.post
 
+import com.sportsapp.application.post.dto.AddCommentCommand
+import com.sportsapp.application.post.usecase.AddCommentUseCase
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
-import com.sportsapp.domain.post.Comment
-import com.sportsapp.domain.post.Post
-import com.sportsapp.domain.post.PostDomainService
+import com.sportsapp.domain.post.entity.Comment
+import com.sportsapp.domain.post.entity.Post
+import com.sportsapp.domain.post.service.PostDomainService
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe

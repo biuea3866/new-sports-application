@@ -1,11 +1,13 @@
 package com.sportsapp.application.payment
+import com.sportsapp.application.payment.dto.PreparePaymentCommand
+import com.sportsapp.application.payment.usecase.PreparePaymentUseCase
 
-import com.sportsapp.domain.payment.OrderType
-import com.sportsapp.domain.payment.PaymentDomainService
-import com.sportsapp.domain.payment.PaymentMethod
-import com.sportsapp.domain.payment.PaymentStatus
-import com.sportsapp.domain.payment.PgInitiateCommand
-import com.sportsapp.domain.payment.PgInitiateResult
+import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.payment.service.PaymentDomainService
+import com.sportsapp.domain.payment.vo.PaymentMethod
+import com.sportsapp.domain.payment.entity.PaymentStatus
+import com.sportsapp.domain.payment.dto.PgInitiateCommand
+import com.sportsapp.domain.payment.dto.PgInitiateResult
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every

@@ -1,7 +1,7 @@
 package com.sportsapp.presentation.mcp.audit
 
 import com.sportsapp.domain.common.BusinessException
-import com.sportsapp.domain.mcp.McpAuthenticatedPrincipal
+import com.sportsapp.domain.mcp.vo.McpAuthenticatedPrincipal
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.core.context.SecurityContextHolder

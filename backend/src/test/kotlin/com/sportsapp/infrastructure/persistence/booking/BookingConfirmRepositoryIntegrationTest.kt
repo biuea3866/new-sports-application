@@ -1,14 +1,16 @@
 package com.sportsapp.infrastructure.persistence.booking
 
 import com.sportsapp.BaseJpaIntegrationTest
-import com.sportsapp.domain.booking.Booking
-import com.sportsapp.domain.booking.BookingStatus
-import com.sportsapp.domain.booking.Slot
+import com.sportsapp.domain.booking.entity.Booking
+import com.sportsapp.domain.booking.entity.BookingStatus
+import com.sportsapp.domain.booking.entity.Slot
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.transaction.support.TransactionTemplate
 import java.time.ZonedDateTime
+import com.sportsapp.infrastructure.booking.mysql.SlotJpaRepository
+import com.sportsapp.infrastructure.booking.mysql.BookingJpaRepository
 
 class BookingConfirmRepositoryIntegrationTest(
     @Autowired private val slotJpaRepository: SlotJpaRepository,

@@ -1,14 +1,14 @@
 package com.sportsapp.application.booking
 
-import com.sportsapp.domain.booking.BookingDomainService
-import com.sportsapp.domain.booking.BookingResult
-import com.sportsapp.domain.booking.BookingStatus
-import com.sportsapp.domain.booking.SlotBusyException
-import com.sportsapp.domain.payment.OrderType
-import com.sportsapp.domain.payment.PaymentDomainService
-import com.sportsapp.domain.payment.PaymentMethod
-import com.sportsapp.domain.payment.PaymentStatus
-import com.sportsapp.domain.payment.PgInitiateResult
+import com.sportsapp.domain.booking.service.BookingDomainService
+import com.sportsapp.domain.booking.dto.BookingResult
+import com.sportsapp.domain.booking.entity.BookingStatus
+import com.sportsapp.domain.booking.exception.SlotBusyException
+import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.payment.service.PaymentDomainService
+import com.sportsapp.domain.payment.vo.PaymentMethod
+import com.sportsapp.domain.payment.entity.PaymentStatus
+import com.sportsapp.domain.payment.dto.PgInitiateResult
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -17,6 +17,9 @@ import io.mockk.mockk
 import io.mockk.verify
 import java.math.BigDecimal
 import org.springframework.transaction.support.TransactionTemplate
+import com.sportsapp.application.booking.usecase.CreateBookingUseCase
+import com.sportsapp.application.booking.dto.CreateBookingCommand
+import com.sportsapp.application.booking.dto.CreateBookingResult
 
 class CreateBookingUseCaseTest : BehaviorSpec({
 

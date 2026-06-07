@@ -1,6 +1,8 @@
 package com.sportsapp.infrastructure.notification
 
-import com.sportsapp.domain.notification.UnknownTemplateException
+import com.sportsapp.domain.notification.exception.UnknownTemplateException
+import com.sportsapp.infrastructure.notification.gateway.NotificationTemplateProperties
+import com.sportsapp.infrastructure.notification.gateway.TemplateRendererImpl
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe

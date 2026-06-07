@@ -1,12 +1,12 @@
 package com.sportsapp.scenario.booking
 
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.application.booking.RefundBookingCommand
-import com.sportsapp.application.booking.RefundBookingUseCase
-import com.sportsapp.domain.booking.BookingDomainService
-import com.sportsapp.domain.booking.BookingStatus
-import com.sportsapp.domain.booking.Slot
-import com.sportsapp.domain.booking.SlotRepository
+import com.sportsapp.application.booking.dto.RefundBookingCommand
+import com.sportsapp.application.booking.usecase.RefundBookingUseCase
+import com.sportsapp.domain.booking.service.BookingDomainService
+import com.sportsapp.domain.booking.entity.BookingStatus
+import com.sportsapp.domain.booking.entity.Slot
+import com.sportsapp.domain.booking.repository.SlotRepository
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.jdbc.core.JdbcTemplate
@@ -70,7 +70,7 @@ class BookingRefundScenarioTest(
 
             When("refundBooking을 실행하면") {
                 Then("paymentId가 없어 RefundBookingException이 발생하여 DB 상태가 변경되지 않는다") {
-                    io.kotest.assertions.throwables.shouldThrow<com.sportsapp.domain.booking.RefundBookingException> {
+                    io.kotest.assertions.throwables.shouldThrow<com.sportsapp.domain.booking.exception.RefundBookingException> {
                         refundBookingUseCase.execute(
                             RefundBookingCommand(
                                 bookingId = pending.id,

@@ -1,14 +1,16 @@
 package com.sportsapp.application.booking
 
-import com.sportsapp.domain.booking.Slot
-import com.sportsapp.domain.booking.SlotDomainService
-import com.sportsapp.domain.booking.UnauthorizedSlotAccessException
+import com.sportsapp.domain.booking.entity.Slot
+import com.sportsapp.domain.booking.service.SlotDomainService
+import com.sportsapp.domain.booking.exception.UnauthorizedSlotAccessException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import java.time.ZonedDateTime
+import com.sportsapp.application.booking.usecase.UpdateSlotUseCase
+import com.sportsapp.application.booking.dto.UpdateSlotCommand
 
 class UpdateSlotUseCaseTest : BehaviorSpec({
 

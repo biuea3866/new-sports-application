@@ -15,6 +15,7 @@ import org.testcontainers.junit.jupiter.Container
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test-jpa")
 @TestPropertySource(properties = [
+    "spring.data.jpa.repositories.enabled=true",
     "spring.data.mongodb.auto-index-creation=false",
     "spring.autoconfigure.exclude=" +
         "org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration," +
@@ -31,6 +32,7 @@ import org.testcontainers.junit.jupiter.Container
 abstract class BaseJpaIntegrationTest : BehaviorSpec() {
 
     companion object {
+        @JvmField
         @Container
         @ServiceConnection
         val mysqlContainer: MySQLContainer<*> = SharedTestContainers.mysql

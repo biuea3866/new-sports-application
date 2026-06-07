@@ -7,6 +7,7 @@ import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.support.TestPropertySourceUtils
+import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.MySQLContainer
 import org.testcontainers.junit.jupiter.Container
 
@@ -23,13 +24,21 @@ abstract class BaseMongoIntegrationTest : BehaviorSpec() {
             TestPropertySourceUtils.addInlinedPropertiesToEnvironment(
                 applicationContext,
                 "spring.data.mongodb.uri=${SharedTestContainers.mongo.replicaSetUrl}",
+                "spring.data.redis.host=${SharedTestContainers.redis.host}",
+                "spring.data.redis.port=${SharedTestContainers.redis.getMappedPort(6379)}",
             )
         }
     }
 
     companion object {
+        @JvmField
         @Container
         @ServiceConnection
         val mysqlContainer: MySQLContainer<*> = SharedTestContainers.mysql
+
+        @JvmField
+        @Container
+        @ServiceConnection
+        val redisContainer: GenericContainer<*> = SharedTestContainers.redis
     }
 }

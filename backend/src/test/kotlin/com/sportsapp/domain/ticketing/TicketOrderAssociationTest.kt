@@ -1,4 +1,7 @@
 package com.sportsapp.domain.ticketing
+import com.sportsapp.domain.ticketing.entity.OrderStatus
+import com.sportsapp.domain.ticketing.entity.Ticket
+import com.sportsapp.domain.ticketing.entity.TicketOrder
 
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe

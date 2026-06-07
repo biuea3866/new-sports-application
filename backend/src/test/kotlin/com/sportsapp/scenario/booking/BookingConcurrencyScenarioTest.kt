@@ -1,8 +1,8 @@
 package com.sportsapp.scenario.booking
 
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.domain.booking.Slot
-import com.sportsapp.domain.booking.SlotRepository
+import com.sportsapp.domain.booking.entity.Slot
+import com.sportsapp.domain.booking.repository.SlotRepository
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc

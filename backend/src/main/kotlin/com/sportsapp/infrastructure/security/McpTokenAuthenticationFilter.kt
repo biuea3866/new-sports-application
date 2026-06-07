@@ -1,22 +1,24 @@
 package com.sportsapp.infrastructure.security
 
 import com.sportsapp.domain.common.PermissionRepository
-import com.sportsapp.domain.mcp.McpScope
-import com.sportsapp.domain.mcp.McpTokenDomainService
-import com.sportsapp.domain.mcp.McpTokenRepository
-import com.sportsapp.domain.mcp.McpTokenScopeRepository
+import com.sportsapp.domain.mcp.vo.McpScope
+import com.sportsapp.domain.mcp.service.McpTokenDomainService
+import com.sportsapp.domain.mcp.repository.McpTokenRepository
+import com.sportsapp.domain.mcp.repository.McpTokenScopeRepository
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.http.MediaType
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.authority.SimpleGrantedAuthority
+import org.springframework.context.annotation.Profile
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
 
 @Component
+@Profile("!test-jpa")
 class McpTokenAuthenticationFilter(
     private val mcpTokenRepository: McpTokenRepository,
     private val mcpTokenScopeRepository: McpTokenScopeRepository,

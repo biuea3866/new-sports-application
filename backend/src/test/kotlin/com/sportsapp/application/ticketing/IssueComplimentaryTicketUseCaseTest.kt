@@ -1,9 +1,11 @@
 package com.sportsapp.application.ticketing
+import com.sportsapp.application.ticketing.dto.IssueComplimentaryTicketCommand
+import com.sportsapp.application.ticketing.usecase.IssueComplimentaryTicketUseCase
 
-import com.sportsapp.domain.ticketing.EventOwnershipException
-import com.sportsapp.domain.ticketing.Ticket
-import com.sportsapp.domain.ticketing.TicketStatus
-import com.sportsapp.domain.ticketing.TicketingDomainService
+import com.sportsapp.domain.ticketing.exception.EventOwnershipException
+import com.sportsapp.domain.ticketing.entity.Ticket
+import com.sportsapp.domain.ticketing.entity.TicketStatus
+import com.sportsapp.domain.ticketing.service.TicketingDomainService
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe

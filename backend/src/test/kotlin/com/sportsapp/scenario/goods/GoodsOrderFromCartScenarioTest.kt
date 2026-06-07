@@ -2,15 +2,15 @@ package com.sportsapp.scenario.goods
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.domain.goods.Product
-import com.sportsapp.domain.goods.ProductCategory
-import com.sportsapp.domain.goods.ProductStatus
-import com.sportsapp.domain.goods.Stock
-import com.sportsapp.infrastructure.persistence.goods.CartItemJpaRepository
-import com.sportsapp.infrastructure.persistence.goods.CartJpaRepository
-import com.sportsapp.infrastructure.persistence.goods.ProductJpaRepository
-import com.sportsapp.infrastructure.persistence.goods.StockJpaRepository
-import com.sportsapp.infrastructure.persistence.payment.PaymentJpaRepository
+import com.sportsapp.domain.goods.entity.Product
+import com.sportsapp.domain.goods.vo.ProductCategory
+import com.sportsapp.domain.goods.entity.ProductStatus
+import com.sportsapp.domain.goods.entity.Stock
+import com.sportsapp.infrastructure.goods.mysql.CartItemJpaRepository
+import com.sportsapp.infrastructure.goods.mysql.CartJpaRepository
+import com.sportsapp.infrastructure.goods.mysql.ProductJpaRepository
+import com.sportsapp.infrastructure.goods.mysql.StockJpaRepository
+import com.sportsapp.infrastructure.payment.mysql.PaymentJpaRepository
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.springframework.beans.factory.annotation.Autowired
@@ -125,7 +125,7 @@ class GoodsOrderFromCartScenarioTest(
                     val cart = cartJpaRepository.findByUserIdAndDeletedAtIsNull(userId)
                     cart shouldNotBe null
                     val activeCartId = requireNotNull(cart).id
-                    val activeItems = cartItemJpaRepository.findAllByCart_IdAndDeletedAtIsNull(activeCartId)
+                    val activeItems = cartItemJpaRepository.findAllByCartIdAndDeletedAtIsNull(activeCartId)
                     activeItems.size shouldBe 2
                 }
             }

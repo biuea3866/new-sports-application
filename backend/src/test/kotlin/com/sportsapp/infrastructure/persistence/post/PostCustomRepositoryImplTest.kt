@@ -1,9 +1,12 @@
 package com.sportsapp.infrastructure.persistence.post
 
+import com.sportsapp.infrastructure.post.mysql.PostJpaRepository
+import com.sportsapp.infrastructure.post.mysql.PostCustomRepositoryImpl
+
 import com.sportsapp.BaseJpaIntegrationTest
-import com.sportsapp.domain.post.Post
-import com.sportsapp.domain.post.PostSearchCriteria
-import com.sportsapp.domain.post.PostType
+import com.sportsapp.domain.post.entity.Post
+import com.sportsapp.domain.post.dto.PostSearchCriteria
+import com.sportsapp.domain.post.vo.PostType
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.domain.PageRequest

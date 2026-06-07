@@ -20,6 +20,8 @@ abstract class BaseIntegrationTest : BehaviorSpec() {
             TestPropertySourceUtils.addInlinedPropertiesToEnvironment(
                 applicationContext,
                 "spring.data.mongodb.uri=${SharedTestContainers.mongo.replicaSetUrl}",
+                "spring.data.redis.host=${SharedTestContainers.redis.host}",
+                "spring.data.redis.port=${SharedTestContainers.redis.getMappedPort(6379)}",
                 "storage.image.endpoint=http://${SharedTestContainers.minio.host}:${SharedTestContainers.minio.getMappedPort(9000)}",
                 "storage.image.access-key=minioadmin",
                 "storage.image.secret-key=minioadmin",
@@ -30,10 +32,12 @@ abstract class BaseIntegrationTest : BehaviorSpec() {
     }
 
     companion object {
+        @JvmField
         @Container
         @ServiceConnection
         val mysqlContainer: MySQLContainer<*> = SharedTestContainers.mysql
 
+        @JvmField
         @Container
         @ServiceConnection
         val redisContainer: GenericContainer<*> = SharedTestContainers.redis

@@ -10,6 +10,15 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import java.time.Duration
+import com.sportsapp.domain.booking.entity.Booking
+import com.sportsapp.domain.booking.entity.BookingStatus
+import com.sportsapp.domain.booking.entity.Slot
+import com.sportsapp.domain.booking.service.BookingDomainService
+import com.sportsapp.domain.booking.repository.BookingRepository
+import com.sportsapp.domain.booking.repository.SlotRepository
+import com.sportsapp.domain.booking.dto.BookingResult
+import com.sportsapp.domain.booking.exception.SlotBusyException
+import com.sportsapp.domain.booking.exception.SlotFullException
 
 class BookingDomainServiceLockTest : BehaviorSpec({
 

@@ -1,11 +1,11 @@
 package com.sportsapp.scenario
 
 import com.sportsapp.BaseJpaIntegrationTest
-import com.sportsapp.domain.notification.NotificationChannel
-import com.sportsapp.domain.notification.NotificationDomainService
-import com.sportsapp.domain.notification.NotificationPayload
-import com.sportsapp.domain.notification.NotificationRepository
-import com.sportsapp.domain.notification.NotificationStatus
+import com.sportsapp.domain.notification.vo.NotificationChannel
+import com.sportsapp.domain.notification.service.NotificationDomainService
+import com.sportsapp.domain.notification.vo.NotificationPayload
+import com.sportsapp.domain.notification.repository.NotificationRepository
+import com.sportsapp.domain.notification.entity.NotificationStatus
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired

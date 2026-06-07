@@ -3,6 +3,11 @@ package com.sportsapp.domain.booking
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import com.sportsapp.domain.booking.entity.Booking
+import com.sportsapp.domain.booking.entity.BookingStatus
+import com.sportsapp.domain.booking.event.BookingCancelledEvent
+import com.sportsapp.domain.booking.exception.InvalidBookingStateException
+import com.sportsapp.domain.booking.exception.UnauthorizedBookingAccessException
 
 class BookingCancelTest : BehaviorSpec({
 

@@ -3,6 +3,7 @@ package com.sportsapp
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.MongoDBContainer
 import org.testcontainers.containers.MySQLContainer
+import org.testcontainers.containers.wait.strategy.Wait
 
 /**
  * 통합 테스트 공용 싱글톤 컨테이너.
@@ -38,6 +39,7 @@ object SharedTestContainers {
             .withEnv("MINIO_ROOT_USER", "minioadmin")
             .withEnv("MINIO_ROOT_PASSWORD", "minioadmin")
             .withCommand("server", "/data")
+            .waitingFor(Wait.forHttp("/minio/health/live").forPort(9000).allowInsecure())
             .also { it.start() }
     }
 }

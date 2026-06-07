@@ -1,0 +1,79 @@
+package com.sportsapp.domain.post.service
+
+import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
+import com.sportsapp.domain.post.dto.PostSearchCriteria
+import com.sportsapp.domain.post.entity.Comment
+import com.sportsapp.domain.post.entity.Post
+import com.sportsapp.domain.post.repository.CommentRepository
+import com.sportsapp.domain.post.repository.PostCustomRepository
+import com.sportsapp.domain.post.repository.PostRepository
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
+import org.springframework.stereotype.Service
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
+import org.springframework.transaction.annotation.Transactional
+
+@Service
+class PostDomainService(
+    private val postRepository: PostRepository,
+    private val commentRepository: CommentRepository,
+    private val postCustomRepository: PostCustomRepository,
+) {
+    fun createPost(userId: Long, title: String, content: String): Post {
+        val post = Post.create(userId = userId, title = title, content = content)
+        return postRepository.save(post)
+    }
+
+    fun changePost(postId: Long, title: String, content: String): Post {
+        val post = postRepository.findById(postId)
+            ?: throw ResourceNotFoundException("Post", postId)
+        post.changePost(title = title, content = content)
+        return postRepository.save(post)
+    }
+
+    fun deletePost(postId: Long, userId: Long): Post {
+        val post = postRepository.findById(postId)
+            ?: throw ResourceNotFoundException("Post", postId)
+        post.softDelete(userId)
+        postRepository.save(post)
+        val comments = commentRepository.findAllActiveByPostId(postId)
+        comments.forEach { it.softDelete(userId) }
+        if (comments.isNotEmpty()) commentRepository.saveAll(comments)
+        return post
+    }
+
+    fun getPost(postId: Long): Post =
+        postRepository.findById(postId)
+            ?: throw ResourceNotFoundException("Post", postId)
+
+    fun search(criteria: PostSearchCriteria, pageable: Pageable): Page<Post> =
+        postCustomRepository.findByCriteria(criteria, pageable)
+
+    @Transactional(readOnly = true)
+    fun getDetail(postId: Long): Pair<Post, List<Comment>> {
+        val post = postRepository.findById(postId)
+            ?: throw ResourceNotFoundException("Post", postId)
+        val comments = commentRepository.findTop50ByPostId(postId)
+        return Pair(post, comments)
+    }
+
+    fun addComment(postId: Long, userId: Long, content: String): Comment {
+        val post = postRepository.findById(postId)
+            ?: throw ResourceNotFoundException("Post", postId)
+        val comment = post.addComment(userId = userId, content = content)
+        return commentRepository.save(comment)
+    }
+
+    fun deleteComment(commentId: Long, requestUserId: Long) {
+        val comment = commentRepository.findById(commentId)
+            ?: throw ResourceNotFoundException("Comment", commentId)
+        comment.delete(requestUserId)
+        commentRepository.save(comment)
+    }
+
+    fun listComments(postId: Long, page: Int, size: Int): Page<Comment> {
+        val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "createdAt"))
+        return commentRepository.findPageByPostId(postId, pageable)
+    }
+}

@@ -1,14 +1,14 @@
 package com.sportsapp.scenario.mcp
 
 import com.sportsapp.BaseJpaIntegrationTest
-import com.sportsapp.application.mcp.ListMyAnomalyEventsCommand
-import com.sportsapp.application.mcp.ListMyAnomalyEventsUseCase
-import com.sportsapp.application.mcp.MarkAnomalyFalsePositiveCommand
-import com.sportsapp.application.mcp.MarkAnomalyFalsePositiveUseCase
-import com.sportsapp.application.mcp.PersistAnomalyEventCommand
-import com.sportsapp.application.mcp.PersistAnomalyEventUseCase
+import com.sportsapp.application.mcp.dto.ListMyAnomalyEventsCommand
+import com.sportsapp.application.mcp.usecase.ListMyAnomalyEventsUseCase
+import com.sportsapp.application.mcp.dto.MarkAnomalyFalsePositiveCommand
+import com.sportsapp.application.mcp.usecase.MarkAnomalyFalsePositiveUseCase
+import com.sportsapp.application.mcp.dto.PersistAnomalyEventCommand
+import com.sportsapp.application.mcp.usecase.PersistAnomalyEventUseCase
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
-import com.sportsapp.domain.mcp.McpAnomalyEventStatus
+import com.sportsapp.domain.mcp.entity.McpAnomalyEventStatus
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull

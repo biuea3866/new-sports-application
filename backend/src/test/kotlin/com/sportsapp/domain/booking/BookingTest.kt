@@ -5,6 +5,15 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import java.time.ZonedDateTime
+import com.sportsapp.domain.booking.entity.Booking
+import com.sportsapp.domain.booking.entity.BookingStatus
+import com.sportsapp.domain.booking.entity.Slot
+import com.sportsapp.domain.booking.event.BookingConfirmedEvent
+import com.sportsapp.domain.booking.exception.InvalidBookingStateException
+import com.sportsapp.domain.booking.exception.InvalidSlotException
+import com.sportsapp.domain.booking.exception.RefundBookingException
+import com.sportsapp.domain.booking.exception.RefundPolicyViolationException
+import com.sportsapp.domain.booking.exception.UnauthorizedBookingAccessException
 
 class BookingTest : BehaviorSpec({
 

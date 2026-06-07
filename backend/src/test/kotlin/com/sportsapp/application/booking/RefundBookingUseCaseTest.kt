@@ -1,10 +1,10 @@
 package com.sportsapp.application.booking
 
-import com.sportsapp.domain.booking.Booking
-import com.sportsapp.domain.booking.BookingDomainService
-import com.sportsapp.domain.booking.BookingStatus
-import com.sportsapp.domain.booking.RefundBookingException
-import com.sportsapp.domain.booking.RefundPolicyViolationException
+import com.sportsapp.domain.booking.entity.Booking
+import com.sportsapp.domain.booking.service.BookingDomainService
+import com.sportsapp.domain.booking.entity.BookingStatus
+import com.sportsapp.domain.booking.exception.RefundBookingException
+import com.sportsapp.domain.booking.exception.RefundPolicyViolationException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -13,6 +13,8 @@ import io.mockk.mockk
 import io.mockk.verify
 import java.math.BigDecimal
 import java.time.ZonedDateTime
+import com.sportsapp.application.booking.usecase.RefundBookingUseCase
+import com.sportsapp.application.booking.dto.RefundBookingCommand
 
 class RefundBookingUseCaseTest : BehaviorSpec({
 

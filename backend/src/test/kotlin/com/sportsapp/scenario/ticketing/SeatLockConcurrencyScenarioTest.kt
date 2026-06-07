@@ -1,11 +1,11 @@
 package com.sportsapp.scenario.ticketing
 
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.domain.ticketing.Event
-import com.sportsapp.domain.ticketing.EventStatus
-import com.sportsapp.domain.ticketing.Seat
-import com.sportsapp.infrastructure.persistence.ticketing.EventJpaRepository
-import com.sportsapp.infrastructure.persistence.ticketing.SeatJpaRepository
+import com.sportsapp.domain.ticketing.entity.Event
+import com.sportsapp.domain.ticketing.entity.EventStatus
+import com.sportsapp.domain.ticketing.entity.Seat
+import com.sportsapp.infrastructure.ticketing.mysql.EventJpaRepository
+import com.sportsapp.infrastructure.ticketing.mysql.SeatJpaRepository
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc

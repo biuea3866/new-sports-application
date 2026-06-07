@@ -1,11 +1,11 @@
 package com.sportsapp.scenario.mcp
 
-import com.sportsapp.domain.mcp.McpAuditLogRepository
-import com.sportsapp.domain.mcp.McpScope
-import com.sportsapp.domain.user.UserDomainService
+import com.sportsapp.domain.mcp.repository.McpAuditLogRepository
+import com.sportsapp.domain.mcp.vo.McpScope
+import com.sportsapp.domain.user.service.UserDomainService
 import com.sportsapp.infrastructure.security.McpUserPrincipal
-import com.sportsapp.presentation.mcp.toolregistry.McpBookingTools
-import com.sportsapp.presentation.mcp.toolregistry.McpFacilityTools
+import com.sportsapp.presentation.mcp.controller.McpBookingTools
+import com.sportsapp.presentation.mcp.controller.McpFacilityTools
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe

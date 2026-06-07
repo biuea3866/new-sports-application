@@ -1,8 +1,9 @@
 package com.sportsapp.application.post
 
-import com.sportsapp.domain.post.Comment
-import com.sportsapp.domain.post.Post
-import com.sportsapp.domain.post.PostType
+import com.sportsapp.domain.post.entity.Comment
+import com.sportsapp.domain.post.entity.Post
+import com.sportsapp.domain.post.vo.PostType
+import com.sportsapp.presentation.post.dto.response.CommentResponse
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import java.time.ZonedDateTime

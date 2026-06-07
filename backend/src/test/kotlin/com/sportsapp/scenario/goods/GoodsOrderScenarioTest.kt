@@ -2,13 +2,13 @@ package com.sportsapp.scenario.goods
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.domain.goods.Product
-import com.sportsapp.domain.goods.ProductCategory
-import com.sportsapp.domain.goods.ProductStatus
-import com.sportsapp.domain.goods.Stock
-import com.sportsapp.infrastructure.persistence.goods.GoodsOrderJpaRepository
-import com.sportsapp.infrastructure.persistence.goods.ProductJpaRepository
-import com.sportsapp.infrastructure.persistence.goods.StockJpaRepository
+import com.sportsapp.domain.goods.entity.Product
+import com.sportsapp.domain.goods.vo.ProductCategory
+import com.sportsapp.domain.goods.entity.ProductStatus
+import com.sportsapp.domain.goods.entity.Stock
+import com.sportsapp.infrastructure.goods.mysql.GoodsOrderJpaRepository
+import com.sportsapp.infrastructure.goods.mysql.ProductJpaRepository
+import com.sportsapp.infrastructure.goods.mysql.StockJpaRepository
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc

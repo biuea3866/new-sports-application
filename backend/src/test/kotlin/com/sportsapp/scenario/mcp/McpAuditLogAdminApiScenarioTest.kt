@@ -2,10 +2,10 @@ package com.sportsapp.scenario.mcp
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.application.mcp.ListMcpAuditLogsResponse
-import com.sportsapp.domain.mcp.McpAuditLog
-import com.sportsapp.domain.mcp.McpAuditLogRepository
-import com.sportsapp.domain.user.UserDomainService
+import com.sportsapp.application.mcp.dto.ListMcpAuditLogsResponse
+import com.sportsapp.domain.mcp.entity.McpAuditLog
+import com.sportsapp.domain.mcp.repository.McpAuditLogRepository
+import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.matchers.shouldBe
 import org.apache.hc.client5.http.impl.classic.HttpClients
 import org.springframework.beans.factory.annotation.Autowired

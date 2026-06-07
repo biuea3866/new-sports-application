@@ -1,11 +1,11 @@
 package com.sportsapp.infrastructure.persistence.post
 
 import com.sportsapp.BaseJpaIntegrationTest
-import com.sportsapp.domain.post.Comment
-import com.sportsapp.domain.post.CommentRepository
-import com.sportsapp.domain.post.Post
-import com.sportsapp.domain.post.PostDomainService
-import com.sportsapp.domain.post.PostRepository
+import com.sportsapp.domain.post.entity.Comment
+import com.sportsapp.domain.post.repository.CommentRepository
+import com.sportsapp.domain.post.entity.Post
+import com.sportsapp.domain.post.service.PostDomainService
+import com.sportsapp.domain.post.repository.PostRepository
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.jdbc.core.JdbcTemplate
