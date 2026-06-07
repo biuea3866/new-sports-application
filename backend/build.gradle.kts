@@ -114,6 +114,7 @@ tasks.withType<KotlinCompile> {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    maxHeapSize = "2g"
     testLogging {
         showStandardStreams = true
         showExceptions = true
