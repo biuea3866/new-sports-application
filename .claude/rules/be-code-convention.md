@@ -484,6 +484,51 @@ presentation → application → domain ← infrastructure
 - 도메인 패키지 간 참조 금지 (`domain.<SERVICE_B>`에서 `domain.product` import 불가, `domain.common`만 허용)
 - Entity 의 *동작*은 여전히 순수: Repository/Gateway/EventPublisher 를 Entity 필드로 주입 금지 (필요 시 메서드 인자로 전달)
 
+## 패키지 구조 (DDD Bounded Context + OOP)
+
+### 배치 규칙: layer-first → context → aggregate
+
+최상위는 **레이어**, 그 아래가 **bounded context**, 그 안에 **aggregate** 단위로 배치한다. 4개 레이어에서 context 디렉토리명은 **동일**해야 한다 (`presentation/booking` ↔ `application/booking` ↔ `domain/booking` ↔ `infrastructure/booking`).
+
+```
+com.sportsapp
+├── presentation/<context>/         ~ApiController, ~EventWorker, ~Request
+├── application/<context>/          ~UseCase, ~Command, ~Response
+├── domain/
+│   ├── <context>/                  Aggregate(@Entity), 자식 Entity, VO, DomainService,
+│   │                               ~Repository·~Gateway·DomainEventPublisher (interface)
+│   └── common/                     JpaAuditingBase·공통 VO — 유일하게 context 횡단 import 허용
+└── infrastructure/
+    ├── <context>/                  ~RepositoryImpl, ~GatewayImpl, ~JpaRepository
+    │   └── (QueryDSL CustomImpl)
+    └── persistence/<context>/      context 별 QueryDSL Custom 구현 (선택)
+```
+
+- **Bounded Context** = 최상위 도메인 경계 (booking·payment·ticketing·facility·goods·post·user·notification·weather·operator·dashboard 등). 한 context = 한 책임 영역.
+- **Aggregate** = context 안의 일관성·트랜잭션 경계. root Entity + 자식 Entity + VO 를 같은 context 패키지에 둔다.
+- 새 도메인은 **새 context 패키지를 4개 레이어에 동시 신설**한다 (기존 파일 교집합 ∅ → 같은 wave 병렬 작업 안전, `ticket-guide.md` "Single Writer per File" 참조).
+
+### DDD 규칙
+
+| 규칙 | 내용 |
+|---|---|
+| context 간 import 금지 | `domain.booking` 이 `domain.payment` 를 import 금지 (정적 룰로 캡처 불가 — **pr-reviewer/code-reviewer 가 강제**). context 협력은 **FK id(Long) 보유 + 도메인 이벤트**로만 |
+| common 만 횡단 공유 | `domain.common` (JpaAuditingBase·공통 VO) 만 모든 context 가 import 가능. common 에 특정 도메인 지식 누수 금지 |
+| aggregate = 트랜잭션 경계 | 한 UseCase `@Transactional` 은 **한 aggregate root** 를 수정. 다른 context 변경은 이벤트(AFTER_COMMIT) 로 비동기 전파 |
+| context 간 동기 조회 | 꼭 필요하면 `~Gateway` interface(domain) 로 추상화. 다른 context 의 Repository 를 직접 호출 금지 |
+| aggregate 자식 생명주기 | root soft-delete/취소 시 자식도 같은 트랜잭션에서 전파 (위 "Aggregate 생명주기" 섹션) |
+
+### OOP 규칙
+
+| 규칙 | 내용 |
+|---|---|
+| Tell, Don't Ask | 상태를 꺼내 판단하지 말고 행위를 요청 — `if (order.status == PAID)` ❌ → `order.requirePaid()` ✅ (위 "Self-Validation 캡슐화"와 일관) |
+| 캡슐화 | Entity 필드는 `private set`/`protected set`. 상태 변경은 의미 있는 도메인 메서드로만. getter/setter 나열(Anemic) 금지 |
+| 다형성으로 분기 제거 | 상태별 분기는 enum 의 `canTransitTo()` 또는 sealed class 로 캡슐화. `when` 나열 최소화 |
+| 단일 책임 | 한 클래스 = 한 책임. UseCase 1개 = 행위 1개 (위 "UseCase 규칙") |
+
+> 판단 기준: "이 클래스/패키지를 다른 context 가 알아야 하는가?" — Yes 면 경계 설계가 틀렸다. context 는 이벤트와 FK id 로만 느슨하게 연결한다.
+
 ## 네이밍 컨벤션
 
 | 역할 | 위치 | 파일명 |

@@ -22,6 +22,12 @@ BFF 패턴 규칙:
 - Server Component: `fetch`는 BFF 내부에서만
 - Client Component: SWR/React Query 훅은 `/api/...` BFF 엔드포인트만 호출
 
+외부 3rd-party Open API 호출 규칙 (`rules/fe-external-api-via-was.md` — Hook `fe-no-direct-external-api`로 강제):
+- **BFF(route.ts)도 "프론트"다 — 외부 데이터 API를 직접 호출하지 않는다.** 외부 API(Kakao 지오코딩·기상청·SMS·푸시 발송 등)는 backend WAS(Spring)의 `~Gateway`를 경유한다.
+- 흐름: Client/BFF → 우리 backend WAS 엔드포인트 → backend `~Gateway` → 외부 API. API 키는 backend에만 둔다.
+- 차단 호스트 예: `dapi.kakao.com`, `apis.data.go.kr`, `exp.host`, `api.solapi.com`, `apihub.kma.go.kr`.
+- 예외: 기기 자체 능력(expo-notifications 토큰 획득, 지도 렌더 SDK)은 허용. 단 데이터 조회·발송은 반드시 backend 경유.
+
 구현 규칙:
 - TypeScript strict mode — `any` 금지, `as` 단언 최소화
 - Props 타입은 interface로 명시 (암묵적 추론 금지)
@@ -42,3 +48,8 @@ BFF 패턴 규칙:
 - 콘솔 에러 없음
 
 BE API가 미완료 상태면 구현을 시작하지 말고 대기 중임을 알린다.
+
+## 참고 규칙
+
+- [fe-external-api-via-was](../rules/fe-external-api-via-was.md) — 외부 API는 backend WAS 경유 (프론트·BFF 직접 호출 금지)
+- [pr-guide](../rules/pr-guide.md) — 브랜치·PR 템플릿
