@@ -233,6 +233,14 @@ TDD의 Release Scenario 절에 **무중단 배포를 위한 피처 플래그 계
 
 > 피처 플래그 시스템 자체는 [`.analysis/outputs/.../feature-flag` PRD]로 정의된다. 시스템 미구축 상태에서는 그 PRD가 정의한 잠정 토글 메커니즘(설정/Redis)을 따른다. **새 플래그 키는 TDD Release Scenario에 등록**하고, 평가는 서버 권위로만(클라이언트 신뢰 금지).
 
+### BE 설계 참고 (필수 — 외부 동일 제품군 + 내부 기존 context)
+
+Detail Design 작성 전 두 출처의 설계를 참고하고, 채택/변형/미채택 근거를 TDD 본문에 남긴다.
+
+- **외부 동일 제품군**: PRD `research-{topic}.md`(있으면)의 동일 제품군 분석을 재활용. 없으면 `general-purpose`/WebSearch로 동일 제품군(스포츠 예약·체육시설 운영 등)의 도메인 모델·상태 전이·동시성 처리 방식을 조사한다.
+- **내부 기존 context**: 우리 backend의 유사 context(`domain/<context>` — booking·ticketing·payment 등)가 같은 문제를 어떻게 풀었는지 Read로 확인한다. 검증된 패턴(aggregate 경계·이벤트 전파·동시성 방어선)을 재사용해 일관성을 유지한다.
+- 두 출처가 충돌하면 우리 `be-code-convention.md`(Hexagonal + Rich Domain + layer-first context)를 우선한다. 외부 패턴은 **도메인 모델링 아이디어로만 차용**하고 아키텍처는 우리 컨벤션에 맞춘다.
+
 ### 다이어그램 규칙
 
 - flowchart는 항상 `LR` 방향 (TB/TD 금지)

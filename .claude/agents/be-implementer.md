@@ -18,8 +18,12 @@ tools: Read, Grep, Glob, Bash, Write, Edit
 | no-double-bang | `!!` | `requireNotNull()` / `?:` / `?.let` |
 | no-repository-in-consumer | Consumer 내 `Repository.save/find` | Facade/Service 경유 |
 | no-transactional-in-repository | `@Transactional` in `*Repository*.kt` | UseCase에서만 선언 |
-| no-infra-in-domain | `import *.infrastructure.*` in `domain/**` | Port interface 사용 |
-| no-infra-in-application | `import *.infrastructure.*` in `application/**` | Domain interface 사용 |
+| no-infra-in-domain | `import *.infrastructure.*` in `domain/**` | domain에 정의한 Repository/Gateway interface 직접 사용 (**OutputPort/Port 패턴 금지**) |
+| no-infra-in-application | `import *.infrastructure.*` in `application/**` | DomainService 경유 (domain interface 사용) |
+| no-manytomany | `@ManyToMany` / `@JoinTable` | 매핑 테이블을 독립 Entity로 풀어쓰기 (자체 PK·audit·부여 컬럼) |
+| no-optional-import | `import java.util.Optional` | Kotlin nullable(`T?`). 예외: Spring `AuditorAware<Long>` |
+| no-hard-delete | `DELETE FROM` / `repository.delete()` | `softDelete(userId)` (논리 삭제) |
+| no-softdelete-in-repositoryimpl | `*RepositoryImpl.kt` 내 `.softDelete()` 호출·중복 해소·상태 결정 | DomainService로 (RepositoryImpl은 조회/위임만) |
 
 ---
 
@@ -52,6 +56,7 @@ tools: Read, Grep, Glob, Bash, Write, Edit
 2. 대상 레포의 `CLAUDE.md`가 있으면 반드시 먼저 읽는다. 레포별 오버라이드 규칙이 있을 수 있다.
 3. `.claude/harness-rules.json` 로드 — `forbidden_patterns`, `variable_naming`, `integration_test_style` 확인.
 4. 영향받는 도메인 기존 코드를 Grep/Glob으로 파악한다 (구조 파악 후 작업, 추측 금지).
+5. **유사 context의 검증된 설계 참고** — 신규/유사 도메인 구현 시 기존 유사 context(`domain/<context>`, `application/<context>`)가 같은 문제(aggregate 경계·상태 전이·동시성 방어선·이벤트 전파)를 어떻게 풀었는지 Read로 확인하고 패턴을 재사용한다. 새 방식을 발명하기 전에 일관성을 우선한다.
 
 ---
 
@@ -68,7 +73,7 @@ tools: Read, Grep, Glob, Bash, Write, Edit
 
 **레이어 의존 방향**: `presentation → application → domain ← infrastructure`
 
-Domain은 어느 레이어도 import하지 않는다. Infrastructure는 Domain의 Repository interface를 구현한다.
+Domain은 infrastructure·다른 도메인 패키지를 import하지 않는다. 단 **JPA Entity = Domain Entity 단일 모델**이므로 `jakarta.persistence.*`·`org.springframework.data.annotation.*`·`org.hibernate.annotations.*` 매핑 어노테이션 import는 허용한다 (별도 `~Entity.kt` POJO 분리·toEntity/toDomain 매퍼 생성 금지). Infrastructure는 Domain의 Repository/Gateway interface를 구현한다.
 
 ---
 
@@ -132,6 +137,11 @@ class RequestRentalUseCase(
 - Domain Event는 `@Transient domainEvents` 리스트에 적재 → DomainService가 `DomainEventPublisher.publish()` 호출
 - `DomainEventPublisher` interface는 **domain 레이어에 정의**, 구현체는 infrastructure 레이어에 위치
 - 다른 도메인 데이터는 **ID(Long)만 보유**
+- **JPA Entity = Domain Entity 단일 모델**: `@Entity`+비즈니스 메서드를 한 클래스에. 영속화용 POJO(`~Entity.kt`)·매퍼 금지. 클래스명은 도메인명 그대로(`User.kt` — 접미사 `Entity` 금지)
+- **audit/soft-delete**: 모든 비즈니스 Entity는 `JpaAuditingBase` 상속(MongoDB는 `BaseDocument`). hard delete 금지 — `softDelete(userId)` 한 곳으로만. CREATE TABLE은 audit 6컬럼 포함
+- **@ManyToMany 금지**: 다대다는 매핑 테이블을 독립 Entity로. `@ManyToMany`/`@JoinTable` 사용 금지
+- **Self-Validation 캡슐화**: Entity 자기 상태로 답하는 검증(`requireActive()`, `requireSufficient()`)·인자 형식 검증(`require(quantity > 0)`)은 Entity 메서드/팩토리에. DomainService에 `validateXxx(entity)` private helper 금지
+- **Optional 금지**: Kotlin nullable(`T?`). 예외: Spring `AuditorAware<Long>`
 
 ### Aggregate 생명주기 — 고아 금지 (`be-code-convention.md` "Aggregate 생명주기")
 

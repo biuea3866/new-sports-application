@@ -460,7 +460,7 @@
         "id": "no-infra-in-domain",
         "pattern": "import\\s+\\S+\\.infrastructure\\.",
         "file_glob": "*/domain/**/*.kt",
-        "message": "Domain 레이어에서 Infrastructure 직접 참조 금지 — Port interface 사용.",
+        "message": "Domain 레이어에서 Infrastructure 직접 참조 금지 — domain 에 정의한 Repository/Gateway interface 를 직접 사용. (OutputPort/Port 패턴 금지 — be-code-convention.md 참조)",
         "severity": "error"
       },
       {
@@ -481,7 +481,7 @@
         "id": "no-infra-in-application",
         "pattern": "import\\s+\\S+\\.infrastructure\\.",
         "file_glob": "*/application/**/*.kt",
-        "message": "Application 레이어에서 Infrastructure 직접 참조 금지 — Domain interface 사용.",
+        "message": "Application 레이어에서 Infrastructure 직접 참조 금지 — DomainService 경유 (domain interface 사용, OutputPort 패턴 금지).",
         "severity": "error"
       }
     ]

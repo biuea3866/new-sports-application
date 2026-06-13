@@ -23,6 +23,12 @@ hooks/
 │   ├── agent-merge-guard.sh      (구현 에이전트 PR 머지 차단)
 │   ├── wave-fanout-guard.sh      (wave 병렬 스폰 advisory 경고)
 │   ├── worktree-isolation-guard.sh (워크트리 에이전트의 main 경로 침범 차단)
+│   ├── worktree-quota-guard.sh   (활성 워크트리 임계 초과 시 신규 생성 차단)
+│   ├── completion-merge-gate.sh  (Stop/SubagentStop — dev 미머지 작업 1회 차단)
+│   ├── qa-env-gate.sh            (/qa — .env.local BACKEND_URL 검증)
+│   ├── qa-fe-mode-gate.sh        (/qa — next dev 모드 차단, production 빌드 강제)
+│   ├── qa-reverify-gate.sh       (/qa — reverify-report.md 없으면 down 차단)
+│   ├── qa-pr-defect-gate.sh      (/qa — PR 결함 게이트)
 │   ├── pr-review-gate.sh
 │   ├── pr-review-tracker.sh
 │   ├── push-review.sh       (현재 미등록 — 비용 발생 가능, 옵션)
@@ -63,6 +69,10 @@ hooks/
 | PreToolUse | `Bash` | `workflow-gates/pr-review-gate.sh` | PR 생성 게이트 |
 | PreToolUse | `Bash` | `workflow-gates/worktree-isolation-guard.sh` | 워크트리 에이전트가 main 워크트리 경로로 cd/git 침범 차단 |
 | PreToolUse | `Bash` | `workflow-gates/worktree-quota-guard.sh` | **활성 워크트리 ≥ `WORKTREE_QUOTA`(기본 80)면 `git worktree add` 차단** — 누적 잔재 폭주 백스톱. 먼저 `util/cleanup-worktrees.sh` 정리 요구 |
+| PreToolUse | `Bash` | `workflow-gates/qa-env-gate.sh` | **/qa — Playwright 실행 전 `web/.env.local`의 `BACKEND_URL` 검증** (누락 시 portal SSR 500 거짓 fail 방지) |
+| PreToolUse | `Bash` | `workflow-gates/qa-fe-mode-gate.sh` | **/qa — `next dev` 프로세스 감지 시 차단** (E2E는 production 빌드 `next start` 강제) |
+| PreToolUse | `Bash` | `workflow-gates/qa-reverify-gate.sh` | **/qa — `reverify-report.md` 없으면 `docker-compose down` 차단** (재검증 생략 방지) |
+| PreToolUse | `Bash` | `workflow-gates/qa-pr-defect-gate.sh` | **/qa — PR 결함 게이트** |
 | PreToolUse | `Agent` | `workflow-gates/agent-worktree-guard.sh` | **구현 에이전트(`*implementer`/`tdd-implement`/`db-schema-writer`/`kafka-topic-provisioner`)가 워크트리 격리 없이 스폰되면 차단(갭 A)** — `isolation:"worktree"` 또는 prompt 에 `.claude/worktrees/` 경로 必 |
 | PreToolUse | `Agent` | `workflow-gates/worktree-quota-guard.sh` | **활성 워크트리 ≥ `WORKTREE_QUOTA`(기본 80)면 `isolation:"worktree"` Agent 스폰 차단** |
 | PreToolUse | `Agent` | `workflow-gates/agent-merge-guard.sh` | 구현 에이전트의 `gh pr merge` 직접 수행 차단 |
@@ -137,7 +147,7 @@ PostToolUse는 block 불가 (도구 이미 실행됨). 관찰·강제는 `additi
      "matcher": "Write|Edit",
      "hooks": [
        { "type": "command",
-         "command": "bash /Users/biuea/feature/flag_project/.claude/hooks/_run.sh /Users/biuea/feature/flag_project/.claude/hooks/<dir>/<script>" }
+         "command": "bash /Users/biuea/sports-application/.claude/hooks/_run.sh /Users/biuea/sports-application/.claude/hooks/<dir>/<script>" }
      ]
    }
    ```
