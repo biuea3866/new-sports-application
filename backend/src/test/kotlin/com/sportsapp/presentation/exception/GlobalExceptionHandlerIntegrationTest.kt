@@ -200,6 +200,52 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
                 }
             }
         }
+
+        Given("요청 본문 enum 필드에 정의되지 않은 값을 전달하는 요청") {
+            When("POST /test/exceptions/enum-body 에 허용되지 않는 enum 문자열을 보내면") {
+                Then("500 대신 400 + ProblemDetail (code=MALFORMED_REQUEST_BODY) 을 반환한다") {
+                    mockMvc.perform(
+                        post("/test/exceptions/enum-body")
+                            .with(user("testuser").roles("USER"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""{"status": "PAID"}""")
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isBadRequest)
+                        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                        .andExpect(jsonPath("$.status").value(400))
+                        .andExpect(jsonPath("$.properties.code").value("MALFORMED_REQUEST_BODY"))
+                }
+            }
+
+            When("POST /test/exceptions/enum-body 에 구문이 깨진 JSON 을 보내면") {
+                Then("500 대신 400 + ProblemDetail (code=MALFORMED_REQUEST_BODY) 을 반환한다") {
+                    mockMvc.perform(
+                        post("/test/exceptions/enum-body")
+                            .with(user("testuser").roles("USER"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""{"status": "COMPLETED" """)
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isBadRequest)
+                        .andExpect(jsonPath("$.status").value(400))
+                        .andExpect(jsonPath("$.properties.code").value("MALFORMED_REQUEST_BODY"))
+                }
+            }
+
+            When("POST /test/exceptions/enum-body 에 유효한 enum 값을 보내면") {
+                Then("200을 반환한다 (회귀)") {
+                    mockMvc.perform(
+                        post("/test/exceptions/enum-body")
+                            .with(user("testuser").roles("USER"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""{"status": "COMPLETED"}""")
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isOk)
+                }
+            }
+        }
     }
 }
 
@@ -236,8 +282,15 @@ class ExceptionTriggerController {
     fun receiveEnumParam(@RequestParam value: TestEnum): String {
         return value.name
     }
+
+    @PostMapping("/enum-body")
+    fun receiveEnumBody(@RequestBody request: EnumBodyRequest): String {
+        return request.status.name
+    }
 }
 
 enum class TestEnum { READY, COMPLETED, CANCELLED }
 
 data class ValidatableRequest(@field:NotBlank val name: String)
+
+data class EnumBodyRequest(val status: TestEnum)
