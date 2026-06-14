@@ -44,6 +44,10 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-mail")
 
+    // Retry (동시 INSERT 경합 → fresh tx 재시도)
+    implementation("org.springframework.retry:spring-retry")
+    implementation("org.springframework:spring-aspects")
+
     // JWT
     implementation("io.jsonwebtoken:jjwt-api:0.12.6")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
