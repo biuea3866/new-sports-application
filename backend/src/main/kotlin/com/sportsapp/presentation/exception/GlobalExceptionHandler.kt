@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail
 import org.springframework.http.ResponseEntity
+import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.orm.ObjectOptimisticLockingFailureException
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.authorization.AuthorizationDeniedException
@@ -90,6 +91,16 @@ class GlobalExceptionHandler {
             status = ErrorStatus.BAD_REQUEST,
             code = "INVALID_ENUM_VALUE",
             detail = "Invalid value '$invalidValue' for parameter '$paramName'. Expected type: $requiredType",
+        )
+        return ResponseEntity.status(ErrorStatus.BAD_REQUEST.httpStatus).body(problemDetail)
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException::class)
+    fun handleMessageNotReadableException(exception: HttpMessageNotReadableException): ResponseEntity<ProblemDetail> {
+        val problemDetail = ProblemDetailBuilder.build(
+            status = ErrorStatus.BAD_REQUEST,
+            code = "MALFORMED_REQUEST_BODY",
+            detail = "Request body is malformed or contains an invalid value"
         )
         return ResponseEntity.status(ErrorStatus.BAD_REQUEST.httpStatus).body(problemDetail)
     }
