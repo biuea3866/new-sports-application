@@ -95,7 +95,8 @@ app:
     pg:
       mock-base-url: ${PG_MOCK_BASE_URL:http://localhost:9090}
   jwt:
-    secret: ${APP_JWT_SECRET}
+    # 로컬 개발 기본값. 운영에서는 반드시 APP_JWT_SECRET 환경변수로 override 한다.
+    secret: ${APP_JWT_SECRET:local-dev-only-jwt-secret-key-change-me-0123456789abcdef0123456789abcdef}
   notifications:
     templates:
       payment-completed:
@@ -152,14 +153,15 @@ management:
   endpoint:
     health:
       show-details: always
-  metrics:
-    export:
-      datadog:
+  datadog:
+    metrics:
+      export:
         enabled: ${DATADOG_ENABLED:false}
         api-key: ${DATADOG_API_KEY:}
         application-key: ${DATADOG_APPLICATION_KEY:}
         uri: ${DATADOG_URI:https://api.datadoghq.com}
         step: 60s
+  metrics:
     tags:
       application: ${spring.application.name}
       env: ${APP_ENV:local}
