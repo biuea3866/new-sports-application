@@ -1,0 +1,42 @@
+name: dev 자동 배포
+
+# 근거: TDD.md "시스템 역할 경계"(deploy-dev.yml 행), "상태 전이 표"(dev 브랜치 push → dev 배포중 → health UP/실패),
+#       "Sequence Diagram — dev 자동배포 + prod QA 게이트". 티켓: INFRA-07.
+# NFR: 머지 → 반영 10분 이내 (deploy.sh 자체 health 폴링 상한은 5분).
+on:
+  push:
+    branches: [dev]
+
+# 같은 dev 스택으로의 중복 배포를 직렬화한다 (TDD "실패 경로·동시성·멱등" — 동시 배포 행).
+# cancel-in-progress: false — 진행 중인 배포를 취소하지 않고 대기열로 순서를 보장한다.
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: dev 배포
+    # dev/prod 스택이 함께 도는 단일 호스트에서 실행 (TDD Component Diagram: "단일 호스트(self-hosted runner)").
+    runs-on: [self-hosted]
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: 백엔드 이미지 빌드
+        run: |
+          docker build \
+            -t sports-backend:latest \
+            -t sports-backend:${{ github.sha }} \
+            backend/
+
+      - name: dev 배포 (scripts/deploy.sh)
+        # deploy.sh가 .env.dev의 DOCKER_TAG를 이 SHA로 치환 → docker compose up -d →
+        # /actuator/health 폴링(최대 5분). 실패 시 exit 1로 이 스텝이 실패한다.
+        run: scripts/deploy.sh dev ${{ github.sha }}
+
+      - name: 배포 실패 통지
+        if: failure()
+        # ⑩ 지능형 장애 알림 연동 지점 (source=deployment) — TDD "실패 경로·동시성·멱등" 표.
+        # 알림 채널(Slack 등) 확정 전까지는 자리 표시(echo)만 수행한다.
+        run: |
+          echo "source=deployment env=dev sha=${{ github.sha }} run_id=${{ github.run_id }} status=FAILED"
