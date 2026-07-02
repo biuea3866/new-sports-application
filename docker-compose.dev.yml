@@ -1,0 +1,55 @@
+# dev 환경 override — base(docker-compose.yml)에 얹는다.
+# 실행: docker compose -p sports-dev -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.dev up -d
+#
+# 소유: ⑧ 배포 파이프라인·환경 분리 (INFRA-05). base 서비스명·내부 포트는 INFRA-02 계약을 그대로 따른다.
+# 이 파일은 dev 전용 값(호스트 포트 노출, APP_ENV=dev)만 부여한다 — 서비스 신규 정의 금지(오타 시 신규 서비스 생성됨).
+#
+# 롤백: 이 파일을 revert. dev는 sports-prod와 프로젝트명(-p)으로 네임스페이스 분리되어 있어 상호 무영향.
+services:
+  backend:
+    environment:
+      APP_ENV: dev
+    ports:
+      - "8080:8080"
+
+  mysql:
+    ports:
+      - "3306:3306"
+
+  mongodb:
+    ports:
+      - "27017:27017"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  kafka:
+    ports:
+      - "9092:9092"
+
+  minio:
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+  mock-pg:
+    ports:
+      - "9090:9090"
+
+  mock-kakao-local:
+    ports:
+      - "9101:8080"
+
+  mock-data-go-kr:
+    ports:
+      - "9102:8080"
+
+  mock-solapi:
+    ports:
+      - "9103:8080"
+
+  mailhog:
+    ports:
+      - "1025:1025"
+      - "8025:8025"
