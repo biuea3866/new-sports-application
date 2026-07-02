@@ -1,6 +1,6 @@
 name: MCP 부하 시험 (수동 트리거)
 
-# 절대 자동 트리거 금지 — staging 환경에 예기치 않은 부하를 유발합니다.
+# 절대 자동 트리거 금지 — prod 환경에 예기치 않은 부하를 유발합니다.
 on:
   workflow_dispatch:
     inputs:
@@ -14,17 +14,17 @@ on:
           - write
           - all
       target_url:
-        description: "대상 서버 URL (staging URL 입력)"
+        description: "대상 서버 URL (같은 머신 local prod backend, 기본 http://localhost:18080)"
         required: true
-        default: "https://staging.example.com"
+        default: "http://localhost:18080"
         type: string
 
 jobs:
   load-test:
     name: MCP 부하 시험 — ${{ inputs.scenario }}
     runs-on: ubuntu-latest
-    # staging 환경 승인 gate가 있을 경우 environment: staging 으로 설정
-    # environment: staging
+    # prod 환경 승인 gate가 있을 경우 environment: prod 로 설정
+    # environment: prod
 
     steps:
       - name: 코드 체크아웃
@@ -46,7 +46,8 @@ jobs:
         if: inputs.scenario == 'read' || inputs.scenario == 'all'
         env:
           QA_API_URL: ${{ inputs.target_url }}
-          MCP_TOKEN: ${{ secrets.STAGING_MCP_TOKEN }}
+          # STAGING_MCP_TOKEN → PROD_MCP_TOKEN 리네임 (staging/prod 통합, FR-6)
+          MCP_TOKEN: ${{ secrets.PROD_MCP_TOKEN }}
         run: |
           mkdir -p test/load/results
           k6 run \
@@ -59,7 +60,8 @@ jobs:
         if: inputs.scenario == 'write' || inputs.scenario == 'all'
         env:
           QA_API_URL: ${{ inputs.target_url }}
-          MCP_TOKEN: ${{ secrets.STAGING_MCP_TOKEN }}
+          # STAGING_MCP_TOKEN → PROD_MCP_TOKEN 리네임 (staging/prod 통합, FR-6)
+          MCP_TOKEN: ${{ secrets.PROD_MCP_TOKEN }}
         run: |
           mkdir -p test/load/results
           k6 run \
