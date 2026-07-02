@@ -55,7 +55,7 @@ class SupportToCoreDependencyRulesTest : FunSpec({
         }
     }
 
-    test("application.partner 는 domain.user 를 제외한 코어 도메인을 동기 의존하지 않는다 (② B2B 사전 등록 화이트리스트)") {
+    test("application.partner 는 domain.user 를 제외한 코어 도메인을 동기 의존하지 않는다 (사전 등록 화이트리스트)") {
         // application.partner 패키지는 아직 미존재(② 과제 신설 예정) — allowEmptyShould(true) 로 현재는 통과하되,
         // ② 과제 착수 시 이 규칙이 자동으로 partner→user 외 코어 접근을 잡아낸다.
         noClasses()
@@ -66,7 +66,7 @@ class SupportToCoreDependencyRulesTest : FunSpec({
             .check(importedClasses)
     }
 
-    test("application.partner 가 domain.user 를 호출해도(② B2B admin 프로비저닝) 사전 등록된 화이트리스트로 규칙이 통과한다") {
+    test("application.partner 가 domain.user 를 호출해도(admin 프로비저닝) 사전 등록된 화이트리스트로 규칙이 통과한다") {
         // false RED 방지: corePackagesExceptUser 에는 user 가 빠져 있어야 partner→user 가 위반으로 잡히지 않는다.
         corePackagesExceptUser.none { it.contains(".user..") }.shouldBeTrue()
         corePackages.any { it.contains(".user..") }.shouldBeTrue()

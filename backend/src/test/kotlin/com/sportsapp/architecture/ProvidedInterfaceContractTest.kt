@@ -55,7 +55,7 @@ class ProvidedInterfaceContractTest : FunSpec({
         constructorParameterTypes.shouldContain(OwnershipGuard::class)
     }
 
-    test("(위반 시나리오 참고) execute 반환 타입이 바뀌면 계약 테스트가 실패해 ② 경유 파손을 조기 감지한다") {
+    test("(위반 시나리오 참고) execute 반환 타입이 바뀌면 계약 테스트가 실패해 제공 인터페이스 경유 파손을 조기 감지한다") {
         // 위 두 execute 시그니처 테스트 자체가 회귀 감시다 — 반환 타입이 CreateMyEventResult가 아니게 되는 순간
         // 즉시 실패한다. 이 테스트는 그 감지 지점이 실제로 CreateMyEventResult 클래스 동일성 비교임을 명시한다.
         val executeFunction = CreateMyEventUseCase::class.memberFunctions.single { it.name == "execute" }
