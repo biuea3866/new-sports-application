@@ -130,6 +130,22 @@ tasks.withType<Test> {
     timeout.set(Duration.ofMinutes(30))
 }
 
+// -------- archTest: 아키텍처 규칙 전용 태스크 --------
+// com.sportsapp.architecture 패키지의 fitness function 테스트만 별도로 실행한다.
+// 기존 test 소스셋의 testClassesDirs·classpath 를 재사용하고, useJUnitPlatform/maxHeapSize/
+// testLogging/timeout 은 위 tasks.withType<Test> 설정이 Test 타입 전체에 이미 적용된다.
+// 2단계(게이트 승격, ADR-005): check 가 archTest 에 의존해 규칙 위반 시 빌드를 실패시킨다.
+val archTest by tasks.registering(Test::class) {
+    description = "아키텍처 경계 규칙 fitness function 실행 (com.sportsapp.architecture)"
+    group = "verification"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    filter {
+        includeTestsMatching("com.sportsapp.architecture.*")
+    }
+    shouldRunAfter(tasks.test)
+}
+
 // -------- detekt --------
 detekt {
     buildUponDefaultConfig = true
@@ -203,4 +219,5 @@ val harnessCheck by tasks.registering {
 
 tasks.named("check") {
     dependsOn(harnessCheck)
+    dependsOn(archTest)
 }
