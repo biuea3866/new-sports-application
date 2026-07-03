@@ -1,5 +1,6 @@
 package com.sportsapp.application.goods.dto
 
+import com.sportsapp.domain.goods.dto.LimitedDropStats
 import com.sportsapp.domain.goods.entity.GoodsOrder
 import com.sportsapp.domain.goods.entity.GoodsOrderStatus
 import com.sportsapp.domain.goods.entity.LimitedDrop
@@ -77,6 +78,22 @@ class LimitedDropDtoTest : BehaviorSpec({
 
             command.openAt shouldBe openAt
             command.closeAt shouldBe closeAt
+        }
+    }
+
+    Given("도메인 집계 LimitedDropStats") {
+        Then("LimitedDropStatsResult.of는 successCount·soldOutRejectCount·tooEarlyRejectCount를 그대로 매핑한다") {
+            val stats = LimitedDropStats(
+                successCount = 70,
+                soldOutRejectCount = 5,
+                tooEarlyRejectCount = 7,
+            )
+
+            val result = LimitedDropStatsResult.of(stats)
+
+            result.successCount shouldBe 70
+            result.soldOutRejectCount shouldBe 5
+            result.tooEarlyRejectCount shouldBe 7
         }
     }
 })

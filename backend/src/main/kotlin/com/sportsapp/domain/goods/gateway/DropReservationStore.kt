@@ -42,4 +42,13 @@ interface DropReservationStore {
 
     /** 현재 잔여 수량. 카운터가 시드되지 않았으면 null. */
     fun remaining(dropId: Long): Int?
+
+    /**
+     * FR-9 거부 카운터 증가(휘발성 운영 지표). Redis 장애 시 예외를 그대로 던진다 —
+     * fail-open 처리는 호출자([LimitedDropDomainService])의 책임이다.
+     */
+    fun recordReject(dropId: Long, kind: RejectKind)
+
+    /** FR-9 거부 집계 조회. 카운터가 기록되지 않았으면 0으로 채워 반환한다. */
+    fun rejectCounts(dropId: Long): RejectCounts
 }

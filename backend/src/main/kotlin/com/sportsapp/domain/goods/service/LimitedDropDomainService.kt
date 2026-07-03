@@ -2,6 +2,7 @@ package com.sportsapp.domain.goods.service
 
 import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.common.exceptions.RedisLockException
+import com.sportsapp.domain.goods.dto.LimitedDropStats
 import com.sportsapp.domain.goods.dto.PurchaseLimitedDropCommand
 import com.sportsapp.domain.goods.entity.GoodsOrder
 import com.sportsapp.domain.goods.entity.LimitedDrop
@@ -10,7 +11,9 @@ import com.sportsapp.domain.goods.exception.LimitedDropPerUserLimitExceededExcep
 import com.sportsapp.domain.goods.exception.LimitedDropQuantityExceedsStockException
 import com.sportsapp.domain.goods.exception.LimitedDropSoldOutException
 import com.sportsapp.domain.goods.exception.LimitedDropThrottledException
+import com.sportsapp.domain.goods.exception.LimitedDropTooEarlyException
 import com.sportsapp.domain.goods.gateway.DropReservationStore
+import com.sportsapp.domain.goods.gateway.RejectKind
 import com.sportsapp.domain.goods.gateway.ReservationResult
 import com.sportsapp.domain.goods.repository.LimitedDropRepository
 import com.sportsapp.domain.goods.vo.OrderItemInput
@@ -38,19 +41,42 @@ class LimitedDropDomainService(
 ) {
     fun purchase(command: PurchaseLimitedDropCommand): Pair<LimitedDrop, GoodsOrder> {
         val drop = findOpenDrop(command.productId)
-        drop.validatePurchasable()
+        validatePurchasable(drop)
         return drop to admit(drop, command)
     }
 
     fun openDrop(dropId: Long): LimitedDrop {
-        val drop = limitedDropRepository.findById(dropId)
-            ?: throw LimitedDropNotFoundException(dropId)
+        val drop = findById(dropId)
         drop.open()
         val saved = limitedDropRepository.save(drop)
         val ttl = Duration.between(ZonedDateTime.now(), saved.closeAt).plusHours(1)
         dropReservationStore.seedIfAbsent(saved.id, saved.limitedQuantity, ttl)
         return saved
     }
+
+    /** 회차 상세 조회(FR-9 인접 조회). Redis remaining이 시드되지 않았으면 null을 그대로 넘긴다. */
+    fun getView(dropId: Long): Pair<LimitedDrop, Int?> {
+        val drop = findById(dropId)
+        return drop to dropReservationStore.remaining(dropId)
+    }
+
+    /**
+     * FR-9 집계. successCount는 전용 테이블 없이 `limitedQuantity - remaining`으로 파생하고(design-db
+     * "FR-9 집계" 참조), 거부 건수는 Redis 카운터([DropReservationStore.rejectCounts])를 그대로 결합한다.
+     */
+    fun getStats(dropId: Long): LimitedDropStats {
+        val drop = findById(dropId)
+        val remaining = dropReservationStore.remaining(dropId) ?: drop.limitedQuantity
+        val rejectCounts = dropReservationStore.rejectCounts(dropId)
+        return LimitedDropStats(
+            successCount = (drop.limitedQuantity - remaining).toLong(),
+            soldOutRejectCount = rejectCounts.soldOutCount,
+            tooEarlyRejectCount = rejectCounts.tooEarlyCount,
+        )
+    }
+
+    private fun findById(dropId: Long): LimitedDrop =
+        limitedDropRepository.findById(dropId) ?: throw LimitedDropNotFoundException(dropId)
 
     /**
      * 판매자 회차 개설(BE-08). 대상 상품의 현재 재고를 조회해 요청 수량이 재고를 넘지 않는지
@@ -96,6 +122,22 @@ class LimitedDropDomainService(
             ?: throw LimitedDropNotFoundException(productId)
 
     /**
+     * 판매 시작 게이트(FR-2) 판정. [LimitedDrop.validatePurchasable]이 던지는 SoldOut·TooEarly는
+     * FR-9 거부 집계 대상이라 [recordRejectSafely]로 카운터를 남긴 뒤 원본 예외를 그대로 재전파한다.
+     */
+    private fun validatePurchasable(drop: LimitedDrop) {
+        try {
+            drop.validatePurchasable()
+        } catch (exception: LimitedDropTooEarlyException) {
+            recordRejectSafely(drop.id, RejectKind.TOO_EARLY)
+            throw exception
+        } catch (exception: LimitedDropSoldOutException) {
+            recordRejectSafely(drop.id, RejectKind.SOLD_OUT)
+            throw exception
+        }
+    }
+
+    /**
      * [ReservationResult.Admitted]만 완충 permit을 보유한다 — 성공/실패에 따라 [persistOrRelease]로
      * confirmSuccess/cancel을 짝지어 반납한다.
      *
@@ -108,10 +150,24 @@ class LimitedDropDomainService(
         return when (result) {
             is ReservationResult.Admitted -> persistOrRelease(drop, command)
             is ReservationResult.AlreadyReserved -> persistOrder(command)
-            is ReservationResult.SoldOut -> throw LimitedDropSoldOutException(drop.id)
+            is ReservationResult.SoldOut -> {
+                recordRejectSafely(drop.id, RejectKind.SOLD_OUT)
+                throw LimitedDropSoldOutException(drop.id)
+            }
             is ReservationResult.Throttled -> throw LimitedDropThrottledException(drop.id)
             is ReservationResult.PerUserLimitExceeded ->
                 throw LimitedDropPerUserLimitExceededException(drop.id, result.limit)
+        }
+    }
+
+    /** FR-9 거부 카운터 증가. Redis 장애는 fail-open — 구매 흐름(예외 전파)에 영향을 주지 않는다. */
+    private fun recordRejectSafely(dropId: Long, kind: RejectKind) {
+        try {
+            dropReservationStore.recordReject(dropId, kind)
+        } catch (exception: DataAccessException) {
+            // fail-open: 거부 카운터는 휘발성 운영 지표(P2)일 뿐, 구매 결과에 영향을 주지 않는다.
+        } catch (exception: RedisLockException) {
+            // fail-open
         }
     }
 

@@ -1,8 +1,12 @@
 package com.sportsapp.infrastructure.goods.redis
 
 import com.sportsapp.SharedTestContainers
+import com.sportsapp.domain.goods.gateway.RejectCounts
+import com.sportsapp.domain.goods.gateway.RejectKind
 import com.sportsapp.domain.goods.gateway.ReservationResult
 import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.longs.shouldBeGreaterThan
+import io.kotest.matchers.longs.shouldBeLessThanOrEqual
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import java.time.Duration
@@ -47,6 +51,8 @@ class DropReservationStoreImplTest @Autowired constructor(
         redisTemplate.delete(
             listOf(
                 "goods:limited-drop:$dropId:remaining",
+                "goods:limited-drop:$dropId:reject:sold-out",
+                "goods:limited-drop:$dropId:reject:too-early",
             ),
         )
         redisTemplate.keys("goods:limited-drop:$dropId:buyer:*").let { redisTemplate.delete(it) }
@@ -189,6 +195,53 @@ class DropReservationStoreImplTest @Autowired constructor(
 
             Then("null을 반환한다") {
                 result.shouldBeNull()
+            }
+        }
+    }
+
+    Given("sold-out·too-early 거부가 기록되지 않은 회차") {
+        val dropId = 1008L
+        cleanupDrop(dropId)
+        val store = buildStore()
+
+        When("rejectCounts를 조회하면") {
+            val result = store.rejectCounts(dropId)
+
+            Then("두 카운트 모두 0이다") {
+                result shouldBe RejectCounts(soldOutCount = 0, tooEarlyCount = 0)
+            }
+        }
+    }
+
+    Given("sold-out 거부 2건, too-early 거부 3건이 기록된 회차") {
+        val dropId = 1009L
+        cleanupDrop(dropId)
+        val store = buildStore()
+
+        When("recordReject를 각각 호출한 뒤 rejectCounts를 조회하면") {
+            repeat(2) { store.recordReject(dropId, RejectKind.SOLD_OUT) }
+            repeat(3) { store.recordReject(dropId, RejectKind.TOO_EARLY) }
+            val result = store.rejectCounts(dropId)
+
+            Then("각 사유별로 정확히 집계된다") {
+                result shouldBe RejectCounts(soldOutCount = 2, tooEarlyCount = 3)
+            }
+        }
+    }
+
+    Given("remaining 키에 TTL이 설정된 회차") {
+        val dropId = 1010L
+        cleanupDrop(dropId)
+        val store = buildStore()
+        store.seedIfAbsent(dropId, 10, Duration.ofMinutes(10))
+
+        When("recordReject를 호출하면") {
+            store.recordReject(dropId, RejectKind.SOLD_OUT)
+
+            Then("거부 카운터 키의 TTL이 remaining 키와 동일하게 정렬된다") {
+                val rejectTtl = redisTemplate.getExpire("goods:limited-drop:$dropId:reject:sold-out", TimeUnit.SECONDS)
+                rejectTtl shouldBeGreaterThan 0L
+                rejectTtl shouldBeLessThanOrEqual 600L
             }
         }
     }

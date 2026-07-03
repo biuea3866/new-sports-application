@@ -1,6 +1,8 @@
 package com.sportsapp.infrastructure.goods.redis
 
 import com.sportsapp.domain.goods.gateway.DropReservationStore
+import com.sportsapp.domain.goods.gateway.RejectCounts
+import com.sportsapp.domain.goods.gateway.RejectKind
 import com.sportsapp.domain.goods.gateway.ReservationResult
 import java.time.Duration
 import java.util.concurrent.Semaphore
@@ -82,6 +84,30 @@ class DropReservationStoreImpl(
     override fun remaining(dropId: Long): Int? =
         redisTemplate.opsForValue().get(remainingKey(dropId))?.toIntOrNull()
 
+    /**
+     * FR-9 거부 카운터를 증가시키고, TTL을 [remainingKey]와 동일하게 정렬한다(O(1), hot path 부담 미미).
+     * `remaining` 키가 시드되지 않았거나 만료 없이 유지 중이면 TTL을 별도로 설정하지 않는다.
+     */
+    override fun recordReject(dropId: Long, kind: RejectKind) {
+        val key = rejectKey(dropId, kind)
+        redisTemplate.opsForValue().increment(key)
+        alignTtlWithRemaining(dropId, key)
+    }
+
+    override fun rejectCounts(dropId: Long): RejectCounts = RejectCounts(
+        soldOutCount = countAt(rejectKey(dropId, RejectKind.SOLD_OUT)),
+        tooEarlyCount = countAt(rejectKey(dropId, RejectKind.TOO_EARLY)),
+    )
+
+    private fun countAt(key: String): Long = redisTemplate.opsForValue().get(key)?.toLongOrNull() ?: 0L
+
+    private fun alignTtlWithRemaining(dropId: Long, key: String) {
+        val remainingTtlSeconds = redisTemplate.getExpire(remainingKey(dropId), TimeUnit.SECONDS)
+        if (remainingTtlSeconds > 0) {
+            redisTemplate.expire(key, remainingTtlSeconds, TimeUnit.SECONDS)
+        }
+    }
+
     /** Lua 소진 판정 통과(Admitted) 후 완충 permit을 시도한다. 실패 시 Redis 복원 + Throttled. */
     private fun admitWithSemaphore(
         dropId: Long,
@@ -126,6 +152,14 @@ class DropReservationStoreImpl(
     private fun buyerKey(dropId: Long, userId: Long) = "goods:limited-drop:$dropId:buyer:$userId"
 
     private fun reservedKey(dropId: Long, idempotencyKey: String) = "goods:limited-drop:$dropId:reserved:$idempotencyKey"
+
+    private fun rejectKey(dropId: Long, kind: RejectKind): String {
+        val suffix = when (kind) {
+            RejectKind.SOLD_OUT -> "sold-out"
+            RejectKind.TOO_EARLY -> "too-early"
+        }
+        return "goods:limited-drop:$dropId:reject:$suffix"
+    }
 
     private fun loadScript(classpath: String): String =
         ClassPathResource(classpath).inputStream.bufferedReader().use { it.readText() }
