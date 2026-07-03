@@ -8,7 +8,6 @@ import com.sportsapp.domain.goods.entity.GoodsOrder
 import com.sportsapp.domain.goods.entity.LimitedDrop
 import com.sportsapp.domain.goods.exception.LimitedDropNotFoundException
 import com.sportsapp.domain.goods.exception.LimitedDropPerUserLimitExceededException
-import com.sportsapp.domain.goods.exception.LimitedDropQuantityExceedsStockException
 import com.sportsapp.domain.goods.exception.LimitedDropSoldOutException
 import com.sportsapp.domain.goods.exception.LimitedDropThrottledException
 import com.sportsapp.domain.goods.exception.LimitedDropTooEarlyException
@@ -91,8 +90,8 @@ class LimitedDropDomainService(
         ownerUserId: Long,
     ): LimitedDrop {
         val productWithStock = goodsDomainService.getProductWithStock(productId)
-        productWithStock.product.requireOwnedBy(ownerUserId)
-        validateQuantityWithinStock(productId, limitedQuantity, productWithStock.stockQuantity)
+        productWithStock.requireOwnedBy(ownerUserId)
+        productWithStock.validateQuantityWithin(limitedQuantity)
         val saved = limitedDropRepository.save(
             LimitedDrop.create(
                 productId = productId,
@@ -104,12 +103,6 @@ class LimitedDropDomainService(
         )
         seedReservationStore(saved)
         return saved
-    }
-
-    private fun validateQuantityWithinStock(productId: Long, limitedQuantity: Int, stockQuantity: Int) {
-        if (limitedQuantity > stockQuantity) {
-            throw LimitedDropQuantityExceedsStockException(productId, limitedQuantity, stockQuantity)
-        }
     }
 
     private fun seedReservationStore(drop: LimitedDrop) {
