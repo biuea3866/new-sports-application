@@ -27,7 +27,7 @@ class PartnerApiKeyJpaEntity private constructor(
     val partnerId: Long,
 
     @Column(name = "key_hash", nullable = false, length = 255)
-    val keyHash: String,
+    var keyHash: String,
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 32)
@@ -58,6 +58,7 @@ class PartnerApiKeyJpaEntity private constructor(
 
     /** 기존 row 갱신 시 도메인의 가변 상태를 반영한다. */
     fun applyFrom(apiKey: PartnerApiKey) {
+        this.keyHash = apiKey.keyHash
         this.status = apiKey.status
         this.revokedAt = apiKey.revokedAt
         this.lastUsedAt = apiKey.lastUsedAt

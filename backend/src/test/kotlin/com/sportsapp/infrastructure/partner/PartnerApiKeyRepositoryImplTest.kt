@@ -92,5 +92,30 @@ class PartnerApiKeyRepositoryImplTest(
                 }
             }
         }
+
+        Given("placeholder 해시로 저장한 PartnerApiKey가 있다") {
+            val placeholder = partnerApiKeyRepositoryImpl.save(
+                PartnerApiKey.create(partnerId = 40L, keyHash = "placeholder-hash"),
+            )
+            val keyId = requireNotNull(placeholder.id)
+
+            When("발급된 id로 실제 해시를 reconstitute해 다시 save하면") {
+                val finalized = PartnerApiKey.reconstitute(
+                    id = keyId,
+                    partnerId = 40L,
+                    keyHash = "final-real-hash",
+                    status = ApiKeyStatus.ACTIVE,
+                    revokedAt = null,
+                    lastUsedAt = null,
+                )
+                partnerApiKeyRepositoryImpl.save(finalized)
+
+                Then("findById 결과의 keyHash가 placeholder가 아닌 최종 해시로 갱신된다") {
+                    val found = partnerApiKeyRepositoryImpl.findById(keyId)
+                    found.shouldNotBeNull()
+                    found.keyHash shouldBe "final-real-hash"
+                }
+            }
+        }
     }
 }
