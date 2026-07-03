@@ -21,8 +21,11 @@ services:
   # image·depends_on·데이터스토어 env 등은 base가 소유하며 여기서 건드리지 않는다.
   backend:
     environment:
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
-      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4317
+      # Spring Boot 3.3.5 OTLP tracing은 HTTP 전용 → Collector HTTP 포트(4318) + /v1/traces 경로.
+      # (gRPC 포트 4317로 보내면 HTTP POST가 실패해 trace export가 끊긴다 — FR-2 연결율 99% 위협)
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4318/v1/traces
+      # OTEL SDK 공통 base 엔드포인트(로그 OTLP appender·향후 SDK autoconfig용, 경로 없는 base)
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
 
   # ---- OTel Collector — trace/log 게이트웨이 (ADR-003) ----
   otel-collector:

@@ -157,16 +157,22 @@ management:
   endpoint:
     health:
       show-details: always
-  datadog:
-    metrics:
-      export:
-        enabled: ${DATADOG_ENABLED:false}
-        api-key: ${DATADOG_API_KEY:}
-        application-key: ${DATADOG_APPLICATION_KEY:}
-        uri: ${DATADOG_URI:https://api.datadoghq.com}
-        step: 60s
   metrics:
     tags:
       application: ${spring.application.name}
       env: ${APP_ENV:local}
       service: mcp
+  tracing:
+    sampling:
+      # 100% 샘플링 (NFR) — trace 연결율 99%+ 목표, 개인 프로젝트 트래픽 규모라 비용 문제 없음
+      probability: 1.0
+  otlp:
+    tracing:
+      # MANAGEMENT_OTLP_TRACING_ENDPOINT 미주입 시 로컬 기본값으로 사실상 no-op(피처 플래그 등가) — Collector 준비 전에도 앱 정상 부팅
+      # Spring Boot 3.3.5의 OTLP tracing은 HTTP 전용이므로 Collector HTTP 포트(4318) + /v1/traces 경로를 사용한다.
+      # (transport 프로퍼티는 Spring Boot 3.4+에서만 유효 — 3.3.5에서는 바인딩되지 않는 죽은 설정이라 두지 않는다.)
+      endpoint: ${MANAGEMENT_OTLP_TRACING_ENDPOINT:http://localhost:4318/v1/traces}
+  opentelemetry:
+    resource-attributes:
+      # env → deployment.environment 매핑 (ADR-005, 신규 라벨 키 미도입 — APP_ENV 단일 원천 재사용)
+      deployment.environment: ${APP_ENV:local}

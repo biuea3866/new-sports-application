@@ -51,6 +51,8 @@ class KafkaConsumerConfig(
     fun kafkaListenerContainerFactory(): ConcurrentKafkaListenerContainerFactory<String, Any> {
         val factory = ConcurrentKafkaListenerContainerFactory<String, Any>()
         factory.consumerFactory = consumerFactory()
+        // Kafka 경계에서 W3C traceparent 헤더를 자동 추출해 Producer span과 동일 trace로 연결한다
+        factory.containerProperties.isObservationEnabled = true
         return factory
     }
 }
