@@ -3,6 +3,7 @@ package com.sportsapp.infrastructure.security
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
@@ -27,9 +28,13 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 @EnableMethodSecurity(prePostEnabled = true)
 class SecurityConfig(
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
+    private val partnerApiKeyAuthenticationFilter: PartnerApiKeyAuthenticationFilter,
 ) {
     @Autowired(required = false)
     private var mcpTokenAuthenticationFilter: McpTokenAuthenticationFilter? = null
+
+    @Value("\${partner.auth.enabled:false}")
+    private var partnerAuthEnabled: Boolean = false
 
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
@@ -49,6 +54,11 @@ class SecurityConfig(
                     config.addFilterBefore(it, UsernamePasswordAuthenticationFilter::class.java)
                 }
             }
+            .also { config ->
+                if (partnerAuthEnabled) {
+                    config.addFilterBefore(partnerApiKeyAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
+                }
+            }
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
         return http.build()
     }
@@ -66,6 +76,7 @@ class SecurityConfig(
         auth.requestMatchers("/api/admin/mcp/tokens/**").hasRole("ADMIN")
         auth.requestMatchers("/api/admin/mcp/audit-logs/**").hasRole("ADMIN")
         auth.requestMatchers("/api/admin/mcp/usage-analytics/**").hasRole("ADMIN")
+        auth.requestMatchers("/api/admin/partners/**").hasRole("ADMIN")
         auth.requestMatchers("/mcp/**").authenticated()
         // TODO(AUTH-04): SecurityContext 통합 전까지 도메인 API는 X-User-Id 헤더 기반으로 임시 permitAll
         auth.requestMatchers(HttpMethod.POST, "/images/presigned-upload").authenticated()
