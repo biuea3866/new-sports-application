@@ -19,7 +19,11 @@
 --   1) 멱등 마커 확인   — 가장 저렴한 조회로 중복 재처리를 먼저 차단
 --   2) 1인 한도 확인     — 게이트 통과 전에 사용자별 초과를 걸러 remaining 소모를 막는다
 --   3) 소진 판정(decr-if-positive) — 원자적으로 정확히 remaining 만큼만 Admitted
---   4) DECRBY remaining + INCRBY buyer + SET 마커 — 판정 통과 시에만 상태 변경 (단일 스크립트라 원자적)
+--   4) DECRBY remaining + INCRBY buyer + buyer TTL을 remaining과 정렬 + SET 마커 — 판정 통과 시에만 상태 변경 (단일 스크립트라 원자적)
+--
+-- buyer TTL 정렬 근거(인프라 리뷰 p1): INCRBY로 buyer 키가 최초 생성될 때 TTL이 없으면 영구 키가 되어
+--   noeviction+maxmemory 환경에서 회차마다 (dropId,userId) 키가 누적돼 OOM으로 이어진다.
+--   INCRBY 직후 remaining의 PTTL을 그대로 buyer에 PEXPIRE 해 "buyer TTL = 회차 수명과 동일" 계약을 스크립트로 강제한다.
 
 if redis.call('EXISTS', KEYS[3]) == 1 then
     return 2
@@ -41,6 +45,12 @@ end
 
 redis.call('DECRBY', KEYS[1], quantity)
 redis.call('INCRBY', KEYS[2], quantity)
+
+local remainingPttl = redis.call('PTTL', KEYS[1])
+if remainingPttl > 0 then
+    redis.call('PEXPIRE', KEYS[2], remainingPttl)
+end
+
 redis.call('SET', KEYS[3], '1', 'EX', markerTtl)
 
 return 1
