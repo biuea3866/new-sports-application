@@ -52,5 +52,10 @@ class BusinessExceptionMappingTest : BehaviorSpec({
                 ErrorStatus.INTERNAL.httpStatus shouldBe 500
             }
         }
+        When("TOO_EARLY의 httpStatus를 조회하면") {
+            Then("425로 매핑된다") {
+                ErrorStatus.TOO_EARLY.httpStatus shouldBe 425
+            }
+        }
     }
 })

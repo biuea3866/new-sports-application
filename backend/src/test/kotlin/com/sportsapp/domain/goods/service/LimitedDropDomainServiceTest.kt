@@ -65,7 +65,7 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
     )
 
     fun command(): PurchaseLimitedDropCommand = PurchaseLimitedDropCommand(
-        productId = PRODUCT_ID,
+        dropId = DROP_ID,
         userId = USER_ID,
         quantity = QUANTITY,
         idempotencyKey = IDEMPOTENCY_KEY,
@@ -79,7 +79,7 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         val drop = openDrop()
         val order = GoodsOrder.create(userId = USER_ID, totalAmount = BigDecimal("1000"), idempotencyKey = IDEMPOTENCY_KEY)
 
-        every { limitedDropRepository.findOpenByProductId(PRODUCT_ID) } returns drop
+        every { limitedDropRepository.findById(DROP_ID) } returns drop
         every {
             dropReservationStore.reserve(DROP_ID, USER_ID, QUANTITY, PER_USER_LIMIT, IDEMPOTENCY_KEY)
         } returns ReservationResult.Admitted
@@ -108,7 +108,7 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         val service = buildService(limitedDropRepository, dropReservationStore, goodsDomainService)
         val drop = openDrop()
 
-        every { limitedDropRepository.findOpenByProductId(PRODUCT_ID) } returns drop
+        every { limitedDropRepository.findById(DROP_ID) } returns drop
         every {
             dropReservationStore.reserve(DROP_ID, USER_ID, QUANTITY, PER_USER_LIMIT, IDEMPOTENCY_KEY)
         } returns ReservationResult.SoldOut
@@ -130,7 +130,7 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         val service = buildService(limitedDropRepository, dropReservationStore, goodsDomainService)
         val drop = openDrop()
 
-        every { limitedDropRepository.findOpenByProductId(PRODUCT_ID) } returns drop
+        every { limitedDropRepository.findById(DROP_ID) } returns drop
         every {
             dropReservationStore.reserve(DROP_ID, USER_ID, QUANTITY, PER_USER_LIMIT, IDEMPOTENCY_KEY)
         } returns ReservationResult.Throttled
@@ -151,7 +151,7 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         val service = buildService(limitedDropRepository, dropReservationStore, goodsDomainService)
         val drop = openDrop()
 
-        every { limitedDropRepository.findOpenByProductId(PRODUCT_ID) } returns drop
+        every { limitedDropRepository.findById(DROP_ID) } returns drop
         every {
             dropReservationStore.reserve(DROP_ID, USER_ID, QUANTITY, PER_USER_LIMIT, IDEMPOTENCY_KEY)
         } returns ReservationResult.PerUserLimitExceeded(limit = PER_USER_LIMIT)
@@ -174,7 +174,7 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         val drop = openDrop()
         val failure = IllegalStateException("stock deduction failed")
 
-        every { limitedDropRepository.findOpenByProductId(PRODUCT_ID) } returns drop
+        every { limitedDropRepository.findById(DROP_ID) } returns drop
         every {
             dropReservationStore.reserve(DROP_ID, USER_ID, QUANTITY, PER_USER_LIMIT, IDEMPOTENCY_KEY)
         } returns ReservationResult.Admitted
@@ -201,7 +201,7 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         val drop = openDrop()
         val existingOrder = GoodsOrder.create(userId = USER_ID, totalAmount = BigDecimal("1000"), idempotencyKey = IDEMPOTENCY_KEY)
 
-        every { limitedDropRepository.findOpenByProductId(PRODUCT_ID) } returns drop
+        every { limitedDropRepository.findById(DROP_ID) } returns drop
         every {
             dropReservationStore.reserve(DROP_ID, USER_ID, QUANTITY, PER_USER_LIMIT, IDEMPOTENCY_KEY)
         } returns ReservationResult.AlreadyReserved
@@ -235,12 +235,14 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
             status = LimitedDropStatus.SCHEDULED,
         )
 
-        every { limitedDropRepository.findOpenByProductId(PRODUCT_ID) } returns notYetOpenDrop
+        every { limitedDropRepository.findById(DROP_ID) } returns notYetOpenDrop
         every { dropReservationStore.recordReject(DROP_ID, RejectKind.TOO_EARLY) } returns Unit
 
         When("purchase를 호출하면") {
-            Then("reserve를 호출하지 않고 LimitedDropTooEarlyException을 던지며 too-early 거부를 기록한다") {
-                shouldThrow<LimitedDropTooEarlyException> { service.purchase(command()) }
+            Then("reserve를 호출하지 않고 425로 매핑되는 LimitedDropTooEarlyException을 던지며 too-early 거부를 기록한다") {
+                val exception = shouldThrow<LimitedDropTooEarlyException> { service.purchase(command()) }
+                exception.status.httpStatus shouldBe 425
+                exception.openAt shouldBe notYetOpenDrop.openAt
                 verify(exactly = 0) { dropReservationStore.reserve(any(), any(), any(), any(), any()) }
                 verify(exactly = 1) { dropReservationStore.recordReject(DROP_ID, RejectKind.TOO_EARLY) }
             }
@@ -255,7 +257,7 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         val drop = openDrop()
         val order = GoodsOrder.create(userId = USER_ID, totalAmount = BigDecimal("1000"), idempotencyKey = IDEMPOTENCY_KEY)
 
-        every { limitedDropRepository.findOpenByProductId(PRODUCT_ID) } returns drop
+        every { limitedDropRepository.findById(DROP_ID) } returns drop
         every {
             dropReservationStore.reserve(DROP_ID, USER_ID, QUANTITY, PER_USER_LIMIT, IDEMPOTENCY_KEY)
         } throws DataAccessResourceFailureException("redis down")
@@ -285,7 +287,7 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         val drop = openDrop()
         val order = GoodsOrder.create(userId = USER_ID, totalAmount = BigDecimal("1000"), idempotencyKey = IDEMPOTENCY_KEY)
 
-        every { limitedDropRepository.findOpenByProductId(PRODUCT_ID) } returns drop
+        every { limitedDropRepository.findById(DROP_ID) } returns drop
         every {
             dropReservationStore.reserve(DROP_ID, USER_ID, QUANTITY, PER_USER_LIMIT, IDEMPOTENCY_KEY)
         } throws RedisLockException("lock timeout")
@@ -308,7 +310,7 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         val goodsDomainService = mockk<GoodsDomainService>()
         val service = buildService(limitedDropRepository, dropReservationStore, goodsDomainService)
 
-        every { limitedDropRepository.findOpenByProductId(PRODUCT_ID) } returns null
+        every { limitedDropRepository.findById(DROP_ID) } returns null
 
         When("purchase를 호출하면") {
             Then("com.sportsapp.domain.goods.exception.LimitedDropNotFoundException을 던진다") {
@@ -472,7 +474,7 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         val service = buildService(limitedDropRepository, dropReservationStore, goodsDomainService)
         val drop = openDrop()
 
-        every { limitedDropRepository.findOpenByProductId(PRODUCT_ID) } returns drop
+        every { limitedDropRepository.findById(DROP_ID) } returns drop
         every {
             dropReservationStore.reserve(DROP_ID, USER_ID, QUANTITY, PER_USER_LIMIT, IDEMPOTENCY_KEY)
         } returns ReservationResult.SoldOut

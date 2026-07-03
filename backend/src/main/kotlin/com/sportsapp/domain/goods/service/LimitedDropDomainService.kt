@@ -39,7 +39,7 @@ class LimitedDropDomainService(
     private val domainEventPublisher: DomainEventPublisher,
 ) {
     fun purchase(command: PurchaseLimitedDropCommand): Pair<LimitedDrop, GoodsOrder> {
-        val drop = findOpenDrop(command.productId)
+        val drop = findById(command.dropId)
         validatePurchasable(drop)
         return drop to admit(drop, command)
     }
@@ -110,10 +110,6 @@ class LimitedDropDomainService(
         dropReservationStore.seedIfAbsent(drop.id, drop.limitedQuantity, ttl)
     }
 
-    private fun findOpenDrop(productId: Long): LimitedDrop =
-        limitedDropRepository.findOpenByProductId(productId)
-            ?: throw LimitedDropNotFoundException(productId)
-
     /**
      * 판매 시작 게이트(FR-2) 판정. [LimitedDrop.validatePurchasable]이 던지는 SoldOut·TooEarly는
      * FR-9 거부 집계 대상이라 [recordRejectSafely]로 카운터를 남긴 뒤 원본 예외를 그대로 재전파한다.
@@ -139,10 +135,10 @@ class LimitedDropDomainService(
      * 호출한다 (confirmSuccess·cancel 호출 시 permit 풀이 멱등 재시도마다 영구 팽창한다).
      */
     private fun admit(drop: LimitedDrop, command: PurchaseLimitedDropCommand): GoodsOrder {
-        val result = tryReserve(drop, command) ?: return persistOrder(command)
+        val result = tryReserve(drop, command) ?: return persistOrder(drop, command)
         return when (result) {
             is ReservationResult.Admitted -> persistOrRelease(drop, command)
-            is ReservationResult.AlreadyReserved -> persistOrder(command)
+            is ReservationResult.AlreadyReserved -> persistOrder(drop, command)
             is ReservationResult.SoldOut -> {
                 recordRejectSafely(drop.id, RejectKind.SOLD_OUT)
                 throw LimitedDropSoldOutException(drop.id)
@@ -179,12 +175,12 @@ class LimitedDropDomainService(
             null
         }
 
-    private fun persistOrder(command: PurchaseLimitedDropCommand): GoodsOrder =
-        goodsDomainService.createPendingOrder(command.userId, itemsOf(command), command.idempotencyKey)
+    private fun persistOrder(drop: LimitedDrop, command: PurchaseLimitedDropCommand): GoodsOrder =
+        goodsDomainService.createPendingOrder(command.userId, itemsOf(drop, command), command.idempotencyKey)
 
     private fun persistOrRelease(drop: LimitedDrop, command: PurchaseLimitedDropCommand): GoodsOrder {
         val order = try {
-            goodsDomainService.createPendingOrder(command.userId, itemsOf(command), command.idempotencyKey)
+            goodsDomainService.createPendingOrder(command.userId, itemsOf(drop, command), command.idempotencyKey)
         } catch (exception: Exception) {
             dropReservationStore.cancel(drop.id, command.userId, command.quantity, command.idempotencyKey)
             throw exception
@@ -193,6 +189,6 @@ class LimitedDropDomainService(
         return order
     }
 
-    private fun itemsOf(command: PurchaseLimitedDropCommand): List<OrderItemInput> =
-        listOf(OrderItemInput(command.productId, command.quantity))
+    private fun itemsOf(drop: LimitedDrop, command: PurchaseLimitedDropCommand): List<OrderItemInput> =
+        listOf(OrderItemInput(drop.productId, command.quantity))
 }

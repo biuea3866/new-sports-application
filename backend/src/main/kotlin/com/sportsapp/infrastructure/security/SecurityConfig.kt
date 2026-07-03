@@ -87,6 +87,7 @@ class SecurityConfig(
             "/cart/**", "/ticket-orders/**", "/goods-orders/**",
             "/weather/**",
             "/operator/inbox/**", // TODO(AUTH-04): JWT 인증 통합 시 제거
+            "/limited-drops/**", // TODO(AUTH-04): JWT 인증 통합 시 제거 — goods-orders와 동일한 X-User-Id 헤더 임시 방식
         ).permitAll()
         auth.anyRequest().authenticated()
     }

@@ -16,6 +16,7 @@ import io.mockk.mockk
 import java.math.BigDecimal
 import java.time.ZonedDateTime
 
+private const val DROP_ID = 1L
 private const val PRODUCT_ID = 10L
 private const val USER_ID = 100L
 private const val QUANTITY = 1
@@ -24,7 +25,7 @@ private const val IDEMPOTENCY_KEY = "idem-key-1"
 class PurchaseLimitedDropUseCaseTest : BehaviorSpec({
 
     fun command(): PurchaseLimitedDropCommand = PurchaseLimitedDropCommand(
-        productId = PRODUCT_ID,
+        dropId = DROP_ID,
         userId = USER_ID,
         quantity = QUANTITY,
         idempotencyKey = IDEMPOTENCY_KEY,
