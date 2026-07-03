@@ -38,5 +38,9 @@ class KafkaProducerConfig(
     }
 
     @Bean
-    fun kafkaTemplate(): KafkaTemplate<String, Any> = KafkaTemplate(producerFactory())
+    fun kafkaTemplate(): KafkaTemplate<String, Any> =
+        KafkaTemplate(producerFactory()).apply {
+            // Kafka 경계에서 W3C traceparent 헤더를 자동 주입해 Consumer span과 동일 trace로 연결한다
+            setObservationEnabled(true)
+        }
 }

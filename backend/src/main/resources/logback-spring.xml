@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    BE-04: 기존 콘솔 출력(Spring Boot 기본 CONSOLE appender)을 유지하면서
+    trace_id/span_id MDC 값을 콘솔 패턴에 추가하고, OTLP(OpenTelemetry) 로그 appender를
+    함께 등록한다.
+
+    OpenTelemetryAppender 는 OpenTelemetryAppender.install(OpenTelemetry) 호출로 SDK가
+    설치돼야 실제 전송이 이뤄진다(런타임에 Spring Boot 계측 설정이 담당). SDK 설치 전에는
+    로그를 내부 버퍼에 쌓아두거나 무시할 뿐 예외를 던지지 않으므로, OTLP 엔드포인트가
+    설정되지 않아도 CONSOLE appender 는 항상 정상 출력된다.
+
+    롤백: 이 파일을 삭제하면 Spring Boot 기본 로깅 설정으로 복귀한다.
+-->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <property name="CONSOLE_LOG_PATTERN"
+              value="%clr(%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(${PID:- }){magenta} %clr(---){faint} %clr(%applicationName[%15.15t]){faint} %clr([trace_id=%X{traceId:-},span_id=%X{spanId:-}]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"/>
+
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <appender name="OTLP" class="io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender">
+        <captureExperimentalAttributes>true</captureExperimentalAttributes>
+        <captureCodeAttributes>true</captureCodeAttributes>
+        <captureMdcAttributes>*</captureMdcAttributes>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="OTLP"/>
+    </root>
+</configuration>

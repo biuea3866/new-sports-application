@@ -1,0 +1,70 @@
+# Prometheus scrape config (INFRA-03 소유)
+# 근거: TDD "인터페이스·엔드포인트 계약", ADR-002(직접 scrape)·ADR-005(env 태그 재사용).
+# 마운트: docker-compose.observability.yml → /etc/prometheus/prometheus.yml
+# 이미지: prom/prometheus:v2.53.0 (remote-write-receiver 는 compose 플래그로 활성)
+#
+# 잡 6종: app(backend) · mysqld-exporter · redis-exporter · kafka-exporter · otel-collector · self.
+# env 라벨(ADR-005): exporter·collector·self 잡은 relabel 로 env 를 부여한다.
+#   app 잡은 앱이 이미 management.metrics.tags.env 로 env 를 부여하므로 relabel 을 두지 않는다
+#   (중복 부여 시 Prometheus 가 exported_env 로 리네임해 라벨 체계가 깨짐).
+# env 값(local)은 로컬 기본값 — dev/prod 값 체계는 배포 파이프라인 ⑧ 소유(ADR-005).
+#
+# 롤백: 이 파일 revert 후 prometheus 컨테이너 재시작.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # ---- 앱(backend) 메트릭 — /actuator/prometheus 직접 scrape (FR-1) ----
+  # ⑧이 backend 를 컨테이너로 실행하므로 서비스명 backend:8080 으로 접속한다.
+  # 비컨테이너 로컬 앱(호스트에서 gradlew bootRun) 사용 시 host.docker.internal:8080 대안으로 교체.
+  # ⑦ 다중 인스턴스 확장: targets 리스트에 backend-2:8080 … 을 추가하면 된다(구조 제공).
+  - job_name: app
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - backend:8080
+          # - host.docker.internal:8080   # 비컨테이너 로컬 앱용 대안
+          # - backend-2:8080              # ⑦ 다중 인스턴스 확장 예시
+    # env 라벨은 앱 태그(management.metrics.tags.env)에서 유입되므로 여기서 부여하지 않는다.
+
+  # ---- MySQL exporter ----
+  - job_name: mysqld-exporter
+    static_configs:
+      - targets: ['mysqld-exporter:9104']
+    relabel_configs:
+      - target_label: env
+        replacement: local
+
+  # ---- Redis exporter ----
+  - job_name: redis-exporter
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    relabel_configs:
+      - target_label: env
+        replacement: local
+
+  # ---- Kafka exporter ----
+  - job_name: kafka-exporter
+    static_configs:
+      - targets: ['kafka-exporter:9308']
+    relabel_configs:
+      - target_label: env
+        replacement: local
+
+  # ---- OTel Collector self-metric ----
+  - job_name: otel-collector
+    static_configs:
+      - targets: ['otel-collector:8888']
+    relabel_configs:
+      - target_label: env
+        replacement: local
+
+  # ---- Prometheus self ----
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
+    relabel_configs:
+      - target_label: env
+        replacement: local

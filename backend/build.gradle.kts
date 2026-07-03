@@ -33,8 +33,11 @@ dependencies {
     implementation("org.springframework.ai:spring-ai-starter-mcp-server-webmvc")
     testImplementation("org.springframework.ai:spring-ai-test")
 
-    // Monitoring (Datadog 메트릭 — PRD G1)
-    implementation("io.micrometer:micrometer-registry-datadog")
+    // Monitoring (Prometheus 메트릭 + OTel 분산 추적 — ADR-001)
+    implementation("io.micrometer:micrometer-registry-prometheus")
+    implementation("io.micrometer:micrometer-tracing-bridge-otel")
+    implementation("io.opentelemetry:opentelemetry-exporter-otlp")
+    implementation("io.opentelemetry.instrumentation:opentelemetry-logback-appender-1.0:2.4.0-alpha")
 
     // Spring Boot
     implementation("org.springframework.boot:spring-boot-starter-web")
