@@ -7,8 +7,10 @@ import com.sportsapp.domain.weather.vo.ForecastSlot
 import com.sportsapp.domain.weather.vo.PrecipitationType
 import com.sportsapp.domain.weather.vo.SkyState
 import com.sportsapp.infrastructure.external.ExternalRestClientFactory
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
+import org.springframework.web.client.RestClientException
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
@@ -24,31 +26,57 @@ class KmaWeatherGatewayImpl(
 ) : WeatherGateway {
 
     private val restClient: RestClient = restClientFactory.create(properties.baseUrl)
+    private val logger = LoggerFactory.getLogger(KmaWeatherGatewayImpl::class.java)
 
     override fun shortForecast(lat: Double, lng: Double): Forecast {
         val grid = GridConverter.toGrid(lat, lng)
         val base = BaseTimeResolver.resolve(ZonedDateTime.now(SEOUL))
-        val response = restClient.get()
-            .uri { builder ->
-                builder.path("/getVilageFcst")
-                    .queryParam("serviceKey", properties.apiKey)
-                    .queryParam("dataType", "JSON")
-                    .queryParam("numOfRows", NUM_OF_ROWS)
-                    .queryParam("pageNo", 1)
-                    .queryParam("base_date", base.baseDate)
-                    .queryParam("base_time", base.baseTime)
-                    .queryParam("nx", grid.nx)
-                    .queryParam("ny", grid.ny)
-                    .build()
-            }
-            .retrieve()
-            .body(KmaForecastResponse::class.java)
-        return (response?.items() ?: emptyList()).toForecast()
+        return try {
+            val response = restClient.get()
+                .uri { builder ->
+                    builder.path("/getVilageFcst")
+                        .queryParam("serviceKey", properties.apiKey)
+                        .queryParam("dataType", "JSON")
+                        .queryParam("numOfRows", NUM_OF_ROWS)
+                        .queryParam("pageNo", 1)
+                        .queryParam("base_date", base.baseDate)
+                        .queryParam("base_time", base.baseTime)
+                        .queryParam("nx", grid.nx)
+                        .queryParam("ny", grid.ny)
+                        .build()
+                }
+                .retrieve()
+                .body(KmaForecastResponse::class.java)
+            response.toForecastOrDegrade(lat, lng)
+        } catch (exception: RestClientException) {
+            logger.warn("weather short forecast fetch failed (lat={}, lng={}): {}", lat, lng, exception.message)
+            Forecast(slots = emptyList())
+        }
+    }
+
+    private fun KmaForecastResponse?.toForecastOrDegrade(lat: Double, lng: Double): Forecast {
+        val resultCode = this?.response?.header?.resultCode
+        if (resultCode != SUCCESS_RESULT_CODE) {
+            logger.warn(
+                "weather short forecast result code not success (lat={}, lng={}, resultCode={})",
+                lat,
+                lng,
+                resultCode,
+            )
+            return Forecast(slots = emptyList())
+        }
+        val items = this?.items().orEmpty()
+        if (items.isEmpty()) {
+            logger.warn("weather short forecast returned empty items (lat={}, lng={})", lat, lng)
+            return Forecast(slots = emptyList())
+        }
+        return items.toForecast()
     }
 
     companion object {
         private val SEOUL: ZoneId = ZoneId.of("Asia/Seoul")
         private const val NUM_OF_ROWS = 300
+        private const val SUCCESS_RESULT_CODE = "00"
     }
 }
 
@@ -80,7 +108,13 @@ data class KmaForecastResponse(
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class KmaResponseEnvelope(
+    val header: KmaResponseHeader? = null,
     val body: KmaResponseBody? = null,
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class KmaResponseHeader(
+    val resultCode: String = "",
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)

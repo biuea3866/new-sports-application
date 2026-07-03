@@ -1,0 +1,137 @@
+{
+  "response": {
+    "header": {
+      "resultCode": "00",
+      "resultMsg": "NORMAL SERVICE"
+    },
+    "body": {
+      "pageNo": 1,
+      "numOfRows": 12,
+      "totalCount": 12,
+      "items": {
+        "item": [
+          {
+            "baseDate": "20260703",
+            "baseTime": "0500",
+            "category": "TMP",
+            "fcstDate": "20260703",
+            "fcstTime": "1200",
+            "fcstValue": "23",
+            "nx": 60,
+            "ny": 127
+          },
+          {
+            "baseDate": "20260703",
+            "baseTime": "0500",
+            "category": "SKY",
+            "fcstDate": "20260703",
+            "fcstTime": "1200",
+            "fcstValue": "3",
+            "nx": 60,
+            "ny": 127
+          },
+          {
+            "baseDate": "20260703",
+            "baseTime": "0500",
+            "category": "PTY",
+            "fcstDate": "20260703",
+            "fcstTime": "1200",
+            "fcstValue": "1",
+            "nx": 60,
+            "ny": 127
+          },
+          {
+            "baseDate": "20260703",
+            "baseTime": "0500",
+            "category": "POP",
+            "fcstDate": "20260703",
+            "fcstTime": "1200",
+            "fcstValue": "60",
+            "nx": 60,
+            "ny": 127
+          },
+          {
+            "baseDate": "20260703",
+            "baseTime": "0500",
+            "category": "REH",
+            "fcstDate": "20260703",
+            "fcstTime": "1200",
+            "fcstValue": "70",
+            "nx": 60,
+            "ny": 127
+          },
+          {
+            "baseDate": "20260703",
+            "baseTime": "0500",
+            "category": "WSD",
+            "fcstDate": "20260703",
+            "fcstTime": "1200",
+            "fcstValue": "3.2",
+            "nx": 60,
+            "ny": 127
+          },
+          {
+            "baseDate": "20260703",
+            "baseTime": "0500",
+            "category": "TMP",
+            "fcstDate": "20260703",
+            "fcstTime": "0900",
+            "fcstValue": "18",
+            "nx": 60,
+            "ny": 127
+          },
+          {
+            "baseDate": "20260703",
+            "baseTime": "0500",
+            "category": "SKY",
+            "fcstDate": "20260703",
+            "fcstTime": "0900",
+            "fcstValue": "1",
+            "nx": 60,
+            "ny": 127
+          },
+          {
+            "baseDate": "20260703",
+            "baseTime": "0500",
+            "category": "PTY",
+            "fcstDate": "20260703",
+            "fcstTime": "0900",
+            "fcstValue": "0",
+            "nx": 60,
+            "ny": 127
+          },
+          {
+            "baseDate": "20260703",
+            "baseTime": "0500",
+            "category": "POP",
+            "fcstDate": "20260703",
+            "fcstTime": "0900",
+            "fcstValue": "10",
+            "nx": 60,
+            "ny": 127
+          },
+          {
+            "baseDate": "20260703",
+            "baseTime": "0500",
+            "category": "REH",
+            "fcstDate": "20260703",
+            "fcstTime": "0900",
+            "fcstValue": "45",
+            "nx": 60,
+            "ny": 127
+          },
+          {
+            "baseDate": "20260703",
+            "baseTime": "0500",
+            "category": "WSD",
+            "fcstDate": "20260703",
+            "fcstTime": "0900",
+            "fcstValue": "1.8",
+            "nx": 60,
+            "ny": 127
+          }
+        ]
+      }
+    }
+  }
+}
