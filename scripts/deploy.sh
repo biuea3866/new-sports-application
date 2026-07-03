@@ -8,10 +8,14 @@
 #   1. env(dev|prod) 인자 검증 — 그 외 즉시 거부(exit 1)
 #   2. .env.<env>의 DOCKER_TAG 키만 image_tag로 치환 (다른 키는 보존)
 #   3. docker compose -p sports-<env> -f docker-compose.yml -f docker-compose.<env>.yml \
-#        --env-file .env.<env> up -d
+#        --env-file .env.<env> up -d --remove-orphans
 #   4. http://localhost:<port>/actuator/health 폴링(최대 5분, 5초 간격)
 #      HTTP 200 & body에 "status":"UP" 포함 시 exit 0, 5분 초과 시 exit 1
 #      포트는 env별로 다르다 — dev: 8080, prod: 18080 (TDD Component Diagram 기준)
+#   5. (직접 실행 시에만) deploy() 성공 이후 docker-cleanup.sh 호출 — 이미지 태그 보존
+#      정리·dangling 이미지/볼륨 prune·중단 컨테이너 정리. deploy() 함수 자체에는 넣지
+#      않는다 — rollback.sh가 이 함수를 재사용하므로, 넣으면 롤백 시에도 정리가 돌아
+#      롤백 대상 이전 이미지가 지워질 위험이 생긴다. 하단 BASH_SOURCE 가드 참조.
 #
 # 멱등: docker compose up -d는 desired state(이미지 태그 포함)가 현재 상태와 같으면
 #       컨테이너를 재생성하지 않고 no-op으로 수렴한다(compose 자체 보장). 같은 tag로
@@ -19,7 +23,8 @@
 #       담당하며(TDD "동시 배포" 행 참조) 이 스크립트는 무상태로 유지한다.
 #
 # 이 스크립트는 rollback.sh에서 source되어 공통 함수(deploy 등)를 재사용한다.
-# source될 때는 아래 BASH_SOURCE 가드가 main 실행을 막고 함수만 로드한다.
+# source될 때는 아래 BASH_SOURCE 가드가 main 실행을 막고 함수만 로드하며,
+# docker-cleanup.sh 호출도 이 가드 안에만 있으므로 rollback.sh 경로에는 도달하지 않는다.
 
 set -euo pipefail
 
@@ -86,8 +91,10 @@ replace_docker_tag() {
   mv "$tmp_file" "$env_file"
 }
 
-# docker compose up -d — override 파일명은 계약(docker-compose.<env>.yml)으로만 참조한다.
-# 파일 존재는 런타임 요건(INFRA-05/06이 아직 만들지 않았을 수 있음).
+# docker compose up -d --remove-orphans — override 파일명은 계약(docker-compose.<env>.yml)
+# 으로만 참조한다. 파일 존재는 런타임 요건(INFRA-05/06이 아직 만들지 않았을 수 있음).
+# --remove-orphans: compose 파일에서 제거된 서비스의 잔존 컨테이너를 up 시점에 정리한다
+# (배포·롤백 공통 함수이므로 두 경로 모두에서 고아 컨테이너가 남지 않는다 — 안전한 정리).
 compose_up() {
   local env="$1"
   local env_file="$2"
@@ -108,7 +115,7 @@ compose_up() {
     -f "${REPO_ROOT}/docker-compose.yml" \
     -f "$override_file" \
     --env-file "$env_file" \
-    up -d
+    up -d --remove-orphans
 }
 
 # /actuator/health 폴링 — 최대 5분, 5초 간격. HTTP 200 & "status":"UP" 이면 성공.
@@ -158,4 +165,10 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     exit 1
   fi
   deploy "$1" "$2"
+
+  # 신규 배포 성공 이후에만 정리를 수행한다(set -e이므로 deploy 실패 시 아래 줄에
+  # 도달하지 않는다). rollback.sh는 deploy.sh를 source해 deploy() 함수만 재사용하고
+  # 이 BASH_SOURCE 가드 블록은 실행하지 않으므로, 롤백 경로에서는 cleanup이 호출되지
+  # 않는다 — 롤백 대상이 될 수 있는 이전 이미지를 정리가 지우는 사고를 방지한다.
+  "${SCRIPT_DIR}/docker-cleanup.sh" "$1"
 fi
