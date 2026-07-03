@@ -8,6 +8,8 @@
 | `data-go-kr/` | 공공체육시설 + 기상청 단기예보 | `EXTERNAL_WEATHER_BASE_URL=https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0` + `DATA_GO_KR_SERVICE_KEY` |
 | `solapi/` | SOLAPI SMS 발송 | `EXTERNAL_SMS_BASE_URL=https://api.solapi.com` + 발신번호(사업자) |
 
+전환 판정 기준: 무료 API 일일 요청 한도 **≥ 1,000건**(ADR-001). kakao-local·data-go-kr 은 임계를 크게 상회해 전환 대상, solapi 는 한도 개념이 아닌 건당 과금 + 발신번호 사전등록이 필요해 mock 유지 — 상세 조사표는 `프로젝트/스포츠앱/외부 연동 정비/TDD.md` "발급 주체 무료 API 전환 조사표".
+
 MailHog(이메일)은 공식 이미지를 docker-compose 에서 직접 사용합니다 (`8025` UI 로 수신 확인).
 
 ## 실행
