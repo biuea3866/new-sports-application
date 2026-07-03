@@ -12,6 +12,7 @@
 !.env.example
 !.env.local.example
 !.env.sample
+!.env.observability.example
 backend/.env*
 web/.env.local
 mobile/.env
