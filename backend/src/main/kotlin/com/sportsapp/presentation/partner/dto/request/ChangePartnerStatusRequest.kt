@@ -10,6 +10,6 @@ data class ChangePartnerStatusRequest(
 ) {
     fun toCommand(partnerId: Long): ChangePartnerStatusCommand = ChangePartnerStatusCommand(
         partnerId = partnerId,
-        active = status == PartnerStatus.ACTIVE.name,
+        status = PartnerStatus.valueOf(status),
     )
 }

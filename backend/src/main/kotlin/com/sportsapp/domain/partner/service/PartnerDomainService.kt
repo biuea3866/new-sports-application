@@ -5,6 +5,7 @@ import com.sportsapp.domain.common.exceptions.UnauthorizedException
 import com.sportsapp.domain.partner.entity.ApiKeyStatus
 import com.sportsapp.domain.partner.entity.Partner
 import com.sportsapp.domain.partner.entity.PartnerApiKey
+import com.sportsapp.domain.partner.entity.PartnerStatus
 import com.sportsapp.domain.partner.exception.PartnerApiKeyInactiveException
 import com.sportsapp.domain.partner.exception.PartnerNotFoundException
 import com.sportsapp.domain.partner.gateway.ApiKeyGenerator
@@ -12,7 +13,9 @@ import com.sportsapp.domain.partner.repository.PartnerApiKeyRepository
 import com.sportsapp.domain.partner.repository.PartnerRepository
 import org.springframework.stereotype.Service
 
-data class IssuedApiKey(val plainKey: String, val apiKey: PartnerApiKey)
+data class IssuedApiKey(val plainKey: String, val apiKey: PartnerApiKey) {
+    val keyId: Long get() = requireNotNull(apiKey.id) { "PartnerApiKey id must exist after save" }
+}
 data class AuthenticatedPartner(val partnerId: Long, val linkedUserId: Long)
 
 /**
@@ -53,14 +56,14 @@ class PartnerDomainService(
     fun revokeKey(partnerId: Long, keyId: Long) {
         val apiKey = partnerApiKeyRepository.findById(keyId)
             ?: throw ResourceNotFoundException("PartnerApiKey", keyId)
-        if (apiKey.partnerId != partnerId) throw ResourceNotFoundException("PartnerApiKey", keyId)
+        apiKey.requireOwnedBy(partnerId)
         apiKey.revoke()
         partnerApiKeyRepository.save(apiKey)
     }
 
-    fun changeStatus(partnerId: Long, active: Boolean) {
+    fun changeStatus(partnerId: Long, status: PartnerStatus) {
         val partner = partnerRepository.findById(partnerId) ?: throw PartnerNotFoundException(partnerId)
-        if (active) partner.activate() else partner.suspend()
+        if (status == PartnerStatus.ACTIVE) partner.activate() else partner.suspend()
         partnerRepository.save(partner)
     }
 
@@ -95,7 +98,7 @@ class PartnerDomainService(
     }
 
     private fun validateApiKey(apiKey: PartnerApiKey, plainKey: String) {
-        if (!apiKeyGenerator.matches(plainKey, apiKey.keyHash)) {
+        if (!apiKey.verify(plainKey, apiKeyGenerator)) {
             throw UnauthorizedException(INVALID_KEY_MESSAGE)
         }
         if (!apiKey.isActive()) {

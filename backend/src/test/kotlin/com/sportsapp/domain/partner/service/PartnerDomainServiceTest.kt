@@ -188,8 +188,8 @@ class PartnerDomainServiceTest : BehaviorSpec({
         every { partnerRepository.findById(1L) } returns partner
         every { partnerRepository.save(partner) } returns partner
 
-        When("changeStatus(active=false)를 호출하면") {
-            domainService.changeStatus(partnerId = 1L, active = false)
+        When("changeStatus(SUSPENDED)를 호출하면") {
+            domainService.changeStatus(partnerId = 1L, status = PartnerStatus.SUSPENDED)
 
             Then("Partner 상태가 SUSPENDED로 전이된다") {
                 partner.status shouldBe PartnerStatus.SUSPENDED
@@ -203,8 +203,8 @@ class PartnerDomainServiceTest : BehaviorSpec({
         every { partnerRepository.findById(1L) } returns partner
         every { partnerRepository.save(partner) } returns partner
 
-        When("changeStatus(active=true)를 호출하면") {
-            domainService.changeStatus(partnerId = 1L, active = true)
+        When("changeStatus(ACTIVE)를 호출하면") {
+            domainService.changeStatus(partnerId = 1L, status = PartnerStatus.ACTIVE)
 
             Then("Partner 상태가 ACTIVE로 전이된다") {
                 partner.status shouldBe PartnerStatus.ACTIVE
@@ -218,7 +218,7 @@ class PartnerDomainServiceTest : BehaviorSpec({
         When("changeStatus를 호출하면") {
             Then("PartnerNotFoundException이 발생한다") {
                 shouldThrow<PartnerNotFoundException> {
-                    domainService.changeStatus(partnerId = 999L, active = false)
+                    domainService.changeStatus(partnerId = 999L, status = PartnerStatus.SUSPENDED)
                 }
             }
         }

@@ -9,7 +9,7 @@ data class ReissueApiKeyResponse(
     companion object {
         fun of(issuedApiKey: IssuedApiKey): ReissueApiKeyResponse =
             ReissueApiKeyResponse(
-                keyId = requireNotNull(issuedApiKey.apiKey.id) { "PartnerApiKey id must exist after save" },
+                keyId = issuedApiKey.keyId,
                 plainApiKey = issuedApiKey.plainKey,
             )
     }

@@ -1,10 +1,15 @@
 package com.sportsapp.domain.partner.entity
 
+import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
+import com.sportsapp.domain.partner.gateway.ApiKeyGenerator
+import io.kotest.assertions.throwables.shouldNotThrow
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.mockk.every
+import io.mockk.mockk
 import java.time.ZonedDateTime
 
 class PartnerApiKeyTest : BehaviorSpec({
@@ -80,6 +85,57 @@ class PartnerApiKeyTest : BehaviorSpec({
         Then("IllegalArgumentException이 발생한다") {
             shouldThrow<IllegalArgumentException> {
                 PartnerApiKey.create(partnerId = 1L, keyHash = "")
+            }
+        }
+    }
+
+    Given("저장된 해시를 가진 PartnerApiKey에 평문 키 검증을 요청하면") {
+        val apiKey = PartnerApiKey.reconstitute(
+            id = 5L,
+            partnerId = 1L,
+            keyHash = "stored-hash",
+            status = ApiKeyStatus.ACTIVE,
+            revokedAt = null,
+            lastUsedAt = null,
+        )
+        val apiKeyGenerator = mockk<ApiKeyGenerator>()
+
+        When("평문이 저장된 해시와 일치하면") {
+            every { apiKeyGenerator.matches("plain-key", "stored-hash") } returns true
+
+            Then("verify는 true를 반환하고 keyHash를 외부로 노출하지 않는다") {
+                apiKey.verify("plain-key", apiKeyGenerator) shouldBe true
+            }
+        }
+
+        When("평문이 저장된 해시와 일치하지 않으면") {
+            every { apiKeyGenerator.matches("wrong-key", "stored-hash") } returns false
+
+            Then("verify는 false를 반환한다") {
+                apiKey.verify("wrong-key", apiKeyGenerator) shouldBe false
+            }
+        }
+    }
+
+    Given("특정 partner 소유의 PartnerApiKey") {
+        val apiKey = PartnerApiKey.reconstitute(
+            id = 5L,
+            partnerId = 1L,
+            keyHash = "stored-hash",
+            status = ApiKeyStatus.ACTIVE,
+            revokedAt = null,
+            lastUsedAt = null,
+        )
+
+        Then("자신의 소유자로 requireOwnedBy를 호출하면 예외가 없다") {
+            shouldNotThrow<ResourceNotFoundException> {
+                apiKey.requireOwnedBy(1L)
+            }
+        }
+
+        Then("타 partner로 requireOwnedBy를 호출하면 ResourceNotFoundException이 발생한다") {
+            shouldThrow<ResourceNotFoundException> {
+                apiKey.requireOwnedBy(2L)
             }
         }
     }

@@ -18,14 +18,14 @@ class ChangePartnerStatusUseCaseTest : BehaviorSpec({
 
     Given("ADMIN이 Partner를 SUSPENDED 상태로 변경 요청할 때") {
         val partnerId = 10L
-        val command = ChangePartnerStatusCommand(partnerId = partnerId, active = false)
-        every { partnerDomainService.changeStatus(partnerId, false) } just Runs
+        val command = ChangePartnerStatusCommand(partnerId = partnerId, status = PartnerStatus.SUSPENDED)
+        every { partnerDomainService.changeStatus(partnerId, PartnerStatus.SUSPENDED) } just Runs
 
         When("execute를 호출하면") {
             val result = useCase.execute(command)
 
             Then("PartnerDomainService.changeStatus를 정확한 인자로 호출한다") {
-                verify(exactly = 1) { partnerDomainService.changeStatus(partnerId, false) }
+                verify(exactly = 1) { partnerDomainService.changeStatus(partnerId, PartnerStatus.SUSPENDED) }
             }
 
             Then("응답 status가 SUSPENDED이다") {
@@ -37,8 +37,8 @@ class ChangePartnerStatusUseCaseTest : BehaviorSpec({
 
     Given("ADMIN이 Partner를 ACTIVE 상태로 변경 요청할 때") {
         val partnerId = 11L
-        val command = ChangePartnerStatusCommand(partnerId = partnerId, active = true)
-        every { partnerDomainService.changeStatus(partnerId, true) } just Runs
+        val command = ChangePartnerStatusCommand(partnerId = partnerId, status = PartnerStatus.ACTIVE)
+        every { partnerDomainService.changeStatus(partnerId, PartnerStatus.ACTIVE) } just Runs
 
         When("execute를 호출하면") {
             val result = useCase.execute(command)
