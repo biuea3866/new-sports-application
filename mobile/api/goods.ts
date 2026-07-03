@@ -24,6 +24,11 @@ export interface ProductWithStock {
   imageUrl: string;
   status: ProductStatus;
   stockQuantity: number;
+  /**
+   * 이 상품에 연결된 활성 한정판 회차 ID. BE `/products` 응답에는 아직 이 필드가 없어
+   * FE 타입 정의만 선행한 상태다(API 미연동) — 값이 없으면 진입점을 노출하지 않는다.
+   */
+  limitedDropId?: number;
 }
 
 export interface CartItemDto {

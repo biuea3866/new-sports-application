@@ -8,12 +8,15 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'rea
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useProducts, useAddCartItem, useCurrentUserId } from '../../../api/goods';
+import { ROUTES } from '../../../lib/navigation';
+import { useTheme } from '../../../theme/useTheme';
 
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const userId = useCurrentUserId();
   const [quantity, setQuantity] = useState(1);
+  const { tokens } = useTheme();
 
   const { data: products, isLoading, isError } = useProducts();
   const addCartItem = useAddCartItem(userId);
@@ -109,6 +112,20 @@ export default function ProductDetailScreen() {
         </Text>
       </View>
 
+      {/* 한정판 회차 진입점 — product.limitedDropId가 있을 때만 노출 */}
+      {product.limitedDropId != null && (
+        <TouchableOpacity
+          style={[styles.limitedDropBanner, { borderColor: tokens.accent }]}
+          onPress={() => router.push(ROUTES.limitedDrop.detail(String(product.limitedDropId)))}
+          accessibilityRole="button"
+          accessibilityLabel="한정판 구매하러 가기"
+        >
+          <Text style={[styles.limitedDropBannerText, { color: tokens.accent }]}>
+            한정판 구매하러 가기
+          </Text>
+        </TouchableOpacity>
+      )}
+
       {/* 수량 선택 */}
       <View style={styles.quantitySection}>
         <Text style={styles.quantityLabel} accessibilityRole="text">
@@ -169,6 +186,19 @@ export default function ProductDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  limitedDropBanner: {
+    marginHorizontal: 20,
+    marginTop: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  limitedDropBannerText: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
   container: {
     flex: 1,
     backgroundColor: '#fff',

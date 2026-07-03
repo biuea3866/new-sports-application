@@ -63,4 +63,10 @@ export const ROUTES = {
     detail: (id: string) => `/community/${id}` as const,
     new: '/community/new',
   },
+
+  // 한정판
+  limitedDrop: {
+    detail: (id: string) => `/limited-drop/${id}` as const,
+    purchase: (id: string) => `/limited-drop/${id}/purchase` as const,
+  },
 } as const;
