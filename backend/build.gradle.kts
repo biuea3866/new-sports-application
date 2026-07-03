@@ -104,6 +104,9 @@ dependencies {
     testImplementation("org.testcontainers:mongodb")
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
+
+    // External API 계약 검증 하네스 (ADR-002) — 버전은 Spring Boot BOM(okhttp-bom)이 관리
+    testImplementation("com.squareup.okhttp3:mockwebserver")
 }
 
 kapt {
@@ -128,6 +131,25 @@ tasks.withType<Test> {
     // 워커 JVM 이 종료 단계에서 멈추면, 이 JVM 이 소유한 Testcontainers 가 무한정 남는다.
     // timeout 으로 멈춘 워커를 강제 종료해 ryuk 가 컨테이너를 회수하도록 한다.
     timeout.set(Duration.ofMinutes(30))
+}
+
+// -------- 기본 test: live 태그 계약 스모크 제외 (ADR-002) --------
+// 실 키가 있을 때만 도는 계약 스모크(live 태그)는 CI 상시 test 에서 제외한다.
+// Kotest 는 시스템 프로퍼티 kotest.tags 로 포함/제외 태그 표현식을 읽는다.
+tasks.named<Test>("test") {
+    systemProperty("kotest.tags", "!Live")
+}
+
+// -------- verifyExternalLive: 외부 API 계약 live 태그 스모크 (opt-in) --------
+// 실 키가 env 에 있을 때만 유효한 검증이 되는 live 태그 스펙만 선택 실행한다.
+// 클래스별 와이어업 없이 Kotest 태그 필터만으로 동작한다(BE-02/03/04 는 태그만 부여).
+val verifyExternalLive by tasks.registering(Test::class) {
+    description = "외부 API 계약 live 태그 스모크 실행 (opt-in, 실 키 필요)"
+    group = "verification"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    systemProperty("kotest.tags", "Live")
+    shouldRunAfter(tasks.test)
 }
 
 // -------- archTest: 아키텍처 규칙 전용 태스크 --------
