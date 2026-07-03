@@ -18,6 +18,7 @@ import com.sportsapp.domain.goods.repository.LimitedDropRepository
 import com.sportsapp.domain.goods.vo.OrderItemInput
 import java.time.Duration
 import java.time.ZonedDateTime
+import org.slf4j.LoggerFactory
 import org.springframework.dao.DataAccessException
 import org.springframework.stereotype.Service
 
@@ -37,6 +38,8 @@ class LimitedDropDomainService(
     private val goodsDomainService: GoodsDomainService,
     private val domainEventPublisher: DomainEventPublisher,
 ) {
+    private val log = LoggerFactory.getLogger(LimitedDropDomainService::class.java)
+
     fun purchase(command: PurchaseLimitedDropCommand): Pair<LimitedDrop, GoodsOrder> {
         val drop = findById(command.dropId)
         validatePurchasable(drop)
@@ -76,14 +79,30 @@ class LimitedDropDomainService(
     /**
      * 활성 회차(SCHEDULED|OPEN) 전체에 대해 대사(reconciliation)를 수행한다 (Observability, ADR-001 실패 경로).
      * [DropReconciliationWorker]가 스케줄 주기마다 호출한다.
+     *
+     * 활성 회차가 없으면 Redis·상품 조회 없이 즉시 반환한다(대부분의 통합 테스트가 해당). 회차별 대사는
+     * [reconcileDriftSafely]로 격리해 한 회차의 Redis 장애가 나머지 회차 대사를 막지 않게 한다.
      */
     fun reconcileAllActive() {
-        limitedDropRepository.findAllActive().forEach { reconcileDrift(it) }
+        val activeDrops = limitedDropRepository.findAllActive()
+        if (activeDrops.isEmpty()) return
+        activeDrops.forEach { reconcileDriftSafely(it) }
     }
 
     /** 단일 회차 대사. 테스트·수동 트리거 대상 진입점. */
     fun reconcile(dropId: Long) {
         reconcileDrift(findById(dropId))
+    }
+
+    /** [reconcileDrift]를 Redis 장애로부터 격리한다 — fail-open, 로그만 남기고 다음 회차로 진행한다. */
+    private fun reconcileDriftSafely(drop: LimitedDrop) {
+        try {
+            reconcileDrift(drop)
+        } catch (exception: DataAccessException) {
+            log.warn("LimitedDropDomainService: dropId={} 대사 중 인프라 접근 실패로 건너뜁니다", drop.id, exception)
+        } catch (exception: RedisLockException) {
+            log.warn("LimitedDropDomainService: dropId={} 대사 중 Redis 락 장애로 건너뜁니다", drop.id, exception)
+        }
     }
 
     /**

@@ -23,6 +23,7 @@ import com.sportsapp.domain.goods.gateway.ReservationResult
 import com.sportsapp.domain.goods.repository.LimitedDropRepository
 import com.sportsapp.domain.goods.vo.OrderItemInput
 import com.sportsapp.domain.goods.vo.ProductCategory
+import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldHaveSize
@@ -686,6 +687,64 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
             Then("활성 회차 각각에 대해 대사를 수행한다") {
                 verify(exactly = 2) { dropReservationStore.remaining(any()) }
                 verify(exactly = 1) { goodsDomainService.getProductWithStock(PRODUCT_ID) }
+                verify(exactly = 1) { goodsDomainService.getProductWithStock(PRODUCT_ID + 1) }
+            }
+        }
+    }
+
+    Given("활성 회차가 존재하지 않는 상황") {
+        val limitedDropRepository = mockk<LimitedDropRepository>()
+        val dropReservationStore = mockk<DropReservationStore>()
+        val goodsDomainService = mockk<GoodsDomainService>()
+        val service = buildService(limitedDropRepository, dropReservationStore, goodsDomainService)
+
+        every { limitedDropRepository.findAllActive() } returns emptyList()
+
+        When("reconcileAllActive를 호출하면") {
+            service.reconcileAllActive()
+
+            Then("Redis·상품 조회를 전혀 수행하지 않고 조기 반환한다") {
+                verify(exactly = 0) { dropReservationStore.remaining(any()) }
+                verify(exactly = 0) { goodsDomainService.getProductWithStock(any()) }
+            }
+        }
+    }
+
+    Given("활성 회차 2건 중 첫 번째 회차의 Redis 조회가 장애 상태인 상황") {
+        val limitedDropRepository = mockk<LimitedDropRepository>()
+        val dropReservationStore = mockk<DropReservationStore>()
+        val goodsDomainService = mockk<GoodsDomainService>()
+        val domainEventPublisher = mockk<DomainEventPublisher>()
+        val service = buildService(limitedDropRepository, dropReservationStore, goodsDomainService, domainEventPublisher)
+        val firstDrop = openDrop()
+        val secondDrop = LimitedDrop.reconstitute(
+            productId = PRODUCT_ID + 1,
+            openAt = ZonedDateTime.now().minusMinutes(1),
+            closeAt = ZonedDateTime.now().plusDays(1),
+            limitedQuantity = 50,
+            perUserLimit = PER_USER_LIMIT,
+            status = LimitedDropStatus.OPEN,
+        )
+        val product = Product.create(
+            name = "한정판 스니커즈",
+            category = ProductCategory.FOOTWEAR,
+            price = BigDecimal("50000"),
+            description = "설명",
+            imageUrl = "https://image",
+            ownerUserId = OWNER_USER_ID,
+        )
+
+        every { limitedDropRepository.findAllActive() } returns listOf(firstDrop, secondDrop)
+        every { dropReservationStore.remaining(DROP_ID) } throws
+            DataAccessResourceFailureException("redis down") andThen 30
+        every { goodsDomainService.getProductWithStock(PRODUCT_ID + 1) } returns
+            ProductWithStock(product = product, stockQuantity = 50)
+
+        When("reconcileAllActive를 호출하면") {
+            Then("예외를 전파하지 않고 나머지 회차 대사를 계속 수행한다") {
+                shouldNotThrowAny { service.reconcileAllActive() }
+                verify(exactly = 2) { dropReservationStore.remaining(DROP_ID) }
+                verify(exactly = 0) { goodsDomainService.getProductWithStock(PRODUCT_ID) }
                 verify(exactly = 1) { goodsDomainService.getProductWithStock(PRODUCT_ID + 1) }
             }
         }

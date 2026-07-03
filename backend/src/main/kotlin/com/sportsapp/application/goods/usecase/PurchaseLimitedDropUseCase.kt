@@ -25,6 +25,8 @@ class PurchaseLimitedDropUseCase(
 ) {
     @Retryable(
         retryFor = [ObjectOptimisticLockingFailureException::class],
+        // Redis 완충 permit 상한(app.limited-drop.reservation.semaphore-permits 기본값 200)과 맞춘 값 —
+        // 최악의 경우 permit을 통과한 전원이 동시에 낙관적 락 경합에 들어와도 전부 재시도로 흡수한다.
         maxAttempts = 200,
         backoff = Backoff(delay = 5, maxDelay = 100, multiplier = 1.5, random = true),
     )

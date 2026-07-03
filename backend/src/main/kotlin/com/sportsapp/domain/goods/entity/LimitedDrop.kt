@@ -86,8 +86,10 @@ class LimitedDrop private constructor(
     fun close() = transitTo(LimitedDropStatus.CLOSED)
 
     /**
-     * 리컨실리에이션 드리프트(Redis remaining + DB deducted > limitedQuantity) 감지 시
-     * 오버셀 이벤트를 적재한다. DomainService가 이후 [pullDomainEvents]로 꺼내 발행한다.
+     * 리컨실리에이션 드리프트 감지 시 오버셀 이벤트를 적재한다 — 판정은
+     * [LimitedDropDomainService.reconcileDrift][com.sportsapp.domain.goods.service.LimitedDropDomainService]가
+     * 계산된 판매량(`limitedQuantity - remaining`)이 `limitedQuantity`를 초과하거나 상품 재고가 음수로
+     * 정합이 깨진 경우에 호출한다. DomainService가 이후 [pullDomainEvents]로 꺼내 발행한다.
      */
     fun recordOversold(detectedQuantity: Int) {
         domainEvents.add(
