@@ -1,0 +1,39 @@
+# docker-compose.prod.yml — prod 환경 override (base docker-compose.yml에 -f로 얹는다)
+# 근거: TDD.md "스택 격리"(호스트 포트 표)·"env 라벨 주입"(FR-5), PRD FR-9, ADR-004(태그 핀 롤백), ADR-005(APP_ENV 리터럴 주입)
+# 실행: docker compose -p sports-prod -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d
+# 롤백: scripts/rollback.sh prod <prev_sha> 가 .env.prod 의 DOCKER_TAG 를 이전 SHA로 치환 후 재기동
+#
+# FR-9(prod 직접 변경 경로 최소화)에 따라 mysql/mongodb/redis/kafka 는 ports 를 부여하지 않는다 — 호스트에서 직접 접근 불가.
+services:
+  backend:
+    image: sports-backend:${DOCKER_TAG}
+    ports:
+      - "18080:8080"
+    environment:
+      APP_ENV: prod
+
+  minio:
+    ports:
+      - "19000:9000"
+      - "19001:9001"
+
+  mock-pg:
+    ports:
+      - "19090:9090"
+
+  mock-kakao-local:
+    ports:
+      - "19101:8080"
+
+  mock-data-go-kr:
+    ports:
+      - "19102:8080"
+
+  mock-solapi:
+    ports:
+      - "19103:8080"
+
+  mailhog:
+    ports:
+      - "11025:1025"
+      - "18025:8025"
