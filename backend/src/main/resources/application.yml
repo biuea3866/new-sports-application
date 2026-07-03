@@ -92,6 +92,12 @@ notification:
       title: "가입 완료"
       body: "{userName}님, 스포츠 앱에 오신 것을 환영합니다."
 
+partner:
+  auth:
+    # B2B 파트너 API Key 인증 필터 게이트. expand-contract 배포: 코드 배포 시 false로 시작해
+    # 관리 API로 테스트 파트너 등록·회귀 확인 후 PARTNER_AUTH_ENABLED=true로 전환한다.
+    enabled: ${PARTNER_AUTH_ENABLED:false}
+
 app:
   payment:
     mock:
