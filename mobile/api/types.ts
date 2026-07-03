@@ -368,3 +368,50 @@ export interface NotificationListResponse {
 export interface UnreadCountResponse {
   unreadCount: number;
 }
+
+// --- LimitedDrop ---
+export type LimitedDropStatus = 'SCHEDULED' | 'OPEN' | 'SOLD_OUT' | 'CLOSED';
+
+export interface LimitedDropResponse {
+  dropId: number;
+  productId: number;
+  status: LimitedDropStatus;
+  openAt: string; // ISO 8601
+  closeAt: string; // ISO 8601
+  remaining: number;
+  perUserLimit: number;
+}
+
+export interface PurchaseLimitedDropRequest {
+  quantity: number;
+}
+
+export type LimitedDropOrderStatus = 'PENDING';
+
+export interface LimitedDropPurchaseResponse {
+  orderId: number;
+  dropId: number;
+  status: LimitedDropOrderStatus;
+}
+
+export interface LimitedDropApiErrorBody {
+  code?: string;
+  message?: string;
+  openAt?: string; // 425 TooEarly 응답에 포함
+}
+
+/**
+ * 구매 요청의 판별 가능한 결과.
+ * - ADMITTED: 202 성공 — 주문 PENDING 선점
+ * - TOO_EARLY: 425 — openAt 이전 요청
+ * - SOLD_OUT / CLOSED: 409 — 소진 또는 회차 종료 (에러 바디 code로 구분, 없으면 SOLD_OUT)
+ * - THROTTLED: 429 — 완충 초과
+ * - LIMIT_EXCEEDED: 403 — 1인 한도 초과
+ */
+export type LimitedDropPurchaseResult =
+  | { outcome: 'ADMITTED'; data: LimitedDropPurchaseResponse }
+  | { outcome: 'TOO_EARLY'; openAt: string | null }
+  | { outcome: 'SOLD_OUT' }
+  | { outcome: 'CLOSED' }
+  | { outcome: 'THROTTLED' }
+  | { outcome: 'LIMIT_EXCEEDED' };
