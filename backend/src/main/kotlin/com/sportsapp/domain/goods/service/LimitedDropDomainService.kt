@@ -7,6 +7,7 @@ import com.sportsapp.domain.goods.entity.GoodsOrder
 import com.sportsapp.domain.goods.entity.LimitedDrop
 import com.sportsapp.domain.goods.exception.LimitedDropNotFoundException
 import com.sportsapp.domain.goods.exception.LimitedDropPerUserLimitExceededException
+import com.sportsapp.domain.goods.exception.LimitedDropQuantityExceedsStockException
 import com.sportsapp.domain.goods.exception.LimitedDropSoldOutException
 import com.sportsapp.domain.goods.exception.LimitedDropThrottledException
 import com.sportsapp.domain.goods.gateway.DropReservationStore
@@ -49,6 +50,45 @@ class LimitedDropDomainService(
         val ttl = Duration.between(ZonedDateTime.now(), saved.closeAt).plusHours(1)
         dropReservationStore.seedIfAbsent(saved.id, saved.limitedQuantity, ttl)
         return saved
+    }
+
+    /**
+     * 판매자 회차 개설(BE-08). 대상 상품의 현재 재고를 조회해 요청 수량이 재고를 넘지 않는지
+     * 검증한 뒤 [LimitedDrop.create]로 저장하고, 종료 시각 기준 TTL로 Redis 카운터를 시드한다.
+     */
+    fun createDrop(
+        productId: Long,
+        openAt: ZonedDateTime,
+        closeAt: ZonedDateTime,
+        limitedQuantity: Int,
+        perUserLimit: Int,
+        ownerUserId: Long,
+    ): LimitedDrop {
+        val productWithStock = goodsDomainService.getProductWithStock(productId)
+        productWithStock.product.requireOwnedBy(ownerUserId)
+        validateQuantityWithinStock(productId, limitedQuantity, productWithStock.stockQuantity)
+        val saved = limitedDropRepository.save(
+            LimitedDrop.create(
+                productId = productId,
+                openAt = openAt,
+                closeAt = closeAt,
+                limitedQuantity = limitedQuantity,
+                perUserLimit = perUserLimit,
+            )
+        )
+        seedReservationStore(saved)
+        return saved
+    }
+
+    private fun validateQuantityWithinStock(productId: Long, limitedQuantity: Int, stockQuantity: Int) {
+        if (limitedQuantity > stockQuantity) {
+            throw LimitedDropQuantityExceedsStockException(productId, limitedQuantity, stockQuantity)
+        }
+    }
+
+    private fun seedReservationStore(drop: LimitedDrop) {
+        val ttl = Duration.between(ZonedDateTime.now(), drop.closeAt).plusHours(1)
+        dropReservationStore.seedIfAbsent(drop.id, drop.limitedQuantity, ttl)
     }
 
     private fun findOpenDrop(productId: Long): LimitedDrop =

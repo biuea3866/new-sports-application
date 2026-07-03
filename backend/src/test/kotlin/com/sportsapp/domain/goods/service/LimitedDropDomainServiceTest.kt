@@ -3,10 +3,13 @@ package com.sportsapp.domain.goods.service
 import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.common.exceptions.RedisLockException
 import com.sportsapp.domain.goods.dto.PurchaseLimitedDropCommand
+import com.sportsapp.domain.goods.dto.ProductWithStock
 import com.sportsapp.domain.goods.entity.GoodsOrder
 import com.sportsapp.domain.goods.entity.LimitedDrop
 import com.sportsapp.domain.goods.entity.LimitedDropStatus
+import com.sportsapp.domain.goods.entity.Product
 import com.sportsapp.domain.goods.exception.LimitedDropPerUserLimitExceededException
+import com.sportsapp.domain.goods.exception.LimitedDropQuantityExceedsStockException
 import com.sportsapp.domain.goods.exception.LimitedDropSoldOutException
 import com.sportsapp.domain.goods.exception.LimitedDropThrottledException
 import com.sportsapp.domain.goods.exception.LimitedDropTooEarlyException
@@ -14,6 +17,7 @@ import com.sportsapp.domain.goods.gateway.DropReservationStore
 import com.sportsapp.domain.goods.gateway.ReservationResult
 import com.sportsapp.domain.goods.repository.LimitedDropRepository
 import com.sportsapp.domain.goods.vo.OrderItemInput
+import com.sportsapp.domain.goods.vo.ProductCategory
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -28,6 +32,7 @@ import org.springframework.dao.DataAccessResourceFailureException
 private const val DROP_ID = 0L
 private const val PRODUCT_ID = 10L
 private const val USER_ID = 100L
+private const val OWNER_USER_ID = 500L
 private const val PER_USER_LIMIT = 2
 private const val QUANTITY = 1
 private const val IDEMPOTENCY_KEY = "idem-key-1"
@@ -332,6 +337,122 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
                 result.currentStatus shouldBe LimitedDropStatus.OPEN
                 verify(exactly = 1) { dropReservationStore.seedIfAbsent(DROP_ID, 50, any()) }
                 ttlSlot.captured.toMinutes() shouldBe 179L
+            }
+        }
+    }
+
+    Given("재고 이내의 수량으로 회차를 개설하는 상황") {
+        val limitedDropRepository = mockk<LimitedDropRepository>()
+        val dropReservationStore = mockk<DropReservationStore>()
+        val goodsDomainService = mockk<GoodsDomainService>()
+        val service = buildService(limitedDropRepository, dropReservationStore, goodsDomainService)
+        val openAt = ZonedDateTime.now().plusHours(1)
+        val closeAt = ZonedDateTime.now().plusHours(3)
+        val limitedQuantity = 30
+        val product = Product.create(
+            name = "한정판 스니커즈",
+            category = ProductCategory.FOOTWEAR,
+            price = BigDecimal("50000"),
+            description = "설명",
+            imageUrl = "https://image",
+            ownerUserId = OWNER_USER_ID,
+        )
+        val productWithStock = ProductWithStock(product = product, stockQuantity = 50)
+        val savedDropSlot = slot<LimitedDrop>()
+        val ttlSlot = slot<java.time.Duration>()
+
+        every { goodsDomainService.getProductWithStock(PRODUCT_ID) } returns productWithStock
+        every { limitedDropRepository.save(capture(savedDropSlot)) } answers { savedDropSlot.captured }
+        every { dropReservationStore.seedIfAbsent(0L, limitedQuantity, capture(ttlSlot)) } returns Unit
+
+        When("createDrop을 호출하면") {
+            val result = service.createDrop(
+                productId = PRODUCT_ID,
+                openAt = openAt,
+                closeAt = closeAt,
+                limitedQuantity = limitedQuantity,
+                perUserLimit = PER_USER_LIMIT,
+                ownerUserId = OWNER_USER_ID,
+            )
+
+            Then("SCHEDULED 상태로 저장하고 Redis 카운터를 limitedQuantity로 시드한다") {
+                result.currentStatus shouldBe LimitedDropStatus.SCHEDULED
+                result.productId shouldBe PRODUCT_ID
+                verify(exactly = 1) { limitedDropRepository.save(any()) }
+                verify(exactly = 1) { dropReservationStore.seedIfAbsent(0L, limitedQuantity, any()) }
+            }
+        }
+    }
+
+    Given("limitedQuantity가 현재 재고를 초과하는 회차 개설 요청") {
+        val limitedDropRepository = mockk<LimitedDropRepository>()
+        val dropReservationStore = mockk<DropReservationStore>()
+        val goodsDomainService = mockk<GoodsDomainService>()
+        val service = buildService(limitedDropRepository, dropReservationStore, goodsDomainService)
+        val openAt = ZonedDateTime.now().plusHours(1)
+        val closeAt = ZonedDateTime.now().plusHours(3)
+        val product = Product.create(
+            name = "한정판 스니커즈",
+            category = ProductCategory.FOOTWEAR,
+            price = BigDecimal("50000"),
+            description = "설명",
+            imageUrl = "https://image",
+            ownerUserId = OWNER_USER_ID,
+        )
+        val productWithStock = ProductWithStock(product = product, stockQuantity = 10)
+
+        every { goodsDomainService.getProductWithStock(PRODUCT_ID) } returns productWithStock
+
+        When("createDrop을 호출하면") {
+            Then("LimitedDropQuantityExceedsStockException을 던지고 저장·시드를 수행하지 않는다") {
+                shouldThrow<LimitedDropQuantityExceedsStockException> {
+                    service.createDrop(
+                        productId = PRODUCT_ID,
+                        openAt = openAt,
+                        closeAt = closeAt,
+                        limitedQuantity = 20,
+                        perUserLimit = PER_USER_LIMIT,
+                        ownerUserId = OWNER_USER_ID,
+                    )
+                }
+                verify(exactly = 0) { limitedDropRepository.save(any()) }
+                verify(exactly = 0) { dropReservationStore.seedIfAbsent(any(), any(), any()) }
+            }
+        }
+    }
+
+    Given("openAt이 closeAt보다 늦거나 같은 회차 개설 요청") {
+        val limitedDropRepository = mockk<LimitedDropRepository>()
+        val dropReservationStore = mockk<DropReservationStore>()
+        val goodsDomainService = mockk<GoodsDomainService>()
+        val service = buildService(limitedDropRepository, dropReservationStore, goodsDomainService)
+        val openAt = ZonedDateTime.now().plusHours(3)
+        val closeAt = ZonedDateTime.now().plusHours(1)
+        val product = Product.create(
+            name = "한정판 스니커즈",
+            category = ProductCategory.FOOTWEAR,
+            price = BigDecimal("50000"),
+            description = "설명",
+            imageUrl = "https://image",
+            ownerUserId = OWNER_USER_ID,
+        )
+        val productWithStock = ProductWithStock(product = product, stockQuantity = 100)
+
+        every { goodsDomainService.getProductWithStock(PRODUCT_ID) } returns productWithStock
+
+        When("createDrop을 호출하면") {
+            Then("IllegalArgumentException으로 생성 검증에서 거부되고 저장을 수행하지 않는다") {
+                shouldThrow<IllegalArgumentException> {
+                    service.createDrop(
+                        productId = PRODUCT_ID,
+                        openAt = openAt,
+                        closeAt = closeAt,
+                        limitedQuantity = 30,
+                        perUserLimit = PER_USER_LIMIT,
+                        ownerUserId = OWNER_USER_ID,
+                    )
+                }
+                verify(exactly = 0) { limitedDropRepository.save(any()) }
             }
         }
     }
