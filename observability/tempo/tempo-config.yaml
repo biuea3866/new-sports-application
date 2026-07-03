@@ -1,0 +1,38 @@
+# Tempo 로컬 config (INFRA-03 소유)
+# 근거: TDD "시스템 역할 경계"(trace→Tempo), ADR-003.
+# 마운트: docker-compose.observability.yml → /etc/tempo.yaml, 볼륨 tempo-data:/var/tempo
+# 이미지: grafana/tempo:2.5.0
+#
+# 구성: OTLP 수신(4317 gRPC / 4318 HTTP) + local(filesystem) 스토리지 — 로컬 최소 구성.
+#   Collector otlp/tempo 가 tempo:4317 로 trace 를 보낸다.
+#   service.name resource attribute 는 Tempo 에서 resource.service.name 라벨로 조회된다(TDD 계약).
+#
+# 롤백: 이 파일 revert 후 tempo 컨테이너 재시작.
+
+server:
+  http_listen_port: 3200   # query API (Grafana Tempo 데이터소스)
+  grpc_listen_port: 9095
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317   # Collector → Tempo trace 수신
+        http:
+          endpoint: 0.0.0.0:4318
+
+ingester:
+  max_block_duration: 5m
+
+compactor:
+  compaction:
+    block_retention: 24h   # 로컬 보존 24시간
+
+storage:
+  trace:
+    backend: local
+    wal:
+      path: /var/tempo/wal
+    local:
+      path: /var/tempo/blocks

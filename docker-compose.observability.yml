@@ -1,0 +1,111 @@
+# 관측 백엔드 스택 (LGTM + OTel Collector + Grafana) — 과제 ⑤ 소유
+#
+# 근거: TDD "시스템 역할 경계", ADR-002(메트릭=Prometheus 직접 scrape / trace·log=Collector),
+#       ADR-003(OTel Collector 단일 게이트웨이), ADR-004(compose 파일 분리).
+#
+# 소유 범위: 이 파일은 관측 "백엔드"(Collector·Prometheus·Tempo·Loki·Grafana)만 정의한다.
+#   - exporter 3종(mysqld/redis/kafka)·Kafka UI → docker-compose.observability-agents.yml (INFRA-01)
+#   - 데이터스토어(mysql/mongodb/redis/kafka) → base docker-compose.yml (⑧ 단일 소유, 재정의 금지)
+#   - config 파일 내용 → INFRA-03, Grafana provisioning/dashboards → INFRA-04 (경로만 참조)
+#
+# 네트워크: base compose가 별도 networks 블록 없이 default 네트워크를 쓰므로 이 파일도
+#   커스텀 네트워크를 정의하지 않는다. 모든 서비스가 default 네트워크에 놓여 서비스명으로 통신한다
+#   (backend→otel-collector, collector→tempo/loki/prometheus, grafana→prometheus/tempo/loki).
+#
+# 기동:   docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d
+# 롤백:   docker compose -f docker-compose.observability.yml down   (앱·데이터스토어 무영향)
+
+services:
+  # ---- 앱 OTLP 배선 (environment만 병합 — base backend 서비스 재정의 아님) ----
+  # base docker-compose.yml의 backend에 trace/log 발신 대상만 deep-merge로 얹는다.
+  # image·depends_on·데이터스토어 env 등은 base가 소유하며 여기서 건드리지 않는다.
+  backend:
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4317
+
+  # ---- OTel Collector — trace/log 게이트웨이 (ADR-003) ----
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.104.0
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      # config 내용은 INFRA-03 소유 — 경로만 계약으로 고정
+      - ./observability/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC 수신
+      - "4318:4318"   # OTLP HTTP 수신
+      - "8888:8888"   # Collector self-metric (Prometheus가 scrape)
+    restart: unless-stopped
+
+  # ---- Prometheus — 메트릭 저장·scrape 오케스트레이션 (ADR-002) ----
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--web.enable-remote-write-receiver"      # Collector remote_write 보조 경로 수신
+      - "--enable-feature=exemplar-storage"        # exemplar 저장 (FR-11, metric→trace 점프)
+    volumes:
+      # scrape 잡 정의는 INFRA-03 소유 — 경로만 계약으로 고정
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  # ---- Tempo — trace 저장·조회 ----
+  tempo:
+    image: grafana/tempo:2.5.0
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      # config 내용은 INFRA-03 소유 — 경로만 계약으로 고정
+      - ./observability/tempo/tempo-config.yaml:/etc/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    ports:
+      - "3200:3200"   # Tempo query API (Grafana 데이터소스)
+    restart: unless-stopped
+
+  # ---- Loki — 로그 저장·조회 ----
+  loki:
+    image: grafana/loki:3.1.0
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    volumes:
+      # config 내용은 INFRA-03 소유 — 경로만 계약으로 고정
+      - ./observability/loki/loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+    ports:
+      - "3100:3100"
+    restart: unless-stopped
+
+  # ---- Grafana — 시각화 (데이터소스·대시보드 프로비저닝) ----
+  grafana:
+    image: grafana/grafana:11.1.0
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      # provisioning(데이터소스·대시보드 provider)·dashboards json은 INFRA-04 소유 — 경로만 참조
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  prometheus-data:
+  tempo-data:
+  loki-data:
+  grafana-data:
