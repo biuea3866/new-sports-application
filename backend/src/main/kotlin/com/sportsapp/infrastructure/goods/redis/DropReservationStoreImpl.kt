@@ -4,11 +4,13 @@ import com.sportsapp.domain.goods.gateway.DropReservationStore
 import com.sportsapp.domain.goods.gateway.RejectCounts
 import com.sportsapp.domain.goods.gateway.RejectKind
 import com.sportsapp.domain.goods.gateway.ReservationResult
+import io.micrometer.core.instrument.MeterRegistry
 import java.time.Duration
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.ClassPathResource
+import org.springframework.dao.DataAccessException
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.data.redis.core.script.DefaultRedisScript
 import org.springframework.stereotype.Component
@@ -31,6 +33,7 @@ import org.springframework.stereotype.Component
 @Component
 class DropReservationStoreImpl(
     private val redisTemplate: StringRedisTemplate,
+    private val meterRegistry: MeterRegistry,
     @Value("\${app.limited-drop.reservation.semaphore-permits:200}")
     private val semaphorePermits: Int,
     @Value("\${app.limited-drop.reservation.acquire-timeout-millis:200}")
@@ -62,12 +65,13 @@ class DropReservationStoreImpl(
         perUserLimit: Int,
         idempotencyKey: String,
     ): ReservationResult {
-        val code = executeReserveScript(dropId, userId, quantity, perUserLimit, idempotencyKey)
+        val code = executeReserveScriptTracked(dropId, userId, quantity, perUserLimit, idempotencyKey)
         return when (code) {
             RESERVE_ADMITTED -> admitWithSemaphore(dropId, userId, quantity, idempotencyKey)
-            RESERVE_SOLD_OUT -> ReservationResult.SoldOut
+            RESERVE_SOLD_OUT -> ReservationResult.SoldOut.also { incrementRejectMetric(REJECT_KIND_SOLD_OUT) }
             RESERVE_ALREADY_RESERVED -> ReservationResult.AlreadyReserved
-            RESERVE_PER_USER_LIMIT_EXCEEDED -> ReservationResult.PerUserLimitExceeded(perUserLimit)
+            RESERVE_PER_USER_LIMIT_EXCEEDED ->
+                ReservationResult.PerUserLimitExceeded(perUserLimit).also { incrementRejectMetric(REJECT_KIND_PER_USER) }
             else -> error("reserve.lua 예상 밖 반환 코드: $code (dropId=$dropId)")
         }
     }
@@ -118,9 +122,28 @@ class DropReservationStoreImpl(
         val acquired = admissionSemaphore.tryAcquire(acquireTimeoutMillis, TimeUnit.MILLISECONDS)
         if (!acquired) {
             executeCancelScript(dropId, userId, quantity, idempotencyKey)
+            incrementRejectMetric(REJECT_KIND_THROTTLED)
             return ReservationResult.Throttled
         }
         return ReservationResult.Admitted
+    }
+
+    /**
+     * [executeReserveScript]를 Redis 인프라 장애 관측 지표로 감싼다. `DataAccessException`은
+     * 여기서 삼키지 않고 그대로 재전파한다 — 호출부([LimitedDropDomainService])의 fail-open 판단은 불변,
+     * 이 지점에서는 [redis-degraded][REDIS_DEGRADED_COUNTER] 카운터만 증가시킨다.
+     */
+    private fun executeReserveScriptTracked(
+        dropId: Long,
+        userId: Long,
+        quantity: Int,
+        perUserLimit: Int,
+        idempotencyKey: String,
+    ): Long = try {
+        executeReserveScript(dropId, userId, quantity, perUserLimit, idempotencyKey)
+    } catch (exception: DataAccessException) {
+        meterRegistry.counter(REDIS_DEGRADED_COUNTER).increment()
+        throw exception
     }
 
     private fun executeReserveScript(
@@ -140,6 +163,10 @@ class DropReservationStoreImpl(
                 markerTtlSeconds.toString(),
             ),
         ) { "reserve.lua 실행 결과가 null (dropId=$dropId)" }
+    }
+
+    private fun incrementRejectMetric(kind: String) {
+        meterRegistry.counter(REJECT_COUNTER, REJECT_TAG_KIND, kind).increment()
     }
 
     private fun executeCancelScript(dropId: Long, userId: Long, quantity: Int, idempotencyKey: String) {
@@ -169,5 +196,13 @@ class DropReservationStoreImpl(
         private const val RESERVE_SOLD_OUT = 0L
         private const val RESERVE_ALREADY_RESERVED = 2L
         private const val RESERVE_PER_USER_LIMIT_EXCEEDED = 3L
+
+        /** ⑦ 대시보드 지표 (Observability, BE-11). */
+        private const val REJECT_COUNTER = "limited_drop.reject"
+        private const val REJECT_TAG_KIND = "kind"
+        private const val REJECT_KIND_SOLD_OUT = "sold_out"
+        private const val REJECT_KIND_THROTTLED = "throttled"
+        private const val REJECT_KIND_PER_USER = "per_user"
+        private const val REDIS_DEGRADED_COUNTER = "limited_drop.redis_degraded"
     }
 }

@@ -23,11 +23,18 @@ class LimitedDropRepositoryImpl(
             statuses = ACTIVE_STATUSES,
         )
 
+    override fun findAllActive(): List<LimitedDrop> =
+        limitedDropJpaRepository.findAllByStatusInAndDeletedAtIsNull(RECONCILABLE_STATUSES)
+
     companion object {
         private val ACTIVE_STATUSES = listOf(
             LimitedDropStatus.SCHEDULED,
             LimitedDropStatus.OPEN,
             LimitedDropStatus.SOLD_OUT,
+        )
+        private val RECONCILABLE_STATUSES = listOf(
+            LimitedDropStatus.SCHEDULED,
+            LimitedDropStatus.OPEN,
         )
     }
 }

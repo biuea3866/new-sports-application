@@ -4,6 +4,8 @@ import com.sportsapp.BaseJpaIntegrationTest
 import com.sportsapp.domain.goods.entity.LimitedDrop
 import com.sportsapp.domain.goods.entity.LimitedDropStatus
 import com.sportsapp.domain.goods.repository.LimitedDropRepository
+import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -88,6 +90,47 @@ class LimitedDropRepositoryImplTest(
 
                 Then("null을 반환한다") {
                     result.shouldBeNull()
+                }
+            }
+        }
+
+        Given("SCHEDULED·OPEN·CLOSED 회차가 섞여 있는 경우") {
+            val scheduledProductId = System.nanoTime()
+            val openProductId = scheduledProductId + 1
+            val closedProductId = scheduledProductId + 2
+            val scheduledDrop = LimitedDrop.create(
+                productId = scheduledProductId,
+                openAt = ZonedDateTime.now(ZoneOffset.UTC).plusHours(1).truncatedTo(ChronoUnit.MICROS),
+                closeAt = ZonedDateTime.now(ZoneOffset.UTC).plusDays(1).truncatedTo(ChronoUnit.MICROS),
+                limitedQuantity = 10,
+                perUserLimit = 1,
+            )
+            val openDrop = LimitedDrop.create(
+                productId = openProductId,
+                openAt = ZonedDateTime.now(ZoneOffset.UTC).minusHours(1).truncatedTo(ChronoUnit.MICROS),
+                closeAt = ZonedDateTime.now(ZoneOffset.UTC).plusHours(1).truncatedTo(ChronoUnit.MICROS),
+                limitedQuantity = 20,
+                perUserLimit = 1,
+            ).also { it.open() }
+            val closedDrop = LimitedDrop.create(
+                productId = closedProductId,
+                openAt = ZonedDateTime.now(ZoneOffset.UTC).minusDays(2).truncatedTo(ChronoUnit.MICROS),
+                closeAt = ZonedDateTime.now(ZoneOffset.UTC).minusDays(1).truncatedTo(ChronoUnit.MICROS),
+                limitedQuantity = 30,
+                perUserLimit = 1,
+            ).also { it.open(); it.close() }
+            limitedDropJpaRepository.saveAndFlush(scheduledDrop)
+            limitedDropJpaRepository.saveAndFlush(openDrop)
+            limitedDropJpaRepository.saveAndFlush(closedDrop)
+
+            When("findAllActive를 호출하면") {
+                val result = limitedDropRepository.findAllActive()
+                val resultProductIds = result.map { it.productId }
+
+                Then("SCHEDULED·OPEN 회차만 포함하고 CLOSED 회차는 제외한다") {
+                    resultProductIds shouldContain scheduledProductId
+                    resultProductIds shouldContain openProductId
+                    resultProductIds shouldNotContain closedProductId
                 }
             }
         }

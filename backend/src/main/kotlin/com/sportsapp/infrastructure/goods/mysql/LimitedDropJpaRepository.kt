@@ -14,4 +14,7 @@ interface LimitedDropJpaRepository : JpaRepository<LimitedDrop, Long> {
         productId: Long,
         statuses: List<LimitedDropStatus>,
     ): LimitedDrop?
+
+    /** 대사(reconciliation) 대상 활성 회차(SCHEDULED|OPEN, deleted 제외) 전체를 조회한다. */
+    fun findAllByStatusInAndDeletedAtIsNull(statuses: List<LimitedDropStatus>): List<LimitedDrop>
 }

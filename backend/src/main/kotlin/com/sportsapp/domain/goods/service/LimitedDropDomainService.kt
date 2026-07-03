@@ -27,9 +27,8 @@ import org.springframework.stereotype.Service
  * [goodsDomainService.createPendingOrder]는 이 도메인의 기존 UseCase 경계(ADR-003)로,
  * 이 서비스는 그 앞단에 Redis 입장 게이트를 심층 방어로 추가할 뿐 무변경 재사용한다(FR-3).
  *
- * [domainEventPublisher]는 이 티켓 범위의 구매 흐름에서는 사용하지 않는다 — 리컨실리에이션
- * 입력([LimitedDrop.recordOversold] 적재분 발행)은 후속 티켓 범위이며, 이 서비스에는
- * 클래스 의존 계약([DomainEventPublisher] 주입)만 선반영한다.
+ * [domainEventPublisher]는 구매 흐름에서는 사용하지 않고, [reconcile]/[reconcileAllActive]의
+ * 오버셀 감지([LimitedDrop.recordOversold] 적재분) 발행에만 사용한다 (BE-11, Observability).
  */
 @Service
 class LimitedDropDomainService(
@@ -72,6 +71,35 @@ class LimitedDropDomainService(
             soldOutRejectCount = rejectCounts.soldOutCount,
             tooEarlyRejectCount = rejectCounts.tooEarlyCount,
         )
+    }
+
+    /**
+     * 활성 회차(SCHEDULED|OPEN) 전체에 대해 대사(reconciliation)를 수행한다 (Observability, ADR-001 실패 경로).
+     * [DropReconciliationWorker]가 스케줄 주기마다 호출한다.
+     */
+    fun reconcileAllActive() {
+        limitedDropRepository.findAllActive().forEach { reconcileDrift(it) }
+    }
+
+    /** 단일 회차 대사. 테스트·수동 트리거 대상 진입점. */
+    fun reconcile(dropId: Long) {
+        reconcileDrift(findById(dropId))
+    }
+
+    /**
+     * Redis remaining ↔ DB stock 드리프트를 판정해 오버셀 감지 시 이벤트를 적재·발행한다.
+     * 오버셀 판정: 계산된 판매량(limitedQuantity - remaining)이 limitedQuantity를 초과하거나,
+     * 상품 재고가 음수로 정합이 깨진 경우.
+     */
+    private fun reconcileDrift(drop: LimitedDrop) {
+        val remaining = dropReservationStore.remaining(drop.id) ?: drop.limitedQuantity
+        val stockQuantity = goodsDomainService.getProductWithStock(drop.productId).stockQuantity
+        val computedSold = drop.limitedQuantity - remaining
+        val isOversold = computedSold > drop.limitedQuantity || stockQuantity < 0
+        if (!isOversold) return
+        val detectedQuantity = maxOf(computedSold, drop.limitedQuantity - stockQuantity)
+        drop.recordOversold(detectedQuantity)
+        domainEventPublisher.publishAll(drop.pullDomainEvents())
     }
 
     private fun findById(dropId: Long): LimitedDrop =

@@ -4,11 +4,13 @@ import com.sportsapp.SharedTestContainers
 import com.sportsapp.domain.goods.gateway.RejectCounts
 import com.sportsapp.domain.goods.gateway.RejectKind
 import com.sportsapp.domain.goods.gateway.ReservationResult
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.longs.shouldBeGreaterThan
 import io.kotest.matchers.longs.shouldBeLessThanOrEqual
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import java.time.Duration
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -18,6 +20,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.ConfigurableApplicationContext
+import org.springframework.dao.DataAccessException
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.TestPropertySource
@@ -39,13 +42,17 @@ class DropReservationStoreImplTest @Autowired constructor(
     private val redisTemplate: StringRedisTemplate,
 ) : BehaviorSpec({
 
-    fun buildStore(semaphorePermits: Int = 1000, acquireTimeoutMillis: Long = 200) =
-        DropReservationStoreImpl(
-            redisTemplate = redisTemplate,
-            semaphorePermits = semaphorePermits,
-            acquireTimeoutMillis = acquireTimeoutMillis,
-            markerTtlSeconds = 600,
-        )
+    fun buildStore(
+        semaphorePermits: Int = 1000,
+        acquireTimeoutMillis: Long = 200,
+        meterRegistry: SimpleMeterRegistry = SimpleMeterRegistry(),
+    ) = DropReservationStoreImpl(
+        redisTemplate = redisTemplate,
+        meterRegistry = meterRegistry,
+        semaphorePermits = semaphorePermits,
+        acquireTimeoutMillis = acquireTimeoutMillis,
+        markerTtlSeconds = 600,
+    )
 
     fun cleanupDrop(dropId: Long) {
         redisTemplate.delete(
@@ -242,6 +249,79 @@ class DropReservationStoreImplTest @Autowired constructor(
                 val rejectTtl = redisTemplate.getExpire("goods:limited-drop:$dropId:reject:sold-out", TimeUnit.SECONDS)
                 rejectTtl shouldBeGreaterThan 0L
                 rejectTtl shouldBeLessThanOrEqual 600L
+            }
+        }
+    }
+
+    Given("재고가 이미 소진된 회차") {
+        val dropId = 1011L
+        cleanupDrop(dropId)
+        val meterRegistry = SimpleMeterRegistry()
+        val store = buildStore(meterRegistry = meterRegistry)
+        store.seedIfAbsent(dropId, 0, Duration.ofMinutes(10))
+
+        When("reserve를 호출해 SoldOut이 반환되면") {
+            val result = store.reserve(dropId, 1L, 1, 1, "idem-sold-out-metric")
+
+            Then("sold_out 태그의 거부 지표가 증가한다") {
+                result shouldBe ReservationResult.SoldOut
+                meterRegistry.counter("limited_drop.reject", "kind", "sold_out").count() shouldBe 1.0
+            }
+        }
+    }
+
+    Given("perUserLimit을 초과하는 회차") {
+        val dropId = 1012L
+        val userId = 1L
+        cleanupDrop(dropId)
+        val meterRegistry = SimpleMeterRegistry()
+        val store = buildStore(meterRegistry = meterRegistry)
+        store.seedIfAbsent(dropId, 10, Duration.ofMinutes(10))
+        store.reserve(dropId, userId, 1, 1, "idem-first") shouldBe ReservationResult.Admitted
+
+        When("한도를 초과해 reserve를 호출하면") {
+            val result = store.reserve(dropId, userId, 1, 1, "idem-second")
+
+            Then("per_user 태그의 거부 지표가 증가한다") {
+                result shouldBe ReservationResult.PerUserLimitExceeded(1)
+                meterRegistry.counter("limited_drop.reject", "kind", "per_user").count() shouldBe 1.0
+            }
+        }
+    }
+
+    Given("완충 세마포어 permit이 모두 소진된 회차") {
+        val dropId = 1013L
+        cleanupDrop(dropId)
+        val meterRegistry = SimpleMeterRegistry()
+        val store = buildStore(semaphorePermits = 1, acquireTimeoutMillis = 100, meterRegistry = meterRegistry)
+        store.seedIfAbsent(dropId, 10, Duration.ofMinutes(10))
+        store.reserve(dropId, 1L, 1, 10, "idem-holder-metric") shouldBe ReservationResult.Admitted
+
+        When("permit을 반납하지 않은 채 추가로 reserve를 호출하면") {
+            val result = store.reserve(dropId, 2L, 1, 10, "idem-throttled-metric")
+
+            Then("throttled 태그의 거부 지표가 증가한다") {
+                result shouldBe ReservationResult.Throttled
+                meterRegistry.counter("limited_drop.reject", "kind", "throttled").count() shouldBe 1.0
+            }
+        }
+    }
+
+    Given("buyer 키가 손상되어 Redis가 WRONGTYPE 오류를 반환하는 상황") {
+        val dropId = 1014L
+        val userId = 1L
+        cleanupDrop(dropId)
+        val meterRegistry = SimpleMeterRegistry()
+        val store = buildStore(meterRegistry = meterRegistry)
+        store.seedIfAbsent(dropId, 10, Duration.ofMinutes(10))
+        redisTemplate.opsForList().leftPush("goods:limited-drop:$dropId:buyer:$userId", "corrupted")
+
+        When("reserve를 호출하면") {
+            Then("DataAccessException을 전파하고 redis-degraded 카운터가 증가한다") {
+                shouldThrow<DataAccessException> {
+                    store.reserve(dropId, userId, 1, 10, "idem-redis-degraded")
+                }
+                meterRegistry.counter("limited_drop.redis_degraded").count() shouldBe 1.0
             }
         }
     }

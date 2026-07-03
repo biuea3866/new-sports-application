@@ -9,6 +9,7 @@ import com.sportsapp.domain.goods.entity.GoodsOrder
 import com.sportsapp.domain.goods.entity.LimitedDrop
 import com.sportsapp.domain.goods.entity.LimitedDropStatus
 import com.sportsapp.domain.goods.entity.Product
+import com.sportsapp.domain.goods.event.LimitedDropOversoldEvent
 import com.sportsapp.domain.goods.exception.LimitedDropNotFoundException
 import com.sportsapp.domain.goods.exception.LimitedDropPerUserLimitExceededException
 import com.sportsapp.domain.goods.exception.LimitedDropQuantityExceedsStockException
@@ -24,6 +25,7 @@ import com.sportsapp.domain.goods.vo.OrderItemInput
 import com.sportsapp.domain.goods.vo.ProductCategory
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
@@ -580,6 +582,111 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
                     soldOutRejectCount = 0,
                     tooEarlyRejectCount = 0,
                 )
+            }
+        }
+    }
+
+    Given("Redis remaining 드리프트로 계산된 판매량이 limitedQuantity를 초과하는 회차") {
+        val limitedDropRepository = mockk<LimitedDropRepository>()
+        val dropReservationStore = mockk<DropReservationStore>()
+        val goodsDomainService = mockk<GoodsDomainService>()
+        val domainEventPublisher = mockk<DomainEventPublisher>()
+        val service = buildService(limitedDropRepository, dropReservationStore, goodsDomainService, domainEventPublisher)
+        val drop = openDrop()
+        val product = Product.create(
+            name = "한정판 스니커즈",
+            category = ProductCategory.FOOTWEAR,
+            price = BigDecimal("50000"),
+            description = "설명",
+            imageUrl = "https://image",
+            ownerUserId = OWNER_USER_ID,
+        )
+        val eventsSlot = slot<List<com.sportsapp.domain.common.DomainEvent>>()
+
+        every { limitedDropRepository.findById(DROP_ID) } returns drop
+        every { dropReservationStore.remaining(DROP_ID) } returns -5
+        every { goodsDomainService.getProductWithStock(PRODUCT_ID) } returns ProductWithStock(product = product, stockQuantity = 50)
+        every { domainEventPublisher.publishAll(capture(eventsSlot)) } returns Unit
+
+        When("reconcile를 호출하면") {
+            service.reconcile(DROP_ID)
+
+            Then("LimitedDropOversoldEvent를 발행한다") {
+                eventsSlot.captured shouldHaveSize 1
+                val event = eventsSlot.captured[0] as LimitedDropOversoldEvent
+                event.dropId shouldBe DROP_ID
+                event.productId shouldBe PRODUCT_ID
+                event.detectedQuantity shouldBe 105
+            }
+        }
+    }
+
+    Given("Redis remaining과 DB 재고가 모두 정상인 회차") {
+        val limitedDropRepository = mockk<LimitedDropRepository>()
+        val dropReservationStore = mockk<DropReservationStore>()
+        val goodsDomainService = mockk<GoodsDomainService>()
+        val domainEventPublisher = mockk<DomainEventPublisher>()
+        val service = buildService(limitedDropRepository, dropReservationStore, goodsDomainService, domainEventPublisher)
+        val drop = openDrop()
+        val product = Product.create(
+            name = "한정판 스니커즈",
+            category = ProductCategory.FOOTWEAR,
+            price = BigDecimal("50000"),
+            description = "설명",
+            imageUrl = "https://image",
+            ownerUserId = OWNER_USER_ID,
+        )
+
+        every { limitedDropRepository.findById(DROP_ID) } returns drop
+        every { dropReservationStore.remaining(DROP_ID) } returns 30
+        every { goodsDomainService.getProductWithStock(PRODUCT_ID) } returns ProductWithStock(product = product, stockQuantity = 50)
+
+        When("reconcile를 호출하면") {
+            service.reconcile(DROP_ID)
+
+            Then("이벤트를 발행하지 않는다") {
+                verify(exactly = 0) { domainEventPublisher.publishAll(any()) }
+                verify(exactly = 0) { domainEventPublisher.publish(any()) }
+            }
+        }
+    }
+
+    Given("활성 회차 2건이 존재하는 상황") {
+        val limitedDropRepository = mockk<LimitedDropRepository>()
+        val dropReservationStore = mockk<DropReservationStore>()
+        val goodsDomainService = mockk<GoodsDomainService>()
+        val domainEventPublisher = mockk<DomainEventPublisher>()
+        val service = buildService(limitedDropRepository, dropReservationStore, goodsDomainService, domainEventPublisher)
+        val firstDrop = openDrop()
+        val secondDrop = LimitedDrop.reconstitute(
+            productId = PRODUCT_ID + 1,
+            openAt = ZonedDateTime.now().minusMinutes(1),
+            closeAt = ZonedDateTime.now().plusDays(1),
+            limitedQuantity = 50,
+            perUserLimit = PER_USER_LIMIT,
+            status = LimitedDropStatus.OPEN,
+        )
+        val product = Product.create(
+            name = "한정판 스니커즈",
+            category = ProductCategory.FOOTWEAR,
+            price = BigDecimal("50000"),
+            description = "설명",
+            imageUrl = "https://image",
+            ownerUserId = OWNER_USER_ID,
+        )
+
+        every { limitedDropRepository.findAllActive() } returns listOf(firstDrop, secondDrop)
+        every { dropReservationStore.remaining(any()) } returns 30
+        every { goodsDomainService.getProductWithStock(PRODUCT_ID) } returns ProductWithStock(product = product, stockQuantity = 50)
+        every { goodsDomainService.getProductWithStock(PRODUCT_ID + 1) } returns ProductWithStock(product = product, stockQuantity = 50)
+
+        When("reconcileAllActive를 호출하면") {
+            service.reconcileAllActive()
+
+            Then("활성 회차 각각에 대해 대사를 수행한다") {
+                verify(exactly = 2) { dropReservationStore.remaining(any()) }
+                verify(exactly = 1) { goodsDomainService.getProductWithStock(PRODUCT_ID) }
+                verify(exactly = 1) { goodsDomainService.getProductWithStock(PRODUCT_ID + 1) }
             }
         }
     }
