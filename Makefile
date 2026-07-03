@@ -35,6 +35,7 @@ PROD_STACK      := $(BASE) $(PROD_OVERRIDE) $(OBS) $(AGENTS)
 
 .PHONY: help \
         observability-up observability-down observability-logs observability-ps observability-config \
+        observability-config-dev observability-config-prod \
         observability-dev observability-down-dev \
         observability-prod observability-down-prod
 
@@ -59,6 +60,14 @@ observability-ps: ## 전체 스택 컨테이너 상태 조회
 observability-config: ## 병합 config 유효성 검증(구조 오류 시 non-zero exit)
 	docker compose $(LOCAL_STACK) config -q
 	@echo "OK: local merged compose config is valid"
+
+observability-config-dev: ## dev 병합 config 유효성 검증
+	docker compose $(DEV_STACK) config -q
+	@echo "OK: dev merged compose config is valid"
+
+observability-config-prod: ## prod 병합 config 유효성 검증
+	docker compose $(PROD_STACK) config -q
+	@echo "OK: prod merged compose config is valid"
 
 # =====================================================================
 # dev — sports-dev 네임스페이스(호스트 포트 노출·APP_ENV=dev)
