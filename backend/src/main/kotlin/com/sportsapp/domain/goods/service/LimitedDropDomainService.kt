@@ -35,10 +35,10 @@ class LimitedDropDomainService(
     private val goodsDomainService: GoodsDomainService,
     private val domainEventPublisher: DomainEventPublisher,
 ) {
-    fun purchase(command: PurchaseLimitedDropCommand): GoodsOrder {
+    fun purchase(command: PurchaseLimitedDropCommand): Pair<LimitedDrop, GoodsOrder> {
         val drop = findOpenDrop(command.productId)
         drop.validatePurchasable()
-        return admit(drop, command)
+        return drop to admit(drop, command)
     }
 
     fun openDrop(dropId: Long): LimitedDrop {

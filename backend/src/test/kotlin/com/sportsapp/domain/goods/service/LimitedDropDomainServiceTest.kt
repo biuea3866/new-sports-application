@@ -83,7 +83,7 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
             val result = service.purchase(command())
 
             Then("createPendingOrder를 호출하고 confirmSuccess로 확정한다") {
-                result shouldBe order
+                result shouldBe (drop to order)
                 verify(exactly = 1) {
                     goodsDomainService.createPendingOrder(USER_ID, listOf(OrderItemInput(PRODUCT_ID, QUANTITY)), IDEMPOTENCY_KEY)
                 }
@@ -202,7 +202,7 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
             val result = service.purchase(command())
 
             Then("재-DECR 없이 기존 주문을 그대로 반환하고 permit을 반납하지 않는다") {
-                result shouldBe existingOrder
+                result shouldBe (drop to existingOrder)
                 verify(exactly = 1) { dropReservationStore.reserve(DROP_ID, USER_ID, QUANTITY, PER_USER_LIMIT, IDEMPOTENCY_KEY) }
                 verify(exactly = 0) { dropReservationStore.confirmSuccess(any(), any(), any()) }
                 verify(exactly = 0) { dropReservationStore.cancel(any(), any(), any(), any()) }
@@ -254,7 +254,7 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
             val result = service.purchase(command())
 
             Then("fail-open으로 게이트를 우회하고 createPendingOrder를 바로 진행한다") {
-                result shouldBe order
+                result shouldBe (drop to order)
                 verify(exactly = 1) {
                     goodsDomainService.createPendingOrder(USER_ID, listOf(OrderItemInput(PRODUCT_ID, QUANTITY)), IDEMPOTENCY_KEY)
                 }
@@ -284,7 +284,7 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
             val result = service.purchase(command())
 
             Then("fail-open으로 게이트를 우회하고 createPendingOrder를 바로 진행한다") {
-                result shouldBe order
+                result shouldBe (drop to order)
             }
         }
     }
