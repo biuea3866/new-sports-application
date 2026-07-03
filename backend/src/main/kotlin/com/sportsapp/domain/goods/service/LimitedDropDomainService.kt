@@ -55,10 +55,24 @@ class LimitedDropDomainService(
         limitedDropRepository.findOpenByProductId(productId)
             ?: throw LimitedDropNotFoundException(productId)
 
+    /**
+     * [ReservationResult.Admitted]만 완충 permit을 보유한다 — 성공/실패에 따라 [persistOrRelease]로
+     * confirmSuccess/cancel을 짝지어 반납한다.
+     *
+     * [ReservationResult.AlreadyReserved]는 멱등 재시도로, `reserve.lua`가 permit 획득 이전(순수 Redis
+     * 판정 단계)에 즉시 반환한 결과다 — permit을 보유하지 않으므로 fail-open과 동일하게 [persistOrder]만
+     * 호출한다 (confirmSuccess·cancel 호출 시 permit 풀이 멱등 재시도마다 영구 팽창한다).
+     */
     private fun admit(drop: LimitedDrop, command: PurchaseLimitedDropCommand): GoodsOrder {
         val result = tryReserve(drop, command) ?: return persistOrder(command)
-        validateAdmission(drop.id, result)
-        return persistOrRelease(drop, command)
+        return when (result) {
+            is ReservationResult.Admitted -> persistOrRelease(drop, command)
+            is ReservationResult.AlreadyReserved -> persistOrder(command)
+            is ReservationResult.SoldOut -> throw LimitedDropSoldOutException(drop.id)
+            is ReservationResult.Throttled -> throw LimitedDropThrottledException(drop.id)
+            is ReservationResult.PerUserLimitExceeded ->
+                throw LimitedDropPerUserLimitExceededException(drop.id, result.limit)
+        }
     }
 
     private fun tryReserve(drop: LimitedDrop, command: PurchaseLimitedDropCommand): ReservationResult? =
@@ -75,17 +89,6 @@ class LimitedDropDomainService(
         } catch (exception: RedisLockException) {
             null
         }
-
-    private fun validateAdmission(dropId: Long, result: ReservationResult) {
-        when (result) {
-            is ReservationResult.Admitted -> Unit
-            is ReservationResult.AlreadyReserved -> Unit
-            is ReservationResult.SoldOut -> throw LimitedDropSoldOutException(dropId)
-            is ReservationResult.Throttled -> throw LimitedDropThrottledException(dropId)
-            is ReservationResult.PerUserLimitExceeded ->
-                throw LimitedDropPerUserLimitExceededException(dropId, result.limit)
-        }
-    }
 
     private fun persistOrder(command: PurchaseLimitedDropCommand): GoodsOrder =
         goodsDomainService.createPendingOrder(command.userId, itemsOf(command), command.idempotencyKey)

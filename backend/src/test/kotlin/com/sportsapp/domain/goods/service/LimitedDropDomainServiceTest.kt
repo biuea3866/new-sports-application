@@ -197,14 +197,15 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         every {
             goodsDomainService.createPendingOrder(USER_ID, listOf(OrderItemInput(PRODUCT_ID, QUANTITY)), IDEMPOTENCY_KEY)
         } returns existingOrder
-        every { dropReservationStore.confirmSuccess(DROP_ID, USER_ID, IDEMPOTENCY_KEY) } returns Unit
 
         When("purchase를 재호출하면") {
             val result = service.purchase(command())
 
-            Then("재-DECR 없이 기존 주문을 그대로 반환한다") {
+            Then("재-DECR 없이 기존 주문을 그대로 반환하고 permit을 반납하지 않는다") {
                 result shouldBe existingOrder
                 verify(exactly = 1) { dropReservationStore.reserve(DROP_ID, USER_ID, QUANTITY, PER_USER_LIMIT, IDEMPOTENCY_KEY) }
+                verify(exactly = 0) { dropReservationStore.confirmSuccess(any(), any(), any()) }
+                verify(exactly = 0) { dropReservationStore.cancel(any(), any(), any(), any()) }
             }
         }
     }

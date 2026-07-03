@@ -18,9 +18,9 @@ interface DropReservationStore {
      * 입장 게이트(FR-8) + 1인 한도(FR-6) + 멱등 마커 + 완충 permit(FR-7) 을 원자적으로 판정한다.
      *
      * 판정 순서: 멱등 마커 확인([ReservationResult.AlreadyReserved]) →
+     * 1인 한도 검사(FR-6, [ReservationResult.PerUserLimitExceeded]) →
      * 재고 소진 거부(FR-8, [ReservationResult.SoldOut]) →
      * 완충 permit 획득 시도(FR-7, [ReservationResult.Throttled]) →
-     * 1인 한도 검사(FR-6, [ReservationResult.PerUserLimitExceeded]) →
      * [ReservationResult.Admitted].
      *
      * [ReservationResult.Admitted] 반환 시 호출자는 완충 permit 을 보유한 상태이며,

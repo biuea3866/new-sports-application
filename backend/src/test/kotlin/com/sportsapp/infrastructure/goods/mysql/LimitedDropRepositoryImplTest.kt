@@ -34,7 +34,7 @@ class LimitedDropRepositoryImplTest(
                 val saved = limitedDropRepository.save(limitedDrop)
                 val found = limitedDropRepository.findById(saved.id)
 
-                Then("[R-01] 동일한 LimitedDrop을 복원한다") {
+                Then("동일한 LimitedDrop을 복원한다") {
                     found.shouldNotBeNull()
                     found.id shouldBe saved.id
                     found.productId shouldBe productId
@@ -60,7 +60,7 @@ class LimitedDropRepositoryImplTest(
             When("findOpenByProductId를 호출하면") {
                 val result = limitedDropRepository.findOpenByProductId(productId)
 
-                Then("[R-02] status=OPEN 회차를 반환한다") {
+                Then("status=OPEN 회차를 반환한다") {
                     result.shouldNotBeNull()
                     result.productId shouldBe productId
                     result.currentStatus shouldBe LimitedDropStatus.OPEN
@@ -86,7 +86,7 @@ class LimitedDropRepositoryImplTest(
             When("findOpenByProductId를 호출하면") {
                 val result = limitedDropRepository.findOpenByProductId(productId)
 
-                Then("[R-03] null을 반환한다") {
+                Then("null을 반환한다") {
                     result.shouldBeNull()
                 }
             }
@@ -108,7 +108,7 @@ class LimitedDropRepositoryImplTest(
                 val saved = limitedDropRepository.save(drop)
                 val found = requireNotNull(limitedDropRepository.findById(saved.id))
 
-                Then("[R-04] status·openAt·closeAt이 손실 없이 왕복된다") {
+                Then("status·openAt·closeAt이 손실 없이 왕복된다") {
                     found.currentStatus shouldBe LimitedDropStatus.SCHEDULED
                     found.openAt.toInstant() shouldBe openAt.toInstant()
                     found.closeAt.toInstant() shouldBe closeAt.toInstant()
