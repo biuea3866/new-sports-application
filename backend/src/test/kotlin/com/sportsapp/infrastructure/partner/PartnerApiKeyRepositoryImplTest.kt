@@ -7,10 +7,8 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.context.annotation.Import
 import org.springframework.jdbc.core.JdbcTemplate
 
-@Import(PartnerAuditStubConfig::class)
 class PartnerApiKeyRepositoryImplTest(
     @Autowired private val partnerApiKeyRepositoryImpl: PartnerApiKeyRepositoryImpl,
     @Autowired private val jdbcTemplate: JdbcTemplate,
