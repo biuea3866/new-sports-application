@@ -110,6 +110,9 @@ limited-drop:
     enabled: ${LIMITED_DROP_REDIS_GATE_ENABLED:true}
 
 app:
+  # BE-04: AlertCooldownRepositoryImpl 등 알람 쿨다운 키(INFRA-01 계약) 조립에 쓰는 배포 환경 값.
+  # APP_ENV 단일 원천(management.metrics.tags.env와 동일 값) 재사용 — ADR-005와 동일한 원칙.
+  env: ${APP_ENV:local}
   payment:
     mock:
       success-rate: 1.0
