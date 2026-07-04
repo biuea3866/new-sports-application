@@ -1,6 +1,7 @@
--- V46: 채팅 시스템 고도화 S5 — community_members 신규 테이블
+-- V51: 채팅 시스템 고도화 S5 — community_members 신규 테이블
 -- 설계 근거: /Users/biuea/Desktop/dpdpdndn/프로젝트/채팅 시스템/20260704-채팅시스템고도화-design-db.md
 --   "Detail Design > 5. community_members (신규)", 쿼리 매핑 CM1/CM2
+-- 번호 재조정: V46이 V47~V48 재시프트에 연쇄되어 V51로 이동 (V47 참조).
 -- community_id/user_id는 communities.id/users.id를 논리 참조 (FK 컬럼 금지 규칙에 따라 물리 FK 없음)
 -- 락 영향: 신규 테이블 CREATE — 기존 테이블 무영향, 락 없음
 -- 롤백: DROP TABLE community_members;
