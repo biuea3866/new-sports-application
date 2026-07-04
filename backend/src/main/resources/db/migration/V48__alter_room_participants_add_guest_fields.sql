@@ -1,6 +1,7 @@
--- V43: 채팅 시스템 고도화 S2 — room_participants에 게스트/읽음커서 필드 추가 (additive)
+-- V48: 채팅 시스템 고도화 S2 — room_participants에 게스트/읽음커서 필드 추가 (additive)
 -- 설계 근거: /Users/biuea/Desktop/dpdpdndn/프로젝트/채팅 시스템/20260704-채팅시스템고도화-design-db.md
 --   "Detail Design > 2. room_participants (기존 확장 — additive)", 쿼리 매핑 P1
+-- 번호 재조정: V43이 #208(regions)과 중복되어 V48로 재시프트 (V47 참조).
 -- participant_type/can_speak는 유효한 비즈니스 기본값(기존 참여자=정회원=발화가능)이 있으므로
 -- DEFAULT를 영구 유지하는 단일 ALTER로 백필한다 (3단계 분리 불요 — design-db.md 근거).
 -- 락 영향: DEFAULT 있는 NOT NULL / nullable ADD COLUMN = MySQL 8.0.12+ INSTANT(기존 행 즉시 백필, 락 없음).
