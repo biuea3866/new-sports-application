@@ -109,7 +109,32 @@ limited-drop:
     # 전환한다(오버셀 0 유지, 처리량만 감소). 이 값 자체는 문서화 목적이며 폴백 구현은 후속 티켓 범위.
     enabled: ${LIMITED_DROP_REDIS_GATE_ENABLED:true}
 
+# BE-10: 지능형 장애 알림 통합 와이어업. alerting.enabled=false(기본값)면 웹훅은 202만 반환하고
+# 파이프라인을 트리거하지 않는다(무중단 배포·즉시 롤백 지점, Release Scenario).
+alerting:
+  enabled: ${ALERTING_ENABLED:false}
+  # grafana 경로(Authorization Bearer)·내부 raise 경로(X-Alert-Token) 공유 시크릿 (BE-08).
+  webhook-token: ${ALERT_WEBHOOK_TOKEN:}
+  discord:
+    # AlertDeliveryEventWorker가 알림을 발송할 수신자 (BE-09).
+    recipient-user-id: ${ALERT_RECIPIENT_USER_ID:1}
+  llm:
+    # Claude API(Anthropic Messages API) 설정 (BE-06). api-key는 비커밋 환경변수로만 주입한다.
+    base-url: ${ALERTING_LLM_BASE_URL:https://api.anthropic.com}
+    api-key: ${ALERTING_LLM_API_KEY:}
+    model: ${ALERTING_LLM_MODEL:claude-fable-5}
+    read-timeout-seconds: ${ALERTING_LLM_READ_TIMEOUT_SECONDS:55}
+    max-tokens: ${ALERTING_LLM_MAX_TOKENS:1024}
+  telemetry:
+    # Prometheus/Loki/Tempo 접속 정보 (BE-05). 기본값은 로컬 observability compose 포트(⑤).
+    prometheus-base-url: ${ALERTING_TELEMETRY_PROMETHEUS_BASE_URL:http://localhost:9090}
+    loki-base-url: ${ALERTING_TELEMETRY_LOKI_BASE_URL:http://localhost:3100}
+    tempo-base-url: ${ALERTING_TELEMETRY_TEMPO_BASE_URL:http://localhost:3200}
+
 app:
+  # BE-04: AlertCooldownRepositoryImpl 등 알람 쿨다운 키(INFRA-01 계약) 조립에 쓰는 배포 환경 값.
+  # APP_ENV 단일 원천(management.metrics.tags.env와 동일 값) 재사용 — ADR-005와 동일한 원칙.
+  env: ${APP_ENV:local}
   payment:
     mock:
       success-rate: 1.0
@@ -171,6 +196,10 @@ external:
     from: ${SMS_SENDER_NUMBER:0700000000}
   email:
     from: ${MAIL_FROM:no-reply@sportsapp.local}
+  discord:
+    # BE-02: NotificationChannel.DISCORD 발송용 Incoming Webhook. URL은 비커밋 환경변수로만 주입한다.
+    webhook-url: ${DISCORD_WEBHOOK_URL:}
+    username: ${DISCORD_WEBHOOK_USERNAME:SportsApp Alert}
 
 management:
   endpoints:
@@ -185,6 +214,13 @@ management:
       application: ${spring.application.name}
       env: ${APP_ENV:local}
       service: mcp
+    distribution:
+      percentiles-histogram:
+        # INFRA-02 실측: Grafana P95 규칙이 http_server_requests_seconds_bucket 히스토그램을 소비한다.
+        # 없으면 규칙이 NoData가 된다.
+        http:
+          server:
+            requests: true
   tracing:
     sampling:
       # 100% 샘플링 (NFR) — trace 연결율 99%+ 목표, 개인 프로젝트 트래픽 규모라 비용 문제 없음

@@ -68,6 +68,9 @@ class SecurityConfig(
     ) {
         auth.requestMatchers(HttpMethod.POST, "/auth/login", "/auth/refresh", "/users/register").permitAll()
         auth.requestMatchers("/actuator/health", "/actuator/info").permitAll()
+        // BE-10: 규칙 엔진(Grafana)·내부 raise 진입점. 컨트롤러가 grafana=Authorization Bearer,
+        // 내부raise=X-Alert-Token으로 공유 시크릿을 자체 검증하므로 Spring Security 레벨에서는 permitAll.
+        auth.requestMatchers("/internal/alerts/**").permitAll()
         auth.requestMatchers("/admin/**").hasRole("ADMIN")
         auth.requestMatchers("/api/facility-owner/**").authenticated()
         auth.requestMatchers("/api/event-host/**").authenticated()

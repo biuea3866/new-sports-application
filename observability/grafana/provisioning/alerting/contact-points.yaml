@@ -1,0 +1,39 @@
+# Grafana Alerting contact point 프로비저닝 (INFRA-02)
+# 근거: TDD "인터페이스 계약"(POST /internal/alerts/grafana, 헤더 X-Alert-Token), ADR-001(Grafana Alerting 채택).
+#
+# backend 서비스명·포트는 docker-compose.yml/observability.yml 이 정의하는 default 네트워크 DNS 기준
+# (실측: docker-compose.yml `backend` 서비스, prometheus.yml job=app 이 backend:8080 을 scrape).
+#
+# ⚠ 실측으로 확인된 제약(반드시 읽을 것) — 아래 "알려진 제약" 참고.
+#
+# 롤백: 이 파일을 비우거나 receivers 를 제거하면 contact point 비활성화(alert rule 은 별도 rules.yaml).
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: backend-webhook
+    receivers:
+      - uid: backend-webhook-receiver
+        type: webhook
+        settings:
+          url: http://backend:8080/internal/alerts/grafana
+          httpMethod: POST
+          # Grafana webhook 알림 채널은 임의 이름의 커스텀 헤더(X-Alert-Token)를 지원하지 않는다
+          # (Grafana 11.1.0/11.4.0 `/api/alert-notifiers` 스키마 실측 확인 — 지원 필드는
+          #  url/httpMethod/username/password/authorization_scheme/authorization_credentials/maxAlerts/title/message 뿐).
+          # 네이티브로 보낼 수 있는 유일한 인증 헤더 형태인 `Authorization: Bearer <secret>` 로 대체한다.
+          # → AlertWebhookApiController(BE-08)는 `/internal/alerts/grafana` 경로에 한해
+          #   `Authorization: Bearer <shared-secret>` 도 `X-Alert-Token` 과 동등하게 수용해야 한다 (TDD 계약 보강 필요).
+          authorization_scheme: Bearer
+        secureSettings:
+          # 값은 컨테이너 환경변수로 치환된다(Grafana 프로비저닝 파일의 $VAR 치환 — 실측 확인).
+          # 하드코딩 금지 — compose 실행 전 ALERTING_WEBHOOK_TOKEN 환경변수를 설정해야 한다.
+          #
+          # ⚠ 알려진 제약(실측, Grafana 11.1.0): YAML 파일 프로비저닝으로 등록한 webhook contact point 는
+          #   secureSettings(authorization_credentials) 가 저장(REDACTED 확인)은 되지만,
+          #   실제 알림 발송 시 Authorization 헤더가 누락된다(패킷 캡처로 3회 재현·API 생성 contact point 와의
+          #   대조 실험으로 file-provisioning 경로에 한정된 문제임을 확인). API로 생성한 동일 설정은 정상 발송된다.
+          #   → 완전한 해결은 Grafana 버전 업그레이드 또는 부트스트랩 스크립트로 provisioning API를 통한
+          #     사후 등록이 필요(별도 후속 작업, 본 티켓 범위 밖). 현재 상태로는 시크릿 헤더가 전달되지 않을 수
+          #     있으므로 `/internal/alerts/grafana` 는 compose 내부 네트워크로만 도달 가능함을 1차 방어선으로 삼는다.
+          authorization_credentials: $ALERTING_WEBHOOK_TOKEN

@@ -18,3 +18,9 @@ data class SmsProperties(
 data class EmailProperties(
     val from: String = "no-reply@sportsapp.local",
 )
+
+@ConfigurationProperties(prefix = "external.discord")
+data class DiscordProperties(
+    val webhookUrl: String = "",
+    val username: String = "SportsApp Alert",
+)
