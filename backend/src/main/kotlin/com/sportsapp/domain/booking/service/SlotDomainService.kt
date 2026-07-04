@@ -2,6 +2,7 @@ package com.sportsapp.domain.booking.service
 
 import com.sportsapp.domain.booking.entity.Slot
 import com.sportsapp.domain.booking.exception.SlotHasActiveBookingException
+import com.sportsapp.domain.booking.gateway.FacilityOwnershipGateway
 import com.sportsapp.domain.booking.repository.SlotRepository
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import java.time.ZonedDateTime
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Service
 @Service
 class SlotDomainService(
     private val slotRepository: SlotRepository,
+    private val facilityOwnershipGateway: FacilityOwnershipGateway,
 ) {
     fun createSlot(
         ownerId: Long,
@@ -18,6 +20,7 @@ class SlotDomainService(
         timeRange: String,
         capacity: Int,
     ): Slot {
+        facilityOwnershipGateway.requireOwner(facilityId, ownerId)
         val slot = Slot.create(
             facilityId = facilityId,
             date = date,
@@ -54,9 +57,6 @@ class SlotDomainService(
 
     fun listSlots(facilityId: String): List<Slot> =
         slotRepository.findByFacilityId(facilityId)
-
-    fun hasActiveSlotsByFacilityId(facilityId: String): Boolean =
-        slotRepository.existsActiveByFacilityId(facilityId)
 
     fun countTodayByFacilityIds(facilityIds: List<String>): Long {
         if (facilityIds.isEmpty()) return 0L

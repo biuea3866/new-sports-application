@@ -1,8 +1,10 @@
 package com.sportsapp.domain.facility.service
 
 import com.sportsapp.domain.facility.entity.Facility
+import com.sportsapp.domain.facility.exception.FacilityHasActiveSlotException
 import com.sportsapp.domain.facility.exception.FacilityNotFoundException
 import com.sportsapp.domain.facility.gateway.GeocodingGateway
+import com.sportsapp.domain.facility.gateway.SlotQueryGateway
 import com.sportsapp.domain.facility.repository.FacilityRepository
 import com.sportsapp.domain.facility.vo.FacilityAttributes
 import org.springframework.context.annotation.Profile
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Service
 class FacilityOwnerDomainService(
     private val facilityRepository: FacilityRepository,
     private val geocodingGateway: GeocodingGateway,
+    private val slotQueryGateway: SlotQueryGateway,
 ) {
     fun registerForOwner(attributes: FacilityAttributes, ownerUserId: Long): Facility {
         val facility = Facility.create(resolveCoordinates(attributes))
@@ -45,6 +48,9 @@ class FacilityOwnerDomainService(
 
     fun deleteForOwner(id: String, ownerUserId: Long) {
         val facility = getByIdAndOwner(id, ownerUserId)
+        if (slotQueryGateway.hasActiveSlots(id)) {
+            throw FacilityHasActiveSlotException(id)
+        }
         facility.softDelete(ownerUserId)
         facilityRepository.save(facility)
     }

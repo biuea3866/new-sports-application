@@ -1,5 +1,6 @@
 package com.sportsapp.scenario.mcp
 
+import com.sportsapp.TestJpaGatewayStubConfig
 import com.sportsapp.application.mcp.usecase.DetectMcpAnomalyUseCase
 import com.sportsapp.domain.mcp.event.McpAnomalyDetectedEvent
 import com.sportsapp.domain.mcp.entity.McpAuditLog
@@ -48,7 +49,7 @@ class McpAnomalyEventCaptor {
 }
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(AnomalyTestConfig::class)
+@Import(AnomalyTestConfig::class, TestJpaGatewayStubConfig::class)
 @ActiveProfiles("test-jpa")
 @TestPropertySource(properties = [
     "spring.data.mongodb.auto-index-creation=false",

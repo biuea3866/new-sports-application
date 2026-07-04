@@ -1,11 +1,13 @@
 package com.sportsapp.scenario.notification
 
+import com.sportsapp.TestJpaGatewayStubConfig
 import com.sportsapp.infrastructure.notification.mysql.NotificationJpaRepository
 import com.sportsapp.presentation.notification.worker.PaymentCompletedEvent
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.StringSerializer
+import org.springframework.context.annotation.Import
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection
 import org.springframework.kafka.core.DefaultKafkaProducerFactory
@@ -23,6 +25,7 @@ import java.util.concurrent.TimeUnit
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test-jpa")
+@Import(TestJpaGatewayStubConfig::class)
 @org.springframework.test.context.TestPropertySource(properties = [
     "spring.autoconfigure.exclude=" +
         "org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration," +
