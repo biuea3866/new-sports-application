@@ -3,6 +3,7 @@ package com.sportsapp.infrastructure.message.mysql
 import com.sportsapp.BaseIntegrationTest
 import com.sportsapp.domain.message.entity.Room
 import com.sportsapp.domain.message.entity.RoomParticipant
+import com.sportsapp.domain.message.vo.RoomContextType
 import com.sportsapp.domain.message.vo.RoomType
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
@@ -73,6 +74,44 @@ class RoomCustomRepositoryImplTest(
                 val result = roomCustomRepositoryImpl.findDirectRoomByParticipantIds(300L, 301L)
 
                 Then("삭제된 룸은 반환되지 않는다") {
+                    result.shouldBeNull()
+                }
+            }
+        }
+
+        Given("contextType=COMMUNITY, contextId=10 인 컨텍스트 Room 이 저장된 상태") {
+            roomJpaRepository.save(Room.createForContext(RoomType.GROUP, RoomContextType.COMMUNITY, 10L, "주말축구"))
+
+            When("findByContext(COMMUNITY, 10) 을 호출하면") {
+                val found = roomCustomRepositoryImpl.findByContext(RoomContextType.COMMUNITY, 10L)
+
+                Then("해당 컨텍스트 방 1건이 반환된다") {
+                    found.shouldNotBeNull()
+                    found.contextType shouldBe RoomContextType.COMMUNITY
+                    found.contextId shouldBe 10L
+                }
+            }
+
+            When("존재하지 않는 contextId 로 findByContext 를 호출하면") {
+                val notFound = roomCustomRepositoryImpl.findByContext(RoomContextType.COMMUNITY, 9999L)
+
+                Then("null 이 반환된다") {
+                    notFound.shouldBeNull()
+                }
+            }
+        }
+
+        Given("soft-delete 된 컨텍스트 Room") {
+            val contextRoom = roomJpaRepository.save(
+                Room.createForContext(RoomType.GROUP, RoomContextType.GOODS_PRODUCT, 20L, "중고거래방"),
+            )
+            contextRoom.softDelete(null)
+            roomJpaRepository.save(contextRoom)
+
+            When("findByContext(GOODS_PRODUCT, 20) 을 호출하면") {
+                val result = roomCustomRepositoryImpl.findByContext(RoomContextType.GOODS_PRODUCT, 20L)
+
+                Then("삭제된 컨텍스트 방은 제외되어 null 이 반환된다") {
                     result.shouldBeNull()
                 }
             }
