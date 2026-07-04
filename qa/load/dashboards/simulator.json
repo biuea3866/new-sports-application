@@ -1,0 +1,287 @@
+{
+  "uid": "sports-simulator",
+  "title": "상시 트래픽 시뮬레이터 (⑦ Traffic Simulator)",
+  "tags": [
+    "sports",
+    "simulator",
+    "k6",
+    "traffic-sim"
+  ],
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "10s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timezone": "",
+  "timepicker": {},
+  "annotations": {
+    "list": []
+  },
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "도달 TPS vs 목표(참조선) — 시나리오별",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 5,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(k6_http_reqs_total{testid=\"b2c-read\"}[1m]))",
+          "legendFormat": "b2c-read 실측 TPS",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "vector(2100)",
+          "legendFormat": "b2c-read 목표(peak=2100)",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(k6_http_reqs_total{testid=\"b2c-write\"}[1m]))",
+          "legendFormat": "b2c-write 실측 TPS",
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "vector(900)",
+          "legendFormat": "b2c-write 목표(peak=900)",
+          "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(k6_http_reqs_total{testid=\"b2b\"}[1m]))",
+          "legendFormat": "b2b 실측 TPS",
+          "refId": "E"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "vector(100)",
+          "legendFormat": "b2b 목표(peak=100)",
+          "refId": "F"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(k6_http_reqs_total{testid=\"marketing-spike\"}[1m]))",
+          "legendFormat": "marketing-spike 실측 TPS",
+          "refId": "G"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "vector(20000)",
+          "legendFormat": "marketing-spike 목표(peak=20000)",
+          "refId": "H"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "활성 시나리오(VU > 0) — 진행률(FR-6)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(k6_vus) by (testid)",
+          "legendFormat": "{{testid}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "소진성 자원 409 거부율(%) — 시나리오별 (reseed 필요성 지표)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "max": 100,
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 30
+              },
+              {
+                "color": "red",
+                "value": 50
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(k6_http_reqs_total{status=\"409\"}[5m])) by (testid) / sum(rate(k6_http_reqs_total[5m])) by (testid) * 100",
+          "legendFormat": "{{testid}} 409율",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "text",
+      "title": "운영 안내 — 제어 명령·다음 스파이크·reseed 이력(Operations)",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 15
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### 제어 명령 (FR-7)\n- 시작: `make sim-up` (k6-runner·reseed 기동, 배경 곡선 3종 + 마케팅 스파이크)\n- 일시정지: `make sim-pause` (k6-runner만 graceful stop, reseed·LB 유지)\n- 중단: `make sim-down` (k6-runner·reseed graceful stop 후 컨테이너 정지)\n- 상태: `make sim-ps` / `make sim-logs`\n\n### 다음 마케팅 스파이크 예정 시각\n- `QA_SIM_SPIKE_START_TIME`(.env) — marketing-spike.js의 시작 오프셋(예: `3h` = 실행 시작 3시간 후). 기본값 `0s`(즉시).\n- 변경 시 `make sim-down && make sim-up` 으로 재기동해야 반영된다(k6 실행 중 startTime 변경 불가).\n\n### reseed 배치 실행 이력\n- 이 대시보드는 reseed 로그를 직접 노출하지 않는다(Loki 로그 수집 에이전트가 docker 컨테이너 stdout을 아직 스크레이프하지 않음 — ⑤ 후속 필요, INFRA-09 Open Item).\n- 현재 조회 방법: `docker compose ... logs -f reseed`(`[reseed] === reseed 사이클 시작/종료 ===` 라인으로 10분 주기 이력 확인).\n"
+      }
+    }
+  ]
+}

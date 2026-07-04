@@ -69,6 +69,10 @@ qa/e2e/test-results/
 # k6 부하테스트 raw 출력 (수 GB — summary.json/threshold.txt만 추적, raw.json 제외)
 .analysis/outputs/qa/**/raw.json
 
+# ===== 상시 트래픽 시뮬레이터 런타임 산출물 (INFRA-09) — k6-runner/reseed가 컨테이너에서 기록 =====
+qa/load/results/*
+!qa/load/results/.gitkeep
+
 # ===== Misc =====
 *.tsbuildinfo
 .npm/

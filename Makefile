@@ -25,6 +25,8 @@ OBS             := -f docker-compose.observability.yml
 AGENTS          := -f docker-compose.observability-agents.yml
 DEV_OVERRIDE    := -f docker-compose.dev.yml
 PROD_OVERRIDE   := -f docker-compose.prod.yml
+LB              := -f docker-compose.lb.yml
+SIM             := -f docker-compose.sim.yml
 
 # 로컬(기본): base + 관측 백엔드 + 관측 에이전트. docker compose가 루트 .env 를 자동 로드한다.
 LOCAL_STACK     := $(BASE) $(OBS) $(AGENTS)
@@ -33,11 +35,21 @@ LOCAL_STACK     := $(BASE) $(OBS) $(AGENTS)
 DEV_STACK       := $(BASE) $(DEV_OVERRIDE) $(OBS) $(AGENTS)
 PROD_STACK      := $(BASE) $(PROD_OVERRIDE) $(OBS) $(AGENTS)
 
+# 시뮬레이터(⑦, INFRA-09): 관측+LB+sim을 얹는다. 설계 전제(TDD "무엇을")는 prod 대상이지만
+# dev/local 변형도 검증용으로 제공한다.
+LOCAL_SIM_STACK := $(LOCAL_STACK) $(LB) $(SIM)
+DEV_SIM_STACK   := $(DEV_STACK) $(LB) $(SIM)
+PROD_SIM_STACK  := $(PROD_STACK) $(LB) $(SIM)
+
 .PHONY: help \
         observability-up observability-down observability-logs observability-ps observability-config \
         observability-config-dev observability-config-prod \
         observability-dev observability-down-dev \
-        observability-prod observability-down-prod
+        observability-prod observability-down-prod \
+        sim-config sim-config-dev sim-config-prod \
+        sim-up sim-pause sim-down sim-ps sim-logs \
+        sim-up-dev sim-down-dev \
+        sim-up-prod sim-down-prod
 
 help: ## 사용 가능한 타겟 목록
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-26s\033[0m %s\n", $$1, $$2}'
@@ -88,3 +100,52 @@ observability-prod: ## prod 네임스페이스 기동(-p sports-prod --env-file 
 
 observability-down-prod: ## prod 네임스페이스 정지
 	docker compose -p sports-prod $(PROD_STACK) --env-file .env.prod down
+
+# =====================================================================
+# 상시 트래픽 시뮬레이터 (⑦, INFRA-09) — k6-runner·reseed 제어
+#   FR-7 상태 전이: 정지 -> sim-up(구동중) -> sim-pause(일시정지) -> sim-up(구동중) -> sim-down(정지)
+#   graceful: k6-runner의 stop_grace_period(docker-compose.sim.yml, 45s)가 `stop`/`down`에
+#             자동 적용되어 k6 gracefulStop(기본 30s) 동안 도착률이 0으로 수렴한 뒤 정지한다.
+#   sim-pause 는 k6-runner만 멈추고 reseed·LB·backend·관측 스택은 유지한다(TDD 상태 전이 표).
+#   sim-down 은 k6-runner+reseed만 정지하고 나머지 스택(backend·LB·관측)은 무영향으로 둔다
+#   (롤백 — "-f docker-compose.sim.yml 미적용"과 동등 효과를 즉시 낸다).
+# =====================================================================
+sim-config: ## 로컬 시뮬 스택(base+관측+LB+sim) 병합 config 검증
+	docker compose $(LOCAL_SIM_STACK) config -q
+	@echo "OK: local sim merged compose config is valid"
+
+sim-config-dev: ## dev 시뮬 스택 병합 config 검증
+	docker compose $(DEV_SIM_STACK) --env-file .env.dev config -q
+	@echo "OK: dev sim merged compose config is valid"
+
+sim-config-prod: ## prod 시뮬 스택 병합 config 검증
+	docker compose $(PROD_SIM_STACK) --env-file .env.prod config -q
+	@echo "OK: prod sim merged compose config is valid"
+
+sim-up: ## 로컬 시뮬 스택 기동(backend+관측+LB+k6-runner+reseed) — 곡선 시작
+	docker compose $(LOCAL_SIM_STACK) up -d
+
+sim-pause: ## k6-runner만 graceful stop(ramp-to-0) — reseed·LB·backend·관측은 유지
+	docker compose $(LOCAL_SIM_STACK) stop k6-runner
+
+sim-down: ## k6-runner·reseed graceful stop(ramp-to-0) — 나머지 스택은 무영향
+	docker compose $(LOCAL_SIM_STACK) stop k6-runner reseed
+
+sim-ps: ## 시뮬 컨테이너 상태 조회
+	docker compose $(LOCAL_SIM_STACK) ps k6-runner reseed
+
+sim-logs: ## k6-runner·reseed 로그 팔로우(진행률·gap report stdout·reseed 사이클 이력)
+	docker compose $(LOCAL_SIM_STACK) logs -f k6-runner reseed
+
+# ---- dev/prod 네임스페이스 변형 ----
+sim-up-dev: ## dev 네임스페이스 시뮬 스택 기동(-p sports-dev --env-file .env.dev)
+	docker compose -p sports-dev $(DEV_SIM_STACK) --env-file .env.dev up -d
+
+sim-down-dev: ## dev 네임스페이스 k6-runner·reseed graceful stop
+	docker compose -p sports-dev $(DEV_SIM_STACK) --env-file .env.dev stop k6-runner reseed
+
+sim-up-prod: ## prod 네임스페이스 시뮬 스택 기동(-p sports-prod --env-file .env.prod) — 설계 전제(TDD "무엇을")
+	docker compose -p sports-prod $(PROD_SIM_STACK) --env-file .env.prod up -d
+
+sim-down-prod: ## prod 네임스페이스 k6-runner·reseed graceful stop
+	docker compose -p sports-prod $(PROD_SIM_STACK) --env-file .env.prod stop k6-runner reseed
