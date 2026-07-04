@@ -1,0 +1,130 @@
+# Grafana Alerting 규칙 — 핵심 트랜잭션 API(결제·예약·티케팅) P95 500ms 지연 (INFRA-02)
+# 근거: TDD "PRD Open Q3"(1차 범위=핵심 트랜잭션 API 한정), PRD 유저 시나리오 1, ADR-001.
+#
+# 데이터소스: Prometheus uid=prometheus (실측: observability/grafana/provisioning/datasources/datasources.yml).
+# 대상 엔드포인트(실측: backend/src/main/kotlin/.../presentation/*/controller/*ApiController.kt @RequestMapping):
+#   결제 /payments, 예약 /bookings, 티케팅 /ticket-orders·/events.
+# env 라벨은 management.metrics.tags.env(APP_ENV) 로 이미 부여되어 http_server_requests_seconds_* 에 실려온다
+# (실측: backend/src/main/resources/application.yml:186, observability/prometheus/prometheus.yml 은 app 잡에
+#  별도 env relabel 을 두지 않음 — 중복 부여 방지).
+# endpoint 라벨(ticket 명시)은 uri 라벨을 label_replace 로 별칭 부여한다.
+#
+# ⚠ 실측으로 확인된 선행 요구사항(미해결 — 본 티켓 범위 밖, backend 소유):
+#   backend/src/main/resources/application.yml 에 http.server.requests 히스토그램 버킷 노출 설정
+#   (management.metrics.distribution.percentiles-histogram.http.server.requests: true) 이 없다.
+#   현재 상태로는 http_server_requests_seconds_bucket 샘플이 노출되지 않아 아래 histogram_quantile
+#   쿼리가 데이터 없음(NoData)으로 평가된다. noDataState=NoData 로 명시해 조용히 묻히지 않게 한다.
+#
+# 롤백: 이 파일을 비우거나 rules 를 제거하면 두 규칙 모두 비활성화(피처 플래그 없이 즉시 제거로 롤백).
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: core-transaction-latency
+    folder: Sports Alerting
+    interval: 1m
+    rules:
+      # ---- warn: 5분 연속 P95 > 500ms ----
+      - uid: core-transaction-p95-latency-warn
+        title: "핵심 트랜잭션 API P95 500ms 초과 (5분, warn)"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: >-
+                label_replace(
+                  histogram_quantile(0.95, sum by (le, uri, env) (
+                    rate(http_server_requests_seconds_bucket{uri=~"/payments.*|/bookings.*|/ticket-orders.*|/events.*"}[5m])
+                  )),
+                  "endpoint", "$1", "uri", "(.*)"
+                )
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0.5]
+                  operator:
+                    type: and
+                  query:
+                    params: ["A"]
+                  reducer:
+                    type: last
+                  type: query
+        for: 5m
+        noDataState: NoData
+        execErrState: Error
+        labels:
+          source: latency
+          severity: warn
+        annotations:
+          summary: "{{ $labels.endpoint }} P95 지연시간이 500ms를 5분 이상 초과했습니다 ({{ $labels.env }})"
+          description: "핵심 트랜잭션 API(결제·예약·티케팅) 중 {{ $labels.endpoint }} 의 P95 응답시간이 임계값(500ms)을 5분 이상 초과했습니다. 현재값: {{ $values.A }}s"
+        # 전역 notification policy 트리를 건드리지 않고 규칙 단위로 contact point 를 직접 지정한다
+        # (alertingSimplifiedRouting, Grafana 11.x 기본 활성 — 실측 확인). 다른 티켓이 향후 policies.yaml 을
+        # 추가해도 충돌하지 않는다(Single Writer 경계).
+        notification_settings:
+          receiver: backend-webhook
+
+      # ---- critical: 15분 연속 P95 > 500ms (동일 임계, 지속시간 기반 심각도 상향) ----
+      - uid: core-transaction-p95-latency-critical
+        title: "핵심 트랜잭션 API P95 500ms 초과 (15분, critical)"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: >-
+                label_replace(
+                  histogram_quantile(0.95, sum by (le, uri, env) (
+                    rate(http_server_requests_seconds_bucket{uri=~"/payments.*|/bookings.*|/ticket-orders.*|/events.*"}[5m])
+                  )),
+                  "endpoint", "$1", "uri", "(.*)"
+                )
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0.5]
+                  operator:
+                    type: and
+                  query:
+                    params: ["A"]
+                  reducer:
+                    type: last
+                  type: query
+        for: 15m
+        noDataState: NoData
+        execErrState: Error
+        labels:
+          source: latency
+          severity: critical
+        annotations:
+          summary: "{{ $labels.endpoint }} P95 지연시간이 500ms를 15분 이상 초과했습니다 ({{ $labels.env }}) — 장애 의심"
+          description: "핵심 트랜잭션 API(결제·예약·티케팅) 중 {{ $labels.endpoint }} 의 P95 응답시간이 임계값(500ms)을 15분 이상 초과했습니다. 현재값: {{ $values.A }}s"
+        notification_settings:
+          receiver: backend-webhook
