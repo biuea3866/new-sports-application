@@ -56,6 +56,19 @@ services:
 
   redis:
     image: redis:7
+    # maxmemory-policy=noeviction 근거: 이 Redis가 보유한 키(seat:lock:*, goods:limited-drop:*:remaining 등)는
+    #   look-aside 캐시가 아니라 게이트 권위 데이터다. eviction되면 remaining 카운터가 사라져 오버셀로 직결되므로
+    #   evict 대신 OOM 에러로 실패를 명시적으로 드러낸다(private-redis-convention "서버 설정"). 순수 캐시 키가
+    #   이후 추가되면 같은 인스턴스에 volatile-lru로 섞지 말고 별도 인스턴스/논리 DB로 분리 검토(연관 노트).
+    # maxmemory=256mb 근거: 로컬 dev 규모 기준 상한. prod 사이징은 이 작업 범위 밖 — prod override에서 별도 결정 필요.
+    # persistence(AOF/RDB) 비활성 근거: remaining 카운터는 DB stock 기준으로 seedIfAbsent(SET NX)로 재시드 가능해
+    #   Redis 재기동으로 유실돼도 판매자가 회차를 다시 열면 복구된다. AOF 필수 아님(private-redis-convention 서버 설정).
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy noeviction
+      --save ""
+      --appendonly no
     volumes:
       - redis-data:/data
     healthcheck:

@@ -98,12 +98,29 @@ partner:
     # 관리 API로 테스트 파트너 등록·회귀 확인 후 PARTNER_AUTH_ENABLED=true로 전환한다.
     enabled: ${PARTNER_AUTH_ENABLED:false}
 
+limited-drop:
+  # Release Scenario 4단계 — 회차별 전체 활성 플래그. OFF면 LimitedDropApiController 빈 자체가
+  # 등록되지 않아 전 엔드포인트가 404 (즉시 롤백 지점). 운영 기본값은 false — 코드 배포 후 회귀
+  # 확인을 마친 뒤 LIMITED_DROP_ENABLED=true로 명시 전환한다(코드 리뷰 p1). 로컬 개발 편의는
+  # dev 프로파일(application-dev.yml)에만 true로 override한다.
+  enabled: ${LIMITED_DROP_ENABLED:false}
+  redis-gate:
+    # Release Scenario 5단계 — Redis 게이트 서브플래그. OFF 시 DB @Version + 세마포어 폴백(방안 B)으로
+    # 전환한다(오버셀 0 유지, 처리량만 감소). 이 값 자체는 문서화 목적이며 폴백 구현은 후속 티켓 범위.
+    enabled: ${LIMITED_DROP_REDIS_GATE_ENABLED:true}
+
 app:
   payment:
     mock:
       success-rate: 1.0
     pg:
       mock-base-url: ${PG_MOCK_BASE_URL:http://localhost:9090}
+  limited-drop:
+    reservation:
+      # DropReservationStoreImpl 인프로세스 세마포어(FR-7) — 단일 인스턴스 전제(TDD Open Questions).
+      semaphore-permits: ${LIMITED_DROP_SEMAPHORE_PERMITS:200}
+      acquire-timeout-millis: ${LIMITED_DROP_ACQUIRE_TIMEOUT_MILLIS:200}
+      marker-ttl-seconds: ${LIMITED_DROP_MARKER_TTL_SECONDS:600}
   jwt:
     # 로컬 개발 기본값. 운영에서는 반드시 APP_JWT_SECRET 환경변수로 override 한다.
     secret: ${APP_JWT_SECRET:local-dev-only-jwt-secret-key-change-me-0123456789abcdef0123456789abcdef}
