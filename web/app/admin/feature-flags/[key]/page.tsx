@@ -4,6 +4,7 @@
  * S3 플래그 수정 화면 — description·strategy 수정, 상태 전이(아카이브/재활성).
  * 컨테이너: `useFeatureFlag(key)`로 프리필, 저장/아카이브/재활성 mutation.
  * ARCHIVED 상태면 전략·설명 입력을 비활성화하고 재활성만 노출(BE 409 규칙 UI 선반영).
+ * `AdminLayout`이 ToastProvider를 아직 감싸지 않으므로(공유 파일 미변경) 이 화면 안에서만 감싼다(S2 선례).
  * 근거 티켓: `FE-09-edit-screen.md`, 근거 설계: `design-fe-web.md` "S3 와이어프레임 / 상태 전이 UI".
  */
 import { useEffect, useState } from "react";
@@ -12,7 +13,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/toast";
+import { ToastProvider, useToast } from "@/components/ui/toast";
 import { useFeatureFlag } from "@/lib/admin/feature-flags/hooks";
 import { updateFeatureFlag, archiveFeatureFlag, activateFeatureFlag } from "@/lib/admin/feature-flags/api";
 import type { FeatureFlagStrategy } from "@/lib/admin/feature-flags/schemas";
@@ -28,6 +29,14 @@ function toUserMessage(err: unknown, fallback: string): string {
 }
 
 export default function FeatureFlagEditPage(): JSX.Element {
+  return (
+    <ToastProvider>
+      <FeatureFlagEditPageContent />
+    </ToastProvider>
+  );
+}
+
+function FeatureFlagEditPageContent(): JSX.Element {
   const params = useParams<{ key: string }>();
   const flagKey = params.key;
   const { addToast } = useToast();
