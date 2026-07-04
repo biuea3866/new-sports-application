@@ -1,21 +1,42 @@
 /**
- * useTheme — 시스템 색상 스킴 기본값 + 사용자 오버라이드로 현재 토큰을 반환합니다.
+ * useTheme — 시스템 색상 스킴 기본값 + themeStore(mode) 오버라이드로 현재 토큰을 반환합니다.
  */
 import { renderHook, act } from '@testing-library/react-native';
 import mockUseColorScheme from 'react-native/Libraries/Utilities/useColorScheme';
 import { useTheme } from '../useTheme';
-import { useThemeStore } from '../../stores/useThemeStore';
+import { useThemeStore } from '../themeStore';
 import { lightTokens, darkTokens } from '../tokens';
 
 describe('useTheme', () => {
   beforeEach(() => {
     mockUseColorScheme.mockReturnValue('light');
     act(() => {
-      useThemeStore.getState().setSchemeOverride(null);
+      useThemeStore.getState().setMode('system');
     });
   });
 
-  it('시스템 스킴이 라이트일 때 라이트 토큰 객체를 반환한다', () => {
+  it('시스템이 다크 모드이고 mode가 system이면 다크 토큰 객체를 반환한다', () => {
+    mockUseColorScheme.mockReturnValue('dark');
+
+    const { result } = renderHook(() => useTheme());
+
+    expect(result.current.scheme).toBe('dark');
+    expect(result.current.tokens).toEqual(darkTokens);
+  });
+
+  it('mode를 light로 오버라이드하면 시스템이 다크여도 라이트 토큰을 반환한다', () => {
+    mockUseColorScheme.mockReturnValue('dark');
+    act(() => {
+      useThemeStore.getState().setMode('light');
+    });
+
+    const { result } = renderHook(() => useTheme());
+
+    expect(result.current.scheme).toBe('light');
+    expect(result.current.tokens).toEqual(lightTokens);
+  });
+
+  it('mode가 system이면 useColorScheme 값을 따른다(라이트)', () => {
     mockUseColorScheme.mockReturnValue('light');
 
     const { result } = renderHook(() => useTheme());
@@ -24,21 +45,11 @@ describe('useTheme', () => {
     expect(result.current.tokens).toEqual(lightTokens);
   });
 
-  it('useThemeStore로 다크 오버라이드 시 시스템 스킴과 무관하게 다크 토큰을 반환한다', () => {
+  it('mode를 dark로 오버라이드하면 시스템이 라이트여도 다크 토큰을 반환한다', () => {
     mockUseColorScheme.mockReturnValue('light');
-
-    const { result } = renderHook(() => useTheme());
-
     act(() => {
-      useThemeStore.getState().setSchemeOverride('dark');
+      useThemeStore.getState().setMode('dark');
     });
-
-    expect(result.current.scheme).toBe('dark');
-    expect(result.current.tokens).toEqual(darkTokens);
-  });
-
-  it('오버라이드가 없고 시스템 스킴이 다크이면 다크 토큰을 반환한다', () => {
-    mockUseColorScheme.mockReturnValue('dark');
 
     const { result } = renderHook(() => useTheme());
 
