@@ -60,6 +60,8 @@ class Facility(
         ownerUserId = userId
     }
 
+    fun isOwnedBy(userId: Long): Boolean = ownerUserId == userId
+
     fun updateMeta(patch: Map<String, String>): Facility =
         Facility(
             id = id,

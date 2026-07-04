@@ -76,6 +76,33 @@ class FacilityTest : BehaviorSpec({
         }
     }
 
+    Given("ownerUserId가 설정된 Facility") {
+        val facility = Facility.create(buildAttributes())
+        facility.assignOwner(42L)
+
+        When("소유자 userId로 isOwnedBy를 호출하면") {
+            Then("true를 반환한다") {
+                facility.isOwnedBy(42L) shouldBe true
+            }
+        }
+
+        When("다른 userId로 isOwnedBy를 호출하면") {
+            Then("false를 반환한다") {
+                facility.isOwnedBy(99L) shouldBe false
+            }
+        }
+    }
+
+    Given("ownerUserId가 없는 Facility") {
+        val facility = Facility.create(buildAttributes())
+
+        When("어떤 userId로 isOwnedBy를 호출해도") {
+            Then("false를 반환한다") {
+                facility.isOwnedBy(42L) shouldBe false
+            }
+        }
+    }
+
     Given("기존 meta에 키가 있는 Facility") {
         val facility = Facility.create(
             buildAttributes(meta = mapOf("capacity" to "50", "lane" to "8"))

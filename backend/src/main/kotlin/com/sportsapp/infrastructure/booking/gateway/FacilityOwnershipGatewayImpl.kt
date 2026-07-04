@@ -23,7 +23,7 @@ class FacilityOwnershipGatewayImpl(
     override fun requireOwner(facilityId: String, userId: Long) {
         val facility = facilityRepository.findById(facilityId)
             ?: throw SlotFacilityNotFoundException(facilityId)
-        if (facility.ownerUserId != userId) {
+        if (!facility.isOwnedBy(userId)) {
             throw UnauthorizedFacilityAccessException(facilityId, userId)
         }
     }
