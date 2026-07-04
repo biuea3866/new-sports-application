@@ -8,21 +8,13 @@ import io.micrometer.core.instrument.MeterRegistry
 import jakarta.annotation.PostConstruct
 import java.util.concurrent.ConcurrentHashMap
 import org.slf4j.LoggerFactory
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 
 /**
  * 인스턴스 로컬 L1 캐시(ConcurrentHashMap) — Redis(L2) 미스 시 MySQL(SSOT)로 폴백한다.
- *
- * `@ConditionalOnBean(FeatureFlagRepository::class)`: 이 워크트리(BE-03)는 BE-02(MySQL 영속화)의
- * `FeatureFlagRepository` 구현체를 포함하지 않는다(런타임 의존, 티켓 명시). 구현체가 없는 상태로
- * 전체 애플리케이션 컨텍스트를 로드하면 필수 생성자 의존성 미충족으로 기동이 실패하므로, 구현체가
- * 클래스패스에 존재할 때만(BE-02/BE-10 통합 시점) 이 빈 클러스터(LocalFeatureFlagStore·
- * FeatureFlagChangeSubscriber·FeatureFlagRedisPubSubConfig)가 활성화되도록 조건을 건다.
  */
 @Component
-@ConditionalOnBean(FeatureFlagRepository::class)
 class LocalFeatureFlagStore(
     private val cacheStore: FeatureFlagCacheStore,
     private val featureFlagRepository: FeatureFlagRepository,

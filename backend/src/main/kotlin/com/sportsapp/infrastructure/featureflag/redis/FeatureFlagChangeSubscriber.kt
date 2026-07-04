@@ -1,7 +1,6 @@
 package com.sportsapp.infrastructure.featureflag.redis
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.sportsapp.domain.featureflag.repository.FeatureFlagRepository
 import com.sportsapp.infrastructure.featureflag.local.LocalFeatureFlagStore
 import com.sportsapp.infrastructure.featureflag.metrics.FeatureFlagCacheMetrics
 import io.micrometer.core.instrument.MeterRegistry
@@ -9,7 +8,6 @@ import io.micrometer.core.instrument.Timer
 import java.time.Duration
 import java.time.ZonedDateTime
 import org.slf4j.LoggerFactory
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
 import org.springframework.data.redis.connection.Message
 import org.springframework.data.redis.connection.MessageListener
 import org.springframework.stereotype.Component
@@ -21,7 +19,6 @@ import org.springframework.stereotype.Component
  * `LocalFeatureFlagStore.refresh` 내부 폴백에만 한정 — 티켓 명시).
  */
 @Component
-@ConditionalOnBean(FeatureFlagRepository::class)
 class FeatureFlagChangeSubscriber(
     private val localFeatureFlagStore: LocalFeatureFlagStore,
     private val objectMapper: ObjectMapper,
