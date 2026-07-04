@@ -15,6 +15,7 @@ import type {
   CommunityVisibility,
   MemberRole,
   MembershipStatus,
+  SportCategory,
 } from '../community-types';
 
 describe('CommunityResponse', () => {
@@ -133,6 +134,45 @@ describe('MembershipResponse', () => {
   it('join 응답 상태로 PENDING_APPROVAL을 포함한다', () => {
     const response: MembershipResponse = { status: 'PENDING_APPROVAL' };
     expect(response.status).toBe('PENDING_APPROVAL');
+  });
+});
+
+describe('SportCategory 유니온', () => {
+  it('BE domain/community/vo/SportCategory.kt(BE-02) 확정 12개 값과 정확히 일치한다', () => {
+    // Record<SportCategory, true>는 SportCategory의 모든 멤버를 키로 요구하고,
+    // 목록에 없는 값을 키로 넣으면 초과 프로퍼티 에러가 나므로
+    // 유니온이 정확히 아래 12개로만 구성됐는지를 컴파일 타임에 검증한다.
+    const allSportCategories: Record<SportCategory, true> = {
+      SOCCER: true,
+      BASKETBALL: true,
+      BASEBALL: true,
+      TENNIS: true,
+      BADMINTON: true,
+      GOLF: true,
+      RUNNING: true,
+      CYCLING: true,
+      SWIMMING: true,
+      HIKING: true,
+      YOGA: true,
+      ETC: true,
+    };
+
+    expect(Object.keys(allSportCategories).sort()).toEqual(
+      [
+        'SOCCER',
+        'BASKETBALL',
+        'BASEBALL',
+        'TENNIS',
+        'BADMINTON',
+        'GOLF',
+        'RUNNING',
+        'CYCLING',
+        'SWIMMING',
+        'HIKING',
+        'YOGA',
+        'ETC',
+      ].sort()
+    );
   });
 });
 

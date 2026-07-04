@@ -20,21 +20,22 @@ export type MemberRole = 'HOST' | 'MEMBER';
 export type MembershipStatus = 'ACTIVE' | 'PENDING_APPROVAL' | 'LEFT' | 'KICKED';
 
 /**
- * 스포츠 종목 카테고리. BE `domain/community/vo/SportCategory.kt`(BE-02) 확정 전 초안.
- * BE 확정 대기 — DB 컬럼은 VARCHAR(30)(ENUM 금지)이라 값 목록은 BE 도메인 enum이 SSOT다.
- * 아래 목록은 PRD "스포츠 종목 카테고리" 언급(축구/농구/야구 등) 기준 초안이며,
- * BE-02 머지 후 실제 값 목록으로 갱신한다.
+ * 스포츠 종목 카테고리. BE `domain/community/vo/SportCategory.kt`(BE-02, dev 머지) 확정 12개 값과
+ * 1:1 정렬한다 — DB 컬럼은 VARCHAR(30)(ENUM 금지)이라 값 목록은 BE 도메인 enum이 SSOT다.
+ * 분류에 없는 종목은 ETC로 지정한다 (BE-02 주석과 동일).
  */
 export type SportCategory =
   | 'SOCCER'
   | 'BASKETBALL'
   | 'BASEBALL'
-  | 'FUTSAL'
   | 'TENNIS'
   | 'BADMINTON'
   | 'GOLF'
   | 'RUNNING'
+  | 'CYCLING'
   | 'SWIMMING'
+  | 'HIKING'
+  | 'YOGA'
   | 'ETC';
 
 // --- Request ---
