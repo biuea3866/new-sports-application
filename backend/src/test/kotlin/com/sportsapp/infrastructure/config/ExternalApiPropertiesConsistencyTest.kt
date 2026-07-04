@@ -1,5 +1,6 @@
 package com.sportsapp.infrastructure.config
 
+import com.sportsapp.infrastructure.airquality.gateway.AirQualityProperties
 import com.sportsapp.infrastructure.facility.gateway.GeocodingProperties
 import com.sportsapp.infrastructure.facility.gateway.PublicFacilityProperties
 import com.sportsapp.infrastructure.weather.gateway.WeatherProperties
@@ -23,6 +24,7 @@ import java.io.File
     GeocodingProperties::class,
     PublicFacilityProperties::class,
     WeatherProperties::class,
+    AirQualityProperties::class,
 )
 class ExternalApiPropertiesTestConfig
 
@@ -51,29 +53,36 @@ class ExternalApiPropertiesConsistencyTest : BehaviorSpec({
         Then("geocoding 은 공유 규약과 무관하게 빈 기본값을 유지한다") {
             GeocodingProperties().apiKey shouldBe ""
         }
+
+        Then("air-quality 도 동일한 mock 기본값 규약(mock-service-key)으로 해석된다") {
+            AirQualityProperties().apiKey shouldBe PublicFacilityProperties().apiKey
+        }
     }
 
     Given("env(base-url/api-key)가 전혀 주입되지 않은 상태") {
-        When("application.yml 로 세 외부 연동 Properties 를 바인딩하면") {
-            Then("각각 mock host(9101/9102/9102)로 해석된다") {
+        When("application.yml 로 네 외부 연동 Properties 를 바인딩하면") {
+            Then("각각 mock host(9101/9102/9102/9102)로 해석된다") {
                 contextRunner().run { context ->
                     context.getBean(GeocodingProperties::class.java).baseUrl shouldBe "http://localhost:9101"
                     context.getBean(PublicFacilityProperties::class.java).baseUrl shouldBe "http://localhost:9102"
                     context.getBean(WeatherProperties::class.java).baseUrl shouldBe "http://localhost:9102"
+                    context.getBean(AirQualityProperties::class.java).baseUrl shouldBe "http://localhost:9102"
                 }
             }
         }
     }
 
     Given("DATA_GO_KR_SERVICE_KEY 가 주입된 상태") {
-        When("public-facility·weather Properties 를 바인딩하면") {
-            Then("두 api-key 가 동일 값으로 채워진다(FR-3 동시 전환)") {
+        When("public-facility·weather·air-quality Properties 를 바인딩하면") {
+            Then("세 api-key 가 동일 값으로 채워진다(FR-3 동시 전환)") {
                 contextRunner("DATA_GO_KR_SERVICE_KEY=real-service-key-abc").run { context ->
                     val publicFacilityApiKey = context.getBean(PublicFacilityProperties::class.java).apiKey
                     val weatherApiKey = context.getBean(WeatherProperties::class.java).apiKey
+                    val airQualityApiKey = context.getBean(AirQualityProperties::class.java).apiKey
 
                     publicFacilityApiKey shouldBe "real-service-key-abc"
                     weatherApiKey shouldBe "real-service-key-abc"
+                    airQualityApiKey shouldBe "real-service-key-abc"
                 }
             }
         }
