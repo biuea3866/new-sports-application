@@ -31,6 +31,12 @@ class LocalFeatureFlagStore(
     }
 
     /**
+     * 옵저버빌리티(BE-12) 게이지 `feature_flag_local_snapshot_size` 전용 읽기 전용 접근자.
+     * 로컬에 적재된 스냅샷 수를 그대로 노출한다 — 동작 변경 없음.
+     */
+    fun size(): Int = snapshots.size
+
+    /**
      * 재조회 후 덮어쓰기 — 별도 멱등 키 없이 멱등(같은 값을 반복 반영해도 최종 상태 동일).
      * Redis 캐시를 먼저 조회하고, 미스면 Repository(MySQL, SSOT)로 폴백한다.
      */
