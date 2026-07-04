@@ -54,7 +54,7 @@ class LimitedDropDtoTest : BehaviorSpec({
 
             view.dropId shouldBe drop.id
             view.productId shouldBe drop.productId
-            view.status shouldBe drop.currentStatus
+            view.status shouldBe drop.effectiveStatus(remaining)
             view.openAt shouldBe openAt
             view.closeAt shouldBe closeAt
             view.remaining shouldBe remaining

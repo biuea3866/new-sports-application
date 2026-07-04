@@ -46,12 +46,16 @@ class LimitedDropDomainService(
         return drop to admit(drop, command)
     }
 
+    /**
+     * 판매자 콘솔/스케줄러 연동 전 진입점(현재 호출부 없음, 죽은 코드 아님 — [LimitedDrop.open] 상태
+     * 전이·재시드 계약을 보존한다). 실제 판매 게이트 판정은 항상 [LimitedDrop.effectiveStatus]가
+     * now·remaining 기준으로 실시간 파생하므로, 이 메서드가 아직 호출되지 않아도 구매 흐름은 정확하다.
+     */
     fun openDrop(dropId: Long): LimitedDrop {
         val drop = findById(dropId)
         drop.open()
         val saved = limitedDropRepository.save(drop)
-        val ttl = Duration.between(ZonedDateTime.now(), saved.closeAt).plusHours(1)
-        dropReservationStore.seedIfAbsent(saved.id, saved.limitedQuantity, ttl)
+        dropReservationStore.seedIfAbsent(saved.id, saved.limitedQuantity, ttlUntilClose(saved.closeAt))
         return saved
     }
 
@@ -153,9 +157,15 @@ class LimitedDropDomainService(
     }
 
     private fun seedReservationStore(drop: LimitedDrop) {
-        val ttl = Duration.between(ZonedDateTime.now(), drop.closeAt).plusHours(1)
-        dropReservationStore.seedIfAbsent(drop.id, drop.limitedQuantity, ttl)
+        dropReservationStore.seedIfAbsent(drop.id, drop.limitedQuantity, ttlUntilClose(drop.closeAt))
     }
+
+    /**
+     * closeAt 기준 TTL(+1h 여유)을 계산한다. closeAt이 이미 과거면(운영 오조작 등) 음수 TTL이 되어
+     * `SET NX PX`가 즉시 만료하는 키를 시드하는 사고를 막기 위해 최소 1시간으로 보정한다(코드 리뷰 p3).
+     */
+    private fun ttlUntilClose(closeAt: ZonedDateTime): Duration =
+        Duration.between(ZonedDateTime.now(), closeAt).plusHours(1).coerceAtLeast(Duration.ofHours(1))
 
     /**
      * 판매 시작 게이트(FR-2) 판정. [LimitedDrop.validatePurchasable]이 던지는 SoldOut·TooEarly는
@@ -174,27 +184,24 @@ class LimitedDropDomainService(
     }
 
     /**
-     * [ReservationResult.Admitted]만 완충 permit을 보유한다 — 성공/실패에 따라 [persistOrRelease]로
-     * confirmSuccess/cancel을 짝지어 반납한다.
-     *
-     * [ReservationResult.AlreadyReserved]는 멱등 재시도로, `reserve.lua`가 permit 획득 이전(순수 Redis
-     * 판정 단계)에 즉시 반환한 결과다 — permit을 보유하지 않으므로 fail-open과 동일하게 [persistOrder]만
-     * 호출한다 (confirmSuccess·cancel 호출 시 permit 풀이 멱등 재시도마다 영구 팽창한다).
+     * SoldOut·PerUserLimitExceeded는 Redis 판정만으로 즉시 거부한다(완충 불필요, 값싼 컷오프, ADR-003
+     * 순서: FR-8/FR-6가 FR-7보다 먼저). 그 외 DB 쓰기에 도달하는 모든 경로 — Admitted·AlreadyReserved(멱등
+     * 재시도)·fail-open(Redis 장애로 [tryReserve]가 null 반환) — 는 [persistWithThrottle]로 완충(FR-7)
+     * 게이트를 거친다. Redis 장애 fail-open이 완충을 우회하던 것이 코드 리뷰 p1 지적 사항이었다 —
+     * DB는 Redis 가용성과 무관하게 항상 완충 permit 뒤에서만 쓰기를 받는다.
      */
-    private fun admit(drop: LimitedDrop, command: PurchaseLimitedDropCommand): GoodsOrder {
-        val result = tryReserve(drop, command) ?: return persistOrder(drop, command)
-        return when (result) {
-            is ReservationResult.Admitted -> persistOrRelease(drop, command)
-            is ReservationResult.AlreadyReserved -> persistOrder(drop, command)
+    private fun admit(drop: LimitedDrop, command: PurchaseLimitedDropCommand): GoodsOrder =
+        when (val result = tryReserve(drop, command)) {
+            null -> persistWithThrottle(drop, command, restoreOnFailure = false)
+            is ReservationResult.Admitted -> persistWithThrottle(drop, command, restoreOnFailure = true)
+            is ReservationResult.AlreadyReserved -> persistWithThrottle(drop, command, restoreOnFailure = false)
             is ReservationResult.SoldOut -> {
                 recordRejectSafely(drop.id, RejectKind.SOLD_OUT)
                 throw LimitedDropSoldOutException(drop.id)
             }
-            is ReservationResult.Throttled -> throw LimitedDropThrottledException(drop.id)
             is ReservationResult.PerUserLimitExceeded ->
                 throw LimitedDropPerUserLimitExceededException(drop.id, result.limit)
         }
-    }
 
     /** FR-9 거부 카운터 증가. Redis 장애는 fail-open — 구매 흐름(예외 전파)에 영향을 주지 않는다. */
     private fun recordRejectSafely(dropId: Long, kind: RejectKind) {
@@ -225,15 +232,34 @@ class LimitedDropDomainService(
     private fun persistOrder(drop: LimitedDrop, command: PurchaseLimitedDropCommand): GoodsOrder =
         goodsDomainService.createPendingOrder(command.userId, itemsOf(drop, command), command.idempotencyKey)
 
-    private fun persistOrRelease(drop: LimitedDrop, command: PurchaseLimitedDropCommand): GoodsOrder {
-        val order = try {
-            goodsDomainService.createPendingOrder(command.userId, itemsOf(drop, command), command.idempotencyKey)
-        } catch (exception: Exception) {
-            dropReservationStore.cancel(drop.id, command.userId, command.quantity, command.idempotencyKey)
-            throw exception
+    /**
+     * DB 쓰기 직전 완충(FR-7) permit을 획득한다 — Redis 판정 성공 여부(Admitted/AlreadyReserved/fail-open)와
+     * 무관하게 항상 거친다. permit 획득 실패 시 [restoreOnFailure]가 true(=Admitted로 Redis 슬롯을 실제
+     * 차감한 경우)면 [DropReservationStore.cancel]로 슬롯을 복원한 뒤 429로 거부한다.
+     *
+     * AlreadyReserved·fail-open은 이번 호출에서 Redis 슬롯을 새로 차감하지 않았으므로(AlreadyReserved는
+     * 과거에 이미 차감됐고, fail-open은 Redis 자체에 도달하지 못했다) [restoreOnFailure]가 false다 —
+     * cancel을 호출하면 AlreadyReserved의 멱등 마커까지 삭제되어 재구매가 가능해지는 오동작이 생긴다.
+     */
+    private fun persistWithThrottle(
+        drop: LimitedDrop,
+        command: PurchaseLimitedDropCommand,
+        restoreOnFailure: Boolean,
+    ): GoodsOrder {
+        if (!dropReservationStore.tryAcquireThrottle()) {
+            if (restoreOnFailure) dropReservationStore.cancel(drop.id, command.userId, command.quantity, command.idempotencyKey)
+            throw LimitedDropThrottledException(drop.id)
         }
-        dropReservationStore.confirmSuccess(drop.id, command.userId, command.idempotencyKey)
-        return order
+        return try {
+            val order = persistOrder(drop, command)
+            if (restoreOnFailure) dropReservationStore.confirmSuccess(drop.id, command.userId, command.idempotencyKey)
+            order
+        } catch (exception: Exception) {
+            if (restoreOnFailure) dropReservationStore.cancel(drop.id, command.userId, command.quantity, command.idempotencyKey)
+            throw exception
+        } finally {
+            dropReservationStore.releaseThrottle()
+        }
     }
 
     private fun itemsOf(drop: LimitedDrop, command: PurchaseLimitedDropCommand): List<OrderItemInput> =

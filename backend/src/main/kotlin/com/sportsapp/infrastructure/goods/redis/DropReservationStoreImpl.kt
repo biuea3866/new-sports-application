@@ -21,9 +21,10 @@ import org.springframework.stereotype.Component
  * 키·TTL·Lua 계약: `backend/docs/redis/limited-drop-keys.md` (ADR-003).
  * `SeatLockStoreImpl`(`RedisDistributedLock`의 `DefaultRedisScript` 로딩 패턴) 선례를 따른다.
  *
- * 판정 순서(ADR-003): `reserve.lua`가 멱등 마커 → 1인 한도 → 소진 판정을 원자적으로 처리해
- * `Admitted`(1)를 반환하면, 그다음 인프로세스 [admissionSemaphore]로 DB 동시 쓰기를 완충한다.
- * permit 획득 실패 시 `cancel.lua`로 Redis 상태를 즉시 복원하고 [ReservationResult.Throttled]를 반환한다.
+ * 판정 순서(ADR-003): `reserve.lua`가 멱등 마커 → 1인 한도 → 소진 판정을 원자적으로 처리한다.
+ * 완충(FR-7)은 이제 `reserve()`에 포함되지 않는다 — [tryAcquireThrottle]/[releaseThrottle]로 분리해,
+ * Redis 장애로 `reserve()` 자체가 예외를 던지는 fail-open 경로도 DB 쓰기 전에 완충 게이트를 통과하도록
+ * 호출부(`LimitedDropDomainService`)가 별도로 판정한다 (코드 리뷰 p1 — 완충 세마포어 우회 수정).
  *
  * 세마포어는 단일 인스턴스 전제(TDD Open Questions) — 다중 인스턴스 확장 시 Redis 토큰 버킷으로 승격 필요.
  *
@@ -67,7 +68,7 @@ class DropReservationStoreImpl(
     ): ReservationResult {
         val code = executeReserveScriptTracked(dropId, userId, quantity, perUserLimit, idempotencyKey)
         return when (code) {
-            RESERVE_ADMITTED -> admitWithSemaphore(dropId, userId, quantity, idempotencyKey)
+            RESERVE_ADMITTED -> ReservationResult.Admitted
             RESERVE_SOLD_OUT -> ReservationResult.SoldOut.also { incrementRejectMetric(REJECT_KIND_SOLD_OUT) }
             RESERVE_ALREADY_RESERVED -> ReservationResult.AlreadyReserved
             RESERVE_PER_USER_LIMIT_EXCEEDED ->
@@ -76,13 +77,25 @@ class DropReservationStoreImpl(
         }
     }
 
-    override fun confirmSuccess(dropId: Long, userId: Long, idempotencyKey: String) {
+    /**
+     * 완충(FR-7) permit 획득. [reserve] 성공·실패(fail-open)와 무관하게 DB 쓰기 직전 호출부가 호출한다.
+     * 실패 시 throttled 거부 지표를 증가시킨다 — 복원(cancel)은 호출부 책임이다(Admitted 여부를 알아야 하므로).
+     */
+    override fun tryAcquireThrottle(): Boolean {
+        val acquired = admissionSemaphore.tryAcquire(acquireTimeoutMillis, TimeUnit.MILLISECONDS)
+        if (!acquired) incrementRejectMetric(REJECT_KIND_THROTTLED)
+        return acquired
+    }
+
+    override fun releaseThrottle() {
         admissionSemaphore.release()
     }
 
+    /** 현재는 별도 상태 변경이 필요 없다 — 완충 permit 반납은 [releaseThrottle]이 전담한다. */
+    override fun confirmSuccess(dropId: Long, userId: Long, idempotencyKey: String) = Unit
+
     override fun cancel(dropId: Long, userId: Long, quantity: Int, idempotencyKey: String) {
         executeCancelScript(dropId, userId, quantity, idempotencyKey)
-        admissionSemaphore.release()
     }
 
     override fun remaining(dropId: Long): Int? =
@@ -90,7 +103,7 @@ class DropReservationStoreImpl(
 
     /**
      * FR-9 거부 카운터를 증가시키고, TTL을 [remainingKey]와 동일하게 정렬한다(O(1), hot path 부담 미미).
-     * `remaining` 키가 시드되지 않았거나 만료 없이 유지 중이면 TTL을 별도로 설정하지 않는다.
+     * `remaining` 키가 시드되지 않았거나 TTL이 없으면 [alignTtlWithRemaining]이 기본 TTL을 부여한다.
      */
     override fun recordReject(dropId: Long, kind: RejectKind) {
         val key = rejectKey(dropId, kind)
@@ -105,27 +118,18 @@ class DropReservationStoreImpl(
 
     private fun countAt(key: String): Long = redisTemplate.opsForValue().get(key)?.toLongOrNull() ?: 0L
 
+    /**
+     * 거부 카운터 TTL을 remaining 키에 정렬한다. remaining 키에 TTL이 없거나(-1) 아직 시드되지 않아
+     * 존재하지 않으면(-2) 거부 카운터가 무TTL로 잔존해 회차마다 누적되므로(인프라 리뷰 p3),
+     * [markerTtlSeconds]를 기본 TTL로 부여한다.
+     */
     private fun alignTtlWithRemaining(dropId: Long, key: String) {
         val remainingTtlSeconds = redisTemplate.getExpire(remainingKey(dropId), TimeUnit.SECONDS)
         if (remainingTtlSeconds > 0) {
             redisTemplate.expire(key, remainingTtlSeconds, TimeUnit.SECONDS)
+            return
         }
-    }
-
-    /** Lua 소진 판정 통과(Admitted) 후 완충 permit을 시도한다. 실패 시 Redis 복원 + Throttled. */
-    private fun admitWithSemaphore(
-        dropId: Long,
-        userId: Long,
-        quantity: Int,
-        idempotencyKey: String,
-    ): ReservationResult {
-        val acquired = admissionSemaphore.tryAcquire(acquireTimeoutMillis, TimeUnit.MILLISECONDS)
-        if (!acquired) {
-            executeCancelScript(dropId, userId, quantity, idempotencyKey)
-            incrementRejectMetric(REJECT_KIND_THROTTLED)
-            return ReservationResult.Throttled
-        }
-        return ReservationResult.Admitted
+        redisTemplate.expire(key, markerTtlSeconds, TimeUnit.SECONDS)
     }
 
     /**

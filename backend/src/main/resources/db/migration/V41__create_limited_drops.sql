@@ -1,4 +1,4 @@
--- V38: goods domain — limited_drops table (한정판 판매 회차)
+-- V41: goods domain — limited_drops table (한정판 판매 회차)
 -- 설계 근거: /Users/biuea/Desktop/dpdpdndn/프로젝트/스포츠앱/마케팅 이벤트 고부하 대응/design-db.md "테이블 정의 > limited_drops"
 -- 번호 재조정 방침: ② partner가 먼저 머지되면 V38~40 점유 → 머지 시점에 최신+1로 재배정 (design-db.md:23)
 -- 롤백: DROP TABLE limited_drops; (참조 코드 미배포 시 안전 — expand-contract 1단계, 신규 가산 테이블)

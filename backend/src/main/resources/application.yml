@@ -100,8 +100,10 @@ partner:
 
 limited-drop:
   # Release Scenario 4단계 — 회차별 전체 활성 플래그. OFF면 LimitedDropApiController 빈 자체가
-  # 등록되지 않아 전 엔드포인트가 404 (즉시 롤백 지점).
-  enabled: ${LIMITED_DROP_ENABLED:true}
+  # 등록되지 않아 전 엔드포인트가 404 (즉시 롤백 지점). 운영 기본값은 false — 코드 배포 후 회귀
+  # 확인을 마친 뒤 LIMITED_DROP_ENABLED=true로 명시 전환한다(코드 리뷰 p1). 로컬 개발 편의는
+  # dev 프로파일(application-dev.yml)에만 true로 override한다.
+  enabled: ${LIMITED_DROP_ENABLED:false}
   redis-gate:
     # Release Scenario 5단계 — Redis 게이트 서브플래그. OFF 시 DB @Version + 세마포어 폴백(방안 B)으로
     # 전환한다(오버셀 0 유지, 처리량만 감소). 이 값 자체는 문서화 목적이며 폴백 구현은 후속 티켓 범위.

@@ -15,16 +15,16 @@ interface DropReservationStore {
     fun seedIfAbsent(dropId: Long, initialQuantity: Int, ttl: Duration)
 
     /**
-     * 입장 게이트(FR-8) + 1인 한도(FR-6) + 멱등 마커 + 완충 permit(FR-7) 을 원자적으로 판정한다.
+     * 입장 게이트(FR-8) + 1인 한도(FR-6) + 멱등 마커를 원자적으로 판정한다.
      *
      * 판정 순서: 멱등 마커 확인([ReservationResult.AlreadyReserved]) →
      * 1인 한도 검사(FR-6, [ReservationResult.PerUserLimitExceeded]) →
      * 재고 소진 거부(FR-8, [ReservationResult.SoldOut]) →
-     * 완충 permit 획득 시도(FR-7, [ReservationResult.Throttled]) →
      * [ReservationResult.Admitted].
      *
-     * [ReservationResult.Admitted] 반환 시 호출자는 완충 permit 을 보유한 상태이며,
-     * 이후 반드시 [confirmSuccess] 또는 [cancel] 로 permit 을 반납해야 한다.
+     * 완충(FR-7)은 이 메서드의 책임이 아니다 — Redis 장애로 이 메서드 자체가 예외를 던져 fail-open
+     * 하는 경로도 DB 쓰기 전에는 반드시 [tryAcquireThrottle]을 거쳐야 하므로, 완충 판정은 reserve
+     * 성공 여부와 무관하게 호출자(DomainService)가 별도로 수행한다.
      */
     fun reserve(
         dropId: Long,
@@ -34,10 +34,19 @@ interface DropReservationStore {
         idempotencyKey: String,
     ): ReservationResult
 
-    /** 구매 성공 확정. 차감된 재고 카운터는 유지하고 완충 permit 만 반납한다. */
+    /**
+     * 완충(FR-7) permit 획득을 시도한다. [reserve] 판정 결과(Admitted·AlreadyReserved·fail-open 포함)와
+     * 무관하게, DB 쓰기(persistOrder) 직전에 호출한다. 인프로세스 세마포어 등 구현 상세는 구현체 책임이다.
+     */
+    fun tryAcquireThrottle(): Boolean
+
+    /** [tryAcquireThrottle]로 획득한 permit을 반납한다. DB 쓰기 성공·실패와 무관하게 반드시 호출한다. */
+    fun releaseThrottle()
+
+    /** 구매 성공 확정. 현재는 별도 상태 변경이 필요 없는 훅이다(완충 permit 반납은 [releaseThrottle] 책임). */
     fun confirmSuccess(dropId: Long, userId: Long, idempotencyKey: String)
 
-    /** 구매 실패. 차감된 재고 카운터·1인 카운트를 복원하고 완충 permit 을 반납한다 (언더셀 방지). */
+    /** 구매 실패. 차감된 재고 카운터·1인 카운트를 복원한다 (언더셀 방지). 완충 permit 반납은 별개([releaseThrottle]). */
     fun cancel(dropId: Long, userId: Long, quantity: Int, idempotencyKey: String)
 
     /** 현재 잔여 수량. 카운터가 시드되지 않았으면 null. */

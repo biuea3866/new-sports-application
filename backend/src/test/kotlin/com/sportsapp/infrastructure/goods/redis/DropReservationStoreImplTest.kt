@@ -175,18 +175,50 @@ class DropReservationStoreImplTest @Autowired constructor(
         }
     }
 
-    Given("완충 세마포어 permit이 모두 소진된 상태에서") {
+    Given("완충 세마포어 permit이 1개뿐인 상태에서") {
+        val store = buildStore(semaphorePermits = 1, acquireTimeoutMillis = 100)
+
+        When("permit을 반납하지 않은 채 추가로 tryAcquireThrottle을 호출하면") {
+            val firstAcquired = store.tryAcquireThrottle()
+            val secondAcquired = store.tryAcquireThrottle()
+
+            Then("두 번째 시도는 실패한다 — reserve()의 판정 결과와 독립적이다(코드 리뷰 p1)") {
+                firstAcquired shouldBe true
+                secondAcquired shouldBe false
+            }
+        }
+    }
+
+    Given("tryAcquireThrottle로 permit을 획득한 상태에서") {
+        val store = buildStore(semaphorePermits = 1, acquireTimeoutMillis = 100)
+        store.tryAcquireThrottle() shouldBe true
+
+        When("releaseThrottle로 반납한 뒤 다시 tryAcquireThrottle을 호출하면") {
+            store.releaseThrottle()
+            val reacquired = store.tryAcquireThrottle()
+
+            Then("성공한다") {
+                reacquired shouldBe true
+            }
+        }
+    }
+
+    Given("Redis reserve가 Admitted를 반환한 뒤 완충 permit이 소진된 상황") {
         val dropId = 1006L
         cleanupDrop(dropId)
         val store = buildStore(semaphorePermits = 1, acquireTimeoutMillis = 100)
         store.seedIfAbsent(dropId, 10, Duration.ofMinutes(10))
         store.reserve(dropId, 1L, 1, 10, "idem-holder") shouldBe ReservationResult.Admitted
+        store.tryAcquireThrottle() shouldBe true
 
-        When("permit을 반납하지 않은 채 추가로 reserve를 호출하면") {
-            val throttled = store.reserve(dropId, 2L, 1, 10, "idem-throttled")
+        When("두 번째 사용자가 reserve에서 Admitted를 받은 뒤 tryAcquireThrottle이 실패하고 cancel로 복원하면") {
+            val secondReserved = store.reserve(dropId, 2L, 1, 10, "idem-throttled")
+            val secondAcquired = store.tryAcquireThrottle()
+            store.cancel(dropId, 2L, 1, "idem-throttled")
 
-            Then("Admitted 대신 Throttled를 반환하고 Redis remaining을 복원한다") {
-                throttled shouldBe ReservationResult.Throttled
+            Then("reserve는 Admitted, 완충은 실패, cancel 이후 Redis remaining이 복원된다") {
+                secondReserved shouldBe ReservationResult.Admitted
+                secondAcquired shouldBe false
                 store.remaining(dropId) shouldBe 9
             }
         }
@@ -253,6 +285,22 @@ class DropReservationStoreImplTest @Autowired constructor(
         }
     }
 
+    Given("remaining 키가 시드되지 않은 회차") {
+        val dropId = 1015L
+        cleanupDrop(dropId)
+        val store = buildStore()
+
+        When("recordReject를 호출하면") {
+            store.recordReject(dropId, RejectKind.SOLD_OUT)
+
+            Then("거부 카운터 키에 markerTtlSeconds 기본 TTL이 부여되어 무TTL로 잔존하지 않는다") {
+                val rejectTtl = redisTemplate.getExpire("goods:limited-drop:$dropId:reject:sold-out", TimeUnit.SECONDS)
+                rejectTtl shouldBeGreaterThan 0L
+                rejectTtl shouldBeLessThanOrEqual 600L
+            }
+        }
+    }
+
     Given("재고가 이미 소진된 회차") {
         val dropId = 1011L
         cleanupDrop(dropId)
@@ -289,19 +337,16 @@ class DropReservationStoreImplTest @Autowired constructor(
         }
     }
 
-    Given("완충 세마포어 permit이 모두 소진된 회차") {
-        val dropId = 1013L
-        cleanupDrop(dropId)
+    Given("완충 세마포어 permit이 모두 소진된 상태") {
         val meterRegistry = SimpleMeterRegistry()
         val store = buildStore(semaphorePermits = 1, acquireTimeoutMillis = 100, meterRegistry = meterRegistry)
-        store.seedIfAbsent(dropId, 10, Duration.ofMinutes(10))
-        store.reserve(dropId, 1L, 1, 10, "idem-holder-metric") shouldBe ReservationResult.Admitted
+        store.tryAcquireThrottle() shouldBe true
 
-        When("permit을 반납하지 않은 채 추가로 reserve를 호출하면") {
-            val result = store.reserve(dropId, 2L, 1, 10, "idem-throttled-metric")
+        When("permit을 반납하지 않은 채 추가로 tryAcquireThrottle을 호출하면") {
+            val acquired = store.tryAcquireThrottle()
 
             Then("throttled 태그의 거부 지표가 증가한다") {
-                result shouldBe ReservationResult.Throttled
+                acquired shouldBe false
                 meterRegistry.counter("limited_drop.reject", "kind", "throttled").count() shouldBe 1.0
             }
         }

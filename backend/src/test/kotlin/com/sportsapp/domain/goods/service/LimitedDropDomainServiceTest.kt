@@ -86,6 +86,8 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         every {
             dropReservationStore.reserve(DROP_ID, USER_ID, QUANTITY, PER_USER_LIMIT, IDEMPOTENCY_KEY)
         } returns ReservationResult.Admitted
+        every { dropReservationStore.tryAcquireThrottle() } returns true
+        every { dropReservationStore.releaseThrottle() } returns Unit
         every {
             goodsDomainService.createPendingOrder(USER_ID, listOf(OrderItemInput(PRODUCT_ID, QUANTITY)), IDEMPOTENCY_KEY)
         } returns order
@@ -94,12 +96,14 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         When("purchase를 호출하면") {
             val result = service.purchase(command())
 
-            Then("createPendingOrder를 호출하고 confirmSuccess로 확정한다") {
+            Then("완충 permit을 획득한 뒤 createPendingOrder를 호출하고 confirmSuccess·releaseThrottle로 반납한다") {
                 result shouldBe (drop to order)
+                verify(exactly = 1) { dropReservationStore.tryAcquireThrottle() }
                 verify(exactly = 1) {
                     goodsDomainService.createPendingOrder(USER_ID, listOf(OrderItemInput(PRODUCT_ID, QUANTITY)), IDEMPOTENCY_KEY)
                 }
                 verify(exactly = 1) { dropReservationStore.confirmSuccess(DROP_ID, USER_ID, IDEMPOTENCY_KEY) }
+                verify(exactly = 1) { dropReservationStore.releaseThrottle() }
             }
         }
     }
@@ -126,7 +130,7 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         }
     }
 
-    Given("Throttled 판정을 받은 구매 요청") {
+    Given("Admitted 판정 이후 완충 permit이 소진된 구매 요청") {
         val limitedDropRepository = mockk<LimitedDropRepository>()
         val dropReservationStore = mockk<DropReservationStore>()
         val goodsDomainService = mockk<GoodsDomainService>()
@@ -136,13 +140,42 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         every { limitedDropRepository.findById(DROP_ID) } returns drop
         every {
             dropReservationStore.reserve(DROP_ID, USER_ID, QUANTITY, PER_USER_LIMIT, IDEMPOTENCY_KEY)
-        } returns ReservationResult.Throttled
+        } returns ReservationResult.Admitted
+        every { dropReservationStore.tryAcquireThrottle() } returns false
+        every { dropReservationStore.cancel(DROP_ID, USER_ID, QUANTITY, IDEMPOTENCY_KEY) } returns Unit
 
         When("purchase를 호출하면") {
-            Then("429로 매핑되는 LimitedDropThrottledException을 던지고 DB에 도달하지 않는다") {
+            Then("cancel로 Redis 슬롯을 복원하고 429로 매핑되는 LimitedDropThrottledException을 던지며 DB에 도달하지 않는다") {
                 val exception = shouldThrow<LimitedDropThrottledException> { service.purchase(command()) }
                 exception.status.httpStatus shouldBe 429
+                verify(exactly = 1) { dropReservationStore.cancel(DROP_ID, USER_ID, QUANTITY, IDEMPOTENCY_KEY) }
                 verify(exactly = 0) { goodsDomainService.createPendingOrder(any(), any(), any()) }
+                verify(exactly = 0) { dropReservationStore.releaseThrottle() }
+            }
+        }
+    }
+
+    Given("Redis 장애로 fail-open됐고 완충 permit도 소진된 구매 요청") {
+        val limitedDropRepository = mockk<LimitedDropRepository>()
+        val dropReservationStore = mockk<DropReservationStore>()
+        val goodsDomainService = mockk<GoodsDomainService>()
+        val service = buildService(limitedDropRepository, dropReservationStore, goodsDomainService)
+        val drop = openDrop()
+
+        every { limitedDropRepository.findById(DROP_ID) } returns drop
+        every {
+            dropReservationStore.reserve(DROP_ID, USER_ID, QUANTITY, PER_USER_LIMIT, IDEMPOTENCY_KEY)
+        } throws DataAccessResourceFailureException("redis down")
+        every { dropReservationStore.tryAcquireThrottle() } returns false
+
+        When("purchase를 호출하면") {
+            Then("완충 게이트를 우회하지 않고 429로 매핑되는 LimitedDropThrottledException을 던지며 cancel·DB 모두 호출하지 않는다") {
+                val exception = shouldThrow<LimitedDropThrottledException> { service.purchase(command()) }
+                exception.status.httpStatus shouldBe 429
+                verify(exactly = 1) { dropReservationStore.tryAcquireThrottle() }
+                verify(exactly = 0) { dropReservationStore.cancel(any(), any(), any(), any()) }
+                verify(exactly = 0) { goodsDomainService.createPendingOrder(any(), any(), any()) }
+                verify(exactly = 0) { dropReservationStore.releaseThrottle() }
             }
         }
     }
@@ -181,16 +214,19 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         every {
             dropReservationStore.reserve(DROP_ID, USER_ID, QUANTITY, PER_USER_LIMIT, IDEMPOTENCY_KEY)
         } returns ReservationResult.Admitted
+        every { dropReservationStore.tryAcquireThrottle() } returns true
+        every { dropReservationStore.releaseThrottle() } returns Unit
         every {
             goodsDomainService.createPendingOrder(USER_ID, listOf(OrderItemInput(PRODUCT_ID, QUANTITY)), IDEMPOTENCY_KEY)
         } throws failure
         every { dropReservationStore.cancel(DROP_ID, USER_ID, QUANTITY, IDEMPOTENCY_KEY) } returns Unit
 
         When("purchase를 호출하면") {
-            Then("cancel로 슬롯을 복원한 뒤 원본 예외를 재전파한다") {
+            Then("cancel로 슬롯을 복원하고 완충 permit도 반납한 뒤 원본 예외를 재전파한다") {
                 val thrown = shouldThrow<IllegalStateException> { service.purchase(command()) }
                 thrown shouldBe failure
                 verify(exactly = 1) { dropReservationStore.cancel(DROP_ID, USER_ID, QUANTITY, IDEMPOTENCY_KEY) }
+                verify(exactly = 1) { dropReservationStore.releaseThrottle() }
                 verify(exactly = 0) { dropReservationStore.confirmSuccess(any(), any(), any()) }
             }
         }
@@ -208,6 +244,8 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         every {
             dropReservationStore.reserve(DROP_ID, USER_ID, QUANTITY, PER_USER_LIMIT, IDEMPOTENCY_KEY)
         } returns ReservationResult.AlreadyReserved
+        every { dropReservationStore.tryAcquireThrottle() } returns true
+        every { dropReservationStore.releaseThrottle() } returns Unit
         every {
             goodsDomainService.createPendingOrder(USER_ID, listOf(OrderItemInput(PRODUCT_ID, QUANTITY)), IDEMPOTENCY_KEY)
         } returns existingOrder
@@ -215,9 +253,11 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         When("purchase를 재호출하면") {
             val result = service.purchase(command())
 
-            Then("재-DECR 없이 기존 주문을 그대로 반환하고 permit을 반납하지 않는다") {
+            Then("재-DECR 없이 기존 주문을 그대로 반환하되 완충 게이트는 통과하고, confirmSuccess·cancel은 호출하지 않는다") {
                 result shouldBe (drop to existingOrder)
                 verify(exactly = 1) { dropReservationStore.reserve(DROP_ID, USER_ID, QUANTITY, PER_USER_LIMIT, IDEMPOTENCY_KEY) }
+                verify(exactly = 1) { dropReservationStore.tryAcquireThrottle() }
+                verify(exactly = 1) { dropReservationStore.releaseThrottle() }
                 verify(exactly = 0) { dropReservationStore.confirmSuccess(any(), any(), any()) }
                 verify(exactly = 0) { dropReservationStore.cancel(any(), any(), any(), any()) }
             }
@@ -264,6 +304,8 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         every {
             dropReservationStore.reserve(DROP_ID, USER_ID, QUANTITY, PER_USER_LIMIT, IDEMPOTENCY_KEY)
         } throws DataAccessResourceFailureException("redis down")
+        every { dropReservationStore.tryAcquireThrottle() } returns true
+        every { dropReservationStore.releaseThrottle() } returns Unit
         every {
             goodsDomainService.createPendingOrder(USER_ID, listOf(OrderItemInput(PRODUCT_ID, QUANTITY)), IDEMPOTENCY_KEY)
         } returns order
@@ -271,8 +313,10 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         When("purchase를 호출하면") {
             val result = service.purchase(command())
 
-            Then("fail-open으로 게이트를 우회하고 createPendingOrder를 바로 진행한다") {
+            Then("fail-open으로 Redis 게이트를 우회하되 완충 permit은 거쳐 createPendingOrder를 진행한다") {
                 result shouldBe (drop to order)
+                verify(exactly = 1) { dropReservationStore.tryAcquireThrottle() }
+                verify(exactly = 1) { dropReservationStore.releaseThrottle() }
                 verify(exactly = 1) {
                     goodsDomainService.createPendingOrder(USER_ID, listOf(OrderItemInput(PRODUCT_ID, QUANTITY)), IDEMPOTENCY_KEY)
                 }
@@ -294,6 +338,8 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         every {
             dropReservationStore.reserve(DROP_ID, USER_ID, QUANTITY, PER_USER_LIMIT, IDEMPOTENCY_KEY)
         } throws RedisLockException("lock timeout")
+        every { dropReservationStore.tryAcquireThrottle() } returns true
+        every { dropReservationStore.releaseThrottle() } returns Unit
         every {
             goodsDomainService.createPendingOrder(USER_ID, listOf(OrderItemInput(PRODUCT_ID, QUANTITY)), IDEMPOTENCY_KEY)
         } returns order
@@ -301,7 +347,7 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         When("purchase를 호출하면") {
             val result = service.purchase(command())
 
-            Then("fail-open으로 게이트를 우회하고 createPendingOrder를 바로 진행한다") {
+            Then("fail-open으로 Redis 게이트를 우회하되 완충 permit은 거쳐 createPendingOrder를 진행한다") {
                 result shouldBe (drop to order)
             }
         }

@@ -191,6 +191,79 @@ class LimitedDropTest : BehaviorSpec({
         }
     }
 
+    Given("openAt이 아직 도래하지 않은 회차의 effectiveStatus 조회") {
+        Then("영속 status와 무관하게 SCHEDULED를 반환한다") {
+            val limitedDrop = LimitedDrop.reconstitute(
+                productId = 1L,
+                openAt = ZonedDateTime.now().plusDays(1),
+                closeAt = ZonedDateTime.now().plusDays(2),
+                limitedQuantity = 100,
+                perUserLimit = 1,
+                status = LimitedDropStatus.OPEN,
+            )
+
+            limitedDrop.effectiveStatus(remaining = 100) shouldBe LimitedDropStatus.SCHEDULED
+        }
+    }
+
+    Given("closeAt이 지난 회차의 effectiveStatus 조회") {
+        Then("영속 status와 무관하게 CLOSED를 반환한다") {
+            val limitedDrop = LimitedDrop.reconstitute(
+                productId = 1L,
+                openAt = ZonedDateTime.now().minusDays(2),
+                closeAt = ZonedDateTime.now().minusMinutes(1),
+                limitedQuantity = 100,
+                perUserLimit = 1,
+                status = LimitedDropStatus.SCHEDULED,
+            )
+
+            limitedDrop.effectiveStatus(remaining = 50) shouldBe LimitedDropStatus.CLOSED
+        }
+    }
+
+    Given("판매 기간 내이고 remaining이 0인 회차의 effectiveStatus 조회") {
+        Then("영속 status와 무관하게 SOLD_OUT을 반환한다") {
+            val limitedDrop = LimitedDrop.reconstitute(
+                productId = 1L,
+                openAt = ZonedDateTime.now().minusMinutes(1),
+                closeAt = ZonedDateTime.now().plusDays(1),
+                limitedQuantity = 100,
+                perUserLimit = 1,
+                status = LimitedDropStatus.SCHEDULED,
+            )
+
+            limitedDrop.effectiveStatus(remaining = 0) shouldBe LimitedDropStatus.SOLD_OUT
+        }
+    }
+
+    Given("판매 기간 내이고 remaining이 남은 회차의 effectiveStatus 조회") {
+        Then("OPEN을 반환한다") {
+            val limitedDrop = LimitedDrop.reconstitute(
+                productId = 1L,
+                openAt = ZonedDateTime.now().minusMinutes(1),
+                closeAt = ZonedDateTime.now().plusDays(1),
+                limitedQuantity = 100,
+                perUserLimit = 1,
+                status = LimitedDropStatus.SCHEDULED,
+            )
+
+            limitedDrop.effectiveStatus(remaining = 1) shouldBe LimitedDropStatus.OPEN
+        }
+
+        Then("remaining이 시드되지 않아 null이어도 SOLD_OUT으로 오판하지 않고 OPEN을 반환한다") {
+            val limitedDrop = LimitedDrop.reconstitute(
+                productId = 1L,
+                openAt = ZonedDateTime.now().minusMinutes(1),
+                closeAt = ZonedDateTime.now().plusDays(1),
+                limitedQuantity = 100,
+                perUserLimit = 1,
+                status = LimitedDropStatus.SCHEDULED,
+            )
+
+            limitedDrop.effectiveStatus(remaining = null) shouldBe LimitedDropStatus.OPEN
+        }
+    }
+
     Given("OPEN 상태의 회차에서 오버셀이 감지된 상황") {
         Then("recordOversold 호출 시 source=oversell·severity=critical 태그를 가진 LimitedDropOversoldEvent가 적재된다") {
             val limitedDrop = LimitedDrop.reconstitute(

@@ -79,11 +79,36 @@ class LimitedDrop private constructor(
         if (status == LimitedDropStatus.SOLD_OUT) throw LimitedDropSoldOutException(id)
     }
 
+    /**
+     * 판매자 콘솔/스케줄러 연동 전 상태 전이 진입점(현재 호출부: [com.sportsapp.domain.goods.service
+     * .LimitedDropDomainService.openDrop]만). 조회·집계는 이 메서드가 아니라 [effectiveStatus]가
+     * now·remaining 기준으로 실시간 파생하므로, 이 메서드가 호출되지 않아도 구매·조회 정확성에는
+     * 영향이 없다 — canTransitTo 상태 머신(상태전이표) 계약을 보존하기 위해 유지한다.
+     */
     fun open() = transitTo(LimitedDropStatus.OPEN)
 
+    /** [open] 과 동일한 이유로 유지 — 실제 SOLD_OUT 판정은 [effectiveStatus]가 remaining으로 파생한다. */
     fun markSoldOut() = transitTo(LimitedDropStatus.SOLD_OUT)
 
+    /** [open] 과 동일한 이유로 유지 — 실제 CLOSED 판정은 [effectiveStatus]가 now·closeAt으로 파생한다. */
     fun close() = transitTo(LimitedDropStatus.CLOSED)
+
+    /**
+     * 조회·집계용 실시간 파생 상태. 영속 [status]는 [open]/[markSoldOut]/[close] 호출 여부에 의존해
+     * 신뢰할 수 없으므로(상태 전이 표 정합, 코드 리뷰 p2), GET 응답·통계는 이 메서드로 일원화한다.
+     *
+     * 판정 순서: now < openAt → SCHEDULED, now ≥ closeAt → CLOSED, remaining ≤ 0 → SOLD_OUT, else OPEN.
+     * [remaining] 이 null(Redis 미시드)이면 아직 소진분이 없는 것으로 간주해 SOLD_OUT으로 판정하지 않는다.
+     */
+    fun effectiveStatus(remaining: Int?): LimitedDropStatus {
+        val now = ZonedDateTime.now()
+        return when {
+            now.isBefore(openAt) -> LimitedDropStatus.SCHEDULED
+            !now.isBefore(closeAt) -> LimitedDropStatus.CLOSED
+            remaining != null && remaining <= 0 -> LimitedDropStatus.SOLD_OUT
+            else -> LimitedDropStatus.OPEN
+        }
+    }
 
     /**
      * 리컨실리에이션 드리프트 감지 시 오버셀 이벤트를 적재한다 — 판정은

@@ -22,16 +22,15 @@ class DropReservationStoreTest : BehaviorSpec({
         val perUserLimit = 2
         val idempotencyKey = "idem-key-1"
 
-        When("reserve 가 ReservationResult 의 5개 하위 타입을 각각 반환하면") {
+        When("reserve 가 ReservationResult 의 4개 하위 타입을 각각 반환하면") {
             val results = listOf(
                 ReservationResult.Admitted,
                 ReservationResult.AlreadyReserved,
                 ReservationResult.SoldOut,
-                ReservationResult.Throttled,
                 ReservationResult.PerUserLimitExceeded(limit = perUserLimit),
             )
 
-            Then("when 전수 분기(else 없이)로 5개 분기 모두 처리된다") {
+            Then("when 전수 분기(else 없이)로 4개 분기 모두 처리된다") {
                 results.forEach { result: ReservationResult ->
                     every {
                         store.reserve(dropId, userId, quantity, perUserLimit, idempotencyKey)
@@ -40,11 +39,11 @@ class DropReservationStoreTest : BehaviorSpec({
                     val actual = store.reserve(dropId, userId, quantity, perUserLimit, idempotencyKey)
 
                     // else 브랜치 없는 전수 분기 — 컴파일 타임에 누락 분기를 잡는다
+                    // 완충(FR-7)은 reserve()의 판정 결과가 아니라 tryAcquireThrottle()로 별도 판정한다(코드 리뷰 p1).
                     val branch: String = when (actual) {
                         is ReservationResult.Admitted -> "ADMITTED"
                         is ReservationResult.AlreadyReserved -> "ALREADY_RESERVED"
                         is ReservationResult.SoldOut -> "SOLD_OUT"
-                        is ReservationResult.Throttled -> "THROTTLED"
                         is ReservationResult.PerUserLimitExceeded -> "PER_USER_LIMIT_EXCEEDED"
                     }
 
@@ -80,6 +79,18 @@ class DropReservationStoreTest : BehaviorSpec({
                 val remaining = store.remaining(1L)
 
                 remaining shouldBe 10
+            }
+        }
+
+        When("tryAcquireThrottle/releaseThrottle 을 호출하면") {
+            Then("완충(FR-7) 전용 시그니처가 reserve()와 독립적으로 존재한다(코드 리뷰 p1)") {
+                every { store.tryAcquireThrottle() } returns true
+                every { store.releaseThrottle() } returns Unit
+
+                val acquired = store.tryAcquireThrottle()
+                store.releaseThrottle()
+
+                acquired shouldBe true
             }
         }
     }
