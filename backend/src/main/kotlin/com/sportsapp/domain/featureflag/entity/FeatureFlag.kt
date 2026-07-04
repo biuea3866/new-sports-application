@@ -153,7 +153,9 @@ class FeatureFlag private constructor(
                 initialStatus = FeatureFlagStatus.ACTIVE,
                 initialStrategy = strategy,
                 initialDescription = description,
-            )
+            ).apply {
+                registerEvent(FeatureFlagChangedEvent(aggregateId = id, flagKey = flagKey))
+            }
         }
     }
 }
