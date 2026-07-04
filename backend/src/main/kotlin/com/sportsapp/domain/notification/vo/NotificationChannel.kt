@@ -4,4 +4,5 @@ enum class NotificationChannel {
     PUSH,
     EMAIL,
     SMS,
+    DISCORD,
 }
