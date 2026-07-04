@@ -16,6 +16,7 @@ import org.springframework.scheduling.annotation.EnableScheduling
 @EnableRetry(order = Ordered.HIGHEST_PRECEDENCE)
 @EnableScheduling
 @ConfigurationPropertiesScan
+@EnableScheduling
 class SportsApplication
 
 @Suppress("SpreadOperator")
