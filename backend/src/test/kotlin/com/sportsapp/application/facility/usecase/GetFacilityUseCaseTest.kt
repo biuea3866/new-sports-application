@@ -23,6 +23,7 @@ private fun buildFacility(id: String, gu: String, type: String): Facility = Faci
     homePage = "",
     eduYn = false,
     meta = emptyMap(),
+    sidoCode = null, sidoName = null, sigunguCode = null, sigunguName = null,
 )
 
 class GetFacilityUseCaseTest : BehaviorSpec({

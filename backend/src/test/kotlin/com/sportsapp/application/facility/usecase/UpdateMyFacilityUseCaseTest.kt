@@ -28,6 +28,7 @@ class UpdateMyFacilityUseCaseTest : BehaviorSpec({
             location = Point(127.0, 37.5),
             parking = true, tel = "02-0000-0000", homePage = "", eduYn = false,
             meta = mapOf("key" to "value"), ownerUserId = 1L,
+            sidoCode = null, sidoName = null, sigunguCode = null, sigunguName = null,
         )
         every { facilityOwnerDomainService.updateMetaForOwner("f-001", 1L, mapOf("key" to "value")) } returns updatedFacility
 

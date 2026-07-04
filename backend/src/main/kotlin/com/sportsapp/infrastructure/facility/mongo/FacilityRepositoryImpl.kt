@@ -1,10 +1,12 @@
 package com.sportsapp.infrastructure.facility.mongo
 
 import com.sportsapp.domain.facility.dto.GuTypeCount
+import com.sportsapp.domain.facility.dto.RegionTypeCount
 import com.sportsapp.domain.facility.entity.Facility
 import com.sportsapp.domain.facility.repository.FacilityRepository
 import org.springframework.context.annotation.Profile
 import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
 import org.springframework.data.geo.Distance
 import org.springframework.data.geo.Metrics
@@ -49,6 +51,10 @@ class FacilityRepositoryImpl(
             .set("home_page", facility.homePage)
             .set("edu_yn", facility.eduYn)
             .set("meta", facility.meta)
+            .set("sido_code", facility.sidoCode)
+            .set("sido_name", facility.sidoName)
+            .set("sigungu_code", facility.sigunguCode)
+            .set("sigungu_name", facility.sigunguName)
         mongoTemplate.upsert(query, update, Facility::class.java)
         return facilityMongoRepository.findByCodeAndDeletedAtIsNull(facility.code)
             ?: error("upsert 후 code=${facility.code} 조회 실패")
@@ -76,6 +82,27 @@ class FacilityRepositoryImpl(
         else -> facilityMongoRepository.findAllByDeletedAtIsNull(pageable)
     }
 
+    override fun findAll(
+        sidoCode: String?,
+        sigunguCode: String?,
+        gu: String?,
+        type: String?,
+        pageable: Pageable,
+    ): Page<Facility> {
+        val criteriaList = mutableListOf(Criteria.where("deletedAt").isNull)
+        sidoCode?.let { criteriaList.add(Criteria.where("sido_code").`is`(it)) }
+        sigunguCode?.let { criteriaList.add(Criteria.where("sigungu_code").`is`(it)) }
+        gu?.let { criteriaList.add(Criteria.where("gu").`is`(it)) }
+        type?.let { criteriaList.add(Criteria.where("type").`is`(it)) }
+        val criteria = Criteria().andOperator(*criteriaList.toTypedArray())
+        val content = mongoTemplate.find(Query(criteria).with(pageable), Facility::class.java)
+        val total = mongoTemplate.count(Query(criteria), Facility::class.java)
+        return PageImpl(content, pageable, total)
+    }
+
+    override fun findAllForBackfill(pageable: Pageable): Page<Facility> =
+        facilityMongoRepository.findAllByDeletedAtIsNull(pageable)
+
     override fun findByOwnerUserId(ownerUserId: Long, pageable: Pageable): Page<Facility> =
         facilityMongoRepository.findAllByOwnerUserIdAndDeletedAtIsNull(ownerUserId, pageable)
 
@@ -98,6 +125,20 @@ class FacilityRepositoryImpl(
                 .and("_id.type").`as`("type"),
         )
         return mongoTemplate.aggregate(aggregation, "facilities", GuTypeCount::class.java).mappedResults
+    }
+
+    override fun aggregateRegionType(): List<RegionTypeCount> {
+        val aggregation = Aggregation.newAggregation(
+            Aggregation.match(Criteria.where("deletedAt").isNull),
+            Aggregation.group("sido_code", "sido_name", "sigungu_code", "sigungu_name", "type").count().`as`("count"),
+            Aggregation.project("count")
+                .and("_id.sido_code").`as`("sidoCode")
+                .and("_id.sido_name").`as`("sidoName")
+                .and("_id.sigungu_code").`as`("sigunguCode")
+                .and("_id.sigungu_name").`as`("sigunguName")
+                .and("_id.type").`as`("type"),
+        )
+        return mongoTemplate.aggregate(aggregation, "facilities", RegionTypeCount::class.java).mappedResults
     }
 
     companion object {

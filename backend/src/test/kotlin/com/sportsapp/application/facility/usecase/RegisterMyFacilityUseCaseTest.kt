@@ -45,6 +45,7 @@ class RegisterMyFacilityUseCaseTest : BehaviorSpec({
             eduYn = command.eduYn,
             meta = command.meta,
             ownerUserId = command.ownerUserId,
+            sidoCode = null, sidoName = null, sigunguCode = null, sigunguName = null,
         )
         every { facilityOwnerDomainService.registerForOwner(any<FacilityAttributes>(), command.ownerUserId) } returns savedFacility
 

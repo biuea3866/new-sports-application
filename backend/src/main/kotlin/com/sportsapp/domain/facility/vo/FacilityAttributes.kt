@@ -13,4 +13,6 @@ data class FacilityAttributes(
     val homePage: String,
     val eduYn: Boolean,
     val meta: Map<String, String>,
+    val region: FacilityRegion = FacilityRegion.UNSPECIFIED,
+    val sidoHint: String? = null,
 )

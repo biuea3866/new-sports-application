@@ -2,6 +2,7 @@ package com.sportsapp.domain.facility.entity
 
 import com.sportsapp.domain.facility.exception.InvalidFacilityException
 import com.sportsapp.domain.facility.vo.FacilityAttributes
+import com.sportsapp.domain.facility.vo.FacilityRegion
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.maps.shouldContainKey
@@ -10,21 +11,25 @@ import io.kotest.matchers.shouldBe
 
 class FacilityTest : BehaviorSpec({
 
-    fun buildAttributes(code: String = "GN-001", meta: Map<String, String> = emptyMap()) =
-        FacilityAttributes(
-            code = code,
-            name = "테스트 시설",
-            gu = "강남구",
-            type = "수영장",
-            address = "서울시 강남구",
-            lat = 37.5,
-            lng = 127.0,
-            parking = true,
-            tel = "02-0000-0000",
-            homePage = "",
-            eduYn = false,
-            meta = meta,
-        )
+    fun buildAttributes(
+        code: String = "GN-001",
+        meta: Map<String, String> = emptyMap(),
+        region: FacilityRegion = FacilityRegion.UNSPECIFIED,
+    ) = FacilityAttributes(
+        code = code,
+        name = "테스트 시설",
+        gu = "강남구",
+        type = "수영장",
+        address = "서울시 강남구",
+        lat = 37.5,
+        lng = 127.0,
+        parking = true,
+        tel = "02-0000-0000",
+        homePage = "",
+        eduYn = false,
+        meta = meta,
+        region = region,
+    )
 
     Given("Facility.create 호출 시") {
         When("code가 빈 문자열이면") {
@@ -94,6 +99,52 @@ class FacilityTest : BehaviorSpec({
             Then("원본 Facility의 meta는 변경되지 않는다") {
                 facility.meta["capacity"] shouldBe "50"
                 facility.meta shouldNotContainKey "fee"
+            }
+        }
+    }
+
+    Given("region이 지정된 attributes로 Facility.create를 호출하면") {
+        val region = FacilityRegion.of(
+            sidoCode = "26",
+            sidoName = "부산광역시",
+            sigunguCode = "26410",
+            sigunguName = "해운대구",
+        )
+        val facility = Facility.create(buildAttributes(region = region))
+
+        Then("[U-01] attributes.region의 4필드가 시설에 반영된다") {
+            facility.sidoCode shouldBe "26"
+            facility.sidoName shouldBe "부산광역시"
+            facility.sigunguCode shouldBe "26410"
+            facility.sigunguName shouldBe "해운대구"
+        }
+
+        Then("[U-01] gu는 attributes.gu 값이 그대로 보존된다") {
+            facility.gu shouldBe "강남구"
+        }
+    }
+
+    Given("region 정보 없이 생성된(UNSPECIFIED) Facility") {
+        val facility = Facility.create(buildAttributes())
+
+        When("assignRegion으로 해석된 region을 갱신하면") {
+            val resolved = FacilityRegion.of(
+                sidoCode = "11",
+                sidoName = "서울특별시",
+                sigunguCode = "11680",
+                sigunguName = "강남구",
+            )
+            val updated = facility.assignRegion(resolved)
+
+            Then("[U-02] region 4필드가 갱신된 새 Facility가 반환된다") {
+                updated.sidoCode shouldBe "11"
+                updated.sidoName shouldBe "서울특별시"
+                updated.sigunguCode shouldBe "11680"
+                updated.sigunguName shouldBe "강남구"
+            }
+
+            Then("[U-02] 원본 Facility의 region은 변경되지 않는다") {
+                facility.sidoCode shouldBe FacilityRegion.UNSPECIFIED.sidoCode
             }
         }
     }
