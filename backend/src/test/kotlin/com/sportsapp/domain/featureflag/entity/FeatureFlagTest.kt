@@ -38,6 +38,15 @@ class FeatureFlagTest : BehaviorSpec({
             flag.strategy shouldBe EvaluationStrategy.GlobalToggle(enabled = true)
             flag.description shouldBe "demo flag"
         }
+
+        Then("FeatureFlagChangedEvent가 domainEvents에 적재된다") {
+            val flagWithEvent = createFlag()
+            val events = flagWithEvent.pullDomainEvents()
+            events shouldHaveSize 1
+            val changedEvent = events.single()
+            changedEvent.shouldBeInstanceOf<FeatureFlagChangedEvent>()
+            changedEvent.flagKey shouldBe flagWithEvent.flagKey
+        }
     }
 
     Given("형식에 맞지 않는 flagKey(대문자 포함)로 생성하면") {
@@ -128,6 +137,7 @@ class FeatureFlagTest : BehaviorSpec({
 
         Then("FeatureFlagChangedEvent가 domainEvents에 적재된다") {
             val flagWithEvent = createFlag()
+            flagWithEvent.pullDomainEvents()
             flagWithEvent.archive()
             val events = flagWithEvent.pullDomainEvents()
             events shouldHaveSize 1
@@ -179,6 +189,7 @@ class FeatureFlagTest : BehaviorSpec({
 
         Then("FeatureFlagChangedEvent가 domainEvents에 적재된다") {
             val flagWithEvent = createFlag()
+            flagWithEvent.pullDomainEvents()
             flagWithEvent.updateStrategy(EvaluationStrategy.GlobalToggle(enabled = false), "updated")
             flagWithEvent.pullDomainEvents() shouldHaveSize 1
         }
