@@ -15,7 +15,7 @@ class AlertSignalTest : BehaviorSpec({
         When("cooldownKey(env)를 호출하면") {
             val key = signal.cooldownKey("prod")
 
-            Then("INFRA-01 계약 형식(alerting:cooldown:{env}:{endpoint}:{source}:{severity})으로 소문자 생성한다") {
+            Then("계약 형식(alerting:cooldown:{env}:{endpoint}:{source}:{severity})으로 소문자 생성한다") {
                 key shouldBe "alerting:cooldown:prod:/pay:latency:warn"
             }
         }

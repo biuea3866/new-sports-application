@@ -23,7 +23,7 @@
 `AlertSignal.cooldownKey(env)` (TDD §인터페이스 시그니처) 시그니처와 1:1 대응한다:
 
 ```
-fun cooldownKey(env: String): String = "alerting:cooldown:$env:$endpoint:${source.name}:${severity.name}"
+fun cooldownKey(env: String): String = "alerting:cooldown:$env:$endpoint:${source.name.lowercase()}:${severity.name.lowercase()}"
 ```
 
 ### 선택 근거
