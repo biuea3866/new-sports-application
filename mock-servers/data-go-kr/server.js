@@ -167,11 +167,6 @@ function tmCoordFor(key) {
   return { tmX, tmY };
 }
 
-function stationFor(key) {
-  const hash = hashCode(key);
-  return STATION_LIST[hash % STATION_LIST.length];
-}
-
 function formatDataTime(date) {
   const pad = (n) => String(n).padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:00`;
