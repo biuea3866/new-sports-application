@@ -138,7 +138,7 @@ describe('MembershipResponse', () => {
 });
 
 describe('SportCategory 유니온', () => {
-  it('BE domain/community/vo/SportCategory.kt(BE-02) 확정 12개 값과 정확히 일치한다', () => {
+  it('BE domain/community/vo/SportCategory.kt 확정 12개 값과 정확히 일치한다', () => {
     // Record<SportCategory, true>는 SportCategory의 모든 멤버를 키로 요구하고,
     // 목록에 없는 값을 키로 넣으면 초과 프로퍼티 에러가 나므로
     // 유니온이 정확히 아래 12개로만 구성됐는지를 컴파일 타임에 검증한다.
