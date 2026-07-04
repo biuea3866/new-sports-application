@@ -98,7 +98,7 @@ export const FeatureFlagSnapshotSchema = z.object({
   key: z.string(),
   type: FeatureFlagTypeSchema,
   status: FeatureFlagStatusSchema,
-  description: z.string(),
+  description: z.string().nullable(),
   strategy: FeatureFlagStrategySchema,
 });
 export type FeatureFlagSnapshot = z.infer<typeof FeatureFlagSnapshotSchema>;
@@ -108,7 +108,7 @@ export const FeatureFlagResponseSchema = z.object({
   key: z.string(),
   type: FeatureFlagTypeSchema,
   status: FeatureFlagStatusSchema,
-  description: z.string(),
+  description: z.string().nullable(),
   strategy: FeatureFlagStrategySchema,
   createdAt: z.string(),
   updatedAt: z.string(),

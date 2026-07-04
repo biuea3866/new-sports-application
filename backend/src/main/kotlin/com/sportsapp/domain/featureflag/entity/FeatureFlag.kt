@@ -29,7 +29,7 @@ import java.time.ZonedDateTime
 /**
  * 피처 플래그 Aggregate Root — 평가 위임·상태 전이·생성 검증을 캡슐화한다.
  *
- * `feature_flags` 테이블(V41)에 `created_by`/`updated_by`만 있고 소프트 삭제 컬럼이 없어
+ * `feature_flags` 테이블(V42)에 `created_by`/`updated_by`만 있고 소프트 삭제 컬럼이 없어
  * [com.sportsapp.domain.common.JpaAuditingBase]를 상속하지 않고 audit 컬럼을 직접 선언한다.
  */
 @Entity

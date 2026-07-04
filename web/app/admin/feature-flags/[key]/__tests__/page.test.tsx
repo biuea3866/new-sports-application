@@ -76,6 +76,18 @@ describe("[key]/page — S3 플래그 수정 화면", () => {
     expect(screen.getByRole("switch")).toHaveAttribute("aria-checked", "true");
   });
 
+  it("BE가 description을 null로 반환해도 화면이 정상 렌더되고 설명 입력이 빈 값으로 프리필된다", async () => {
+    mockFetch.mockResolvedValue(jsonResponse({ ...ACTIVE_FLAG, description: null }));
+    const { default: EditFeatureFlagPage } = await import("../page");
+
+    render(<EditFeatureFlagPage />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("설명")).toHaveValue("");
+    });
+    expect(screen.queryByText(/찾을 수 없습니다/)).not.toBeInTheDocument();
+  });
+
   it("변경 저장 클릭 시 updateFeatureFlag(PUT)가 호출되고 저장 토스트가 뜬다", async () => {
     mockFetch.mockImplementation((url: string, init?: RequestInit) => {
       const method = init?.method ?? "GET";

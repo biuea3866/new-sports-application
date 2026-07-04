@@ -5,6 +5,7 @@ import { describe, it, expect } from "vitest";
 import {
   FeatureFlagStrategySchema,
   FeatureFlagResponseSchema,
+  FeatureFlagSnapshotSchema,
   FeatureFlagAuditLogPageSchema,
 } from "../schemas";
 
@@ -122,6 +123,36 @@ describe("FeatureFlagResponseSchema", () => {
       strategy: { strategyType: "GLOBAL_TOGGLE", enabled: true },
     };
     expect(FeatureFlagResponseSchema.safeParse(data).success).toBe(false);
+  });
+
+  it("description이 null(BE가 설명 없이 반환)이어도 파싱에 성공한다", () => {
+    const data = {
+      ...baseFlag,
+      description: null,
+      strategy: { strategyType: "GLOBAL_TOGGLE", enabled: true },
+    };
+    const result = FeatureFlagResponseSchema.safeParse(data);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.description).toBeNull();
+    }
+  });
+});
+
+describe("FeatureFlagSnapshotSchema", () => {
+  it("description이 null인 감사 로그 스냅샷도 파싱에 성공한다", () => {
+    const data = {
+      key: "demo.feature.hello",
+      type: "RELEASE",
+      status: "ACTIVE",
+      description: null,
+      strategy: { strategyType: "GLOBAL_TOGGLE", enabled: true },
+    };
+    const result = FeatureFlagSnapshotSchema.safeParse(data);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.description).toBeNull();
+    }
   });
 });
 

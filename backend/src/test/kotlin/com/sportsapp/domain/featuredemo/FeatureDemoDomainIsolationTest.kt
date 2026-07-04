@@ -23,7 +23,7 @@ class FeatureDemoDomainIsolationTest : FunSpec({
                 "com.sportsapp.presentation.featuredemo..",
             )
             .should().dependOnClassesThat().resideInAPackage("com.sportsapp.domain.featureflag..")
-            .because("featuredemo는 common.FeatureFlagEvaluator·FeatureContext만 주입해 도메인 격리를 증명한다 (BE-09)")
+            .because("featuredemo는 common.FeatureFlagEvaluator·FeatureContext만 주입해 도메인 격리를 증명한다")
             .allowEmptyShould(true)
             .check(importedClasses)
     }

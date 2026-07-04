@@ -54,7 +54,8 @@ function FeatureFlagEditPageContent(): JSX.Element {
 
   useEffect(() => {
     if (flag) {
-      setDescription(flag.description);
+      // BE는 description을 nullable로 반환할 수 있다 — 입력값은 항상 string이어야 하므로 빈 문자열로 대체한다.
+      setDescription(flag.description ?? "");
       setStrategy(flag.strategy);
     }
   }, [flag]);

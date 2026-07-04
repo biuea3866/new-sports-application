@@ -14,7 +14,7 @@ import org.hibernate.annotations.Type
 import java.time.ZonedDateTime
 
 /**
- * 피처 플래그 변경 감사 이력 (append-only, `feature_flag_audit_logs` — V41).
+ * 피처 플래그 변경 감사 이력 (append-only, `feature_flag_audit_logs` — V42).
  *
  * flagKey는 [after] 스냅샷의 key로부터 유도한다 — 호출부가 중복 전달하지 않는다.
  */

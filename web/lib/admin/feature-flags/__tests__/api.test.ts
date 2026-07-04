@@ -87,6 +87,15 @@ describe("fetchFeatureFlags", () => {
 
     await expect(fetchFeatureFlags()).rejects.toThrow("서버 오류가 발생했습니다.");
   });
+
+  it("첫 원소의 description이 null이어도 목록 전체를 정상 파싱해 반환한다", async () => {
+    const flagWithoutDescription = { ...sampleFlag, description: null };
+    mockFetch.mockResolvedValue(jsonResponse([flagWithoutDescription, sampleFlag]));
+
+    const result = await fetchFeatureFlags();
+
+    expect(result).toEqual([flagWithoutDescription, sampleFlag]);
+  });
 });
 
 describe("createFeatureFlag", () => {

@@ -64,6 +64,21 @@ describe("useFeatureFlags", () => {
     expect(result.current.data).toBeNull();
   });
 
+  it("일부 플래그의 description이 null이어도 목록 전체가 정상 세팅되고 error가 없다", async () => {
+    mockFetch.mockResolvedValue(
+      jsonResponse([{ ...sampleFlag, description: null }, sampleFlag])
+    );
+
+    const { result } = renderHook(() => useFeatureFlags());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.data).toEqual([{ ...sampleFlag, description: null }, sampleFlag]);
+  });
+
   it("refetch 호출 시 재조회한다", async () => {
     mockFetch.mockResolvedValue(jsonResponse([sampleFlag]));
 

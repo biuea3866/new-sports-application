@@ -131,7 +131,7 @@ class FeatureFlagMetricsBinderTest : BehaviorSpec({
         }
     }
 
-    Given("BE-03 subscriber가 이미 전파 지연 타이머를 기록해둔 상태에서") {
+    Given("subscriber가 이미 전파 지연 타이머를 기록해둔 상태에서") {
         val localFeatureFlagStore = mockk<LocalFeatureFlagStore>()
         every { localFeatureFlagStore.size() } returns 0
         val redisMessageListenerContainer = mockk<RedisMessageListenerContainer>()
