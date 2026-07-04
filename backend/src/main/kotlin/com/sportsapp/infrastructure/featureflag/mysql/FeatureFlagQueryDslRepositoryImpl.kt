@@ -7,6 +7,7 @@ import com.sportsapp.domain.featureflag.entity.FeatureFlagStatus
 import com.sportsapp.domain.featureflag.entity.FeatureFlagType
 import com.sportsapp.domain.featureflag.entity.QFeatureFlag.featureFlag
 import org.springframework.stereotype.Repository
+import java.time.ZonedDateTime
 
 @Repository
 class FeatureFlagQueryDslRepositoryImpl(
@@ -27,4 +28,13 @@ class FeatureFlagQueryDslRepositoryImpl(
             .where(condition)
             .fetch()
     }
+
+    override fun findStale(status: FeatureFlagStatus, type: FeatureFlagType, updatedBefore: ZonedDateTime): List<FeatureFlag> =
+        queryFactory.selectFrom(featureFlag)
+            .where(
+                featureFlag.status.eq(status),
+                featureFlag.type.eq(type),
+                featureFlag.updatedAt.before(updatedBefore),
+            )
+            .fetch()
 }

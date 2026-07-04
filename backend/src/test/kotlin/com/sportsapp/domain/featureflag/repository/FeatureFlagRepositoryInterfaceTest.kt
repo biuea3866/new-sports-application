@@ -6,6 +6,7 @@ import com.sportsapp.domain.featureflag.entity.FeatureFlagType
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import java.lang.reflect.Modifier
+import java.time.ZonedDateTime
 
 /**
  * `FeatureFlagRepository` 인터페이스 시그니처 검증 — BE-02(영속화)가 구현할 계약을 동결한다.
@@ -49,6 +50,16 @@ class FeatureFlagRepositoryInterfaceTest : BehaviorSpec({
             val method = requireNotNull(cls.declaredMethods.find { it.name == "existsByKey" })
             method.returnType shouldBe Boolean::class.javaPrimitiveType
             method.parameterTypes.toList() shouldBe listOf(String::class.java)
+        }
+
+        Then("findStale 메서드가 (FeatureFlagStatus, FeatureFlagType, ZonedDateTime): List 시그니처로 선언돼 있다") {
+            val method = requireNotNull(cls.declaredMethods.find { it.name == "findStale" })
+            method.returnType shouldBe List::class.java
+            method.parameterTypes.toList() shouldBe listOf(
+                FeatureFlagStatus::class.java,
+                FeatureFlagType::class.java,
+                ZonedDateTime::class.java,
+            )
         }
 
         Then("FeatureFlagRepository 는 인터페이스(추상)이다") {

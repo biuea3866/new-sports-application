@@ -16,10 +16,24 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.jdbc.core.JdbcTemplate
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 
 class FeatureFlagRepositoryImplTest(
     @Autowired private val featureFlagRepository: FeatureFlagRepository,
+    @Autowired private val jdbcTemplate: JdbcTemplate,
 ) : BaseJpaIntegrationTest() {
+
+    private fun forceUpdatedAt(flagKey: String, updatedAt: ZonedDateTime) {
+        jdbcTemplate.update(
+            "UPDATE feature_flags SET updated_at = ? WHERE flag_key = ?",
+            updatedAt.withZoneSameInstant(ZoneOffset.UTC)
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS")),
+            flagKey,
+        )
+    }
 
     init {
         Given("GlobalToggle 전략의 신규 피처 플래그를 저장한 상황") {
@@ -176,6 +190,105 @@ class FeatureFlagRepositoryImplTest(
                     val restoredStrategy = found.strategy as EvaluationStrategy.VariantBucketing
                     restoredStrategy.variants shouldHaveSize 2
                     restoredStrategy.variants shouldContainExactlyInAnyOrder variants
+                }
+            }
+        }
+
+        Given("90일보다 오래 전에 변경된 ACTIVE RELEASE 플래그가 저장된 상황") {
+            val staleKey = "demo.feature.stale-${System.nanoTime()}"
+            featureFlagRepository.save(
+                FeatureFlag.create(
+                    flagKey = staleKey,
+                    type = FeatureFlagType.RELEASE,
+                    strategy = EvaluationStrategy.GlobalToggle(enabled = true),
+                    description = null,
+                ),
+            )
+            forceUpdatedAt(staleKey, ZonedDateTime.now().minusDays(91))
+
+            When("findStale(ACTIVE, RELEASE, 90일 이전)로 조회하면") {
+                val result = featureFlagRepository.findStale(
+                    FeatureFlagStatus.ACTIVE,
+                    FeatureFlagType.RELEASE,
+                    ZonedDateTime.now().minusDays(90),
+                )
+
+                Then("정리 후보로 식별된다") {
+                    result.map { it.flagKey } shouldContain staleKey
+                }
+            }
+        }
+
+        Given("90일 이내에 변경된 ACTIVE RELEASE 플래그가 저장된 상황") {
+            val freshKey = "demo.feature.fresh-${System.nanoTime()}"
+            featureFlagRepository.save(
+                FeatureFlag.create(
+                    flagKey = freshKey,
+                    type = FeatureFlagType.RELEASE,
+                    strategy = EvaluationStrategy.GlobalToggle(enabled = true),
+                    description = null,
+                ),
+            )
+
+            When("findStale(ACTIVE, RELEASE, 90일 이전)로 조회하면") {
+                val result = featureFlagRepository.findStale(
+                    FeatureFlagStatus.ACTIVE,
+                    FeatureFlagType.RELEASE,
+                    ZonedDateTime.now().minusDays(90),
+                )
+
+                Then("정리 후보에서 제외된다") {
+                    result.map { it.flagKey } shouldNotContain freshKey
+                }
+            }
+        }
+
+        Given("90일보다 오래 전에 변경된 OPERATIONAL 타입 플래그가 저장된 상황") {
+            val operationalKey = "demo.feature.operational-stale-${System.nanoTime()}"
+            featureFlagRepository.save(
+                FeatureFlag.create(
+                    flagKey = operationalKey,
+                    type = FeatureFlagType.OPERATIONAL,
+                    strategy = EvaluationStrategy.GlobalToggle(enabled = true),
+                    description = null,
+                ),
+            )
+            forceUpdatedAt(operationalKey, ZonedDateTime.now().minusDays(91))
+
+            When("findStale(ACTIVE, RELEASE, 90일 이전)로 조회하면") {
+                val result = featureFlagRepository.findStale(
+                    FeatureFlagStatus.ACTIVE,
+                    FeatureFlagType.RELEASE,
+                    ZonedDateTime.now().minusDays(90),
+                )
+
+                Then("RELEASE 타입이 아니므로 정리 후보에서 제외된다") {
+                    result.map { it.flagKey } shouldNotContain operationalKey
+                }
+            }
+        }
+
+        Given("90일보다 오래 전에 변경되고 ARCHIVED된 RELEASE 플래그가 저장된 상황") {
+            val archivedStaleKey = "demo.feature.archived-stale-${System.nanoTime()}"
+            val archived = FeatureFlag.create(
+                flagKey = archivedStaleKey,
+                type = FeatureFlagType.RELEASE,
+                strategy = EvaluationStrategy.GlobalToggle(enabled = true),
+                description = null,
+            )
+            archived.archive()
+            featureFlagRepository.save(archived)
+            forceUpdatedAt(archivedStaleKey, ZonedDateTime.now().minusDays(91))
+
+            When("findStale(ACTIVE, RELEASE, 90일 이전)로 조회하면") {
+                val result = featureFlagRepository.findStale(
+                    FeatureFlagStatus.ACTIVE,
+                    FeatureFlagType.RELEASE,
+                    ZonedDateTime.now().minusDays(90),
+                )
+
+                Then("ARCHIVED 상태이므로 정리 후보에서 제외된다") {
+                    result.map { it.flagKey } shouldNotContain archivedStaleKey
                 }
             }
         }

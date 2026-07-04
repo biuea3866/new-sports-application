@@ -20,6 +20,7 @@ import com.sportsapp.domain.featureflag.repository.FeatureFlagRepository
 import com.sportsapp.domain.featureflag.vo.FeatureFlagSnapshot
 import org.springframework.data.domain.Page
 import org.springframework.stereotype.Service
+import java.time.ZonedDateTime
 
 /**
  * 피처 플래그 CRUD·감사·전파 오케스트레이션 (BE-04).
@@ -91,6 +92,15 @@ class FeatureFlagDomainService(
         featureFlagChangeBroadcaster.broadcast(key)
     }
 
+    /**
+     * 정리 후보 탐지(FR-14) — [STALE_THRESHOLD_DAYS]일 이상 무변경된 ACTIVE RELEASE 플래그를 조회한다.
+     * 임계 시각은 이 메서드 내부에서 `ZonedDateTime.now()` 기준으로 해결한다(Clock 주입·시간 인자 전달 금지).
+     */
+    fun findStaleReleaseFlags(): List<FeatureFlag> {
+        val updatedBefore = ZonedDateTime.now().minusDays(STALE_THRESHOLD_DAYS)
+        return featureFlagRepository.findStale(FeatureFlagStatus.ACTIVE, FeatureFlagType.RELEASE, updatedBefore)
+    }
+
     private fun recordAudit(
         changeType: FeatureFlagChangeType,
         actorUserId: Long,
@@ -98,5 +108,9 @@ class FeatureFlagDomainService(
         after: FeatureFlagSnapshot,
     ) {
         featureFlagAuditLogRepository.save(FeatureFlagAuditLog.create(changeType, actorUserId, before, after))
+    }
+
+    companion object {
+        private const val STALE_THRESHOLD_DAYS = 90L
     }
 }

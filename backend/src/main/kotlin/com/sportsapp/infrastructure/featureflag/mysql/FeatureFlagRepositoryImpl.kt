@@ -5,6 +5,7 @@ import com.sportsapp.domain.featureflag.entity.FeatureFlagStatus
 import com.sportsapp.domain.featureflag.entity.FeatureFlagType
 import com.sportsapp.domain.featureflag.repository.FeatureFlagRepository
 import org.springframework.stereotype.Repository
+import java.time.ZonedDateTime
 
 @Repository
 class FeatureFlagRepositoryImpl(
@@ -28,4 +29,7 @@ class FeatureFlagRepositoryImpl(
 
     override fun existsByKey(key: String): Boolean =
         featureFlagJpaRepository.existsByFlagKey(key)
+
+    override fun findStale(status: FeatureFlagStatus, type: FeatureFlagType, updatedBefore: ZonedDateTime): List<FeatureFlag> =
+        featureFlagJpaRepository.findStale(status, type, updatedBefore)
 }

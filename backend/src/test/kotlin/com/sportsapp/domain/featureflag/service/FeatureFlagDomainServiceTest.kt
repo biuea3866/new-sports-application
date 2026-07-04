@@ -23,6 +23,7 @@ import com.sportsapp.domain.featureflag.repository.FeatureFlagRepository
 import com.sportsapp.domain.featureflag.strategy.EvaluationStrategy
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
@@ -30,6 +31,7 @@ import io.mockk.slot
 import io.mockk.verify
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
+import java.time.ZonedDateTime
 
 private class FeatureFlagDomainServiceFixture {
     val featureFlagRepository = mockk<FeatureFlagRepository>()
@@ -300,6 +302,45 @@ class FeatureFlagDomainServiceTest : BehaviorSpec({
             Then("cacheStore.put과 broadcaster.broadcast를 각각 1회 호출한다") {
                 verify(exactly = 1) { fixture.featureFlagCacheStore.put(flag.toSnapshot()) }
                 verify(exactly = 1) { fixture.featureFlagChangeBroadcaster.broadcast("demo.feature.propagate") }
+            }
+        }
+    }
+
+    Given("90일 이전 변경된 ACTIVE RELEASE 플래그가 존재하는 상황") {
+        val fixture = FeatureFlagDomainServiceFixture()
+        val staleFlags = listOf(newFlag(flagKey = "demo.feature.stale"))
+        val updatedBeforeSlot = slot<ZonedDateTime>()
+        every {
+            fixture.featureFlagRepository.findStale(
+                FeatureFlagStatus.ACTIVE,
+                FeatureFlagType.RELEASE,
+                capture(updatedBeforeSlot),
+            )
+        } returns staleFlags
+
+        When("findStaleReleaseFlags를 호출하면") {
+            val result = fixture.service.findStaleReleaseFlags()
+
+            Then("ACTIVE·RELEASE·90일 임계 시각으로 조회한 결과를 그대로 반환한다") {
+                result shouldBe staleFlags
+                val now = ZonedDateTime.now()
+                (updatedBeforeSlot.captured.isBefore(now.minusDays(89))) shouldBe true
+                (updatedBeforeSlot.captured.isAfter(now.minusDays(91))) shouldBe true
+            }
+        }
+    }
+
+    Given("정리 후보가 없는 상황") {
+        val fixture = FeatureFlagDomainServiceFixture()
+        every {
+            fixture.featureFlagRepository.findStale(FeatureFlagStatus.ACTIVE, FeatureFlagType.RELEASE, any())
+        } returns emptyList()
+
+        When("findStaleReleaseFlags를 호출하면") {
+            val result = fixture.service.findStaleReleaseFlags()
+
+            Then("빈 리스트를 반환한다") {
+                result.shouldBeEmpty()
             }
         }
     }
