@@ -1,10 +1,11 @@
 /**
- * useTheme — 현재 스킴의 테마 토큰 객체를 반환합니다.
+ * useTheme — 현재 모드의 테마 토큰 객체를 반환합니다.
  *
- * 우선순위: useThemeStore의 사용자 오버라이드 > useColorScheme() 시스템 값 > 라이트(fallback).
+ * 우선순위: themeStore의 mode가 'light'|'dark'로 오버라이드되어 있으면 그 값을,
+ * mode가 'system'이면 useColorScheme() 시스템 값을(다크가 아니면 라이트로) 사용합니다.
  */
 import { useColorScheme } from 'react-native';
-import { useThemeStore } from '../stores/useThemeStore';
+import { useThemeStore, type ThemeMode } from './themeStore';
 import { themeTokens, type ColorScheme, type ThemeTokens } from './tokens';
 
 export interface UseThemeResult {
@@ -13,19 +14,19 @@ export interface UseThemeResult {
 }
 
 function resolveScheme(
-  schemeOverride: ColorScheme | null,
+  mode: ThemeMode,
   systemScheme: 'light' | 'dark' | null | undefined
 ): ColorScheme {
-  if (schemeOverride !== null) {
-    return schemeOverride;
+  if (mode === 'light' || mode === 'dark') {
+    return mode;
   }
   return systemScheme === 'dark' ? 'dark' : 'light';
 }
 
 export function useTheme(): UseThemeResult {
   const systemScheme = useColorScheme();
-  const schemeOverride = useThemeStore((state) => state.schemeOverride);
-  const scheme = resolveScheme(schemeOverride, systemScheme);
+  const mode = useThemeStore((state) => state.mode);
+  const scheme = resolveScheme(mode, systemScheme);
 
   return {
     scheme,
