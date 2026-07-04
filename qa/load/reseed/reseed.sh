@@ -109,11 +109,13 @@ assert_safe_mysql_target() {
     if [ -z "${MYSQL_HOST}" ]; then
         return 0
     fi
-    if [[ "${MYSQL_HOST}" =~ ^(localhost|127\.0\.0\.1|[^./]*\.local)$ ]]; then
+    # 허용: localhost·127.0.0.1·*.local + docker compose 서비스명(mysql/redis 등 점·슬래시 없는 단일 호스트).
+    # 차단: RDS·FQDN·URL 등 점(.)이나 슬래시(/)를 포함하는 원격 오조준 대상.
+    if [[ "${MYSQL_HOST}" =~ ^(127\.0\.0\.1|[^./]+|[^/]*\.local)$ ]]; then
         return 0
     fi
-    warn "[SAFETY] MYSQL_HOST=${MYSQL_HOST}는 로컬 대상이 아닙니다. reseed는 무인 반복 배치이므로" \
-         "localhost/127.0.0.1/*.local 이외의 호스트에는 절대 실행하지 않습니다(오조준 방지)."
+    warn "[SAFETY] MYSQL_HOST=${MYSQL_HOST}는 로컬/컨테이너 대상이 아닙니다. reseed는 무인 반복 배치이므로" \
+         "점(.)·슬래시(/) 포함 원격 호스트에는 절대 실행하지 않습니다(오조준 방지)."
     exit 1
 }
 
@@ -121,11 +123,12 @@ assert_safe_redis_target() {
     if [ -z "${REDIS_HOST}" ]; then
         return 0
     fi
-    if [[ "${REDIS_HOST}" =~ ^(localhost|127\.0\.0\.1|[^./]*\.local)$ ]]; then
+    # 허용: localhost·127.0.0.1·*.local + docker compose 서비스명(mysql/redis 등 점·슬래시 없는 단일 호스트).
+    if [[ "${REDIS_HOST}" =~ ^(127\.0\.0\.1|[^./]+|[^/]*\.local)$ ]]; then
         return 0
     fi
-    warn "[SAFETY] REDIS_HOST=${REDIS_HOST}는 로컬 대상이 아닙니다. reseed는 무인 반복 배치이므로" \
-         "localhost/127.0.0.1/*.local 이외의 호스트에는 절대 실행하지 않습니다(오조준 방지)."
+    warn "[SAFETY] REDIS_HOST=${REDIS_HOST}는 로컬/컨테이너 대상이 아닙니다. reseed는 무인 반복 배치이므로" \
+         "점(.)·슬래시(/) 포함 원격 호스트에는 절대 실행하지 않습니다(오조준 방지)."
     exit 1
 }
 
@@ -350,6 +353,27 @@ WHERE slot_id BETWEEN 9000001 AND 9000030
   AND user_id BETWEEN ${SYN_USER_ID_RANGE_START} AND ${SYN_USER_ID_RANGE_END}
   AND status = 'CANCELLED'
   AND updated_at < DATE_SUB(NOW(6), INTERVAL ${RESEED_CLEANUP_AGE_DAYS} DAY);
+
+-- B2B 등록 곡선(INFRA-06)이 매 iteration INSERT하는 synthetic 상품/이벤트(name/title prefix 'b2b-load-')
+-- 를 경과일 조건으로 정리한다. owner는 partner 연동 User라 synthetic owner 스코프에 안 걸리므로
+-- prefix로 식별한다. 무한 성장 방지 + 조회 지연 측정(INFRA-04) 왜곡 방지. 자식(stocks/seats) 먼저 삭제.
+DELETE s FROM stocks s
+    JOIN products p ON p.id = s.product_id
+WHERE p.name LIKE 'b2b-load-product-%'
+  AND p.created_at < DATE_SUB(NOW(6), INTERVAL ${RESEED_CLEANUP_AGE_DAYS} DAY);
+
+DELETE FROM products
+WHERE name LIKE 'b2b-load-product-%'
+  AND created_at < DATE_SUB(NOW(6), INTERVAL ${RESEED_CLEANUP_AGE_DAYS} DAY);
+
+DELETE se FROM seats se
+    JOIN events e ON e.id = se.event_id
+WHERE e.title LIKE 'b2b-load-event-%'
+  AND e.created_at < DATE_SUB(NOW(6), INTERVAL ${RESEED_CLEANUP_AGE_DAYS} DAY);
+
+DELETE FROM events
+WHERE title LIKE 'b2b-load-event-%'
+  AND created_at < DATE_SUB(NOW(6), INTERVAL ${RESEED_CLEANUP_AGE_DAYS} DAY);
 SQL
 
     if run_mysql_file "일 1회 전체 정리" "${cleanup_sql_file}"; then
