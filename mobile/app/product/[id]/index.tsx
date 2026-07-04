@@ -76,11 +76,7 @@ export default function ProductDetailScreen() {
   };
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      accessible={false}
-    >
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} accessible={false}>
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => router.back()}
@@ -142,7 +138,11 @@ export default function ProductDetailScreen() {
           >
             <Text style={styles.quantityButtonText}>-</Text>
           </TouchableOpacity>
-          <Text style={styles.quantityValue} accessibilityRole="text" accessibilityLabel={`수량 ${quantity}`}>
+          <Text
+            style={styles.quantityValue}
+            accessibilityRole="text"
+            accessibilityLabel={`수량 ${quantity}`}
+          >
             {quantity}
           </Text>
           <TouchableOpacity
@@ -160,7 +160,10 @@ export default function ProductDetailScreen() {
 
       {/* 장바구니 담기 버튼 */}
       <TouchableOpacity
-        style={[styles.addToCartButton, (isOutOfStock || addCartItem.isPending) && styles.buttonDisabled]}
+        style={[
+          styles.addToCartButton,
+          (isOutOfStock || addCartItem.isPending) && styles.buttonDisabled,
+        ]}
         onPress={handleAddToCart}
         disabled={isOutOfStock || addCartItem.isPending}
         accessibilityRole="button"

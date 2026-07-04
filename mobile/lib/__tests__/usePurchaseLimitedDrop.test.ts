@@ -5,6 +5,7 @@
  * - 429(THROTTLED) 응답은 동일 Idempotency-Key로 1회 자동 재시도한다.
  * - 재시도로도 해소되지 않는 오류(네트워크·5xx)는 error phase로 매핑한다.
  * - 서로 다른 구매 시도(재시도가 아닌 신규 mutate)는 각각 새 Idempotency-Key를 생성한다.
+ * - error phase 이후 재시도는 동일한 Idempotency-Key를 재사용해 중복 주문을 막는다.
  */
 import { createElement } from 'react';
 import { act } from 'react';
@@ -150,6 +151,36 @@ describe('usePurchaseLimitedDrop', () => {
     });
 
     await waitFor(() => expect(result.current.data).toEqual({ phase: 'error' }));
+  });
+
+  it('error phase 이후 재시도가 동일한 Idempotency-Key를 재사용한다', async () => {
+    purchaseLimitedDropMock
+      .mockRejectedValueOnce(new Error('Network Error'))
+      .mockResolvedValueOnce({
+        outcome: 'ADMITTED',
+        data: { orderId: 7, dropId: 1, status: 'PENDING' },
+      });
+    const { wrapper } = createWrapper();
+
+    const { result } = renderHook(() => usePurchaseLimitedDrop(1), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ quantity: 1 });
+    });
+    await waitFor(() => expect(result.current.data).toEqual({ phase: 'error' }));
+
+    await act(async () => {
+      await result.current.mutateAsync({ quantity: 1 });
+    });
+
+    expect(purchaseLimitedDropMock).toHaveBeenCalledTimes(2);
+    expect(extractIdempotencyKey(0)).toBe(extractIdempotencyKey(1));
+    await waitFor(() =>
+      expect(result.current.data).toEqual({
+        phase: 'admitted',
+        data: { orderId: 7, dropId: 1, status: 'PENDING' },
+      })
+    );
   });
 
   it('신규 구매 시도마다 새 Idempotency-Key를 생성한다', async () => {

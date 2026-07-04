@@ -5,7 +5,12 @@
  * purchaseLimitedDrop이 반환하는 LimitedDropPurchaseResult(정상 실패 경로)와
  * 5xx·네트워크 오류(예외 전파)를 화면이 분기하기 쉬운 단일 판별 유니온(PurchaseLimitedDropPhase)으로 통합한다.
  * 429(THROTTLED)는 BE 멱등 정합을 위해 동일 Idempotency-Key로 1회 자동 재시도한다.
+ * error·throttled phase 이후 사용자가 재시도(재-mutate)하면 동일 구매 시도(intent)로 간주해
+ * 같은 Idempotency-Key를 재사용한다 — 원 요청이 서버엔 도달했으나 응답만 실패한 경우
+ * 새 키로 재시도하면 중복 주문이 생기기 때문이다. admitted 등 확정 결과 이후의 다음 mutate는
+ * 새 구매 시도로 보고 새 키를 발급한다.
  */
+import { useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { useCurrentUserId } from '../api/goods';
@@ -75,14 +80,26 @@ async function attemptPurchase(
   }
 }
 
+const RETRYABLE_SAME_KEY_PHASES: ReadonlySet<PurchaseLimitedDropPhase['phase']> = new Set([
+  'error',
+  'throttled',
+]);
+
 export function usePurchaseLimitedDrop(dropId: number) {
   const queryClient = useQueryClient();
   const userId = useCurrentUserId();
+  const currentIntentKeyRef = useRef<string | null>(null);
 
   return useMutation<PurchaseLimitedDropPhase, never, PurchaseLimitedDropVariables>({
-    mutationFn: ({ quantity }) =>
-      attemptPurchase(dropId, quantity, userId, generateIdempotencyKey()),
+    mutationFn: ({ quantity }) => {
+      const idempotencyKey = currentIntentKeyRef.current ?? generateIdempotencyKey();
+      currentIntentKeyRef.current = idempotencyKey;
+      return attemptPurchase(dropId, quantity, userId, idempotencyKey);
+    },
     onSuccess: (result) => {
+      currentIntentKeyRef.current = RETRYABLE_SAME_KEY_PHASES.has(result.phase)
+        ? currentIntentKeyRef.current
+        : null;
       if (result.phase === 'admitted') {
         void queryClient.invalidateQueries({ queryKey: ['limitedDrops', dropId] });
       }
