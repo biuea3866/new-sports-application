@@ -69,6 +69,8 @@ class SecurityConfig(
         auth.requestMatchers(HttpMethod.POST, "/auth/login", "/auth/refresh", "/users/register").permitAll()
         auth.requestMatchers("/actuator/health", "/actuator/info").permitAll()
         auth.requestMatchers("/admin/**").hasRole("ADMIN")
+        // BE-10: 데모 게이팅(FR-9)은 X-User-Id 헤더 기반 평가라 permitAll (AUTH-04 관례)
+        auth.requestMatchers("/feature-demo/**").permitAll()
         auth.requestMatchers("/api/facility-owner/**").authenticated()
         auth.requestMatchers("/api/event-host/**").authenticated()
         auth.requestMatchers("/api/goods-seller/**").authenticated()
