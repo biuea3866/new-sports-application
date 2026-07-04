@@ -1,4 +1,4 @@
--- V41: 피처 플래그 — feature_flags · feature_flag_audit_logs 테이블 생성
+-- V42: 피처 플래그 — feature_flags · feature_flag_audit_logs 테이블 생성 (V41은 limited_drops 점유)
 -- 근거: design-db.md "테이블 정의" (../design-db.md), 티켓 DB-01-create-feature-flags.md
 -- 2 테이블 = 1 마이그레이션 파일 (feature_flags SSOT + feature_flag_audit_logs append-only)
 -- feature_flags: 플래그 상태·평가 전략 SSOT. version BIGINT 낙관락 (@Version Long 정합)
