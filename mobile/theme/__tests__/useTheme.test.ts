@@ -56,4 +56,50 @@ describe('useTheme', () => {
     expect(result.current.scheme).toBe('dark');
     expect(result.current.tokens).toEqual(darkTokens);
   });
+
+  it('라이트 스킴에서 반환된 토큰에 대기질 등급 배지 키가 모두 존재한다', () => {
+    mockUseColorScheme.mockReturnValue('light');
+
+    const { result } = renderHook(() => useTheme());
+
+    expect(Object.keys(result.current.tokens)).toEqual(
+      expect.arrayContaining([
+        'airGoodBg',
+        'airGoodFg',
+        'airModerateBg',
+        'airModerateFg',
+        'airBadBg',
+        'airBadFg',
+        'airVeryBadBg',
+        'airVeryBadFg',
+        'airUnknownBg',
+        'airUnknownFg',
+      ])
+    );
+  });
+
+  it('다크 스킴에서 반환된 토큰에 대기질 등급 배지 키가 모두 존재한다', () => {
+    mockUseColorScheme.mockReturnValue('dark');
+    act(() => {
+      useThemeStore.getState().setMode('dark');
+    });
+
+    const { result } = renderHook(() => useTheme());
+
+    expect(result.current.scheme).toBe('dark');
+    expect(Object.keys(result.current.tokens)).toEqual(
+      expect.arrayContaining([
+        'airGoodBg',
+        'airGoodFg',
+        'airModerateBg',
+        'airModerateFg',
+        'airBadBg',
+        'airBadFg',
+        'airVeryBadBg',
+        'airVeryBadFg',
+        'airUnknownBg',
+        'airUnknownFg',
+      ])
+    );
+  });
 });
