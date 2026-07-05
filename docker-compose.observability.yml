@@ -96,6 +96,9 @@ services:
       # provisioning(데이터소스·대시보드 provider)·dashboards json은 INFRA-04 소유 — 경로만 참조
       - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      # ⑦ 시뮬레이터 대시보드(qa/load/dashboards) — ⑦ 소유 파일을 읽기 전용으로 참조만 한다(복제 금지).
+      # provider.yml의 "qa-load-simulator" provider가 이 경로를 스캔한다.
+      - ./qa/load/dashboards:/var/lib/grafana/dashboards-simulator:ro
       - grafana-data:/var/lib/grafana
     ports:
       - "3000:3000"

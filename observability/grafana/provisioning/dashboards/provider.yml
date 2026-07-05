@@ -1,5 +1,9 @@
 # Grafana 대시보드 자동 로드 프로비저닝 (INFRA-04)
 # compose가 ./observability/grafana/dashboards → /var/lib/grafana/dashboards 로 마운트한다.
+#
+# 두 번째 provider(qa-load-simulator)는 ⑤ 후속 — ⑦이 소유하는 qa/load/dashboards/simulator.json을
+# 별도 마운트 경로(/var/lib/grafana/dashboards-simulator, docker-compose.observability.yml 참고)로
+# 읽기 전용 참조한다. ⑦이 파일을 갱신하면 Grafana가 30초 주기로 자동 재로드한다(복제 없음).
 apiVersion: 1
 
 providers:
@@ -13,4 +17,16 @@ providers:
     allowUiUpdates: false
     options:
       path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false
+
+  - name: "qa-load-simulator"
+    orgId: 1
+    folder: "QA Load Simulator"
+    folderUid: qa-load-simulator
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards-simulator
       foldersFromFilesStructure: false
