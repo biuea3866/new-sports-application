@@ -2,6 +2,7 @@ package com.sportsapp.presentation.message.stomp
 
 import com.sportsapp.BaseJpaIntegrationTest
 import com.sportsapp.domain.message.service.MessageDomainService
+import com.sportsapp.domain.user.gateway.JwtIssuer
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import java.util.concurrent.TimeUnit
@@ -30,6 +31,7 @@ import org.springframework.web.socket.messaging.WebSocketStompClient
 @TestPropertySource(properties = ["chat.realtime.enabled=false"])
 class ChatRealtimeDisabledTest(
     @Autowired private val messageDomainService: MessageDomainService,
+    @Autowired private val jwtIssuer: JwtIssuer,
     @LocalServerPort private val port: Int,
 ) : BaseJpaIntegrationTest() {
 
@@ -65,10 +67,15 @@ class ChatRealtimeDisabledTest(
             When("REST 로 방을 만들고 메시지를 보내면") {
                 val room = messageDomainService.createGroupRoom("플래그 OFF REST 방", emptyList())
                 messageDomainService.joinRoom(room.id, userId = 9101L)
+                val accessToken = jwtIssuer.generateAccessToken(
+                    userId = 9101L,
+                    email = "chat-realtime-disabled@example.com",
+                    roles = emptyList(),
+                )
 
                 val headers = HttpHeaders().apply {
                     set("Content-Type", "application/json")
-                    set("X-User-Id", "9101")
+                    set("Authorization", "Bearer $accessToken")
                 }
                 val response = restTemplate.exchange(
                     "http://localhost:$port/rooms/${room.id}/messages",

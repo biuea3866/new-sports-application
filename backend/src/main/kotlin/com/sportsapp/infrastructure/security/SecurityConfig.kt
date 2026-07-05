@@ -88,11 +88,14 @@ class SecurityConfig(
         // 규칙 선등록은 무해하다.
         auth.requestMatchers("/ws/**").permitAll()
         auth.requestMatchers("/communities/**").authenticated()
+        // BE-12: /rooms/** 는 RoomApiController/MessageApiController 가 X-User-Id 임시 헤더에서
+        // Authorization: Bearer JWT(@AuthenticationPrincipal UserPrincipal) 로 전환됨에 따라 승격.
+        auth.requestMatchers("/rooms/**").authenticated()
         // TODO(AUTH-04): SecurityContext 통합 전까지 도메인 API는 X-User-Id 헤더 기반으로 임시 permitAll
         auth.requestMatchers(HttpMethod.POST, "/images/presigned-upload").authenticated()
         auth.requestMatchers(
             "/bookings/**", "/payments/**", "/facilities/**",
-            "/products/**", "/posts/**", "/comments/**", "/rooms/**",
+            "/products/**", "/posts/**", "/comments/**",
             "/events/**", "/notifications/**",
             "/cart/**", "/ticket-orders/**", "/goods-orders/**",
             "/weather/**",
