@@ -75,6 +75,17 @@ class PartnerDomainService(
         return AuthenticatedPartner(partnerId = requireNotNull(partner.id), linkedUserId = partner.linkedUserId)
     }
 
+    /**
+     * API Key의 lastUsedAt을 갱신한다. 인증 성공 후 [PartnerApiKeyUsageRecorder] 구현체가
+     * 비동기로 호출해 요청 critical path에 쓰기 지연이 끼지 않게 한다.
+     */
+    fun recordKeyUsage(keyId: Long) {
+        val apiKey = partnerApiKeyRepository.findById(keyId)
+            ?: throw ResourceNotFoundException("PartnerApiKey", keyId)
+        apiKey.recordUsage()
+        partnerApiKeyRepository.save(apiKey)
+    }
+
     private fun saveWithPlaceholderHash(partnerId: Long, randomPart: String): Long {
         val placeholderHash = apiKeyGenerator.hash("$PLACEHOLDER_PREFIX$randomPart")
         val saved = partnerApiKeyRepository.save(PartnerApiKey.create(partnerId, placeholderHash))

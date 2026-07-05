@@ -3,6 +3,7 @@ package com.sportsapp.infrastructure.security
 import com.sportsapp.domain.common.BusinessException
 import com.sportsapp.domain.common.ErrorStatus
 import com.sportsapp.domain.partner.gateway.PartnerActivityRecorder
+import com.sportsapp.domain.partner.gateway.PartnerApiKeyUsageRecorder
 import com.sportsapp.domain.partner.service.AuthenticatedPartner
 import com.sportsapp.domain.partner.service.PartnerDomainService
 import com.sportsapp.domain.user.service.UserDomainService
@@ -30,6 +31,7 @@ class PartnerApiKeyAuthenticationFilter(
     private val partnerDomainService: PartnerDomainService,
     private val userDomainService: UserDomainService,
     private val partnerActivityRecorder: PartnerActivityRecorder,
+    private val partnerApiKeyUsageRecorder: PartnerApiKeyUsageRecorder,
 ) : OncePerRequestFilter() {
 
     override fun doFilterInternal(
@@ -52,6 +54,7 @@ class PartnerApiKeyAuthenticationFilter(
             return
         }
 
+        partnerApiKeyUsageRecorder.recordUsage(keyId)
         injectSecurityContext(authenticatedPartner.linkedUserId)
         proceedWithAudit(request, response, filterChain, authenticatedPartner)
     }
