@@ -9,6 +9,14 @@
  *
  * NOTE: SlotResponse에 price 필드가 없어 amount는 10000(원) 고정.
  * Slot에 price가 추가되면 해당 값으로 교체.
+ *
+ * 대기질 경고·확인 게이트 (FE-16, 근거: design-fe-app.md FR-13/FR-14)
+ * - 시설 좌표(GET /facilities/{id})로 대기질(FE-12)을 조회해 BAD 이상이면
+ *   슬롯 섹션 위에 AirQualityWarning(FE-14) 배너를 노출한다.
+ * - BAD 이상이고 아직 미확인이면 예약 버튼 라벨이 "확인하고 예약"으로 바뀌고,
+ *   첫 탭은 확인(confirmed=true)만 하고 예약을 실행하지 않는다. 두 번째 탭에서 실행된다.
+ * - 좌표 미확보·대기질 조회 실패·UNKNOWN 등급은 경고 없이 기존 흐름대로 예약을 바로 진행한다
+ *   (대기질 조회 실패가 예약을 막지 않는다).
  */
 import { useState } from 'react';
 import {
@@ -22,6 +30,10 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSlots, useCreateBooking } from '../../lib/useBooking';
+import { useFacilityDetail } from '../../lib/useFacility';
+import { useAirQuality } from '../../lib/useAirQuality';
+import { AirQualityWarning } from '../../components/AirQualityWarning';
+import { isBadOrWorse } from '../../lib/air-quality-format';
 import type { PaymentMethod, SlotResponse } from '../../api/types';
 
 const PAYMENT_METHODS: { method: PaymentMethod; label: string }[] = [
@@ -72,12 +84,28 @@ export default function BookingNewScreen() {
   const { data: slots, isLoading, isError } = useSlots(resolvedFacilityId);
   const { mutate: createBooking, isPending } = useCreateBooking();
 
+  const { data: facility } = useFacilityDetail(resolvedFacilityId);
+  const facilityLat = facility?.lat ?? null;
+  const facilityLng = facility?.lng ?? null;
+  const { data: airQuality, isSuccess: isAirQualitySuccess } = useAirQuality(
+    facilityLat,
+    facilityLng
+  );
+  const needsAirQualityConfirmation =
+    isAirQualitySuccess && airQuality !== undefined && isBadOrWorse(airQuality.representativeGrade);
+
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('CREDIT_CARD');
+  const [isAirQualityConfirmed, setIsAirQualityConfirmed] = useState(false);
 
   const handleBook = () => {
     if (selectedSlotId === null) {
       Alert.alert('안내', '슬롯을 선택해주세요.');
+      return;
+    }
+
+    if (needsAirQualityConfirmation && !isAirQualityConfirmed) {
+      setIsAirQualityConfirmed(true);
       return;
     }
 
@@ -130,12 +158,24 @@ export default function BookingNewScreen() {
   }
 
   const availableSlots = slots ?? [];
+  const bookButtonLabel =
+    needsAirQualityConfirmation && !isAirQualityConfirmed
+      ? '확인하고 예약'
+      : isPending
+        ? '예약 중...'
+        : '예약 진행';
 
   return (
     <View style={styles.container} accessible={false} accessibilityLabel="예약 신청 화면">
       <Text style={styles.title} accessibilityRole="header">
         예약 신청
       </Text>
+
+      {needsAirQualityConfirmation && airQuality !== undefined && (
+        <View style={styles.airQualityWarningWrapper}>
+          <AirQualityWarning grade={airQuality.representativeGrade} pm10={airQuality.pm10} />
+        </View>
+      )}
 
       <Text style={styles.sectionLabel}>슬롯 선택</Text>
       {availableSlots.length === 0 ? (
@@ -187,18 +227,19 @@ export default function BookingNewScreen() {
         onPress={handleBook}
         disabled={selectedSlotId === null || isPending}
         accessibilityRole="button"
-        accessibilityLabel="예약 진행"
+        accessibilityLabel={bookButtonLabel}
         accessibilityState={{ disabled: selectedSlotId === null || isPending }}
       >
-        <Text style={styles.bookButtonText}>
-          {isPending ? '예약 중...' : '예약 진행'}
-        </Text>
+        <Text style={styles.bookButtonText}>{bookButtonLabel}</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  airQualityWarningWrapper: {
+    marginBottom: 20,
+  },
   container: {
     flex: 1,
     backgroundColor: '#fff',
