@@ -9,6 +9,9 @@
  *
  * textMuted/warning/disabled는 기존(상품/한정판) 화면이 참조하는 레거시 토큰으로,
  * 설계 문서 표에는 없으나 하위 호환을 위해 유지합니다.
+ *
+ * airXxxBg/airXxxFg(대기질 등급 배지)는 "시설 전국 확장·대기질 연동"
+ * design-fe-app.md "테마 토큰 — 대기질 등급" 표를 반영합니다(FE-10).
  */
 
 export type ColorScheme = 'light' | 'dark';
@@ -58,6 +61,26 @@ export interface ThemeTokens {
   overlay: string;
   /** 타이핑 인디케이터 */
   typing: string;
+  /** 대기질 좋음 배지 배경 */
+  airGoodBg: string;
+  /** 대기질 좋음 배지 텍스트 */
+  airGoodFg: string;
+  /** 대기질 보통 배지 배경 */
+  airModerateBg: string;
+  /** 대기질 보통 배지 텍스트 */
+  airModerateFg: string;
+  /** 대기질 나쁨 배지 배경 */
+  airBadBg: string;
+  /** 대기질 나쁨 배지 텍스트 */
+  airBadFg: string;
+  /** 대기질 매우나쁨 배지 배경 */
+  airVeryBadBg: string;
+  /** 대기질 매우나쁨 배지 텍스트 */
+  airVeryBadFg: string;
+  /** 대기질 정보없음 배지 배경 */
+  airUnknownBg: string;
+  /** 대기질 정보없음 배지 텍스트 */
+  airUnknownFg: string;
 }
 
 export const lightTokens: ThemeTokens = {
@@ -83,6 +106,16 @@ export const lightTokens: ThemeTokens = {
   disabled: '#C7C7CC', // private-allow:no-hardcoded-color
   overlay: 'rgba(0,0,0,0.4)', // private-allow:no-hardcoded-color
   typing: '#8B95A1', // private-allow:no-hardcoded-color
+  airGoodBg: '#E6F0FF', // private-allow:no-hardcoded-color
+  airGoodFg: '#1565C0', // private-allow:no-hardcoded-color
+  airModerateBg: '#E4F6EA', // private-allow:no-hardcoded-color
+  airModerateFg: '#1B7A3D', // private-allow:no-hardcoded-color
+  airBadBg: '#FFF0E0', // private-allow:no-hardcoded-color
+  airBadFg: '#C65A00', // private-allow:no-hardcoded-color
+  airVeryBadBg: '#FDE4E4', // private-allow:no-hardcoded-color
+  airVeryBadFg: '#C62828', // private-allow:no-hardcoded-color
+  airUnknownBg: '#ECEEF0', // private-allow:no-hardcoded-color
+  airUnknownFg: '#6B7280', // private-allow:no-hardcoded-color
 };
 
 export const darkTokens: ThemeTokens = {
@@ -108,6 +141,16 @@ export const darkTokens: ThemeTokens = {
   disabled: '#48484A', // private-allow:no-hardcoded-color
   overlay: 'rgba(0,0,0,0.6)', // private-allow:no-hardcoded-color
   typing: '#6B7684', // private-allow:no-hardcoded-color
+  airGoodBg: '#10243D', // private-allow:no-hardcoded-color
+  airGoodFg: '#7FB3FF', // private-allow:no-hardcoded-color
+  airModerateBg: '#122A1B', // private-allow:no-hardcoded-color
+  airModerateFg: '#6FD08A', // private-allow:no-hardcoded-color
+  airBadBg: '#2E1B08', // private-allow:no-hardcoded-color
+  airBadFg: '#FFB166', // private-allow:no-hardcoded-color
+  airVeryBadBg: '#2E1212', // private-allow:no-hardcoded-color
+  airVeryBadFg: '#FF8A8A', // private-allow:no-hardcoded-color
+  airUnknownBg: '#26282B', // private-allow:no-hardcoded-color
+  airUnknownFg: '#9AA0A6', // private-allow:no-hardcoded-color
 };
 
 export const themeTokens: Record<ColorScheme, ThemeTokens> = {
