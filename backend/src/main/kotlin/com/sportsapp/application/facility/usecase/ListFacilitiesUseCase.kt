@@ -16,6 +16,12 @@ class ListFacilitiesUseCase(
     @Transactional(readOnly = true)
     fun execute(criteria: FacilityCriteria): Page<Facility> {
         val pageable = criteria.toPageable()
-        return facilityDomainService.list(criteria.effectiveGu(), criteria.effectiveType(), pageable)
+        return facilityDomainService.list(
+            criteria.effectiveSidoCode(),
+            criteria.effectiveSigunguCode(),
+            criteria.effectiveGu(),
+            criteria.effectiveType(),
+            pageable,
+        )
     }
 }

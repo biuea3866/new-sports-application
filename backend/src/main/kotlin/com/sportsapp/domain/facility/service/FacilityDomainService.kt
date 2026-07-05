@@ -3,8 +3,10 @@ package com.sportsapp.domain.facility.service
 import com.sportsapp.domain.facility.dto.BulkImportResult
 import com.sportsapp.domain.facility.dto.GuTypeCount
 import com.sportsapp.domain.facility.dto.LegacyRow
+import com.sportsapp.domain.facility.dto.RegionTypeCount
 import com.sportsapp.domain.facility.entity.Facility
 import com.sportsapp.domain.facility.exception.FacilityNotFoundException
+import com.sportsapp.domain.facility.gateway.RegionResolveGateway
 import com.sportsapp.domain.facility.repository.FacilityRepository
 import com.sportsapp.domain.facility.vo.FacilityAttributes
 import org.springframework.context.annotation.Profile
@@ -16,10 +18,11 @@ import org.springframework.stereotype.Service
 @Profile("!test-jpa")
 class FacilityDomainService(
     private val facilityRepository: FacilityRepository,
+    private val regionResolveGateway: RegionResolveGateway,
 ) {
 
     fun register(attributes: FacilityAttributes): Facility {
-        val facility = Facility.create(attributes)
+        val facility = Facility.create(resolveRegion(attributes))
         return facilityRepository.save(facility)
     }
 
@@ -32,14 +35,17 @@ class FacilityDomainService(
     fun findNear(lat: Double, lng: Double, maxDistanceMeters: Double): List<Facility> =
         facilityRepository.findNear(lat, lng, maxDistanceMeters)
 
-    fun list(gu: String?, type: String?, pageable: Pageable): Page<Facility> =
-        facilityRepository.findAll(gu, type, pageable)
+    fun list(sidoCode: String?, sigunguCode: String?, gu: String?, type: String?, pageable: Pageable): Page<Facility> =
+        facilityRepository.findAll(sidoCode, sigunguCode, gu, type, pageable)
 
     fun getById(id: String): Facility =
         facilityRepository.findById(id) ?: throw FacilityNotFoundException(id)
 
     fun aggregateGuType(): List<GuTypeCount> =
         facilityRepository.aggregateGuType()
+
+    fun aggregateRegionType(): List<RegionTypeCount> =
+        facilityRepository.aggregateRegionType()
 
     fun findIdsByOwnerUserId(ownerUserId: Long): List<String> =
         facilityRepository.findIdsByOwnerUserId(ownerUserId)
@@ -53,11 +59,12 @@ class FacilityDomainService(
         var skippedCount = 0
 
         rows.forEach { row ->
-            val attributes = LegacyToFacilityMapper.map(row)
-            if (attributes == null) {
+            val mapped = LegacyToFacilityMapper.map(row)
+            if (mapped == null) {
                 skippedCount++
                 return@forEach
             }
+            val attributes = resolveRegion(mapped)
             val facility = Facility.create(attributes)
             val existing = facilityRepository.findByCode(attributes.code)
             if (existing == null) {
@@ -74,5 +81,10 @@ class FacilityDomainService(
             updatedCount = updatedCount,
             skippedCount = skippedCount,
         )
+    }
+
+    private fun resolveRegion(attributes: FacilityAttributes): FacilityAttributes {
+        val region = regionResolveGateway.resolve(attributes.address, attributes.sidoHint)
+        return attributes.copy(region = region)
     }
 }

@@ -5,6 +5,8 @@ import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort
 
 data class FacilityCriteria(
+    val sidoCode: String?,
+    val sigunguCode: String?,
     val gu: String?,
     val type: String?,
     val page: Int,
@@ -23,4 +25,8 @@ data class FacilityCriteria(
     fun effectiveGu(): String? = gu?.takeIf { it.isNotBlank() }
 
     fun effectiveType(): String? = type?.takeIf { it.isNotBlank() }
+
+    fun effectiveSidoCode(): String? = sidoCode?.takeIf { it.isNotBlank() }
+
+    fun effectiveSigunguCode(): String? = sigunguCode?.takeIf { it.isNotBlank() }
 }

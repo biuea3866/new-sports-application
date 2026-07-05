@@ -14,6 +14,10 @@ data class FacilityResponse(
     val tel: String,
     val homePage: String,
     val eduYn: Boolean,
+    val sidoCode: String,
+    val sidoName: String,
+    val sigunguCode: String,
+    val sigunguName: String,
 ) {
     companion object {
         fun of(facility: Facility): FacilityResponse = FacilityResponse(
@@ -28,6 +32,10 @@ data class FacilityResponse(
             tel = facility.tel,
             homePage = facility.homePage,
             eduYn = facility.eduYn,
+            sidoCode = facility.sidoCode,
+            sidoName = facility.sidoName,
+            sigunguCode = facility.sigunguCode,
+            sigunguName = facility.sigunguName,
         )
     }
 }
