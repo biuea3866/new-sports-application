@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service
 /**
  * 게스트 참여자의 만료 배치 방출·수동 방출을 담당한다 (TDD FR-14/15, `RoomParticipant.evict()` 재사용).
  *
- * `RoomInvitation`(초대 애그리즘, 방장=inviterUserId)이 아직 이 wave에 없어, 수동 방출의 방장 검증은
+ * `RoomInvitation`(초대 애그리거트, 방장=inviterUserId)이 아직 이 wave에 없어, 수동 방출의 방장 검증은
  * 방의 정회원(MEMBER) 참여자 여부로 판정한다 — RoomInvitation 이 도입되면 실제 초대자 검증으로 교체 필요.
  */
 @Service
