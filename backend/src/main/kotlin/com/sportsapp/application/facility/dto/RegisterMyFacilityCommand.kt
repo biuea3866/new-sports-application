@@ -16,7 +16,9 @@ data class RegisterMyFacilityCommand(
     val eduYn: Boolean,
     val meta: Map<String, String>,
     val ownerUserId: Long,
+    val sido: String? = null,
 ) {
+    // region은 미해석 상태(UNSPECIFIED)로 두고 sidoHint만 실어 보낸다 — 실제 해석은 DomainService가 수행한다.
     fun toAttributes(): FacilityAttributes = FacilityAttributes(
         code = code,
         name = name,
@@ -30,5 +32,6 @@ data class RegisterMyFacilityCommand(
         homePage = homePage,
         eduYn = eduYn,
         meta = meta,
+        sidoHint = sido,
     )
 }

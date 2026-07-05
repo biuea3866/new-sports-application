@@ -18,6 +18,7 @@ class UpdateMyFacilityUseCase(
             id = command.facilityId,
             ownerUserId = command.ownerUserId,
             patch = command.patch,
+            sido = command.sido,
         )
         return facility
     }

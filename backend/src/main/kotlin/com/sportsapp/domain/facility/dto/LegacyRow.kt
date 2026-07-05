@@ -17,4 +17,5 @@ data class LegacyRow(
     val homePage: String,
     val eduYn: Boolean,
     val extraFields: Map<String, String>,
+    val sido: String? = null,
 )

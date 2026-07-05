@@ -14,6 +14,7 @@ class LegacyToFacilityMapperTest : BehaviorSpec({
         ycode: String = "37.5",
         xcode: String = "127.0",
         extraFields: Map<String, String> = emptyMap(),
+        sido: String? = null,
     ) = LegacyRow(
         legacyId = legacyId,
         name = "테스트 시설",
@@ -27,6 +28,7 @@ class LegacyToFacilityMapperTest : BehaviorSpec({
         homePage = "",
         eduYn = false,
         extraFields = extraFields,
+        sido = sido,
     )
 
     Given("정상적인 레거시 행이 주어졌을 때") {
@@ -85,6 +87,32 @@ class LegacyToFacilityMapperTest : BehaviorSpec({
                 result.meta["capacity"] shouldBe "50"
                 result.meta shouldContainKey "custom_field"
                 result.meta["custom_field"] shouldBe "value123"
+            }
+        }
+    }
+
+    Given("CSV sido 컬럼 값이 채워진 레거시 행이 주어졌을 때") {
+        val row = buildRow(sido = "부산")
+
+        When("map을 호출하면") {
+            val result = LegacyToFacilityMapper.map(row)
+
+            Then("sido 컬럼 값이 지역 힌트(sidoHint)로 전달된다") {
+                result.shouldNotBeNull()
+                result.sidoHint shouldBe "부산"
+            }
+        }
+    }
+
+    Given("CSV sido 컬럼 값이 비어 있는 레거시 행이 주어졌을 때") {
+        val row = buildRow(sido = null)
+
+        When("map을 호출하면") {
+            val result = LegacyToFacilityMapper.map(row)
+
+            Then("sidoHint는 null로 전달된다") {
+                result.shouldNotBeNull()
+                result.sidoHint.shouldBeNull()
             }
         }
     }

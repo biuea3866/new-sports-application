@@ -3,10 +3,12 @@ package com.sportsapp.domain.facility.service
 import com.sportsapp.domain.facility.entity.Facility
 import com.sportsapp.domain.facility.exception.FacilityHasActiveSlotException
 import com.sportsapp.domain.facility.gateway.GeocodingGateway
+import com.sportsapp.domain.facility.gateway.RegionResolveGateway
 import com.sportsapp.domain.facility.gateway.SlotQueryGateway
 import com.sportsapp.domain.facility.repository.FacilityRepository
 import com.sportsapp.domain.facility.vo.Coordinate
 import com.sportsapp.domain.facility.vo.FacilityAttributes
+import com.sportsapp.domain.facility.vo.FacilityRegion
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -19,9 +21,10 @@ class FacilityOwnerDomainServiceTest : BehaviorSpec({
     val facilityRepository = mockk<FacilityRepository>()
     val geocodingGateway = mockk<GeocodingGateway>()
     val slotQueryGateway = mockk<SlotQueryGateway>()
-    val service = FacilityOwnerDomainService(facilityRepository, geocodingGateway, slotQueryGateway)
+    val regionResolveGateway = mockk<RegionResolveGateway>()
+    val service = FacilityOwnerDomainService(facilityRepository, geocodingGateway, slotQueryGateway, regionResolveGateway)
 
-    fun attributes(lat: Double, lng: Double, address: String = "서울시 강남구") = FacilityAttributes(
+    fun attributes(lat: Double, lng: Double, address: String = "서울시 강남구", sidoHint: String? = null) = FacilityAttributes(
         code = "GN-001",
         name = "강남 풋살장",
         gu = "강남구",
@@ -34,11 +37,14 @@ class FacilityOwnerDomainServiceTest : BehaviorSpec({
         homePage = "",
         eduYn = false,
         meta = emptyMap(),
+        sidoHint = sidoHint,
     )
 
     every { facilityRepository.save(any()) } answers { firstArg() }
 
     Given("좌표가 입력된 경우") {
+        every { regionResolveGateway.resolve(any(), any()) } returns FacilityRegion.UNSPECIFIED
+
         When("등록하면") {
             val facility = service.registerForOwner(attributes(lat = 37.5, lng = 127.0), ownerUserId = 1L)
 
@@ -52,6 +58,7 @@ class FacilityOwnerDomainServiceTest : BehaviorSpec({
 
     Given("좌표가 비어 있고(0,0) 주소가 있는 경우") {
         every { geocodingGateway.geocode("서울시 강남구") } returns Coordinate(lat = 37.4979, lng = 127.0276)
+        every { regionResolveGateway.resolve(any(), any()) } returns FacilityRegion.UNSPECIFIED
 
         When("등록하면") {
             val facility = service.registerForOwner(attributes(lat = 0.0, lng = 0.0), ownerUserId = 1L)
@@ -65,6 +72,7 @@ class FacilityOwnerDomainServiceTest : BehaviorSpec({
 
     Given("좌표가 비어 있고 geocoding 이 실패하는 경우") {
         every { geocodingGateway.geocode(any()) } returns null
+        every { regionResolveGateway.resolve(any(), any()) } returns FacilityRegion.UNSPECIFIED
 
         When("등록하면") {
             val facility = service.registerForOwner(attributes(lat = 0.0, lng = 0.0), ownerUserId = 1L)
@@ -76,10 +84,65 @@ class FacilityOwnerDomainServiceTest : BehaviorSpec({
         }
     }
 
+    Given("owner가 sido 미입력으로 시설을 등록할 때") {
+        val busan = FacilityRegion.of(sidoCode = "26", sidoName = "부산광역시", sigunguCode = "26350", sigunguName = "해운대구")
+        every { regionResolveGateway.resolve("부산광역시 해운대구", null) } returns busan
+
+        When("등록하면") {
+            val facility = service.registerForOwner(
+                attributes(lat = 37.5, lng = 127.0, address = "부산광역시 해운대구", sidoHint = null),
+                ownerUserId = 1L,
+            )
+
+            Then("주소 파싱으로 해석된 시/도 코드가 자동 보간된다") {
+                facility.sidoCode shouldBe "26"
+                facility.sigunguCode shouldBe "26350"
+            }
+        }
+    }
+
+    Given("owner가 sido를 명시하여 시설을 등록할 때") {
+        val busan = FacilityRegion.of(sidoCode = "26", sidoName = "부산광역시", sigunguCode = "26110", sigunguName = "중구")
+        every { regionResolveGateway.resolve("서울시 중구", "부산") } returns busan
+
+        When("등록하면") {
+            val facility = service.registerForOwner(
+                attributes(lat = 37.5, lng = 127.0, address = "서울시 중구", sidoHint = "부산"),
+                ownerUserId = 1L,
+            )
+
+            Then("명시한 sido 값이 주소 파싱보다 우선 적용된다") {
+                facility.sidoCode shouldBe "26"
+                facility.sigunguCode shouldBe "26110"
+            }
+        }
+    }
+
+    Given("주소·sido 모두 지역 해석에 실패할 때") {
+        val localFacilityRepository = mockk<FacilityRepository>()
+        val localRegionResolveGateway = mockk<RegionResolveGateway>()
+        val localService = FacilityOwnerDomainService(localFacilityRepository, geocodingGateway, slotQueryGateway, localRegionResolveGateway)
+        every { localRegionResolveGateway.resolve("존재하지않는 우주정거장", null) } returns FacilityRegion.UNSPECIFIED
+        every { localFacilityRepository.save(any()) } answers { firstArg() }
+
+        When("등록하면") {
+            val facility = localService.registerForOwner(
+                attributes(lat = 37.5, lng = 127.0, address = "존재하지않는 우주정거장", sidoHint = null),
+                ownerUserId = 1L,
+            )
+
+            Then("UNSPECIFIED로 보존되어 저장된다(스킵 없음)") {
+                facility.sidoCode shouldBe FacilityRegion.UNSPECIFIED.sidoCode
+                facility.sigunguCode shouldBe FacilityRegion.UNSPECIFIED.sigunguCode
+                verify(exactly = 1) { localFacilityRepository.save(any()) }
+            }
+        }
+    }
+
     Given("소유 시설에 활성 슬롯이 없는 경우") {
         val localFacilityRepository = mockk<FacilityRepository>()
         val localSlotQueryGateway = mockk<SlotQueryGateway>()
-        val localService = FacilityOwnerDomainService(localFacilityRepository, geocodingGateway, localSlotQueryGateway)
+        val localService = FacilityOwnerDomainService(localFacilityRepository, geocodingGateway, localSlotQueryGateway, regionResolveGateway)
         val facility = Facility.create(attributes(lat = 37.5, lng = 127.0)).also { it.assignOwner(1L) }
         every { localFacilityRepository.findByIdAndOwnerUserId("f-001", 1L) } returns facility
         every { localSlotQueryGateway.hasActiveSlots("f-001") } returns false
@@ -98,7 +161,7 @@ class FacilityOwnerDomainServiceTest : BehaviorSpec({
     Given("소유 시설에 활성 슬롯이 있는 경우") {
         val localFacilityRepository = mockk<FacilityRepository>()
         val localSlotQueryGateway = mockk<SlotQueryGateway>()
-        val localService = FacilityOwnerDomainService(localFacilityRepository, geocodingGateway, localSlotQueryGateway)
+        val localService = FacilityOwnerDomainService(localFacilityRepository, geocodingGateway, localSlotQueryGateway, regionResolveGateway)
         val facility = Facility.create(attributes(lat = 37.5, lng = 127.0)).also { it.assignOwner(1L) }
         every { localFacilityRepository.findByIdAndOwnerUserId("f-002", 1L) } returns facility
         every { localSlotQueryGateway.hasActiveSlots("f-002") } returns true
@@ -109,6 +172,46 @@ class FacilityOwnerDomainServiceTest : BehaviorSpec({
                     localService.deleteForOwner("f-002", ownerUserId = 1L)
                 }
                 verify(exactly = 0) { localFacilityRepository.save(any()) }
+            }
+        }
+    }
+
+    Given("owner가 meta만 수정하고 sido를 지정하지 않을 때") {
+        val localFacilityRepository = mockk<FacilityRepository>()
+        val localRegionResolveGateway = mockk<RegionResolveGateway>()
+        val localService = FacilityOwnerDomainService(localFacilityRepository, geocodingGateway, mockk(), localRegionResolveGateway)
+        val facility = Facility.create(attributes(lat = 37.5, lng = 127.0)).also { it.assignOwner(1L) }
+        every { localFacilityRepository.findByIdAndOwnerUserId("f-003", 1L) } returns facility
+        every { localFacilityRepository.save(any()) } answers { firstArg() }
+
+        When("meta를 수정하면") {
+            val updated = localService.updateMetaForOwner("f-003", 1L, mapOf("key" to "value"))
+
+            Then("region 재해석 없이 기존 UNSPECIFIED 지역이 유지된다") {
+                updated.meta["key"] shouldBe "value"
+                updated.sidoCode shouldBe FacilityRegion.UNSPECIFIED.sidoCode
+                verify(exactly = 0) { localRegionResolveGateway.resolve(any(), any()) }
+            }
+        }
+    }
+
+    Given("owner가 시설 수정 시 sido를 함께 전달할 때") {
+        val localFacilityRepository = mockk<FacilityRepository>()
+        val localRegionResolveGateway = mockk<RegionResolveGateway>()
+        val localService = FacilityOwnerDomainService(localFacilityRepository, geocodingGateway, mockk(), localRegionResolveGateway)
+        val facility = Facility.create(attributes(lat = 37.5, lng = 127.0, address = "서울시 강남구")).also { it.assignOwner(1L) }
+        every { localFacilityRepository.findByIdAndOwnerUserId("f-004", 1L) } returns facility
+        every { localFacilityRepository.save(any()) } answers { firstArg() }
+        val busan = FacilityRegion.of(sidoCode = "26", sidoName = "부산광역시", sigunguCode = "26350", sigunguName = "해운대구")
+        every { localRegionResolveGateway.resolve("서울시 강남구", "부산") } returns busan
+
+        When("meta와 sido를 함께 수정하면") {
+            val updated = localService.updateMetaForOwner("f-004", 1L, mapOf("key" to "value"), sido = "부산")
+
+            Then("재해석된 지역이 반영된다") {
+                updated.sidoCode shouldBe "26"
+                updated.sigunguCode shouldBe "26350"
+                updated.meta["key"] shouldBe "value"
             }
         }
     }
