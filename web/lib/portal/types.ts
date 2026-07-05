@@ -30,6 +30,10 @@ export interface MyFacility {
   code: string;
   name: string;
   gu: string;
+  sidoCode: string;
+  sidoName: string;
+  sigunguCode: string;
+  sigunguName: string;
   type: FacilityType;
   address: string;
   location: string;
@@ -47,6 +51,8 @@ export interface CreateFacilityInput {
   code: string;
   name: string;
   gu: string;
+  // 시/도 표준코드. 미입력 시 서버가 address로 자동 판별한다.
+  sido?: string;
   type: FacilityType;
   address: string;
   location: string;
@@ -60,6 +66,8 @@ export interface CreateFacilityInput {
 export interface UpdateFacilityInput {
   name?: string;
   gu?: string;
+  // 시/도 표준코드. 미입력 시 서버가 address로 자동 판별한다.
+  sido?: string;
   type?: FacilityType;
   address?: string;
   location?: string;
