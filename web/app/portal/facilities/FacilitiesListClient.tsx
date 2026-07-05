@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { MyFacility, Page } from "@/lib/portal/types";
+import { resolveSidoDisplayName } from "./sido-display";
 
 const FACILITY_TYPE_LABELS: Record<string, string> = {
   INDOOR: "실내",
@@ -27,6 +28,7 @@ function FacilityRow({ facility }: { facility: MyFacility }) {
           {facility.name}
         </Link>
       </td>
+      <td className="py-3 px-4 text-sm">{resolveSidoDisplayName(facility.sidoName)}</td>
       <td className="py-3 px-4 text-sm">{facility.gu}</td>
       <td className="py-3 px-4">
         <Badge variant="secondary" className="text-xs">
@@ -114,6 +116,9 @@ export default function FacilitiesListClient() {
                   </th>
                   <th scope="col" className="py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                     시설명
+                  </th>
+                  <th scope="col" className="py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    시/도
                   </th>
                   <th scope="col" className="py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                     구
