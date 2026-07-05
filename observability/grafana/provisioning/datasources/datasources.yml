@@ -29,7 +29,10 @@ datasources:
     url: http://tempo:3200
     editable: false
     jsonData:
-      # trace → log (Loki) 상호 연결 (FR-11)
+      # trace → log (Loki) 상호 연결 (FR-11). 이 필터는 span의 service.name 값을 그대로
+      # Loki 쿼리 `{service_name="<값>"}`에 대입한다 — 값까지 일치해야 매칭된다(키만 같으면 0건).
+      # promtail-config.yaml이 backend/web 컨테이너의 service_name을 OTEL_SERVICE_NAME과
+      # 동일한 값(sports-application/sports-web, README §3 규약)으로 덮어써 이 값을 맞춘다.
       tracesToLogsV2:
         datasourceUid: loki
         spanStartTimeShift: "-1h"
