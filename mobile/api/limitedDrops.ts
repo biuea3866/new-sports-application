@@ -59,7 +59,12 @@ function mapPurchaseFailure(error: unknown): LimitedDropPurchaseResult {
     case 425:
       return { outcome: 'TOO_EARLY', openAt: errorBody?.openAt ?? null };
     case 409:
-      return errorBody?.code === 'CLOSED' ? { outcome: 'CLOSED' } : { outcome: 'SOLD_OUT' };
+      // BE ProblemDetail의 실제 code 값은 LIMITED_DROP_CLOSED / LIMITED_DROP_SOLD_OUT이다
+      // (GlobalExceptionHandler + LimitedDropClosedException/LimitedDropSoldOutException 참고).
+      // code가 없거나 다른 값이면 SOLD_OUT으로 기본 처리한다.
+      return errorBody?.code === 'LIMITED_DROP_CLOSED'
+        ? { outcome: 'CLOSED' }
+        : { outcome: 'SOLD_OUT' };
     case 429:
       return { outcome: 'THROTTLED' };
     case 403:

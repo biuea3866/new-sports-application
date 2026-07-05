@@ -35,6 +35,8 @@ const openDrop: LimitedDropResponse = {
   closeAt: '2026-07-03T12:00:00Z',
   remaining: 5,
   perUserLimit: 2,
+  totalQuantity: 100,
+  price: 89000,
 };
 
 const scheduledFarDrop: LimitedDropResponse = {

@@ -53,6 +53,8 @@ const mockDropResponse: LimitedDropResponse = {
   closeAt: '2026-07-03T12:00:00Z',
   remaining: 5,
   perUserLimit: 2,
+  totalQuantity: 100,
+  price: 89000,
 };
 
 const mockPurchaseResponse: LimitedDropPurchaseResponse = {
@@ -134,8 +136,10 @@ describe('purchaseLimitedDrop', () => {
     expect(result).toEqual({ outcome: 'SOLD_OUT' });
   });
 
-  it('[U-04] 409 응답(code=CLOSED)을 CLOSED outcome으로 매핑한다', async () => {
-    mock.onPost('/limited-drops/1/orders').reply(409, { code: 'CLOSED', message: 'Closed' });
+  it('[U-04] 409 응답(code=LIMITED_DROP_CLOSED, 실제 BE 에러 코드)을 CLOSED outcome으로 매핑한다', async () => {
+    mock
+      .onPost('/limited-drops/1/orders')
+      .reply(409, { code: 'LIMITED_DROP_CLOSED', message: 'Closed' });
 
     const result = await purchaseLimitedDrop(
       1,
@@ -144,6 +148,20 @@ describe('purchaseLimitedDrop', () => {
     );
 
     expect(result).toEqual({ outcome: 'CLOSED' });
+  });
+
+  it('[U-04] 409 응답(code=LIMITED_DROP_SOLD_OUT, 실제 BE 에러 코드)을 SOLD_OUT outcome으로 매핑한다', async () => {
+    mock
+      .onPost('/limited-drops/1/orders')
+      .reply(409, { code: 'LIMITED_DROP_SOLD_OUT', message: 'Sold out' });
+
+    const result = await purchaseLimitedDrop(
+      1,
+      { quantity: 1 },
+      { userId: 7, idempotencyKey: 'idem-key-005b' }
+    );
+
+    expect(result).toEqual({ outcome: 'SOLD_OUT' });
   });
 
   it('[U-04] 429 응답을 THROTTLED outcome으로 매핑한다', async () => {

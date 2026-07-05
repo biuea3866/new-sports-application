@@ -308,12 +308,7 @@ export interface UpdateCartItemRequest {
 
 // --- GoodsOrder ---
 export type GoodsOrderStatus =
-  | 'PENDING'
-  | 'PAID'
-  | 'PREPARING'
-  | 'SHIPPED'
-  | 'DELIVERED'
-  | 'CANCELLED';
+  'PENDING' | 'PAID' | 'PREPARING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
 
 export interface GoodsOrderItemResponse {
   productId: number;
@@ -380,6 +375,10 @@ export interface LimitedDropResponse {
   closeAt: string; // ISO 8601
   remaining: number;
   perUserLimit: number;
+  /** 회차 전체 한정 수량. remaining과 결합해 재고비율 바 표시에 사용한다. */
+  totalQuantity: number;
+  /** 상품 단가(BigDecimal → JSON number). 결제 amount 전달에 사용한다. */
+  price: number;
 }
 
 export interface PurchaseLimitedDropRequest {
@@ -404,7 +403,8 @@ export interface LimitedDropApiErrorBody {
  * 구매 요청의 판별 가능한 결과.
  * - ADMITTED: 202 성공 — 주문 PENDING 선점
  * - TOO_EARLY: 425 — openAt 이전 요청
- * - SOLD_OUT / CLOSED: 409 — 소진 또는 회차 종료 (에러 바디 code로 구분, 없으면 SOLD_OUT)
+ * - SOLD_OUT / CLOSED: 409 — 소진 또는 회차 종료
+ *   (에러 바디 code가 LIMITED_DROP_CLOSED면 CLOSED, 그 외(LIMITED_DROP_SOLD_OUT 포함·없음)는 SOLD_OUT)
  * - THROTTLED: 429 — 완충 초과
  * - LIMIT_EXCEEDED: 403 — 1인 한도 초과
  */

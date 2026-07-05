@@ -38,6 +38,8 @@ const baseDrop: LimitedDropResponse = {
   closeAt: '2026-07-06T20:00:00Z',
   remaining: 32,
   perUserLimit: 2,
+  totalQuantity: 100,
+  price: 89000,
 };
 
 function mockUseLimitedDropReturn(overrides: Partial<ReturnType<typeof useLimitedDrop>>) {
@@ -98,14 +100,27 @@ describe('LimitedDropDetailScreen', () => {
   });
 
   it('OPEN일 때 남은 수량과 활성 "구매하기" CTA를 표시한다', () => {
-    mockUseLimitedDropReturn({ data: { ...baseDrop, status: 'OPEN', remaining: 32 } });
+    mockUseLimitedDropReturn({
+      data: { ...baseDrop, status: 'OPEN', remaining: 32, totalQuantity: 100 },
+    });
     useCountdownMock.mockReturnValue({ remainingMs: 0, isOpen: true });
 
     render(<LimitedDropDetailScreen />);
 
-    expect(screen.getByText(/남은 수량 32개/)).toBeTruthy();
+    expect(screen.getByText('남은 수량 32/100')).toBeTruthy();
     const cta = screen.getByLabelText('구매하기');
     expect(cta.props.accessibilityState.disabled).toBe(false);
+  });
+
+  it('OPEN일 때 가격을 원화 형식으로 표시한다', () => {
+    mockUseLimitedDropReturn({
+      data: { ...baseDrop, status: 'OPEN', remaining: 32, price: 89000 },
+    });
+    useCountdownMock.mockReturnValue({ remainingMs: 0, isOpen: true });
+
+    render(<LimitedDropDetailScreen />);
+
+    expect(screen.getByText('89,000원')).toBeTruthy();
   });
 
   it('SOLD_OUT일 때 비활성 "재고 소진"을 표시한다', () => {

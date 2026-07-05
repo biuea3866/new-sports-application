@@ -25,8 +25,8 @@ export interface ProductWithStock {
   status: ProductStatus;
   stockQuantity: number;
   /**
-   * 이 상품에 연결된 활성 한정판 회차 ID. BE `/products` 응답에는 아직 이 필드가 없어
-   * FE 타입 정의만 선행한 상태다(API 미연동) — 값이 없으면 진입점을 노출하지 않는다.
+   * 이 상품에 연결된 활성 한정판 회차 ID. BE `/products`, `/products/{id}` 응답이 결합해 반환한다
+   * (활성 회차가 없으면 필드 자체가 없거나 null) — 값이 없으면 진입점 배너를 노출하지 않는다.
    */
   limitedDropId?: number;
 }

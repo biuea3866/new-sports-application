@@ -39,6 +39,8 @@ const baseDrop: LimitedDropResponse = {
   closeAt: '2026-07-06T20:00:00Z',
   remaining: 32,
   perUserLimit: 2,
+  totalQuantity: 100,
+  price: 89000,
 };
 
 function mockUseLimitedDropReturn(overrides: Partial<ReturnType<typeof useLimitedDrop>>) {
