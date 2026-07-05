@@ -50,7 +50,7 @@ describe('useLimitedDrop', () => {
     jest.clearAllMocks();
   });
 
-  it('[U-01] 200 응답을 LimitedDropResponse로 반환한다', async () => {
+  it('200 응답을 LimitedDropResponse로 반환한다', async () => {
     getLimitedDropMock.mockResolvedValue(openDrop);
     const { wrapper, queryClient } = createWrapper();
 
@@ -66,7 +66,7 @@ describe('useLimitedDrop', () => {
     queryClient.clear();
   });
 
-  it('[U-03] 404 응답 시 error 상태를 노출한다', async () => {
+  it('404 응답 시 error 상태를 노출한다', async () => {
     getLimitedDropMock.mockRejectedValue(new Error('Not Found'));
     const { wrapper, queryClient } = createWrapper();
 
@@ -82,11 +82,11 @@ describe('useLimitedDrop', () => {
 });
 
 describe('getRefetchIntervalMs', () => {
-  it('[U-02] status가 OPEN이면 폴링 간격을 반환한다', () => {
+  it('status가 OPEN이면 폴링 간격을 반환한다', () => {
     expect(getRefetchIntervalMs(openDrop)).toBe(3000);
   });
 
-  it('[U-02] openAt이 임박(1분 이내)하면 폴링 간격을 반환한다', () => {
+  it('openAt이 임박(1분 이내)하면 폴링 간격을 반환한다', () => {
     const nearOpenDrop: LimitedDropResponse = {
       ...openDrop,
       status: 'SCHEDULED',
@@ -96,11 +96,11 @@ describe('getRefetchIntervalMs', () => {
     expect(getRefetchIntervalMs(nearOpenDrop)).toBe(3000);
   });
 
-  it('[U-02] openAt이 먼 미래이면 폴링하지 않는다', () => {
+  it('openAt이 먼 미래이면 폴링하지 않는다', () => {
     expect(getRefetchIntervalMs(scheduledFarDrop)).toBe(false);
   });
 
-  it('[U-02] 데이터가 없으면 폴링하지 않는다', () => {
+  it('데이터가 없으면 폴링하지 않는다', () => {
     expect(getRefetchIntervalMs(undefined)).toBe(false);
   });
 });
