@@ -187,6 +187,9 @@ external:
   weather:
     base-url: ${EXTERNAL_WEATHER_BASE_URL:http://localhost:9102}
     api-key: ${DATA_GO_KR_SERVICE_KEY:mock-service-key}
+  air-quality:
+    base-url: ${EXTERNAL_AIR_QUALITY_BASE_URL:http://localhost:9102}
+    api-key: ${DATA_GO_KR_SERVICE_KEY:mock-service-key}
   push:
     base-url: ${EXTERNAL_PUSH_BASE_URL:https://exp.host}
     api-key: ${EXPO_ACCESS_TOKEN:}
