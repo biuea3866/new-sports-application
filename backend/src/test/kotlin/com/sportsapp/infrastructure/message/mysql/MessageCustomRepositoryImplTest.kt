@@ -98,5 +98,74 @@ class MessageCustomRepositoryImplTest(
                 }
             }
         }
+
+        Given("읽음 커서 이후 상대 메시지 10건이 쌓인 룸") {
+            val room = roomJpaRepository.save(Room.createDirect())
+            val meId = 101L
+            val otherId = 102L
+            val cursorMessage = messageJpaRepository.save(Message.create(room, meId, "커서 지점"))
+            repeat(10) { index ->
+                messageJpaRepository.save(Message.create(room, otherId, "안읽은 메시지$index"))
+            }
+
+            When("countUnread(roomId, cursorMessage.id, meId) 를 호출하면") {
+                val result = messageCustomRepositoryImpl.countUnread(room.id, cursorMessage.id, meId)
+
+                Then("커서 이후 상대 메시지 10건이 반환된다") {
+                    result shouldBe 10L
+                }
+            }
+        }
+
+        Given("커서 이후 본인 메시지와 상대 메시지가 섞여 있는 룸") {
+            val room = roomJpaRepository.save(Room.createDirect())
+            val meId = 201L
+            val otherId = 202L
+            val cursorMessage = messageJpaRepository.save(Message.create(room, meId, "커서 지점"))
+            messageJpaRepository.save(Message.create(room, meId, "본인이 보낸 메시지"))
+            messageJpaRepository.save(Message.create(room, otherId, "상대가 보낸 메시지"))
+
+            When("countUnread(roomId, cursorMessage.id, meId) 를 호출하면") {
+                val result = messageCustomRepositoryImpl.countUnread(room.id, cursorMessage.id, meId)
+
+                Then("본인이 보낸 메시지는 제외되고 상대 메시지 1건만 반환된다") {
+                    result shouldBe 1L
+                }
+            }
+        }
+
+        Given("커서 이후 안읽은 메시지가 없는 룸") {
+            val room = roomJpaRepository.save(Room.createDirect())
+            val meId = 301L
+            val otherId = 302L
+            val lastMessage = messageJpaRepository.save(Message.create(room, otherId, "마지막 메시지"))
+
+            When("countUnread(roomId, lastMessage.id, meId) 를 호출하면") {
+                val result = messageCustomRepositoryImpl.countUnread(room.id, lastMessage.id, meId)
+
+                Then("unreadCount 는 0 이다 (빈 상태)") {
+                    result shouldBe 0L
+                }
+            }
+        }
+
+        Given("커서 이후 상대 메시지 중 하나가 soft-delete 된 룸") {
+            val room = roomJpaRepository.save(Room.createDirect())
+            val meId = 401L
+            val otherId = 402L
+            val cursorMessage = messageJpaRepository.save(Message.create(room, meId, "커서 지점"))
+            messageJpaRepository.save(Message.create(room, otherId, "활성 메시지"))
+            val deletedMessage = messageJpaRepository.save(Message.create(room, otherId, "삭제된 메시지"))
+            deletedMessage.softDelete(otherId)
+            messageJpaRepository.save(deletedMessage)
+
+            When("countUnread(roomId, cursorMessage.id, meId) 를 호출하면") {
+                val result = messageCustomRepositoryImpl.countUnread(room.id, cursorMessage.id, meId)
+
+                Then("soft-delete 된 메시지는 제외되고 활성 메시지 1건만 반환된다") {
+                    result shouldBe 1L
+                }
+            }
+        }
     }
 }

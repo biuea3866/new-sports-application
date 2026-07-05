@@ -48,4 +48,17 @@ class MessageCustomRepositoryImpl(
             )
             .execute()
     }
+
+    override fun countUnread(roomId: Long, afterMessageId: Long, excludeUserId: Long): Long {
+        val message = QMessage.message
+        return queryFactory.select(message.count())
+            .from(message)
+            .where(
+                message.room.id.eq(roomId),
+                message.id.gt(afterMessageId),
+                message.userId.ne(excludeUserId),
+                message.deletedAt.isNull,
+            )
+            .fetchOne() ?: 0L
+    }
 }
