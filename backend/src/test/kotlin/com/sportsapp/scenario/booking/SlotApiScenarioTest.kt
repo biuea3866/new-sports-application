@@ -6,6 +6,7 @@ import com.sportsapp.domain.booking.entity.BookingStatus
 import com.sportsapp.domain.booking.entity.Slot
 import com.sportsapp.domain.booking.repository.SlotRepository
 import com.sportsapp.domain.facility.entity.Facility
+import com.sportsapp.domain.facility.vo.FacilityRegion
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import org.springframework.beans.factory.annotation.Autowired
@@ -50,6 +51,10 @@ class SlotApiScenarioTest(
                 eduYn = false,
                 meta = emptyMap(),
                 ownerUserId = ownerUserId,
+                sidoCode = FacilityRegion.UNSPECIFIED.sidoCode,
+                sidoName = FacilityRegion.UNSPECIFIED.sidoName,
+                sigunguCode = FacilityRegion.UNSPECIFIED.sigunguCode,
+                sigunguName = FacilityRegion.UNSPECIFIED.sigunguName,
             )
         )
     }
