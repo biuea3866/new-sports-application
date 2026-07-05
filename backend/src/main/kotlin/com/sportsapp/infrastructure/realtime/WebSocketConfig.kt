@@ -14,6 +14,9 @@ private const val REALTIME_ENABLED_PROPERTY = "chat.realtime.enabled"
 private const val CHANNEL_CORE_POOL_SIZE = 8
 private const val CHANNEL_MAX_POOL_SIZE = 16
 
+// REST CORS(SecurityConfig.corsConfigurationSource)와 동일한 출처 제한 — "*" 전면 허용 금지
+private val ALLOWED_ORIGIN_PATTERNS = arrayOf("http://localhost:*", "http://127.0.0.1:*")
+
 /**
  * WebSocket/STOMP 실시간 전송 계층 (FR-6). `/ws` STOMP endpoint + in-memory Simple Broker.
  *
@@ -28,7 +31,7 @@ class WebSocketConfig(
 ) : WebSocketMessageBrokerConfigurer {
 
     override fun registerStompEndpoints(registry: StompEndpointRegistry) {
-        registry.addEndpoint("/ws").setAllowedOriginPatterns("*")
+        registry.addEndpoint("/ws").setAllowedOriginPatterns(*ALLOWED_ORIGIN_PATTERNS)
     }
 
     override fun configureMessageBroker(registry: MessageBrokerRegistry) {

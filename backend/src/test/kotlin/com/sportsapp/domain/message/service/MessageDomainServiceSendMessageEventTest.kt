@@ -5,6 +5,7 @@ import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.message.entity.Message
 import com.sportsapp.domain.message.entity.Room
 import com.sportsapp.domain.message.event.MessageSentEvent
+import com.sportsapp.domain.message.gateway.MessageBroadcastGateway
 import com.sportsapp.domain.message.repository.MessageRepository
 import com.sportsapp.domain.message.repository.RoomParticipantRepository
 import com.sportsapp.domain.message.repository.RoomRepository
@@ -26,11 +27,13 @@ class MessageDomainServiceSendMessageEventTest : BehaviorSpec({
     val messageRepository = mockk<MessageRepository>()
     val roomParticipantRepository = mockk<RoomParticipantRepository>()
     val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
+    val messageBroadcastGateway = mockk<MessageBroadcastGateway>(relaxed = true)
     val messageDomainService = MessageDomainService(
         roomRepository = roomRepository,
         messageRepository = messageRepository,
         roomParticipantRepository = roomParticipantRepository,
         domainEventPublisher = domainEventPublisher,
+        messageBroadcastGateway = messageBroadcastGateway,
     )
 
     Given("참여자가 메시지를 정상 전송하면") {
