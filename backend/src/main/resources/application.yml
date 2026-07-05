@@ -125,6 +125,10 @@ alerting:
     model: ${ALERTING_LLM_MODEL:claude-fable-5}
     read-timeout-seconds: ${ALERTING_LLM_READ_TIMEOUT_SECONDS:55}
     max-tokens: ${ALERTING_LLM_MAX_TOKENS:1024}
+  retention:
+    # alerts 이력 보존 정책(mcp_audit_logs 선례와 동일 90일) — AlertRetentionScheduler가 일 1회 정리한다.
+    days: ${ALERTING_RETENTION_DAYS:90}
+    cron: ${ALERTING_RETENTION_CRON:0 30 3 * * *}
   telemetry:
     # Prometheus/Loki/Tempo 접속 정보 (BE-05). 기본값은 로컬 observability compose 포트(⑤).
     prometheus-base-url: ${ALERTING_TELEMETRY_PROMETHEUS_BASE_URL:http://localhost:9090}

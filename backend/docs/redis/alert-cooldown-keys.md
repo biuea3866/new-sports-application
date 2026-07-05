@@ -42,7 +42,8 @@ fun cooldownKey(env: String): String = "alerting:cooldown:$env:$endpoint:${sourc
 | 쿨다운 진입 중(TTL 만료 전) 재호출 | `SET NX PX` → 실패(nil), 키 불변 | `tryAcquire = false` | `null` 반환 — Alert 생성 안 함(억제) |
 | TTL 900초 경과 | 키 자연 삭제 | (다음 호출 시 재획득) | 다음 호출은 다시 최초 호출과 동일하게 동작 |
 
-- **인터페이스 시그니처**: `AlertCooldownRepository.tryAcquire(signal: AlertSignal, cooldown: Duration): Boolean` — `cooldown` 파라미터는 `Duration.ofMinutes(15)`(900000ms)로 호출되어야 한다. 구현체는 이 값을 그대로 `PX` 인자로 전달한다(계약 문서 밖에서 다른 TTL 값을 하드코딩하지 않는다).
+- **인터페이스 시그니처**: `AlertCooldownRepository.tryAcquire(signal: AlertSignal, env: String, cooldown: Duration): Boolean` — `cooldown` 파라미터는 `Duration.ofMinutes(15)`(900000ms)로 호출되어야 한다. 구현체는 이 값을 그대로 `PX` 인자로 전달한다(계약 문서 밖에서 다른 TTL 값을 하드코딩하지 않는다).
+- **env 출처 통일(후속 수정)**: `env`는 구현체가 `app.env`로 직접 주입받지 않는다 — `AlertDomainService.raise`가 `RaiseAlertCommand.env`(webhook payload·내부 raise 요청이 전달한 값)를 그대로 넘긴다. `Alert.signalKey`/`Alert.env`(이력 테이블)도 동일한 `command.env`로 만들어지므로, 쿨다운 판정에 쓰인 env와 이력에 남는 env가 항상 같은 값이 되도록 단일 출처로 고정했다(과거에는 구현체가 별도로 `app.env`를 주입받아 두 값이 배포 설정 드리프트 시 갈릴 수 있었다).
 - **락과의 차이**: 분산 락(`RedisDistributedLock`, `SeatLockStoreImpl`)은 "임계구역 보호 후 해제"가 목적이라 `finally`에서 `DEL`을 호출하지만, 쿨다운 키는 **의도적으로 해제하지 않는다** — TTL 만료 자체가 곧 "15분 경과"라는 비즈니스 의미이므로 조기 해제는 설계 위반이다.
 
 ## 검증 (redis-cli raw 출력)

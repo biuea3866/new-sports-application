@@ -16,6 +16,7 @@ import com.sportsapp.domain.alerting.vo.IncidentAnalysis
 import com.sportsapp.domain.alerting.vo.IncidentContext
 import com.sportsapp.domain.common.DomainEventPublisher
 import java.time.Duration
+import java.time.ZonedDateTime
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 
@@ -44,7 +45,7 @@ class AlertDomainService(
     /** 쿨다운 미획득 시 null(억제). 획득 시 Alert(RAISED)를 저장하고 처리 이벤트를 발행한다. */
     fun raise(command: RaiseAlertCommand): Alert? {
         val signal = AlertSignal(command.endpoint, command.source, command.severity)
-        if (!alertCooldownRepository.tryAcquire(signal, COOLDOWN_DURATION)) return null
+        if (!alertCooldownRepository.tryAcquire(signal, command.env, COOLDOWN_DURATION)) return null
         val saved = alertRepository.save(Alert.create(signal, command.env))
         saved.requestProcessing()
         domainEventPublisher.publishAll(saved.pullDomainEvents())
@@ -83,6 +84,10 @@ class AlertDomainService(
             IncidentAnalysis.fallback()
         }
     }
+
+    /** 보존 정책(기본 90일) 정리 배치 — [retentionDays] 이전에 발생한 이력을 하드 삭제한다. */
+    fun purgeExpiredAlerts(retentionDays: Long): Long =
+        alertRepository.deleteRaisedBefore(ZonedDateTime.now().minusDays(retentionDays))
 
     private fun findById(alertId: Long): Alert =
         alertRepository.findById(alertId) ?: throw AlertNotFoundException(alertId)

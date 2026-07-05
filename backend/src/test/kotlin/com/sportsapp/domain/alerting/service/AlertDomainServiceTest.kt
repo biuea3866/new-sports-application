@@ -68,7 +68,7 @@ class AlertDomainServiceTest : BehaviorSpec({
         val savedAlertSlot = slot<Alert>()
         val publishedEventsSlot = slot<List<DomainEvent>>()
 
-        every { alertCooldownRepository.tryAcquire(signal(), Duration.ofMinutes(15)) } returns true
+        every { alertCooldownRepository.tryAcquire(signal(), ENV, Duration.ofMinutes(15)) } returns true
         every { alertRepository.save(capture(savedAlertSlot)) } answers { savedAlertSlot.captured }
         every { domainEventPublisher.publishAll(capture(publishedEventsSlot)) } returns Unit
 
@@ -92,7 +92,7 @@ class AlertDomainServiceTest : BehaviorSpec({
         val service = buildService(alertRepository = alertRepository, alertCooldownRepository = alertCooldownRepository)
         val command = RaiseAlertCommand(endpoint = ENDPOINT, source = AlertSource.LATENCY, severity = AlertSeverity.WARN, env = ENV)
 
-        every { alertCooldownRepository.tryAcquire(signal(), Duration.ofMinutes(15)) } returns false
+        every { alertCooldownRepository.tryAcquire(signal(), ENV, Duration.ofMinutes(15)) } returns false
 
         When("raise를 호출하면") {
             val result = service.raise(command)
@@ -100,6 +100,37 @@ class AlertDomainServiceTest : BehaviorSpec({
             Then("Alert를 생성하지 않고 null을 반환한다(억제)") {
                 result.shouldBeNull()
                 verify(exactly = 0) { alertRepository.save(any()) }
+            }
+        }
+    }
+
+    Given("서비스 자신의 app.env(배포 환경)와 command.env(webhook payload 출처)가 서로 다른 raise 요청") {
+        val alertRepository = mockk<AlertRepository>()
+        val alertCooldownRepository = mockk<AlertCooldownRepository>()
+        val domainEventPublisher = mockk<DomainEventPublisher>()
+        val instanceEnv = "instance-env"
+        val payloadEnv = "payload-env"
+        val service = buildService(
+            alertRepository = alertRepository,
+            alertCooldownRepository = alertCooldownRepository,
+            domainEventPublisher = domainEventPublisher,
+            env = instanceEnv,
+        )
+        val command = RaiseAlertCommand(endpoint = ENDPOINT, source = AlertSource.LATENCY, severity = AlertSeverity.WARN, env = payloadEnv)
+        val savedAlertSlot = slot<Alert>()
+        val publishedEventsSlot = slot<List<DomainEvent>>()
+
+        every { alertCooldownRepository.tryAcquire(signal(), payloadEnv, Duration.ofMinutes(15)) } returns true
+        every { alertRepository.save(capture(savedAlertSlot)) } answers { savedAlertSlot.captured }
+        every { domainEventPublisher.publishAll(capture(publishedEventsSlot)) } returns Unit
+
+        When("raise를 호출하면") {
+            val result = service.raise(command)
+
+            Then("쿨다운 키는 command.env(단일 출처)로 생성되고, 서비스 자신의 app.env는 사용되지 않는다") {
+                result.shouldNotBeNull()
+                verify(exactly = 1) { alertCooldownRepository.tryAcquire(signal(), payloadEnv, Duration.ofMinutes(15)) }
+                verify(exactly = 0) { alertCooldownRepository.tryAcquire(signal(), instanceEnv, any()) }
             }
         }
     }
@@ -186,6 +217,26 @@ class AlertDomainServiceTest : BehaviorSpec({
                 event.source shouldBe AlertSource.SELF_CHECK
                 event.severity shouldBe AlertSeverity.INFO
                 event.env shouldBe ENV
+            }
+        }
+    }
+
+    Given("90일 보존 정책 정리 배치 요청") {
+        val alertRepository = mockk<AlertRepository>()
+        val service = buildService(alertRepository = alertRepository)
+        val cutoffSlot = slot<java.time.ZonedDateTime>()
+
+        every { alertRepository.deleteRaisedBefore(capture(cutoffSlot)) } returns 3L
+
+        When("purgeExpiredAlerts(90)을 호출하면") {
+            val deletedCount = service.purgeExpiredAlerts(retentionDays = 90L)
+
+            Then("현재 시각으로부터 90일 이전 cutoff로 삭제를 위임하고 삭제 건수를 반환한다") {
+                deletedCount shouldBe 3L
+                val now = java.time.ZonedDateTime.now()
+                val expectedCutoff = now.minusDays(90)
+                cutoffSlot.captured.isBefore(now.minusDays(89)) shouldBe true
+                cutoffSlot.captured.isAfter(expectedCutoff.minusSeconds(5)) shouldBe true
             }
         }
     }

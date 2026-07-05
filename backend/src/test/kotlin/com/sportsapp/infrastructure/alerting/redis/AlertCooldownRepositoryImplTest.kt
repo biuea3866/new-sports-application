@@ -41,8 +41,9 @@ class AlertCooldownRepositoryImplTest @Autowired constructor(
     private val stringRedisTemplate: StringRedisTemplate,
 ) : BehaviorSpec({
 
-    val repository = AlertCooldownRepositoryImpl(stringRedisTemplate, env = "test")
+    val repository = AlertCooldownRepositoryImpl(stringRedisTemplate)
     val cooldown = Duration.ofMinutes(15)
+    val env = "test"
 
     fun uniqueSignal(endpoint: String): AlertSignal =
         AlertSignal(endpoint, AlertSource.LATENCY, AlertSeverity.WARN)
@@ -52,37 +53,46 @@ class AlertCooldownRepositoryImplTest @Autowired constructor(
             val signal = uniqueSignal("/first-acquire")
 
             Then("true를 반환한다") {
-                repository.tryAcquire(signal, cooldown) shouldBe true
+                repository.tryAcquire(signal, env, cooldown) shouldBe true
             }
         }
 
         When("15분 쿨다운 내에 동일 신호로 재호출하면") {
             val signal = uniqueSignal("/repeat-within-cooldown")
-            repository.tryAcquire(signal, cooldown)
+            repository.tryAcquire(signal, env, cooldown)
 
             Then("false를 반환한다") {
-                repository.tryAcquire(signal, cooldown) shouldBe false
+                repository.tryAcquire(signal, env, cooldown) shouldBe false
             }
         }
 
         When("endpoint·source·severity 중 하나라도 다른 신호로 호출하면") {
             val original = AlertSignal("/independent", AlertSource.LATENCY, AlertSeverity.WARN)
             val differentSeverity = AlertSignal("/independent", AlertSource.LATENCY, AlertSeverity.CRITICAL)
-            repository.tryAcquire(original, cooldown)
+            repository.tryAcquire(original, env, cooldown)
 
             Then("독립적으로 true를 반환한다") {
-                repository.tryAcquire(differentSeverity, cooldown) shouldBe true
+                repository.tryAcquire(differentSeverity, env, cooldown) shouldBe true
+            }
+        }
+
+        When("동일 신호라도 env가 다르면") {
+            val signal = uniqueSignal("/env-independent")
+            repository.tryAcquire(signal, "prod", cooldown)
+
+            Then("독립적으로 true를 반환한다(호출부가 전달한 env가 곧 키의 단일 출처)") {
+                repository.tryAcquire(signal, "dev", cooldown) shouldBe true
             }
         }
 
         When("TTL이 자연 만료된 뒤 동일 신호로 재호출하면") {
             val signal = uniqueSignal("/ttl-expiry")
             val shortCooldown = Duration.ofMillis(300)
-            repository.tryAcquire(signal, shortCooldown)
+            repository.tryAcquire(signal, env, shortCooldown)
             Thread.sleep(400)
 
             Then("true를 반환한다") {
-                repository.tryAcquire(signal, cooldown) shouldBe true
+                repository.tryAcquire(signal, env, cooldown) shouldBe true
             }
         }
 
@@ -93,7 +103,7 @@ class AlertCooldownRepositoryImplTest @Autowired constructor(
 
             val tasks = (1..THREAD_COUNT).map {
                 executor.submit<Boolean> {
-                    val acquired = repository.tryAcquire(signal, cooldown)
+                    val acquired = repository.tryAcquire(signal, env, cooldown)
                     if (acquired) successCount.incrementAndGet()
                     acquired
                 }
