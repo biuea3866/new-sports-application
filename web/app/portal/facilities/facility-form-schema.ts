@@ -10,6 +10,7 @@ export type FacilityTypeValue = (typeof FacilityTypeEnum)[number];
 export const facilityFormSchema = z.object({
   code: z.string().min(1, "시설 코드를 입력해 주세요."),
   name: z.string().min(1, "시설명을 입력해 주세요."),
+  sido: z.string().optional(),
   gu: z.string().min(1, "구 정보를 입력해 주세요."),
   type: z.enum(FacilityTypeEnum, { message: "시설 유형을 선택해 주세요." }),
   address: z.string().min(1, "주소를 입력해 주세요."),

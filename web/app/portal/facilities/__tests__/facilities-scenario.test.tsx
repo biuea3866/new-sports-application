@@ -89,6 +89,58 @@ describe("[S-01] 시설 등록 성공 시 목록으로 이동", () => {
     });
   });
 
+  it("시/도를 선택하고 등록하면 POST body에 sido 코드가 포함된다", async () => {
+    const { default: NewFacilityPage } = await import("../new/page");
+
+    mockFetch.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: "fac-001",
+          code: "GN-01",
+          name: "강남 풋살장",
+          gu: "강남구",
+          sido: "11",
+          type: "INDOOR",
+          address: "서울특별시 강남구",
+          location: "37.5,127.0",
+          parking: true,
+          tel: "02-1234-5678",
+          homePage: null,
+          eduYn: false,
+          meta: null,
+          ownerUserId: 1,
+          createdAt: "2026-01-01T00:00:00Z",
+          updatedAt: "2026-01-01T00:00:00Z",
+        }),
+        { status: 201, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    render(<NewFacilityPage />);
+
+    fireEvent.change(screen.getByLabelText(/시설 코드/i), { target: { value: "GN-01" } });
+    fireEvent.change(screen.getByLabelText(/시설명/i), { target: { value: "강남 풋살장" } });
+    fireEvent.change(screen.getByLabelText(/^구/i), { target: { value: "강남구" } });
+    fireEvent.change(screen.getByLabelText(/주소/i), { target: { value: "서울특별시 강남구" } });
+    fireEvent.change(screen.getByLabelText(/위치 좌표/i), { target: { value: "37.5,127.0" } });
+    fireEvent.change(screen.getByLabelText(/전화번호/i), { target: { value: "02-1234-5678" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "시/도" }), { target: { value: "11" } });
+
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: /등록/i }));
+    });
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith(
+        "/api/portal/facilities",
+        expect.objectContaining({
+          method: "POST",
+          body: expect.stringContaining('"sido":"11"'),
+        })
+      );
+    });
+  });
+
   it("POST 실패 시 에러 메시지가 표시되고 이동하지 않는다", async () => {
     const { default: NewFacilityPage } = await import("../new/page");
 
