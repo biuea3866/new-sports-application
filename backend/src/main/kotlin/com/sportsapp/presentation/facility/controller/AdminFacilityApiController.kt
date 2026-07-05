@@ -1,8 +1,10 @@
 package com.sportsapp.presentation.facility.controller
 
+import com.sportsapp.application.facility.usecase.BackfillFacilityRegionUseCase
 import com.sportsapp.application.facility.usecase.ImportLegacyFacilitiesUseCase
 import com.sportsapp.application.facility.usecase.ImportPublicFacilitiesUseCase
 import com.sportsapp.presentation.facility.dto.request.ImportLegacyFacilitiesRequest
+import com.sportsapp.presentation.facility.dto.response.BackfillFacilityRegionResponse
 import com.sportsapp.presentation.facility.dto.response.ImportLegacyFacilitiesResponse
 import com.sportsapp.presentation.facility.dto.response.ImportPublicFacilitiesResponse
 import org.springframework.context.annotation.Profile
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController
 class AdminFacilityApiController(
     private val importLegacyFacilitiesUseCase: ImportLegacyFacilitiesUseCase,
     private val importPublicFacilitiesUseCase: ImportPublicFacilitiesUseCase,
+    private val backfillFacilityRegionUseCase: BackfillFacilityRegionUseCase,
 ) {
     @PostMapping("/import")
     fun importLegacy(
@@ -34,4 +37,10 @@ class AdminFacilityApiController(
         @RequestParam(defaultValue = "100") numOfRows: Int,
     ): ResponseEntity<ImportPublicFacilitiesResponse> =
         ResponseEntity.ok(ImportPublicFacilitiesResponse.of(importPublicFacilitiesUseCase.execute(maxPages, numOfRows)))
+
+    @PostMapping("/backfill-region")
+    fun backfillRegion(
+        @RequestParam(defaultValue = "100") pageSize: Int,
+    ): ResponseEntity<BackfillFacilityRegionResponse> =
+        ResponseEntity.ok(BackfillFacilityRegionResponse.of(backfillFacilityRegionUseCase.execute(pageSize)))
 }
