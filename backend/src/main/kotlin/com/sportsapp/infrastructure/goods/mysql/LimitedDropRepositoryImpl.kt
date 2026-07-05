@@ -23,6 +23,14 @@ class LimitedDropRepositoryImpl(
             statuses = ACTIVE_STATUSES,
         )
 
+    override fun findOpenByProductIds(productIds: List<Long>): List<LimitedDrop> {
+        if (productIds.isEmpty()) return emptyList()
+        return limitedDropJpaRepository.findAllByProductIdInAndStatusInAndDeletedAtIsNull(
+            productIds = productIds,
+            statuses = ACTIVE_STATUSES,
+        )
+    }
+
     override fun findAllActive(): List<LimitedDrop> =
         limitedDropJpaRepository.findAllByStatusInAndDeletedAtIsNull(RECONCILABLE_STATUSES)
 

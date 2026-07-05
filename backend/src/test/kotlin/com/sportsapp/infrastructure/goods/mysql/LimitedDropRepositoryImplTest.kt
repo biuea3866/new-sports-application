@@ -4,7 +4,9 @@ import com.sportsapp.BaseJpaIntegrationTest
 import com.sportsapp.domain.goods.entity.LimitedDrop
 import com.sportsapp.domain.goods.entity.LimitedDropStatus
 import com.sportsapp.domain.goods.repository.LimitedDropRepository
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -131,6 +133,58 @@ class LimitedDropRepositoryImplTest(
                     resultProductIds shouldContain scheduledProductId
                     resultProductIds shouldContain openProductId
                     resultProductIds shouldNotContain closedProductId
+                }
+            }
+        }
+
+        Given("두 상품에 각각 OPEN 회차, 한 상품엔 CLOSED 회차만 존재하는 경우") {
+            val openProductId = System.nanoTime()
+            val otherOpenProductId = openProductId + 1
+            val closedOnlyProductId = openProductId + 2
+            val openDrop = LimitedDrop.create(
+                productId = openProductId,
+                openAt = ZonedDateTime.now(ZoneOffset.UTC).minusHours(1).truncatedTo(ChronoUnit.MICROS),
+                closeAt = ZonedDateTime.now(ZoneOffset.UTC).plusHours(1).truncatedTo(ChronoUnit.MICROS),
+                limitedQuantity = 10,
+                perUserLimit = 1,
+            ).also { it.open() }
+            val otherOpenDrop = LimitedDrop.create(
+                productId = otherOpenProductId,
+                openAt = ZonedDateTime.now(ZoneOffset.UTC).minusHours(1).truncatedTo(ChronoUnit.MICROS),
+                closeAt = ZonedDateTime.now(ZoneOffset.UTC).plusHours(1).truncatedTo(ChronoUnit.MICROS),
+                limitedQuantity = 20,
+                perUserLimit = 1,
+            ).also { it.open() }
+            val closedDrop = LimitedDrop.create(
+                productId = closedOnlyProductId,
+                openAt = ZonedDateTime.now(ZoneOffset.UTC).minusDays(2).truncatedTo(ChronoUnit.MICROS),
+                closeAt = ZonedDateTime.now(ZoneOffset.UTC).minusDays(1).truncatedTo(ChronoUnit.MICROS),
+                limitedQuantity = 30,
+                perUserLimit = 1,
+            ).also { it.open(); it.close() }
+            limitedDropJpaRepository.saveAndFlush(openDrop)
+            limitedDropJpaRepository.saveAndFlush(otherOpenDrop)
+            limitedDropJpaRepository.saveAndFlush(closedDrop)
+
+            When("findOpenByProductIds를 세 상품 id로 호출하면") {
+                val result = limitedDropRepository.findOpenByProductIds(
+                    listOf(openProductId, otherOpenProductId, closedOnlyProductId)
+                )
+                val resultProductIds = result.map { it.productId }
+
+                Then("활성 회차 2건만 반환하고 CLOSED 회차는 제외한다") {
+                    result shouldHaveSize 2
+                    resultProductIds shouldContain openProductId
+                    resultProductIds shouldContain otherOpenProductId
+                    resultProductIds shouldNotContain closedOnlyProductId
+                }
+            }
+
+            When("findOpenByProductIds를 빈 목록으로 호출하면") {
+                val result = limitedDropRepository.findOpenByProductIds(emptyList())
+
+                Then("빈 목록을 반환한다") {
+                    result.shouldBeEmpty()
                 }
             }
         }

@@ -1,10 +1,12 @@
 package com.sportsapp.scenario.goods
 
 import com.sportsapp.BaseIntegrationTest
+import com.sportsapp.domain.goods.entity.LimitedDrop
 import com.sportsapp.domain.goods.entity.Product
 import com.sportsapp.domain.goods.vo.ProductCategory
 import com.sportsapp.domain.goods.entity.ProductStatus
 import com.sportsapp.domain.goods.entity.Stock
+import com.sportsapp.infrastructure.goods.mysql.LimitedDropJpaRepository
 import com.sportsapp.infrastructure.goods.mysql.ProductJpaRepository
 import com.sportsapp.infrastructure.goods.mysql.StockJpaRepository
 import org.springframework.beans.factory.annotation.Autowired
@@ -16,17 +18,20 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.math.BigDecimal
+import java.time.ZonedDateTime
 
 @AutoConfigureMockMvc
 class ProductSearchScenarioTest(
     @Autowired private val mockMvc: MockMvc,
     @Autowired private val productJpaRepository: ProductJpaRepository,
     @Autowired private val stockJpaRepository: StockJpaRepository,
+    @Autowired private val limitedDropJpaRepository: LimitedDropJpaRepository,
     @Autowired private val jdbcTemplate: JdbcTemplate,
 ) : BaseIntegrationTest() {
 
     init {
         Given("FOOTWEAR 카테고리 러닝화 2건, APPAREL 반팔 1건이 저장된 상태") {
+            jdbcTemplate.execute("TRUNCATE TABLE limited_drops")
             jdbcTemplate.execute("TRUNCATE TABLE stocks")
             jdbcTemplate.execute("TRUNCATE TABLE products")
 
@@ -66,6 +71,15 @@ class ProductSearchScenarioTest(
             stockJpaRepository.save(Stock(productId = runningShoe1.id, quantity = 10))
             stockJpaRepository.save(Stock(productId = runningShoe2.id, quantity = 0))
             stockJpaRepository.save(Stock(productId = tshirt.id, quantity = 5))
+            val openDrop = limitedDropJpaRepository.saveAndFlush(
+                LimitedDrop.create(
+                    productId = runningShoe1.id,
+                    openAt = ZonedDateTime.now().minusHours(1),
+                    closeAt = ZonedDateTime.now().plusDays(1),
+                    limitedQuantity = 10,
+                    perUserLimit = 1,
+                ).also { it.open() }
+            )
 
             When("[S-01] GET /products?category=FOOTWEAR&keyword=러닝&sort=price 요청 시") {
                 val response = mockMvc.perform(
@@ -114,6 +128,36 @@ class ProductSearchScenarioTest(
                         .andExpect(jsonPath("$.totalElements").value(3))
                         .andExpect(jsonPath("$.totalPages").value(2))
                         .andExpect(jsonPath("$.content.length()").value(2))
+                }
+            }
+
+            When("[S-04] GET /products?keyword=나이키 요청 시 (활성 회차가 연결된 상품)") {
+                val response = mockMvc.perform(
+                    get("/products")
+                        .param("keyword", "나이키")
+                        .accept(MediaType.APPLICATION_JSON)
+                )
+
+                Then("content[0].limitedDropId에 활성 회차 id가 채워진다") {
+                    response
+                        .andExpect(status().isOk)
+                        .andExpect(jsonPath("$.content[0].id").value(runningShoe1.id))
+                        .andExpect(jsonPath("$.content[0].limitedDropId").value(openDrop.id))
+                }
+            }
+
+            When("[S-05] GET /products?keyword=아디다스 요청 시 (활성 회차가 없는 상품)") {
+                val response = mockMvc.perform(
+                    get("/products")
+                        .param("keyword", "아디다스")
+                        .accept(MediaType.APPLICATION_JSON)
+                )
+
+                Then("content[0].limitedDropId는 존재하지 않는다") {
+                    response
+                        .andExpect(status().isOk)
+                        .andExpect(jsonPath("$.content[0].id").value(runningShoe2.id))
+                        .andExpect(jsonPath("$.content[0].limitedDropId").doesNotExist())
                 }
             }
         }
