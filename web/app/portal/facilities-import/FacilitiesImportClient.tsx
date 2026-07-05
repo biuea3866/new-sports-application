@@ -24,6 +24,7 @@ function rowToCreateInput(row: CsvFacilityRow): CreateFacilityInput {
   return {
     code: row.code,
     name: row.name,
+    sido: row.sido,
     gu: row.gu,
     type: row.type,
     address: row.address,
@@ -136,11 +137,12 @@ export default function FacilitiesImportClient() {
           1단계: CSV 파일 선택
         </h2>
         <p className="text-sm text-muted-foreground mb-2">
-          컬럼 순서: <code className="text-xs bg-muted px-1 py-0.5 rounded">code, name, gu, type, address, lat, lng, parking, tel, homePage, eduYn, meta</code>
+          컬럼 순서: <code className="text-xs bg-muted px-1 py-0.5 rounded">code, name, sido, gu, type, address, lat, lng, parking, tel, homePage, eduYn, meta</code>
         </p>
         <p className="text-sm text-muted-foreground mb-4">
           type: <code className="text-xs">INDOOR | OUTDOOR | MIXED</code> &nbsp;|&nbsp;
-          parking / eduYn: <code className="text-xs">true / false</code>
+          parking / eduYn: <code className="text-xs">true / false</code> &nbsp;|&nbsp;
+          sido: 시/도 표준코드(선택, 미입력 시 주소로 자동 판별)
         </p>
 
         <div className="flex items-center gap-3">
@@ -195,6 +197,7 @@ export default function FacilitiesImportClient() {
                     <th scope="col" className="px-3 py-2 text-left font-medium">행</th>
                     <th scope="col" className="px-3 py-2 text-left font-medium">코드</th>
                     <th scope="col" className="px-3 py-2 text-left font-medium">시설명</th>
+                    <th scope="col" className="px-3 py-2 text-left font-medium">시/도</th>
                     <th scope="col" className="px-3 py-2 text-left font-medium">구</th>
                     <th scope="col" className="px-3 py-2 text-left font-medium">유형</th>
                     <th scope="col" className="px-3 py-2 text-left font-medium">위치</th>
@@ -207,6 +210,7 @@ export default function FacilitiesImportClient() {
                       <td className="px-3 py-2 text-muted-foreground">{row.rowIndex}</td>
                       <td className="px-3 py-2 font-mono">{row.code}</td>
                       <td className="px-3 py-2">{row.name}</td>
+                      <td className="px-3 py-2">{row.sido ?? "미지정"}</td>
                       <td className="px-3 py-2">{row.gu}</td>
                       <td className="px-3 py-2">{row.type}</td>
                       <td className="px-3 py-2 font-mono">{row.location}</td>

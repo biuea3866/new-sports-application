@@ -50,6 +50,8 @@ export interface MyFacility {
 export interface CreateFacilityInput {
   code: string;
   name: string;
+  /** 시/도 표준코드 (2자리). optional — 미입력 시 서버가 주소로 보간한다. */
+  sido?: string;
   gu: string;
   // 시/도 표준코드. 미입력 시 서버가 address로 자동 판별한다.
   sido?: string;
