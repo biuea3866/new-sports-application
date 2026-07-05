@@ -20,7 +20,13 @@ describe('Facility API hooks (via raw client)', () => {
     type: 'INDOOR',
     address: '서울 서초구 반포대로 1',
     parking: false,
-    phone: '02-9876-5432',
+    tel: '02-9876-5432',
+    lat: 37.4837,
+    lng: 127.0324,
+    sidoCode: '11',
+    sidoName: '서울특별시',
+    sigunguCode: '11650',
+    sigunguName: '서초구',
   };
 
   const mockPage: FacilityPageResponse = {
@@ -62,7 +68,7 @@ describe('Facility API hooks (via raw client)', () => {
       expect(res.data.name).toBe('서초 실내 체육관');
       expect(res.data.gu).toBe('서초구');
       expect(res.data.address).toBe('서울 서초구 반포대로 1');
-      expect(res.data.phone).toBe('02-9876-5432');
+      expect(res.data.tel).toBe('02-9876-5432');
     });
   });
 });

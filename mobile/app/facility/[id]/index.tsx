@@ -69,10 +69,10 @@ export default function FacilityDetailScreen() {
               <Text style={styles.label}>주차</Text>
               <Text style={styles.value}>{data.parking ? '가능' : '불가'}</Text>
             </View>
-            {data.phone.length > 0 && (
+            {data.tel.length > 0 && (
               <View style={styles.row}>
                 <Text style={styles.label}>전화</Text>
-                <Text style={[styles.value, styles.phone]}>{data.phone}</Text>
+                <Text style={[styles.value, styles.phone]}>{data.tel}</Text>
               </View>
             )}
           </ScrollView>
