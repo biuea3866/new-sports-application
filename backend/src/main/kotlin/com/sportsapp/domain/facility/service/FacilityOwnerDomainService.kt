@@ -4,6 +4,7 @@ import com.sportsapp.domain.facility.entity.Facility
 import com.sportsapp.domain.facility.exception.FacilityHasActiveSlotException
 import com.sportsapp.domain.facility.exception.FacilityNotFoundException
 import com.sportsapp.domain.facility.gateway.GeocodingGateway
+import com.sportsapp.domain.facility.gateway.RegionResolveGateway
 import com.sportsapp.domain.facility.gateway.SlotQueryGateway
 import com.sportsapp.domain.facility.repository.FacilityRepository
 import com.sportsapp.domain.facility.vo.FacilityAttributes
@@ -18,9 +19,11 @@ class FacilityOwnerDomainService(
     private val facilityRepository: FacilityRepository,
     private val geocodingGateway: GeocodingGateway,
     private val slotQueryGateway: SlotQueryGateway,
+    private val regionResolveGateway: RegionResolveGateway,
 ) {
     fun registerForOwner(attributes: FacilityAttributes, ownerUserId: Long): Facility {
-        val facility = Facility.create(resolveCoordinates(attributes))
+        val resolved = resolveCoordinates(attributes).let(::resolveRegion)
+        val facility = Facility.create(resolved)
         facility.assignOwner(ownerUserId)
         return facilityRepository.save(facility)
     }
@@ -33,6 +36,12 @@ class FacilityOwnerDomainService(
         return attributes.copy(lat = coordinate.lat, lng = coordinate.lng)
     }
 
+    // 주소·sidoHint로 행정표준코드를 해석합니다. 실패 시 UNSPECIFIED가 그대로 보존됩니다.
+    private fun resolveRegion(attributes: FacilityAttributes): FacilityAttributes {
+        val region = regionResolveGateway.resolve(attributes.address, attributes.sidoHint)
+        return attributes.copy(region = region)
+    }
+
     fun listByOwner(ownerUserId: Long, pageable: Pageable): Page<Facility> =
         facilityRepository.findByOwnerUserId(ownerUserId, pageable)
 
@@ -40,10 +49,17 @@ class FacilityOwnerDomainService(
         facilityRepository.findByIdAndOwnerUserId(id, ownerUserId)
             ?: throw FacilityNotFoundException(id)
 
-    fun updateMetaForOwner(id: String, ownerUserId: Long, patch: Map<String, String>): Facility {
+    fun updateMetaForOwner(id: String, ownerUserId: Long, patch: Map<String, String>, sido: String? = null): Facility {
         val facility = getByIdAndOwner(id, ownerUserId)
-        val updated = facility.updateMeta(patch)
+        val withMeta = facility.updateMeta(patch)
+        val updated = if (sido == null) withMeta else reresolveRegion(withMeta, sido)
         return facilityRepository.save(updated)
+    }
+
+    // sido가 함께 전달된 수정 요청은 현재 주소를 기준으로 지역을 재해석해 반영합니다.
+    private fun reresolveRegion(facility: Facility, sido: String): Facility {
+        val region = regionResolveGateway.resolve(facility.address, sido)
+        return facility.assignRegion(region)
     }
 
     fun deleteForOwner(id: String, ownerUserId: Long) {

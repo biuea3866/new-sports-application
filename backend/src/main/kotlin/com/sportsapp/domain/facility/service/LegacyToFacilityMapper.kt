@@ -45,6 +45,8 @@ object LegacyToFacilityMapper {
             homePage = row.homePage,
             eduYn = row.eduYn,
             meta = row.extraFields,
+            // region 해석은 매퍼가 아니라 FacilityDomainService.bulkImport 가 수행한다 — 힌트만 전달한다.
+            sidoHint = row.sido,
         )
     }
 }

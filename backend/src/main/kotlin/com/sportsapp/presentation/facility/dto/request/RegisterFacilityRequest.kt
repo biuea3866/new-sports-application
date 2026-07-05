@@ -15,6 +15,7 @@ data class RegisterFacilityRequest(
     val homePage: String,
     val eduYn: Boolean,
     val meta: Map<String, String>,
+    val sido: String? = null,
 ) {
     fun toCommand(ownerUserId: Long) = RegisterMyFacilityCommand(
         code = code,
@@ -30,5 +31,6 @@ data class RegisterFacilityRequest(
         eduYn = eduYn,
         meta = meta,
         ownerUserId = ownerUserId,
+        sido = sido,
     )
 }

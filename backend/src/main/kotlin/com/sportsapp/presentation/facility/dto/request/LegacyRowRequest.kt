@@ -16,6 +16,7 @@ data class LegacyRowRequest(
     val homePage: String,
     val eduYn: Boolean,
     val extraFields: Map<String, String> = emptyMap(),
+    val sido: String? = null,
 ) {
     fun toLegacyRow() = LegacyRow(
         legacyId = legacyId,
@@ -30,6 +31,7 @@ data class LegacyRowRequest(
         homePage = homePage,
         eduYn = eduYn,
         extraFields = extraFields,
+        sido = sido,
     )
 }
 
