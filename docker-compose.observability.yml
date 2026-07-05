@@ -28,6 +28,14 @@ services:
       MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4318/v1/traces
       # OTEL SDK 공통 base 엔드포인트(로그 OTLP appender·향후 SDK autoconfig용, 경로 없는 base)
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      # 지능형 장애 알림 배포 게이트 선결 항목 후속 수정: observability 스택(Grafana 포함)이 함께
+      # 뜰 때만 alerting.enabled=true로 켠다 — 이 스택 없이는 webhook 발신 경로(Grafana Alerting)
+      # 자체가 존재하지 않으므로, base docker-compose.yml 단독 기동 시에는 계속 기본값 false(202만
+      # 응답, 파이프라인 미트리거)를 유지한다(무중단·즉시 롤백 지점, Release Scenario 원칙 그대로).
+      ALERTING_ENABLED: "true"
+      # grafana-alerting-bootstrap(아래)이 등록하는 backend-webhook contact point와 동일한 시크릿을
+      # 공유해야 한다 — 값 불일치 시 컨트롤러가 401로 드롭한다. 평문 커밋 금지, 반드시 셸 env로 주입.
+      ALERT_WEBHOOK_TOKEN: ${ALERT_WEBHOOK_TOKEN:?ALERT_WEBHOOK_TOKEN 환경변수를 설정하세요 (observability 스택 기동 전 필수 — Grafana bootstrap과 backend가 동일 시크릿을 공유합니다)}
 
   # ---- OTel Collector — trace/log 게이트웨이 (ADR-003) ----
   otel-collector:
@@ -128,6 +136,31 @@ services:
       retries: 5
       start_period: 20s
     restart: unless-stopped
+
+  # ---- Grafana Alerting webhook contact point 부트스트랩 (지능형 장애 알림 배포 게이트 선결 항목) ----
+  # 배경: Grafana 11.1.0/11.4.0 모두 파일 프로비저닝(provisioning/alerting/contact-points.yaml)으로
+  # 등록한 webhook contact point는 secureSettings(Authorization 헤더)가 저장은 되지만 실제 알림
+  # 발송 시 누락된다(실측, 두 버전 공통 결함 — observability/grafana/bootstrap/register_webhook_contact_point.py
+  # docstring 참고). 이 서비스가 Grafana 기동 후 Alertmanager 설정 API로 우회 등록한다.
+  # 일회성 작업(Job)이라 restart 정책을 두지 않는다 — Grafana가 재기동돼도 이 컨테이너는 이미
+  # 종료(exit 0)된 상태이며, 등록된 설정은 grafana-data 볼륨에 남아 있으므로 재실행이 불필요하다.
+  # 재실행이 필요하면(예: ALERT_WEBHOOK_TOKEN 로테이션) `docker compose run --rm grafana-alerting-bootstrap`.
+  grafana-alerting-bootstrap:
+    image: python:3.12-alpine
+    depends_on:
+      grafana:
+        condition: service_healthy
+    volumes:
+      - ./observability/grafana/bootstrap/register_webhook_contact_point.py:/register_webhook_contact_point.py:ro
+    environment:
+      GRAFANA_URL: http://grafana:3000
+      GRAFANA_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GRAFANA_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      # backend 서비스(위)와 동일한 시크릿을 공유해야 한다 — 값 불일치 시 컨트롤러가 401로 드롭한다.
+      ALERT_WEBHOOK_TOKEN: ${ALERT_WEBHOOK_TOKEN:?ALERT_WEBHOOK_TOKEN 환경변수를 설정하세요 (observability 스택 기동 전 필수 — Grafana bootstrap과 backend가 동일 시크릿을 공유합니다)}
+      BACKEND_WEBHOOK_URL: http://backend:8080/internal/alerts/grafana
+    command: ["python", "/register_webhook_contact_point.py"]
+    restart: "no"
 
 volumes:
   prometheus-data:
