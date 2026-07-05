@@ -27,11 +27,21 @@ const TYPE_LABEL: Record<FacilityType, string> = {
 };
 
 const REGION_UNKNOWN_LABEL = '지역 미확인';
+// BE는 주소 파싱에 실패한 시설의 시도명을 "미지정"으로 보존한다
+// (FacilityRegion.UNSPECIFIED, backend/domain/facility/vo/FacilityRegion.kt).
+// 웹(web/app/portal/facilities/sido-display.ts#resolveSidoDisplayName)과 동일하게
+// 값이 없거나 "미지정"이면 "지역 미확인"으로 표시해 플랫폼 표기를 통일한다.
+const REGION_UNSPECIFIED_SENTINEL = '미지정';
 
 function resolveSidoLabel(sidoName: FacilityResponse['sidoName'] | undefined): string {
-  return sidoName !== undefined && sidoName !== null && sidoName.trim().length > 0
-    ? sidoName
-    : REGION_UNKNOWN_LABEL;
+  if (sidoName === undefined || sidoName === null) {
+    return REGION_UNKNOWN_LABEL;
+  }
+  const trimmed = sidoName.trim();
+  if (trimmed.length === 0 || trimmed === REGION_UNSPECIFIED_SENTINEL) {
+    return REGION_UNKNOWN_LABEL;
+  }
+  return sidoName;
 }
 
 function resolveCoordinate(value: number | null | undefined): number | null {

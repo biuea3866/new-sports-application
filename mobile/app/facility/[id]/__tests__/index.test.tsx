@@ -109,6 +109,15 @@ describe('FacilityDetailScreen', () => {
     expect(screen.getByText('지역 미확인')).toBeTruthy();
   });
 
+  it('시/도명이 BE 센티넬 "미지정"이면 "지역 미확인"으로 표시된다', () => {
+    mockFacilityDetail({ data: { ...BASE_FACILITY, sidoName: '미지정' } });
+
+    render(<FacilityDetailScreen />);
+
+    expect(screen.getByText('지역 미확인')).toBeTruthy();
+    expect(screen.queryByText('미지정')).toBeNull();
+  });
+
   it('시설 좌표로 대기질 카드가 success로 렌더된다', () => {
     mockFacilityDetail({ data: BASE_FACILITY });
     mockAirQuality({ data: SUCCESS_AIR_QUALITY, isLoading: false, isError: false });
