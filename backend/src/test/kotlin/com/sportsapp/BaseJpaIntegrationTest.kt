@@ -3,6 +3,7 @@ package com.sportsapp
 import io.kotest.core.spec.style.BehaviorSpec
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection
+import org.springframework.context.annotation.Import
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.TestPropertySource
 import org.testcontainers.containers.MySQLContainer
@@ -14,6 +15,7 @@ import org.testcontainers.junit.jupiter.Container
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test-jpa")
+@Import(TestJpaGatewayStubConfig::class)
 @TestPropertySource(properties = [
     "spring.data.jpa.repositories.enabled=true",
     "spring.data.mongodb.auto-index-creation=false",

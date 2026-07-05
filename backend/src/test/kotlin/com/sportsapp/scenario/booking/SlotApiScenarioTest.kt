@@ -5,10 +5,14 @@ import com.sportsapp.domain.booking.service.BookingDomainService
 import com.sportsapp.domain.booking.entity.BookingStatus
 import com.sportsapp.domain.booking.entity.Slot
 import com.sportsapp.domain.booking.repository.SlotRepository
+import com.sportsapp.domain.facility.entity.Facility
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.web.client.TestRestTemplate
+import org.springframework.data.geo.Point
+import org.springframework.data.mongodb.core.MongoTemplate
+import org.springframework.data.mongodb.core.query.Query
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
@@ -21,6 +25,7 @@ class SlotApiScenarioTest(
     @Autowired private val slotRepository: SlotRepository,
     @Autowired private val bookingDomainService: BookingDomainService,
     @Autowired private val jdbcTemplate: JdbcTemplate,
+    @Autowired private val mongoTemplate: MongoTemplate,
     @Autowired private val restTemplate: TestRestTemplate,
 ) : BaseIntegrationTest() {
 
@@ -29,13 +34,35 @@ class SlotApiScenarioTest(
         contentType = MediaType.APPLICATION_JSON
     }
 
+    private fun seedFacility(id: String, ownerUserId: Long) {
+        mongoTemplate.save(
+            Facility(
+                id = id,
+                code = "CODE-$id",
+                name = "시설 $id",
+                gu = "강남구",
+                type = "풋살장",
+                address = "서울시 강남구",
+                location = Point(127.0, 37.5),
+                parking = true,
+                tel = "02-0000-0000",
+                homePage = "",
+                eduYn = false,
+                meta = emptyMap(),
+                ownerUserId = ownerUserId,
+            )
+        )
+    }
+
     init {
         afterEach {
             jdbcTemplate.execute("TRUNCATE TABLE bookings")
             jdbcTemplate.execute("TRUNCATE TABLE slots")
+            mongoTemplate.remove(Query(), Facility::class.java)
         }
 
         Given("[S-01] ownerId=1이 facilityId=FAC-OWNER-01 시설에 슬롯 등록") {
+            seedFacility(id = "FAC-OWNER-01", ownerUserId = 1L)
             val requestBody = """
                 {
                     "date": "2026-06-01T09:00:00+09:00",

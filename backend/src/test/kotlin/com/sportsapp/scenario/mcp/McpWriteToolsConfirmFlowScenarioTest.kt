@@ -12,6 +12,7 @@ import com.sportsapp.domain.booking.entity.BookingStatus
 import com.sportsapp.domain.booking.entity.Slot
 import com.sportsapp.domain.booking.repository.BookingRepository
 import com.sportsapp.domain.booking.repository.SlotRepository
+import com.sportsapp.domain.facility.entity.Facility
 import com.sportsapp.domain.mcp.vo.McpAuthenticatedPrincipal
 import com.sportsapp.domain.mcp.vo.McpScope
 import com.sportsapp.domain.mcp.exception.ConfirmationParamsMismatchException
@@ -27,6 +28,9 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.awaitility.Awaitility.await
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.data.geo.Point
+import org.springframework.data.mongodb.core.MongoTemplate
+import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.access.AccessDeniedException
@@ -54,9 +58,30 @@ class McpWriteToolsConfirmFlowScenarioTest(
     @Autowired private val bookingRepository: BookingRepository,
     @Autowired private val stringRedisTemplate: StringRedisTemplate,
     @Autowired private val jdbcTemplate: JdbcTemplate,
+    @Autowired private val mongoTemplate: MongoTemplate,
     @Autowired private val mcpBookingWriteTools: McpBookingWriteTools,
     @Autowired private val mcpSlotWriteTools: McpSlotWriteTools,
 ) : BaseIntegrationTest() {
+
+    private fun seedFacility(id: String, ownerUserId: Long) {
+        mongoTemplate.save(
+            Facility(
+                id = id,
+                code = "CODE-$id",
+                name = "시설 $id",
+                gu = "강남구",
+                type = "풋살장",
+                address = "서울시 강남구",
+                location = Point(127.0, 37.5),
+                parking = true,
+                tel = "02-0000-0000",
+                homePage = "",
+                eduYn = false,
+                meta = emptyMap(),
+                ownerUserId = ownerUserId,
+            )
+        )
+    }
 
     private val writeBookingScope = McpScope.of("write:booking")
     private val writeSlotScope = McpScope.of("write:slot")
@@ -76,6 +101,7 @@ class McpWriteToolsConfirmFlowScenarioTest(
             SecurityContextHolder.clearContext()
             jdbcTemplate.execute("TRUNCATE TABLE bookings")
             jdbcTemplate.execute("TRUNCATE TABLE slots")
+            mongoTemplate.remove(Query(), Facility::class.java)
             stringRedisTemplate.keys("mcp:confirm:*").forEach { key ->
                 stringRedisTemplate.unlink(key)
             }
@@ -142,6 +168,7 @@ class McpWriteToolsConfirmFlowScenarioTest(
         // ─── createSlot confirm flow ───────────────────────────────────
 
         Given("[S-04] createSlot — 토큰 발급 후 소진 시 슬롯이 생성된다") {
+            seedFacility(id = "FAC-03", ownerUserId = 1L)
             val token = confirmationTokenGateway.issue(
                 ConfirmationTokenContext(toolName = "createSlot", userId = 1L, paramsHash = "create-hash")
             )
