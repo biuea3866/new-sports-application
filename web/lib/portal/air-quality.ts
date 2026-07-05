@@ -4,6 +4,7 @@
  * BE는 조회 실패 시에도 200 + representativeGrade="UNKNOWN" + pm10/pm25 null로 응답한다
  * (BE TDD 실패 경로) — FE는 이를 별도 에러 분기 없이 UNKNOWN 표시로 처리한다.
  */
+import { z } from "zod";
 
 export type AirQualityGrade = "GOOD" | "MODERATE" | "BAD" | "VERY_BAD" | "UNKNOWN";
 
@@ -16,6 +17,22 @@ export interface AirQualityResponse {
   stationName: string | null;
   measuredAt: string | null;
 }
+
+/**
+ * BE 응답(외부 신뢰 경계) 검증용 zod 스키마.
+ * `useAirQuality` 훅이 fetch 직후 `.parse`로 좁혀 `no-loose-assertion`을 준수한다.
+ */
+export const AirQualityGradeSchema = z.enum(["GOOD", "MODERATE", "BAD", "VERY_BAD", "UNKNOWN"]);
+
+export const AirQualityResponseSchema = z.object({
+  pm10: z.number().nullable(),
+  pm25: z.number().nullable(),
+  pm10Grade: AirQualityGradeSchema,
+  pm25Grade: AirQualityGradeSchema,
+  representativeGrade: AirQualityGradeSchema,
+  stationName: z.string().nullable(),
+  measuredAt: z.string().nullable(),
+});
 
 export interface AirQualityGradeDisplay {
   label: string;
