@@ -20,9 +20,9 @@ class PartnerTest : BehaviorSpec({
         }
     }
 
-    Given("ACTIVE 상태의 Partner에 suspend()를 호출하면") {
+    Given("ACTIVE 상태의 Partner에 deactivate()를 호출하면") {
         val partner = createActivePartner()
-        partner.suspend()
+        partner.deactivate()
 
         Then("status=SUSPENDED로 전이된다") {
             partner.status shouldBe PartnerStatus.SUSPENDED
@@ -39,7 +39,7 @@ class PartnerTest : BehaviorSpec({
 
     Given("SUSPENDED 상태의 Partner에 activate()를 호출하면") {
         val partner = createActivePartner()
-        partner.suspend()
+        partner.deactivate()
         partner.activate()
 
         Then("status=ACTIVE로 전이된다") {
@@ -49,7 +49,7 @@ class PartnerTest : BehaviorSpec({
 
     Given("SUSPENDED 상태의 Partner에 validateActive()를 호출하면") {
         val partner = createActivePartner()
-        partner.suspend()
+        partner.deactivate()
 
         Then("PartnerSuspendedException이 발생한다") {
             shouldThrow<PartnerSuspendedException> {
@@ -67,10 +67,10 @@ class PartnerTest : BehaviorSpec({
         }
     }
 
-    Given("이미 SUSPENDED 상태인 Partner에 suspend()를 재호출하면") {
+    Given("이미 SUSPENDED 상태인 Partner에 deactivate()를 재호출하면") {
         val partner = createActivePartner()
-        partner.suspend()
-        partner.suspend()
+        partner.deactivate()
+        partner.deactivate()
 
         Then("상태가 SUSPENDED로 유지된다") {
             partner.status shouldBe PartnerStatus.SUSPENDED

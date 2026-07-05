@@ -63,7 +63,7 @@ class PartnerDomainService(
 
     fun changeStatus(partnerId: Long, status: PartnerStatus) {
         val partner = partnerRepository.findById(partnerId) ?: throw PartnerNotFoundException(partnerId)
-        if (status == PartnerStatus.ACTIVE) partner.activate() else partner.suspend()
+        if (status == PartnerStatus.ACTIVE) partner.activate() else partner.deactivate()
         partnerRepository.save(partner)
     }
 
@@ -73,6 +73,17 @@ class PartnerDomainService(
         val partner = partnerRepository.findById(apiKey.partnerId) ?: throw PartnerNotFoundException(apiKey.partnerId)
         partner.validateActive()
         return AuthenticatedPartner(partnerId = requireNotNull(partner.id), linkedUserId = partner.linkedUserId)
+    }
+
+    /**
+     * API Key의 lastUsedAt을 갱신한다. 인증 성공 후 [PartnerApiKeyUsageRecorder] 구현체가
+     * 비동기로 호출해 요청 critical path에 쓰기 지연이 끼지 않게 한다.
+     */
+    fun recordKeyUsage(keyId: Long) {
+        val apiKey = partnerApiKeyRepository.findById(keyId)
+            ?: throw ResourceNotFoundException("PartnerApiKey", keyId)
+        apiKey.recordUsage()
+        partnerApiKeyRepository.save(apiKey)
     }
 
     private fun saveWithPlaceholderHash(partnerId: Long, randomPart: String): Long {

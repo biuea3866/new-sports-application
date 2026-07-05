@@ -14,6 +14,7 @@ import com.sportsapp.domain.partner.repository.PartnerApiKeyRepository
 import com.sportsapp.domain.partner.repository.PartnerRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldStartWith
 import io.mockk.every
@@ -299,6 +300,33 @@ class PartnerDomainServiceTest : BehaviorSpec({
             Then("UnauthorizedException이 발생한다") {
                 shouldThrow<UnauthorizedException> {
                     domainService.authenticate(keyId = 999L, plainKey = "partner_999_random-part")
+                }
+            }
+        }
+    }
+
+    Given("존재하는 API Key에 사용 기록을 요청하면") {
+        val apiKey = activeApiKey(id = 50L, partnerId = 1L)
+        every { partnerApiKeyRepository.findById(50L) } returns apiKey
+        every { partnerApiKeyRepository.save(apiKey) } returns apiKey
+
+        When("recordKeyUsage를 호출하면") {
+            domainService.recordKeyUsage(keyId = 50L)
+
+            Then("lastUsedAt이 갱신되고 저장된다") {
+                apiKey.lastUsedAt.shouldNotBeNull()
+                verify(exactly = 1) { partnerApiKeyRepository.save(apiKey) }
+            }
+        }
+    }
+
+    Given("존재하지 않는 키 ID에 사용 기록을 요청하면") {
+        every { partnerApiKeyRepository.findById(999L) } returns null
+
+        When("recordKeyUsage를 호출하면") {
+            Then("ResourceNotFoundException이 발생한다") {
+                shouldThrow<ResourceNotFoundException> {
+                    domainService.recordKeyUsage(keyId = 999L)
                 }
             }
         }

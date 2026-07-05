@@ -10,4 +10,10 @@ interface UserCustomRepository {
         roleName: String?,
         pageable: Pageable,
     ): Page<UserWithRoles>
+
+    /**
+     * User와 활성 역할을 단일 쿼리(LEFT JOIN)로 조회한다.
+     * findById + getRolesForUser로 나뉘어 있던 2회 조회를 1회로 통합하기 위한 메서드.
+     */
+    fun findByIdWithRoles(userId: Long): UserWithRoles?
 }

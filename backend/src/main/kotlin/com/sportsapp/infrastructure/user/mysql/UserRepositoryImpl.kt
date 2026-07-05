@@ -17,7 +17,4 @@ class UserRepositoryImpl(
 
     override fun findByEmail(email: String): User? =
         userJpaRepository.findByEmailAndDeletedAtIsNull(email)
-
-    override fun findByIdWithRoles(id: Long): User? =
-        userJpaRepository.findDistinctByIdAndDeletedAtIsNull(id)
 }
