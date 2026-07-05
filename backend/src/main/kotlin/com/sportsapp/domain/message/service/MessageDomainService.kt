@@ -1,10 +1,12 @@
 package com.sportsapp.domain.message.service
 
+import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.common.exceptions.BusinessRuleViolationException
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import com.sportsapp.domain.message.entity.Message
 import com.sportsapp.domain.message.entity.Room
 import com.sportsapp.domain.message.entity.RoomParticipant
+import com.sportsapp.domain.message.event.MessageSentEvent
 import com.sportsapp.domain.message.exception.NotRoomParticipantException
 import com.sportsapp.domain.message.repository.MessageRepository
 import com.sportsapp.domain.message.repository.RoomParticipantRepository
@@ -16,6 +18,7 @@ class MessageDomainService(
     private val roomRepository: RoomRepository,
     private val messageRepository: MessageRepository,
     private val roomParticipantRepository: RoomParticipantRepository,
+    private val domainEventPublisher: DomainEventPublisher,
 ) {
 
     fun createDirectRoom(): Room = roomRepository.save(Room.createDirect())
@@ -86,6 +89,15 @@ class MessageDomainService(
         val message = messageRepository.save(Message.create(room, userId, content))
         room.lastMessageBumpedTo(message.createdAt)
         roomRepository.save(room)
+        domainEventPublisher.publish(
+            MessageSentEvent(
+                messageId = message.id,
+                roomId = roomId,
+                senderId = userId,
+                content = content,
+                sentAt = message.createdAt,
+            ),
+        )
         return message
     }
 

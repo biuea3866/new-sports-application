@@ -47,6 +47,9 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-mail")
 
+    // WebSocket / STOMP (BE-04 실시간 전송 계층 — chat.realtime.enabled 플래그로 조건부 활성화)
+    implementation("org.springframework.boot:spring-boot-starter-websocket")
+
     // Retry (동시 INSERT 경합 → fresh tx 재시도)
     implementation("org.springframework.retry:spring-retry")
     implementation("org.springframework:spring-aspects")
