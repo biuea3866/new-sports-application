@@ -6,6 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
 import { FacilityForm } from "@/app/portal/facilities/_components/FacilityForm";
+import { AirQualityCard } from "@/app/portal/facilities/_components/AirQualityCard";
+import { useAirQuality } from "@/app/portal/facilities/_hooks/useAirQuality";
+import { resolveSidoDisplayName } from "@/app/portal/facilities/sido-display";
+import { parseLocation } from "@/app/portal/facilities/parse-location";
 import type { MyFacility } from "@/lib/portal/types";
 import type { FacilityFormValues } from "@/app/portal/facilities/facility-form-schema";
 
@@ -96,6 +100,12 @@ export default function FacilityDetailPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [deleteError, setDeleteError] = React.useState<string | null>(null);
+
+  const parsedLocation = parseLocation(facility?.location);
+  const { status: airQualityStatus, data: airQualityData } = useAirQuality(
+    parsedLocation?.lat,
+    parsedLocation?.lng
+  );
 
   React.useEffect(() => {
     async function fetchFacility() {
@@ -264,6 +274,10 @@ export default function FacilityDetailPage() {
                 </dd>
               </div>
               <div>
+                <dt className="font-medium text-muted-foreground">시/도</dt>
+                <dd className="mt-1">{resolveSidoDisplayName(facility.sidoName)}</dd>
+              </div>
+              <div>
                 <dt className="font-medium text-muted-foreground">구</dt>
                 <dd className="mt-1">{facility.gu}</dd>
               </div>
@@ -314,6 +328,12 @@ export default function FacilityDetailPage() {
                 </div>
               )}
             </dl>
+
+            {airQualityStatus !== "idle" && (
+              <div className="border-t pt-4">
+                <AirQualityCard status={airQualityStatus} data={airQualityData} />
+              </div>
+            )}
           </section>
         ) : (
           <section aria-label="시설 수정">
@@ -327,6 +347,7 @@ export default function FacilityDetailPage() {
               defaultValues={{
                 code: facility.code,
                 name: facility.name,
+                sido: facility.sidoCode,
                 gu: facility.gu,
                 type: facility.type,
                 address: facility.address,
