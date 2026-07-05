@@ -6,14 +6,15 @@
  *
  * 데이터 조회·카운트다운 합성·상태별 CTA 결정은 useLimitedDropDetail 뷰모델 훅에 있다.
  * 이 컴포넌트는 뷰모델을 그대로 렌더링만 한다(no-logic-in-component).
- * 남은 수량 대비 총 한정 수량은 BE GET 응답 계약에 포함되지 않아(TDD "API 계약" 참고)
- * RemainingStockBar(비율 표시) 대신 remaining 값만 텍스트로 표시한다.
+ * BE GET 응답에 totalQuantity·price가 결합되어(계약 확장) RemainingStockBar(비율 표시)와
+ * 가격 표기를 노출한다.
  */
 import { ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { CountdownTimer } from '../../../components/limitedDrop/CountdownTimer';
 import { DropStatusBadge } from '../../../components/limitedDrop/DropStatusBadge';
+import { RemainingStockBar } from '../../../components/limitedDrop/RemainingStockBar';
 import { PrimaryButton } from '../../../components/themed/PrimaryButton';
 import { ThemedText } from '../../../components/themed/ThemedText';
 import { ThemedView } from '../../../components/themed/ThemedView';
@@ -79,12 +80,17 @@ export default function LimitedDropDetailScreen() {
             </>
           )}
           {drop.status === 'OPEN' && (
-            <ThemedText variant="secondary" accessibilityLabel={`남은 수량 ${drop.remaining}개`}>
-              {`판매 중 · 남은 수량 ${drop.remaining}개`}
-            </ThemedText>
+            <RemainingStockBar remaining={drop.remaining} limited={drop.totalQuantity} />
           )}
           {drop.status === 'SOLD_OUT' && <ThemedText variant="muted">재고 소진</ThemedText>}
           {drop.status === 'CLOSED' && <ThemedText variant="muted">판매 종료</ThemedText>}
+          <ThemedText
+            variant="primary"
+            style={styles.priceText}
+            accessibilityLabel={`가격 ${drop.price.toLocaleString()}원`}
+          >
+            {`${drop.price.toLocaleString()}원`}
+          </ThemedText>
         </ThemedView>
 
         <PrimaryButton
@@ -127,6 +133,11 @@ const styles = StyleSheet.create({
   },
   spacingBottom: {
     marginBottom: 12,
+  },
+  priceText: {
+    marginTop: 12,
+    fontSize: 20,
+    fontWeight: '700',
   },
   limitHint: {
     marginTop: 12,

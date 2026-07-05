@@ -33,6 +33,8 @@ const scheduledDropOpeningSoon: LimitedDropResponse = {
   closeAt: new Date(Date.now() + 100000).toISOString(),
   remaining: 10,
   perUserLimit: 1,
+  totalQuantity: 10,
+  price: 50000,
 };
 
 const openDrop: LimitedDropResponse = {
@@ -43,6 +45,8 @@ const openDrop: LimitedDropResponse = {
   closeAt: new Date(Date.now() + 100000).toISOString(),
   remaining: 5,
   perUserLimit: 2,
+  totalQuantity: 20,
+  price: 89000,
 };
 
 describe('useLimitedDropDetail', () => {

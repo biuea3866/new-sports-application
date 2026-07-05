@@ -15,6 +15,8 @@ data class ProductWithStockResponse(
     val imageUrl: String,
     val status: ProductStatus,
     val stockQuantity: Int,
+    /** 이 상품에 연결된 활성 한정판 회차 id. 없으면 null — FE는 이 값이 있을 때만 진입점 배너를 노출한다. */
+    val limitedDropId: Long?,
     @com.fasterxml.jackson.annotation.JsonIgnore
     val product: Product,
 ) {
@@ -24,11 +26,12 @@ data class ProductWithStockResponse(
                 id = productWithStock.product.id,
                 name = productWithStock.product.name,
                 category = productWithStock.product.category,
-                price = productWithStock.product.price,
+                price = productWithStock.price,
                 description = productWithStock.product.description,
                 imageUrl = productWithStock.product.imageUrl,
                 status = productWithStock.product.status,
                 stockQuantity = productWithStock.stockQuantity,
+                limitedDropId = productWithStock.limitedDropId,
                 product = productWithStock.product,
             )
     }

@@ -12,6 +12,7 @@ import com.sportsapp.domain.goods.entity.ProductStatus
 import com.sportsapp.domain.goods.entity.Stock
 import com.sportsapp.domain.goods.entity.GoodsOrder
 import com.sportsapp.domain.goods.entity.GoodsOrderItem
+import com.sportsapp.domain.goods.entity.LimitedDrop
 import com.sportsapp.domain.goods.vo.ProductCategory
 import com.sportsapp.domain.goods.dto.PopularProductSnapshot
 import com.sportsapp.domain.goods.dto.ProductWithStock
@@ -22,10 +23,22 @@ import com.sportsapp.domain.goods.repository.PopularProductsCache
 import com.sportsapp.domain.goods.repository.GoodsOrderRepository
 import com.sportsapp.domain.goods.repository.GoodsOrderItemRepository
 import com.sportsapp.domain.goods.repository.GoodsOrderCustomRepository
+import com.sportsapp.domain.goods.repository.LimitedDropRepository
 import com.sportsapp.domain.goods.exception.OutOfStockException
 import com.sportsapp.domain.goods.exception.EmptyOrderException
 import com.sportsapp.domain.goods.exception.ProductInactiveException
 import com.sportsapp.domain.goods.vo.OrderItemInput
+import java.time.ZonedDateTime
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.PageRequest
+
+/** 순수 단위 테스트에서 JPA 생성 전략으로 채워질 id를 강제 주입한다(McpTokenDomainServiceTest와 동일 패턴). */
+private fun <T : Any> forceId(entity: T, id: Long): T {
+    val idField = entity.javaClass.getDeclaredField("id")
+    idField.isAccessible = true
+    idField.set(entity, id)
+    return entity
+}
 
 class GoodsDomainServiceTest : BehaviorSpec({
 
@@ -36,6 +49,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
     val goodsOrderRepository = mockk<GoodsOrderRepository>()
     val goodsOrderItemRepository = mockk<GoodsOrderItemRepository>()
     val goodsOrderCustomRepository = mockk<GoodsOrderCustomRepository>()
+    val limitedDropRepository = mockk<LimitedDropRepository>()
     val service = GoodsDomainService(
         productRepository = productRepository,
         stockRepository = stockRepository,
@@ -44,6 +58,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
         goodsOrderRepository = goodsOrderRepository,
         goodsOrderItemRepository = goodsOrderItemRepository,
         goodsOrderCustomRepository = goodsOrderCustomRepository,
+        limitedDropRepository = limitedDropRepository,
     )
 
     Given("재고가 충분한 Product가 존재할 때") {
@@ -65,7 +80,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
         When("deductStock을 호출하면") {
             service.deductStock(productId = 1L, quantity = 3)
 
-            Then("[U-05] StockRepository.save가 1회 호출된다") {
+            Then("StockRepository.save가 1회 호출된다") {
                 verify(exactly = 1) { stockRepository.save(any()) }
                 stock.quantity shouldBe 7
             }
@@ -88,7 +103,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
         every { stockRepository.findByProductId(2L) } returns stock
 
         When("5개를 차감 시도하면") {
-            Then("[U-05] OutOfStockException이 발생한다") {
+            Then("OutOfStockException이 발생한다") {
                 shouldThrow<OutOfStockException> {
                     service.deductStock(productId = 2L, quantity = 5)
                 }
@@ -100,7 +115,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
         every { productRepository.findById(99L) } returns null
 
         When("deductStock을 호출하면") {
-            Then("[U-05] ResourceNotFoundException이 발생한다") {
+            Then("ResourceNotFoundException이 발생한다") {
                 shouldThrow<com.sportsapp.domain.common.exceptions.ResourceNotFoundException> {
                     service.deductStock(productId = 99L, quantity = 1)
                 }
@@ -112,7 +127,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
         every { goodsOrderRepository.findByIdempotencyKey("idem-empty") } returns null
 
         When("execute하면") {
-            Then("[U-01] EmptyOrderException이 발생한다") {
+            Then("EmptyOrderException이 발생한다") {
                 shouldThrow<EmptyOrderException> {
                     service.createPendingOrder(userId = 1L, items = emptyList(), idempotencyKey = "idem-empty")
                 }
@@ -134,7 +149,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
         every { goodsOrderRepository.findByIdempotencyKey("idem-inactive") } returns null
 
         When("execute하면") {
-            Then("[U-03] ProductInactiveException이 발생한다") {
+            Then("ProductInactiveException이 발생한다") {
                 shouldThrow<ProductInactiveException> {
                     service.createPendingOrder(
                         userId = 1L,
@@ -167,7 +182,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
         every { goodsOrderItemRepository.saveAll(any()) } returns emptyList()
 
         When("2개 주문하면") {
-            Then("[U-02] totalAmount = price × quantity로 계산된 주문이 저장된다") {
+            Then("totalAmount = price × quantity로 계산된 주문이 저장된다") {
                 val order = service.createPendingOrder(
                     userId = 1L,
                     items = listOf(OrderItemInput(productId = 10L, quantity = 2)),
@@ -179,9 +194,219 @@ class GoodsDomainServiceTest : BehaviorSpec({
         }
     }
 
-    Given("GoodsDomainService 메서드 시그니처 (B2B-17 fix: @Transactional UseCase 레이어로 이전)") {
+    Given("활성 한정판 회차가 연결된 상품을 단건 조회하는 상황") {
+        val product = Product(
+            name = "한정판 스니커즈",
+            category = ProductCategory.FOOTWEAR,
+            price = BigDecimal("50000"),
+            description = "설명",
+            imageUrl = "https://example.com/sneaker.jpg",
+            status = ProductStatus.ACTIVE,
+            ownerId = 1L,
+        )
+        val stock = Stock(productId = 20L, quantity = 30)
+        val openDrop = LimitedDrop.reconstitute(
+            productId = 20L,
+            openAt = ZonedDateTime.now().minusHours(1),
+            closeAt = ZonedDateTime.now().plusHours(1),
+            limitedQuantity = 30,
+            perUserLimit = 2,
+            status = com.sportsapp.domain.goods.entity.LimitedDropStatus.OPEN,
+        )
+
+        every { productRepository.findByIdAndDeletedAtIsNull(20L) } returns product
+        every { stockRepository.findByProductId(20L) } returns stock
+        every { limitedDropRepository.findOpenByProductId(20L) } returns openDrop
+
+        When("getProductWithStock을 호출하면") {
+            val result = service.getProductWithStock(20L)
+
+            Then("활성 회차의 dropId를 limitedDropId로 결합한다") {
+                result.limitedDropId shouldBe openDrop.id
+            }
+        }
+    }
+
+    Given("활성 한정판 회차가 없는 상품을 단건 조회하는 상황") {
+        val product = Product(
+            name = "테니스 라켓",
+            category = ProductCategory.EQUIPMENT,
+            price = BigDecimal("50000"),
+            description = "설명",
+            imageUrl = "https://example.com/racket.jpg",
+            status = ProductStatus.ACTIVE,
+            ownerId = 1L,
+        )
+        val stock = Stock(productId = 21L, quantity = 30)
+
+        every { productRepository.findByIdAndDeletedAtIsNull(21L) } returns product
+        every { stockRepository.findByProductId(21L) } returns stock
+        every { limitedDropRepository.findOpenByProductId(21L) } returns null
+
+        When("getProductWithStock을 호출하면") {
+            val result = service.getProductWithStock(21L)
+
+            Then("limitedDropId는 null이다") {
+                result.limitedDropId shouldBe null
+            }
+        }
+    }
+
+    Given("검색 결과 2건 중 1건에만 활성 한정판 회차가 있는 상황") {
+        val productWithDrop = forceId(
+            Product(
+                name = "한정판 스니커즈",
+                category = ProductCategory.FOOTWEAR,
+                price = BigDecimal("50000"),
+                description = "설명",
+                imageUrl = "https://example.com/sneaker.jpg",
+                status = ProductStatus.ACTIVE,
+                ownerId = 1L,
+            ),
+            id = 20L,
+        )
+        val productWithoutDrop = forceId(
+            Product(
+                name = "테니스 라켓",
+                category = ProductCategory.EQUIPMENT,
+                price = BigDecimal("30000"),
+                description = "설명",
+                imageUrl = "https://example.com/racket.jpg",
+                status = ProductStatus.ACTIVE,
+                ownerId = 1L,
+            ),
+            id = 21L,
+        )
+        val pageable = PageRequest.of(0, 20)
+        val page = PageImpl(
+            listOf(
+                ProductWithStock(product = productWithDrop, stockQuantity = 10),
+                ProductWithStock(product = productWithoutDrop, stockQuantity = 5),
+            ),
+            pageable,
+            2,
+        )
+        val openDrop = LimitedDrop.reconstitute(
+            productId = productWithDrop.id,
+            openAt = ZonedDateTime.now().minusHours(1),
+            closeAt = ZonedDateTime.now().plusHours(1),
+            limitedQuantity = 10,
+            perUserLimit = 2,
+            status = com.sportsapp.domain.goods.entity.LimitedDropStatus.OPEN,
+        )
+
+        every {
+            productCustomRepository.search(null, null, null, null, pageable)
+        } returns page
+        every {
+            limitedDropRepository.findOpenByProductIds(listOf(productWithDrop.id, productWithoutDrop.id))
+        } returns listOf(openDrop)
+
+        When("search를 호출하면") {
+            val result = service.search(null, null, null, null, pageable)
+
+            Then("활성 회차가 있는 상품만 limitedDropId가 채워진다") {
+                result.content[0].limitedDropId shouldBe openDrop.id
+                result.content[1].limitedDropId shouldBe null
+            }
+        }
+    }
+
+    Given("검색 결과 상품 1건에 활성 회차가 2건 연결된 상황") {
+        val product = forceId(
+            Product(
+                name = "한정판 스니커즈",
+                category = ProductCategory.FOOTWEAR,
+                price = BigDecimal("50000"),
+                description = "설명",
+                imageUrl = "https://example.com/sneaker.jpg",
+                status = ProductStatus.ACTIVE,
+                ownerId = 1L,
+            ),
+            id = 30L,
+        )
+        val pageable = PageRequest.of(0, 20)
+        val page = PageImpl(
+            listOf(ProductWithStock(product = product, stockQuantity = 10)),
+            pageable,
+            1,
+        )
+        val olderDrop = forceId(
+            LimitedDrop.reconstitute(
+                productId = product.id,
+                openAt = ZonedDateTime.now().minusHours(3),
+                closeAt = ZonedDateTime.now().plusHours(1),
+                limitedQuantity = 10,
+                perUserLimit = 2,
+                status = com.sportsapp.domain.goods.entity.LimitedDropStatus.SOLD_OUT,
+            ),
+            id = 301L,
+        )
+        val newerDrop = forceId(
+            LimitedDrop.reconstitute(
+                productId = product.id,
+                openAt = ZonedDateTime.now().minusHours(1),
+                closeAt = ZonedDateTime.now().plusHours(2),
+                limitedQuantity = 5,
+                perUserLimit = 1,
+                status = com.sportsapp.domain.goods.entity.LimitedDropStatus.OPEN,
+            ),
+            id = 302L,
+        )
+
+        every {
+            productCustomRepository.search(null, null, null, null, pageable)
+        } returns page
+        every {
+            limitedDropRepository.findOpenByProductIds(listOf(product.id))
+            // 배치 조회 결과 순서가 openAt 오름차순으로 오더라도 결과가 바뀌면 안 된다.
+        } returns listOf(olderDrop, newerDrop)
+
+        When("search를 호출하면") {
+            val result = service.search(null, null, null, null, pageable)
+
+            Then("openAt이 가장 최신인 회차의 dropId가 채워진다(단건 조회의 OrderByOpenAtDesc와 동일 기준)") {
+                result.content[0].limitedDropId shouldBe newerDrop.id
+            }
+        }
+    }
+
+    Given("검색 결과가 없는 상황") {
+        // 이 Given 전용 fresh mock — 스펙 전체가 공유하는 top-level limitedDropRepository는
+        // 다른 Given의 호출 이력과 섞여 verify(exactly = 0)이 오염될 수 있다.
+        val isolatedProductCustomRepository = mockk<ProductCustomRepository>()
+        val isolatedLimitedDropRepository = mockk<LimitedDropRepository>()
+        val isolatedService = GoodsDomainService(
+            productRepository = productRepository,
+            stockRepository = stockRepository,
+            productCustomRepository = isolatedProductCustomRepository,
+            popularProductsCache = popularProductsCache,
+            goodsOrderRepository = goodsOrderRepository,
+            goodsOrderItemRepository = goodsOrderItemRepository,
+            goodsOrderCustomRepository = goodsOrderCustomRepository,
+            limitedDropRepository = isolatedLimitedDropRepository,
+        )
+        val pageable = PageRequest.of(0, 20)
+        val emptyPage = PageImpl<ProductWithStock>(emptyList(), pageable, 0)
+
+        every {
+            isolatedProductCustomRepository.search(null, null, null, null, pageable)
+        } returns emptyPage
+
+        When("search를 호출하면") {
+            val result = isolatedService.search(null, null, null, null, pageable)
+
+            Then("LimitedDropRepository를 호출하지 않고 빈 페이지를 반환한다") {
+                result.content shouldBe emptyList()
+                verify(exactly = 0) { isolatedLimitedDropRepository.findOpenByProductIds(any()) }
+            }
+        }
+    }
+
+    // @Transactional은 UseCase 레이어에서만 선언한다(DomainService 메서드에는 선언하지 않음).
+    Given("GoodsDomainService 메서드 시그니처") {
         When("public 메서드 어노테이션을 검사하면") {
-            Then("[U-03] @Transactional 어노테이션은 어느 public 메서드에도 선언돼 있지 않다") {
+            Then("@Transactional 어노테이션은 어느 public 메서드에도 선언돼 있지 않다") {
                 val transactionalAnnotated = GoodsDomainService::class.java.declaredMethods
                     .filter { java.lang.reflect.Modifier.isPublic(it.modifiers) }
                     .filter { method ->

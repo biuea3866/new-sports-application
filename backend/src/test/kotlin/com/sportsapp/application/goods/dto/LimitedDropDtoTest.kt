@@ -36,8 +36,8 @@ class LimitedDropDtoTest : BehaviorSpec({
         }
     }
 
-    Given("LimitedDrop과 remaining 수량") {
-        Then("LimitedDropView는 dropId·productId·status·openAt·closeAt·remaining·perUserLimit을 결합해 생성된다") {
+    Given("LimitedDrop과 remaining 수량·상품 가격") {
+        Then("LimitedDropView는 dropId·productId·status·openAt·closeAt·remaining·perUserLimit·totalQuantity·price를 결합해 생성된다") {
             val openAt = ZonedDateTime.now().minusMinutes(1)
             val closeAt = ZonedDateTime.now().plusMinutes(1)
             val drop = LimitedDrop.reconstitute(
@@ -49,8 +49,9 @@ class LimitedDropDtoTest : BehaviorSpec({
                 status = LimitedDropStatus.OPEN,
             )
             val remaining = 42
+            val price = BigDecimal("89000")
 
-            val view = LimitedDropView.of(drop, remaining)
+            val view = LimitedDropView.of(drop, remaining, price)
 
             view.dropId shouldBe drop.id
             view.productId shouldBe drop.productId
@@ -59,6 +60,8 @@ class LimitedDropDtoTest : BehaviorSpec({
             view.closeAt shouldBe closeAt
             view.remaining shouldBe remaining
             view.perUserLimit shouldBe drop.perUserLimit
+            view.totalQuantity shouldBe drop.limitedQuantity
+            view.price shouldBe price
         }
     }
 

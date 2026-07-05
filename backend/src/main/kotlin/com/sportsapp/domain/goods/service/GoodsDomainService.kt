@@ -14,6 +14,7 @@ import com.sportsapp.domain.goods.exception.GoodsOrderNotFoundException
 import com.sportsapp.domain.goods.repository.GoodsOrderCustomRepository
 import com.sportsapp.domain.goods.repository.GoodsOrderItemRepository
 import com.sportsapp.domain.goods.repository.GoodsOrderRepository
+import com.sportsapp.domain.goods.repository.LimitedDropRepository
 import com.sportsapp.domain.goods.repository.PopularProductsCache
 import com.sportsapp.domain.goods.repository.ProductCustomRepository
 import com.sportsapp.domain.goods.repository.ProductRepository
@@ -25,6 +26,7 @@ import java.math.RoundingMode
 import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
 import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 
@@ -37,6 +39,7 @@ class GoodsDomainService(
     private val goodsOrderRepository: GoodsOrderRepository,
     private val goodsOrderItemRepository: GoodsOrderItemRepository,
     private val goodsOrderCustomRepository: GoodsOrderCustomRepository,
+    private val limitedDropRepository: LimitedDropRepository,
 ) {
     fun search(
         category: ProductCategory?,
@@ -44,8 +47,30 @@ class GoodsDomainService(
         priceMin: BigDecimal?,
         priceMax: BigDecimal?,
         pageable: Pageable,
-    ): Page<ProductWithStock> =
-        productCustomRepository.search(category, keyword, priceMin, priceMax, pageable)
+    ): Page<ProductWithStock> {
+        val page = productCustomRepository.search(category, keyword, priceMin, priceMax, pageable)
+        return enrichWithLimitedDropId(page)
+    }
+
+    /**
+     * `/products` 목록 응답의 한정판 진입점 배너용 — 페이지 내 상품 id를 한 번에 모아
+     * [LimitedDropRepository.findOpenByProductIds]로 배치 조회한다(N+1 방지).
+     *
+     * 한 상품에 활성 회차가 2건 이상이면 openAt이 가장 최신인 회차를 선택한다 —
+     * 단건 조회 경로([LimitedDropRepository.findOpenByProductId]의
+     * `OrderByOpenAtDesc`)와 선택 기준을 일치시켜, 목록과 상세의 limitedDropId가
+     * 달라지지 않게 한다(코드 리뷰 p3).
+     */
+    private fun enrichWithLimitedDropId(page: Page<ProductWithStock>): Page<ProductWithStock> {
+        if (page.content.isEmpty()) return page
+        val productIds = page.content.map { it.product.id }
+        val dropIdByProductId = limitedDropRepository.findOpenByProductIds(productIds)
+            .sortedByDescending { it.openAt }
+            .distinctBy { it.productId }
+            .associateBy({ it.productId }, { it.id })
+        val enrichedContent = page.content.map { it.copy(limitedDropId = dropIdByProductId[it.product.id]) }
+        return PageImpl(enrichedContent, page.pageable, page.totalElements)
+    }
 
     fun deductStock(productId: Long, quantity: Int) {
         productRepository.findById(productId) ?: throw ResourceNotFoundException("Product", productId)
@@ -169,7 +194,8 @@ class GoodsDomainService(
         val product = productRepository.findByIdAndDeletedAtIsNull(productId)
             ?: throw ResourceNotFoundException("Product", productId)
         val stockQuantity = stockRepository.findByProductId(productId)?.quantity ?: 0
-        return ProductWithStock(product = product, stockQuantity = stockQuantity)
+        val limitedDropId = limitedDropRepository.findOpenByProductId(productId)?.id
+        return ProductWithStock(product = product, stockQuantity = stockQuantity, limitedDropId = limitedDropId)
     }
 
     fun getProductByIdAndOwnerId(productId: Long, ownerUserId: Long): ProductWithStock {

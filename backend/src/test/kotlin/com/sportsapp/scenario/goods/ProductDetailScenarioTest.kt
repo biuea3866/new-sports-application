@@ -1,10 +1,12 @@
 package com.sportsapp.scenario.goods
 
 import com.sportsapp.BaseIntegrationTest
+import com.sportsapp.domain.goods.entity.LimitedDrop
 import com.sportsapp.domain.goods.entity.Product
 import com.sportsapp.domain.goods.vo.ProductCategory
 import com.sportsapp.domain.goods.entity.ProductStatus
 import com.sportsapp.domain.goods.entity.Stock
+import com.sportsapp.infrastructure.goods.mysql.LimitedDropJpaRepository
 import com.sportsapp.infrastructure.goods.mysql.ProductJpaRepository
 import com.sportsapp.infrastructure.goods.mysql.StockJpaRepository
 import org.springframework.beans.factory.annotation.Autowired
@@ -16,12 +18,14 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.math.BigDecimal
+import java.time.ZonedDateTime
 
 @AutoConfigureMockMvc
 class ProductDetailScenarioTest(
     @Autowired private val mockMvc: MockMvc,
     @Autowired private val productJpaRepository: ProductJpaRepository,
     @Autowired private val stockJpaRepository: StockJpaRepository,
+    @Autowired private val limitedDropJpaRepository: LimitedDropJpaRepository,
     @Autowired private val jdbcTemplate: JdbcTemplate,
 ) : BaseIntegrationTest() {
 
@@ -60,6 +64,49 @@ class ProductDetailScenarioTest(
                         .andExpect(jsonPath("$.stockQuantity").value(15))
                         .andExpect(jsonPath("$.status").value("ACTIVE"))
                         .andExpect(jsonPath("$.category").value("EQUIPMENT"))
+                        .andExpect(jsonPath("$.limitedDropId").doesNotExist())
+                }
+            }
+        }
+
+        Given("활성 한정판 회차가 연결된 상품이 저장된 상태") {
+            afterEach {
+                jdbcTemplate.execute("TRUNCATE TABLE limited_drops")
+                jdbcTemplate.execute("TRUNCATE TABLE stocks")
+                jdbcTemplate.execute("TRUNCATE TABLE products")
+            }
+
+            val product = productJpaRepository.save(
+                Product(
+                    name = "한정판 스니커즈",
+                    category = ProductCategory.FOOTWEAR,
+                    price = BigDecimal("120000"),
+                    description = "한정판",
+                    imageUrl = "https://example.com/sneaker.jpg",
+                    status = ProductStatus.ACTIVE,
+                    ownerId = 1L,
+                )
+            )
+            stockJpaRepository.save(Stock(productId = product.id, quantity = 30))
+            val openDrop = LimitedDrop.create(
+                productId = product.id,
+                openAt = ZonedDateTime.now().minusHours(1),
+                closeAt = ZonedDateTime.now().plusDays(1),
+                limitedQuantity = 30,
+                perUserLimit = 2,
+            ).also { it.open() }
+            val savedDrop = limitedDropJpaRepository.saveAndFlush(openDrop)
+
+            When("[S-04] GET /products/{id} 요청 시") {
+                val response = mockMvc.perform(
+                    get("/products/${product.id}")
+                        .accept(MediaType.APPLICATION_JSON)
+                )
+
+                Then("200 OK, 활성 회차의 limitedDropId를 포함한다") {
+                    response
+                        .andExpect(status().isOk)
+                        .andExpect(jsonPath("$.limitedDropId").value(savedDrop.id))
                 }
             }
         }

@@ -16,6 +16,7 @@ import com.sportsapp.domain.goods.gateway.RejectKind
 import com.sportsapp.domain.goods.gateway.ReservationResult
 import com.sportsapp.domain.goods.repository.LimitedDropRepository
 import com.sportsapp.domain.goods.vo.OrderItemInput
+import java.math.BigDecimal
 import java.time.Duration
 import java.time.ZonedDateTime
 import org.slf4j.LoggerFactory
@@ -59,10 +60,15 @@ class LimitedDropDomainService(
         return saved
     }
 
-    /** 회차 상세 조회(FR-9 인접 조회). Redis remaining이 시드되지 않았으면 null을 그대로 넘긴다. */
-    fun getView(dropId: Long): Pair<LimitedDrop, Int?> {
+    /**
+     * 회차 상세 조회(FR-9 인접 조회). Redis remaining이 시드되지 않았으면 null을 그대로 넘긴다.
+     * 가격은 연결된 상품에서 조회해 함께 반환한다(FE 재고비율 바·결제 amount 전달용).
+     */
+    fun getView(dropId: Long): Triple<LimitedDrop, Int?, BigDecimal> {
         val drop = findById(dropId)
-        return drop to dropReservationStore.remaining(dropId)
+        val remaining = dropReservationStore.remaining(dropId)
+        val price = goodsDomainService.getProductWithStock(drop.productId).price
+        return Triple(drop, remaining, price)
     }
 
     /**
@@ -131,6 +137,7 @@ class LimitedDropDomainService(
     /**
      * 판매자 회차 개설(BE-08). 대상 상품의 현재 재고를 조회해 요청 수량이 재고를 넘지 않는지
      * 검증한 뒤 [LimitedDrop.create]로 저장하고, 종료 시각 기준 TTL로 Redis 카운터를 시드한다.
+     * 상품 가격도 함께 반환한다(POST/GET 공용 응답 [LimitedDropView]가 필요로 한다).
      */
     fun createDrop(
         productId: Long,
@@ -139,7 +146,7 @@ class LimitedDropDomainService(
         limitedQuantity: Int,
         perUserLimit: Int,
         ownerUserId: Long,
-    ): LimitedDrop {
+    ): Pair<LimitedDrop, BigDecimal> {
         val productWithStock = goodsDomainService.getProductWithStock(productId)
         productWithStock.requireOwnedBy(ownerUserId)
         productWithStock.validateQuantityWithin(limitedQuantity)
@@ -153,7 +160,7 @@ class LimitedDropDomainService(
             )
         )
         seedReservationStore(saved)
-        return saved
+        return saved to productWithStock.price
     }
 
     private fun seedReservationStore(drop: LimitedDrop) {

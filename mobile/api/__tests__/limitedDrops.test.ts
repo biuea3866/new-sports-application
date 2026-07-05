@@ -53,6 +53,8 @@ const mockDropResponse: LimitedDropResponse = {
   closeAt: '2026-07-03T12:00:00Z',
   remaining: 5,
   perUserLimit: 2,
+  totalQuantity: 100,
+  price: 89000,
 };
 
 const mockPurchaseResponse: LimitedDropPurchaseResponse = {
@@ -62,7 +64,7 @@ const mockPurchaseResponse: LimitedDropPurchaseResponse = {
 };
 
 describe('getLimitedDrop', () => {
-  it('[U-01] GET /limited-drops/{dropId} 200 응답을 LimitedDropResponse로 반환한다', async () => {
+  it('GET /limited-drops/{dropId} 200 응답을 LimitedDropResponse로 반환한다', async () => {
     mock.onGet('/limited-drops/1').reply(200, mockDropResponse);
 
     const result = await getLimitedDrop(1);
@@ -73,7 +75,7 @@ describe('getLimitedDrop', () => {
     expect(result.perUserLimit).toBe(2);
   });
 
-  it('[U-05] 404 응답 시 에러를 던진다', async () => {
+  it('404 응답 시 에러를 던진다', async () => {
     mock.onGet('/limited-drops/999').reply(404, { message: 'Not Found' });
 
     await expect(getLimitedDrop(999)).rejects.toThrow();
@@ -81,7 +83,7 @@ describe('getLimitedDrop', () => {
 });
 
 describe('purchaseLimitedDrop', () => {
-  it('[U-02] X-User-Id·Idempotency-Key 헤더와 {quantity} body를 전송한다', async () => {
+  it('X-User-Id·Idempotency-Key 헤더와 {quantity} body를 전송한다', async () => {
     mock.onPost('/limited-drops/1/orders').reply(202, mockPurchaseResponse);
 
     await purchaseLimitedDrop(1, { quantity: 1 }, { userId: 7, idempotencyKey: 'idem-key-001' });
@@ -94,7 +96,7 @@ describe('purchaseLimitedDrop', () => {
     expect(JSON.parse(requestHistory[0].data as string)).toMatchObject({ quantity: 1 });
   });
 
-  it('[U-03] 202 응답을 ADMITTED outcome의 LimitedDropPurchaseResponse로 파싱한다', async () => {
+  it('202 응답을 ADMITTED outcome의 LimitedDropPurchaseResponse로 파싱한다', async () => {
     mock.onPost('/limited-drops/1/orders').reply(202, mockPurchaseResponse);
 
     const result = await purchaseLimitedDrop(
@@ -110,7 +112,7 @@ describe('purchaseLimitedDrop', () => {
     }
   });
 
-  it('[U-04] 425 응답을 openAt을 포함한 TOO_EARLY outcome으로 매핑한다', async () => {
+  it('425 응답을 openAt을 포함한 TOO_EARLY outcome으로 매핑한다', async () => {
     mock.onPost('/limited-drops/1/orders').reply(425, { openAt: '2026-07-03T10:00:00Z' });
 
     const result = await purchaseLimitedDrop(
@@ -122,7 +124,7 @@ describe('purchaseLimitedDrop', () => {
     expect(result).toEqual({ outcome: 'TOO_EARLY', openAt: '2026-07-03T10:00:00Z' });
   });
 
-  it('[U-04] 409 응답(code 없음)을 SOLD_OUT outcome으로 매핑한다', async () => {
+  it('409 응답(code 없음)을 SOLD_OUT outcome으로 매핑한다', async () => {
     mock.onPost('/limited-drops/1/orders').reply(409, { message: 'Sold out' });
 
     const result = await purchaseLimitedDrop(
@@ -134,8 +136,10 @@ describe('purchaseLimitedDrop', () => {
     expect(result).toEqual({ outcome: 'SOLD_OUT' });
   });
 
-  it('[U-04] 409 응답(code=CLOSED)을 CLOSED outcome으로 매핑한다', async () => {
-    mock.onPost('/limited-drops/1/orders').reply(409, { code: 'CLOSED', message: 'Closed' });
+  it('409 응답(code=LIMITED_DROP_CLOSED, 실제 BE 에러 코드)을 CLOSED outcome으로 매핑한다', async () => {
+    mock
+      .onPost('/limited-drops/1/orders')
+      .reply(409, { code: 'LIMITED_DROP_CLOSED', message: 'Closed' });
 
     const result = await purchaseLimitedDrop(
       1,
@@ -146,7 +150,21 @@ describe('purchaseLimitedDrop', () => {
     expect(result).toEqual({ outcome: 'CLOSED' });
   });
 
-  it('[U-04] 429 응답을 THROTTLED outcome으로 매핑한다', async () => {
+  it('409 응답(code=LIMITED_DROP_SOLD_OUT, 실제 BE 에러 코드)을 SOLD_OUT outcome으로 매핑한다', async () => {
+    mock
+      .onPost('/limited-drops/1/orders')
+      .reply(409, { code: 'LIMITED_DROP_SOLD_OUT', message: 'Sold out' });
+
+    const result = await purchaseLimitedDrop(
+      1,
+      { quantity: 1 },
+      { userId: 7, idempotencyKey: 'idem-key-005b' }
+    );
+
+    expect(result).toEqual({ outcome: 'SOLD_OUT' });
+  });
+
+  it('429 응답을 THROTTLED outcome으로 매핑한다', async () => {
     mock.onPost('/limited-drops/1/orders').reply(429, { message: 'Throttled' });
 
     const result = await purchaseLimitedDrop(
@@ -158,7 +176,7 @@ describe('purchaseLimitedDrop', () => {
     expect(result).toEqual({ outcome: 'THROTTLED' });
   });
 
-  it('[U-04] 403 응답을 LIMIT_EXCEEDED outcome으로 매핑한다', async () => {
+  it('403 응답을 LIMIT_EXCEEDED outcome으로 매핑한다', async () => {
     mock.onPost('/limited-drops/1/orders').reply(403, { message: 'Per user limit exceeded' });
 
     const result = await purchaseLimitedDrop(
@@ -170,7 +188,7 @@ describe('purchaseLimitedDrop', () => {
     expect(result).toEqual({ outcome: 'LIMIT_EXCEEDED' });
   });
 
-  it('[U-04] 5xx 응답은 판별 결과로 매핑하지 않고 에러를 전파한다', async () => {
+  it('5xx 응답은 판별 결과로 매핑하지 않고 에러를 전파한다', async () => {
     mock.onPost('/limited-drops/1/orders').reply(500, { message: 'Internal Server Error' });
 
     await expect(
