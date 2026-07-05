@@ -5,6 +5,7 @@ import com.sportsapp.domain.booking.exception.SlotFacilityNotFoundException
 import com.sportsapp.domain.booking.exception.UnauthorizedFacilityAccessException
 import com.sportsapp.domain.booking.gateway.FacilityOwnershipGateway
 import com.sportsapp.domain.facility.entity.Facility
+import com.sportsapp.domain.facility.vo.FacilityRegion
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import org.springframework.beans.factory.annotation.Autowired
@@ -32,6 +33,10 @@ class FacilityOwnershipGatewayImplTest(
             eduYn = false,
             meta = emptyMap(),
             ownerUserId = ownerUserId,
+            sidoCode = FacilityRegion.UNSPECIFIED.sidoCode,
+            sidoName = FacilityRegion.UNSPECIFIED.sidoName,
+            sigunguCode = FacilityRegion.UNSPECIFIED.sigunguCode,
+            sigunguName = FacilityRegion.UNSPECIFIED.sigunguName,
         )
         return mongoTemplate.save(facility)
     }

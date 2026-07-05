@@ -3,6 +3,7 @@ package com.sportsapp.infrastructure.message.mysql
 import com.sportsapp.domain.message.entity.RoomParticipant
 import com.sportsapp.domain.message.repository.RoomParticipantCustomRepository
 import com.sportsapp.domain.message.repository.RoomParticipantRepository
+import java.time.ZonedDateTime
 import org.springframework.stereotype.Component
 
 @Component
@@ -25,4 +26,10 @@ class RoomParticipantRepositoryImpl(
 
     override fun findActiveByRoomIdAndUserId(roomId: Long, userId: Long): RoomParticipant? =
         roomParticipantCustomRepository.findActiveByRoomIdAndUserId(roomId, userId)
+
+    override fun findExpiredGuestsBefore(threshold: ZonedDateTime): List<RoomParticipant> =
+        roomParticipantCustomRepository.findExpiredGuestsBefore(threshold)
+
+    override fun findActiveByUserId(userId: Long): List<RoomParticipant> =
+        roomParticipantCustomRepository.findActiveByUserId(userId)
 }
