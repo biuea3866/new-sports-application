@@ -33,7 +33,7 @@ class FacilityTest : BehaviorSpec({
 
     Given("Facility.create 호출 시") {
         When("code가 빈 문자열이면") {
-            Then("[U-02] InvalidFacilityException을 던진다") {
+            Then("InvalidFacilityException을 던진다") {
                 shouldThrow<InvalidFacilityException> {
                     Facility.create(buildAttributes(code = ""))
                 }
@@ -41,7 +41,7 @@ class FacilityTest : BehaviorSpec({
         }
 
         When("code가 공백 문자열이면") {
-            Then("[U-02] InvalidFacilityException을 던진다") {
+            Then("InvalidFacilityException을 던진다") {
                 shouldThrow<InvalidFacilityException> {
                     Facility.create(buildAttributes(code = "   "))
                 }
@@ -62,7 +62,7 @@ class FacilityTest : BehaviorSpec({
 
         When("assignOwner를 호출하면") {
             facility.assignOwner(42L)
-            Then("[U-01] ownerUserId가 해당 값으로 설정된다") {
+            Then("ownerUserId가 해당 값으로 설정된다") {
                 facility.ownerUserId shouldBe 42L
             }
         }
@@ -73,7 +73,7 @@ class FacilityTest : BehaviorSpec({
         facility.assignOwner(42L)
 
         When("assignOwner를 재호출하면") {
-            Then("[U-02] IllegalStateException이 발생한다") {
+            Then("IllegalStateException이 발생한다") {
                 shouldThrow<IllegalStateException> {
                     facility.assignOwner(99L)
                 }
@@ -88,7 +88,7 @@ class FacilityTest : BehaviorSpec({
 
         When("updateMeta로 기존 키와 신규 키를 포함한 패치를 적용하면") {
             val updated = facility.updateMeta(mapOf("capacity" to "100", "fee" to "5000"))
-            Then("[U-01] 기존 capacity 키는 덮어쓰이고 lane 키는 보존되며 fee 키가 추가된다") {
+            Then("기존 capacity 키는 덮어쓰이고 lane 키는 보존되며 fee 키가 추가된다") {
                 updated.meta["capacity"] shouldBe "100"
                 updated.meta shouldContainKey "lane"
                 updated.meta["lane"] shouldBe "8"
@@ -112,14 +112,14 @@ class FacilityTest : BehaviorSpec({
         )
         val facility = Facility.create(buildAttributes(region = region))
 
-        Then("[U-01] attributes.region의 4필드가 시설에 반영된다") {
+        Then("attributes.region의 4필드가 시설에 반영된다") {
             facility.sidoCode shouldBe "26"
             facility.sidoName shouldBe "부산광역시"
             facility.sigunguCode shouldBe "26410"
             facility.sigunguName shouldBe "해운대구"
         }
 
-        Then("[U-01] gu는 attributes.gu 값이 그대로 보존된다") {
+        Then("gu는 attributes.gu 값이 그대로 보존된다") {
             facility.gu shouldBe "강남구"
         }
     }
@@ -136,14 +136,14 @@ class FacilityTest : BehaviorSpec({
             )
             val updated = facility.assignRegion(resolved)
 
-            Then("[U-02] region 4필드가 갱신된 새 Facility가 반환된다") {
+            Then("region 4필드가 갱신된 새 Facility가 반환된다") {
                 updated.sidoCode shouldBe "11"
                 updated.sidoName shouldBe "서울특별시"
                 updated.sigunguCode shouldBe "11680"
                 updated.sigunguName shouldBe "강남구"
             }
 
-            Then("[U-02] 원본 Facility의 region은 변경되지 않는다") {
+            Then("원본 Facility의 region은 변경되지 않는다") {
                 facility.sidoCode shouldBe FacilityRegion.UNSPECIFIED.sidoCode
             }
         }

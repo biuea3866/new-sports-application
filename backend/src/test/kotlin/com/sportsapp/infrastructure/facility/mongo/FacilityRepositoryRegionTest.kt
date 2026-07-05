@@ -58,7 +58,7 @@ class FacilityRepositoryRegionTest(
 
             When("legacy 문서를 findById로 조회하면") {
                 val found = facilityRepository.findById(savedId)
-                Then("[R-06] region 4필드가 UNSPECIFIED로 보정되어 반환된다") {
+                Then("region 4필드가 UNSPECIFIED로 보정되어 반환된다") {
                     found shouldNotBe null
                     found?.sidoCode shouldBe FacilityRegion.UNSPECIFIED.sidoCode
                     found?.sidoName shouldBe FacilityRegion.UNSPECIFIED.sidoName
@@ -84,7 +84,7 @@ class FacilityRepositoryRegionTest(
                     type = null,
                     pageable = pageable,
                 )
-                Then("[R-07] 부산 시설만 반환되고 동명 자치구를 쓰는 서울 시설은 제외된다") {
+                Then("부산 시설만 반환되고 동명 자치구를 쓰는 서울 시설은 제외된다") {
                     result.content shouldHaveSize 1
                     result.content[0].code shouldBe "BUSAN-001"
                 }
@@ -100,7 +100,7 @@ class FacilityRepositoryRegionTest(
             facilityRepository.save(Facility.create(buildAttributes("RT-003", "강남구", "헬스장", busan)))
             facilityRepository.save(Facility.create(buildAttributes("RT-004", "강남구", "수영장", seoul)))
 
-            When("[R-08] aggregateRegionType을 호출하면") {
+            When("aggregateRegionType을 호출하면") {
                 val result = facilityRepository.aggregateRegionType()
                 Then("시도·시군구·유형별 정확한 카운트를 반환한다") {
                     result shouldHaveSize 3
@@ -122,7 +122,7 @@ class FacilityRepositoryRegionTest(
                 .also { it.softDelete(1L) }
             facilityRepository.save(deleted)
 
-            When("[R-09] findAllForBackfill을 페이징 호출하면") {
+            When("findAllForBackfill을 페이징 호출하면") {
                 val pageable = PageRequest.of(0, 50)
                 val result = facilityRepository.findAllForBackfill(pageable)
                 Then("소프트삭제된 시설을 제외한 2건만 반환된다") {
