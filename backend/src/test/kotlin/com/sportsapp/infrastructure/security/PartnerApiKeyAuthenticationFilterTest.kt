@@ -5,10 +5,11 @@ import com.sportsapp.domain.partner.entity.ApiKeyStatus
 import com.sportsapp.domain.partner.exception.PartnerApiKeyInactiveException
 import com.sportsapp.domain.partner.exception.PartnerSuspendedException
 import com.sportsapp.domain.partner.gateway.PartnerActivityRecorder
+import com.sportsapp.domain.partner.gateway.PartnerApiKeyUsageRecorder
 import com.sportsapp.domain.partner.service.AuthenticatedPartner
 import com.sportsapp.domain.partner.service.PartnerDomainService
-import com.sportsapp.domain.user.entity.Role
-import com.sportsapp.domain.user.entity.User
+import com.sportsapp.domain.user.dto.UserWithRoles
+import com.sportsapp.domain.user.entity.UserStatus
 import com.sportsapp.domain.user.service.UserDomainService
 import com.sportsapp.domain.user.vo.UserPrincipal
 import io.kotest.core.spec.style.BehaviorSpec
@@ -21,6 +22,7 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import jakarta.servlet.FilterChain
+import java.time.ZonedDateTime
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
 import org.springframework.security.core.context.SecurityContextHolder
@@ -30,32 +32,18 @@ class PartnerApiKeyAuthenticationFilterTest : BehaviorSpec({
     val partnerDomainService = mockk<PartnerDomainService>()
     val userDomainService = mockk<UserDomainService>()
     val partnerActivityRecorder = mockk<PartnerActivityRecorder>(relaxed = true)
+    val partnerApiKeyUsageRecorder = mockk<PartnerApiKeyUsageRecorder>(relaxed = true)
 
     val filter = PartnerApiKeyAuthenticationFilter(
         partnerDomainService = partnerDomainService,
         userDomainService = userDomainService,
         partnerActivityRecorder = partnerActivityRecorder,
+        partnerApiKeyUsageRecorder = partnerApiKeyUsageRecorder,
     )
-
-    fun makeUser(id: Long, email: String): User {
-        val user = User.create(email = email, passwordHash = "hashed-password")
-        val idField = User::class.java.getDeclaredField("id")
-        idField.isAccessible = true
-        idField.set(user, id)
-        return user
-    }
-
-    fun makeRole(name: String, id: Long): Role {
-        val role = Role(name = name)
-        val idField = Role::class.java.getDeclaredField("id")
-        idField.isAccessible = true
-        idField.set(role, id)
-        return role
-    }
 
     beforeEach {
         SecurityContextHolder.clearContext()
-        clearMocks(partnerDomainService, userDomainService, partnerActivityRecorder, answers = false)
+        clearMocks(partnerDomainService, userDomainService, partnerActivityRecorder, partnerApiKeyUsageRecorder, answers = false)
     }
 
     afterEach {
@@ -66,10 +54,12 @@ class PartnerApiKeyAuthenticationFilterTest : BehaviorSpec({
         val plainKey = "partner_1_validrandomsecretstring1234567890"
         every { partnerDomainService.authenticate(1L, plainKey) } returns
             AuthenticatedPartner(partnerId = 1L, linkedUserId = 10L)
-        every { userDomainService.findById(10L) } returns makeUser(10L, "partner-10@sportsapp.com")
-        every { userDomainService.getRolesForUser(10L) } returns listOf(
-            makeRole("GOODS_SELLER", 100L),
-            makeRole("EVENT_HOST", 101L),
+        every { userDomainService.findByIdWithRoles(10L) } returns UserWithRoles(
+            userId = 10L,
+            email = "partner-10@sportsapp.com",
+            status = UserStatus.ACTIVE,
+            roleNames = listOf("GOODS_SELLER", "EVENT_HOST"),
+            joinedAt = ZonedDateTime.now(),
         )
 
         val request = MockHttpServletRequest().apply {
@@ -96,6 +86,7 @@ class PartnerApiKeyAuthenticationFilterTest : BehaviorSpec({
                 principal.email shouldBe "partner-10@sportsapp.com"
                 principal.roles shouldBe listOf("GOODS_SELLER", "EVENT_HOST")
                 verify(exactly = 1) { filterChain.doFilter(request, response) }
+                verify(exactly = 1) { userDomainService.findByIdWithRoles(10L) }
 
                 val statusCodeSlot = slot<Int>()
                 verify(exactly = 1) {
@@ -112,6 +103,12 @@ class PartnerApiKeyAuthenticationFilterTest : BehaviorSpec({
                     )
                 }
                 statusCodeSlot.captured shouldBe 201
+            }
+
+            Then("PartnerApiKeyUsageRecorder.recordUsage가 인증된 keyId로 1회 호출된다") {
+                filter.doFilter(request, response, filterChain)
+
+                verify(exactly = 1) { partnerApiKeyUsageRecorder.recordUsage(1L) }
             }
         }
     }
@@ -173,6 +170,7 @@ class PartnerApiKeyAuthenticationFilterTest : BehaviorSpec({
                     """{"status":401,"title":"Unauthorized","detail":"Invalid or expired partner API key"}"""
                 verify(exactly = 0) { filterChain.doFilter(any(), any()) }
                 verify(exactly = 0) { partnerActivityRecorder.record(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
+                verify(exactly = 0) { partnerApiKeyUsageRecorder.recordUsage(any()) }
             }
         }
     }

@@ -62,6 +62,26 @@ class UserCustomRepositoryImpl : UserCustomRepository {
         return PageImpl(content, pageable, total)
     }
 
+    override fun findByIdWithRoles(userId: Long): UserWithRoles? {
+        val rows = queryFactory.select(user, role.name)
+                               .from(user)
+                               .leftJoin(userRole).on(userRole.userId.eq(user.id).and(userRole.deletedAt.isNull))
+                               .leftJoin(role).on(role.id.eq(userRole.roleId).and(role.deletedAt.isNull))
+                               .where(user.id.eq(userId).and(user.deletedAt.isNull))
+                               .fetch()
+
+        if (rows.isEmpty()) return null
+
+        val userEntity = requireNotNull(rows.first().get(user)) { "user must not be null" }
+        return UserWithRoles(
+            userId = userEntity.id,
+            email = userEntity.email,
+            status = userEntity.status,
+            roleNames = rows.mapNotNull { tuple -> tuple.get(role.name) },
+            joinedAt = userEntity.createdAt,
+        )
+    }
+
     private fun fetchFilteredUserIds(
         emailKeyword: String?,
         roleName: String?,

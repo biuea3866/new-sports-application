@@ -2,6 +2,7 @@ package com.sportsapp.domain.user.service
 
 import com.sportsapp.domain.common.UserRoleName
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
+import com.sportsapp.domain.user.dto.UserWithRoles
 import com.sportsapp.domain.user.entity.Role
 import com.sportsapp.domain.user.entity.User
 import com.sportsapp.domain.user.entity.UserRole
@@ -17,6 +18,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import java.time.ZonedDateTime
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 
 class UserDomainServiceTest : BehaviorSpec({
@@ -85,6 +87,39 @@ class UserDomainServiceTest : BehaviorSpec({
             Then("[U-03] ResourceNotFoundException 이 발생한다") {
                 shouldThrow<ResourceNotFoundException> {
                     userDomainService.register("noRole@example.com", "password1234")
+                }
+            }
+        }
+    }
+
+    Given("역할이 부여된 사용자가 존재하면") {
+        val userWithRoles = UserWithRoles(
+            userId = 10L,
+            email = "partner-linked@example.com",
+            status = UserStatus.ACTIVE,
+            roleNames = listOf("GOODS_SELLER", "EVENT_HOST"),
+            joinedAt = ZonedDateTime.now(),
+        )
+        every { userCustomRepository.findByIdWithRoles(10L) } returns userWithRoles
+
+        When("findByIdWithRoles를 호출하면") {
+            val result = userDomainService.findByIdWithRoles(10L)
+
+            Then("User 정보와 역할 목록이 단일 조회 결과로 반환된다") {
+                result.email shouldBe "partner-linked@example.com"
+                result.roleNames shouldBe listOf("GOODS_SELLER", "EVENT_HOST")
+                verify(exactly = 1) { userCustomRepository.findByIdWithRoles(10L) }
+            }
+        }
+    }
+
+    Given("존재하지 않는 사용자 ID로 역할 포함 조회를 요청하면") {
+        every { userCustomRepository.findByIdWithRoles(999L) } returns null
+
+        When("findByIdWithRoles를 호출하면") {
+            Then("ResourceNotFoundException이 발생한다") {
+                shouldThrow<ResourceNotFoundException> {
+                    userDomainService.findByIdWithRoles(999L)
                 }
             }
         }

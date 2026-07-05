@@ -5,6 +5,8 @@ import com.sportsapp.domain.user.entity.User
 import com.sportsapp.domain.user.repository.UserCustomRepository
 import com.sportsapp.domain.user.entity.UserRole
 import com.sportsapp.domain.user.entity.UserStatus
+import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.domain.PageRequest
@@ -129,6 +131,31 @@ class UserCustomRepositoryImplTest(
                     result.totalElements shouldBe 1L
                     val roles = result.content[0].roleNames
                     roles.containsAll(listOf("USER", "FACILITY_OWNER")) shouldBe true
+                }
+            }
+        }
+
+        Given("역할이 여러 개 부여된 사용자가 존재하면") {
+            resetData()
+            val user = createUser("single-fetch-custom-repo-test@example.com")
+            assignRole(user.id, "USER")
+            assignRole(user.id, "FACILITY_OWNER")
+
+            When("findByIdWithRoles로 단건 조회하면") {
+                Then("User 정보와 역할 목록이 단일 쿼리 결과로 함께 반환된다") {
+                    val result = userCustomRepository.findByIdWithRoles(user.id)
+
+                    result.shouldNotBeNull()
+                    result.email shouldBe "single-fetch-custom-repo-test@example.com"
+                    result.roleNames.containsAll(listOf("USER", "FACILITY_OWNER")) shouldBe true
+                }
+            }
+        }
+
+        Given("존재하지 않는 사용자 ID가 주어지면") {
+            When("findByIdWithRoles로 단건 조회하면") {
+                Then("null이 반환된다") {
+                    userCustomRepository.findByIdWithRoles(-1L).shouldBeNull()
                 }
             }
         }

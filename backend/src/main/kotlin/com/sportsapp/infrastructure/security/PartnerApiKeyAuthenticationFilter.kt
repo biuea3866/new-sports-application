@@ -83,10 +83,9 @@ class PartnerApiKeyAuthenticationFilter(
     }
 
     private fun injectSecurityContext(linkedUserId: Long) {
-        val linkedUser = userDomainService.findById(linkedUserId)
-        val roleNames = userDomainService.getRolesForUser(linkedUserId).map { it.name }
-        val principal = UserPrincipal(id = linkedUserId, email = linkedUser.email, roles = roleNames)
-        val authorities = roleNames.map { roleName -> SimpleGrantedAuthority("ROLE_$roleName") }
+        val linkedUser = userDomainService.findByIdWithRoles(linkedUserId)
+        val principal = UserPrincipal(id = linkedUserId, email = linkedUser.email, roles = linkedUser.roleNames)
+        val authorities = linkedUser.roleNames.map { roleName -> SimpleGrantedAuthority("ROLE_$roleName") }
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(principal, null, authorities)
     }

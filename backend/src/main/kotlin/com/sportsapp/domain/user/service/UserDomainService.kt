@@ -42,8 +42,8 @@ class UserDomainService(
     fun findByEmail(email: String): User =
         userRepository.findByEmail(email) ?: throw ResourceNotFoundException("User", email)
 
-    fun findByIdWithRoles(id: Long): User =
-        userRepository.findByIdWithRoles(id) ?: throw ResourceNotFoundException("User", id)
+    fun findByIdWithRoles(userId: Long): UserWithRoles =
+        userCustomRepository.findByIdWithRoles(userId) ?: throw ResourceNotFoundException("User", userId)
 
     fun getRolesForUser(userId: Long): List<Role> {
         val userRoles = userRoleRepository.findActiveByUserId(userId)
