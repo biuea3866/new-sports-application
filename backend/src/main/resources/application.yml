@@ -98,6 +98,13 @@ partner:
     # 관리 API로 테스트 파트너 등록·회귀 확인 후 PARTNER_AUTH_ENABLED=true로 전환한다.
     enabled: ${PARTNER_AUTH_ENABLED:false}
 
+chat:
+  realtime:
+    # BE-04 Release Scenario 2단계 — 실시간 전송 계층(WebSocket/STOMP) 전체 활성 플래그.
+    # OFF면 WebSocketConfig/MessageBroadcastGatewayImpl/MessageBroadcastEventWorker/
+    # ChatStompController 빈 자체가 등록되지 않아 /ws 가 404(즉시 롤백 지점). REST 채팅 경로는 무영향.
+    enabled: ${CHAT_REALTIME_ENABLED:false}
+
 limited-drop:
   # Release Scenario 4단계 — 회차별 전체 활성 플래그. OFF면 LimitedDropApiController 빈 자체가
   # 등록되지 않아 전 엔드포인트가 404 (즉시 롤백 지점). 운영 기본값은 false — 코드 배포 후 회귀

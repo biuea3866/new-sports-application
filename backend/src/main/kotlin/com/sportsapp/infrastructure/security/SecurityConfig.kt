@@ -83,6 +83,11 @@ class SecurityConfig(
         auth.requestMatchers("/api/admin/mcp/usage-analytics/**").hasRole("ADMIN")
         auth.requestMatchers("/api/admin/partners/**").hasRole("ADMIN")
         auth.requestMatchers("/mcp/**").authenticated()
+        // BE-04: WebSocket handshake 는 StompAuthChannelInterceptor 가 CONNECT 시 JWT 를 자체 검증하므로
+        // Spring Security 레벨에서는 permitAll. /communities/** 컨트롤러는 BE-08(wave3)에서 추가되며,
+        // 규칙 선등록은 무해하다.
+        auth.requestMatchers("/ws/**").permitAll()
+        auth.requestMatchers("/communities/**").authenticated()
         // TODO(AUTH-04): SecurityContext 통합 전까지 도메인 API는 X-User-Id 헤더 기반으로 임시 permitAll
         auth.requestMatchers(HttpMethod.POST, "/images/presigned-upload").authenticated()
         auth.requestMatchers(

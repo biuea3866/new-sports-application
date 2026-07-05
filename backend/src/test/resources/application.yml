@@ -61,6 +61,12 @@ partner:
     # 필터 동작을 검증할 수 있게 한다. 비활성 시나리오는 @TestPropertySource로 개별 오버라이드.
     enabled: true
 
+chat:
+  realtime:
+    # 테스트 기본값은 true — BE-04 STOMP 통합 테스트가 별도 오버라이드 없이 동작하게 한다.
+    # 비활성 시나리오(ChatRealtimeDisabledTest)는 @TestPropertySource로 개별 오버라이드.
+    enabled: true
+
 storage:
   image:
     endpoint: http://localhost:9000
