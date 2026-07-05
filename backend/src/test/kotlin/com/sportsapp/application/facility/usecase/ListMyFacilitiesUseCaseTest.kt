@@ -22,12 +22,14 @@ class ListMyFacilitiesUseCaseTest : BehaviorSpec({
                 address = "주소1", location = Point(127.0, 37.5),
                 parking = true, tel = "02-1111-1111", homePage = "", eduYn = false,
                 meta = emptyMap(), ownerUserId = 1L,
+                sidoCode = null, sidoName = null, sigunguCode = null, sigunguName = null,
             ),
             Facility(
                 id = "f-002", code = "C-002", name = "시설2", gu = "서초구", type = "헬스장",
                 address = "주소2", location = Point(127.1, 37.6),
                 parking = false, tel = "02-2222-2222", homePage = "", eduYn = false,
                 meta = emptyMap(), ownerUserId = 1L,
+                sidoCode = null, sidoName = null, sigunguCode = null, sigunguName = null,
             ),
         )
         val pageable = PageRequest.of(0, 20)

@@ -3,6 +3,7 @@ package com.sportsapp.domain.facility.entity
 import com.sportsapp.domain.common.BaseDocument
 import com.sportsapp.domain.facility.exception.InvalidFacilityException
 import com.sportsapp.domain.facility.vo.FacilityAttributes
+import com.sportsapp.domain.facility.vo.FacilityRegion
 import org.springframework.data.annotation.Id
 import org.springframework.data.geo.Point
 import org.springframework.data.mongodb.core.index.CompoundIndex
@@ -15,7 +16,8 @@ import org.springframework.data.mongodb.core.mapping.Field
 
 @Document(collection = "facilities")
 @CompoundIndexes(
-    CompoundIndex(name = "idx_gu_type", def = "{'gu': 1, 'type': 1}")
+    CompoundIndex(name = "idx_gu_type", def = "{'gu': 1, 'type': 1}"),
+    CompoundIndex(name = "idx_sido_sigungu_type", def = "{'sido_code': 1, 'sigungu_code': 1, 'type': 1}"),
 )
 class Facility(
     @Id
@@ -46,10 +48,31 @@ class Facility(
     @Field("meta")
     val meta: Map<String, String>,
     ownerUserId: Long? = null,
+    sidoCode: String?,
+    sidoName: String?,
+    sigunguCode: String?,
+    sigunguName: String?,
 ) : BaseDocument() {
 
     @Field("owner_user_id")
     var ownerUserId: Long? = ownerUserId
+        private set
+
+    // 레거시(마이그레이션 이전) 문서는 region 필드가 없다 — 재구성 시 UNSPECIFIED로 보정한다.
+    @Field("sido_code")
+    var sidoCode: String = sidoCode ?: FacilityRegion.UNSPECIFIED.sidoCode
+        private set
+
+    @Field("sido_name")
+    var sidoName: String = sidoName ?: FacilityRegion.UNSPECIFIED.sidoName
+        private set
+
+    @Field("sigungu_code")
+    var sigunguCode: String = sigunguCode ?: FacilityRegion.UNSPECIFIED.sigunguCode
+        private set
+
+    @Field("sigungu_name")
+    var sigunguName: String = sigunguName ?: FacilityRegion.UNSPECIFIED.sigunguName
         private set
 
     val lat: Double get() = location.y
@@ -77,6 +100,31 @@ class Facility(
             eduYn = eduYn,
             meta = meta + patch,
             ownerUserId = ownerUserId,
+            sidoCode = sidoCode,
+            sidoName = sidoName,
+            sigunguCode = sigunguCode,
+            sigunguName = sigunguName,
+        )
+
+    fun assignRegion(region: FacilityRegion): Facility =
+        Facility(
+            id = id,
+            code = code,
+            name = name,
+            gu = gu,
+            type = type,
+            address = address,
+            location = location,
+            parking = parking,
+            tel = tel,
+            homePage = homePage,
+            eduYn = eduYn,
+            meta = meta,
+            ownerUserId = ownerUserId,
+            sidoCode = region.sidoCode,
+            sidoName = region.sidoName,
+            sigunguCode = region.sigunguCode,
+            sigunguName = region.sigunguName,
         )
 
     companion object {
@@ -95,6 +143,10 @@ class Facility(
                 homePage = attributes.homePage,
                 eduYn = attributes.eduYn,
                 meta = attributes.meta,
+                sidoCode = attributes.region.sidoCode,
+                sidoName = attributes.region.sidoName,
+                sigunguCode = attributes.region.sigunguCode,
+                sigunguName = attributes.region.sigunguName,
             )
         }
     }

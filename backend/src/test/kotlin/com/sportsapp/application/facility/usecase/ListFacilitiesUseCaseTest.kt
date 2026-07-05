@@ -31,6 +31,7 @@ class ListFacilitiesUseCaseTest : BehaviorSpec({
         homePage = "",
         eduYn = false,
         meta = emptyMap(),
+        sidoCode = null, sidoName = null, sigunguCode = null, sigunguName = null,
     )
 
     Given("유효한 gu 필터가 주어졌을 때") {

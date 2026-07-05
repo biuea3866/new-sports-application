@@ -35,6 +35,7 @@ class McpFacilityToolsTest : BehaviorSpec({
             homePage = "https://example.com",
             eduYn = false,
             meta = emptyMap(),
+            sidoCode = null, sidoName = null, sigunguCode = null, sigunguName = null,
         )
 
         When("[U-01] gu, type 필터 없이 getFacilities를 호출하면") {

@@ -22,6 +22,7 @@ class GetMyFacilityUseCaseTest : BehaviorSpec({
             location = Point(127.0, 37.5),
             parking = true, tel = "02-0000-0000", homePage = "", eduYn = false,
             meta = emptyMap(), ownerUserId = 1L,
+            sidoCode = null, sidoName = null, sigunguCode = null, sigunguName = null,
         )
         every { facilityOwnerDomainService.getByIdAndOwner("f-001", 1L) } returns facility
 
