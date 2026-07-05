@@ -63,7 +63,7 @@ class PartnerDomainService(
 
     fun changeStatus(partnerId: Long, status: PartnerStatus) {
         val partner = partnerRepository.findById(partnerId) ?: throw PartnerNotFoundException(partnerId)
-        if (status == PartnerStatus.ACTIVE) partner.activate() else partner.suspend()
+        if (status == PartnerStatus.ACTIVE) partner.activate() else partner.deactivate()
         partnerRepository.save(partner)
     }
 

@@ -11,10 +11,11 @@ class Partner private constructor(
     var status: PartnerStatus = initialStatus
         private set
 
-    fun suspend() {
+    // Kotlin coroutine soft keyword(suspend)와의 충돌을 피하기 위해 deactivate로 명명한다.
+    fun deactivate() {
         if (status == PartnerStatus.SUSPENDED) return
         check(status.canTransitTo(PartnerStatus.SUSPENDED)) {
-            "Cannot suspend Partner(id=$id): current status=$status"
+            "Cannot deactivate Partner(id=$id): current status=$status"
         }
         status = PartnerStatus.SUSPENDED
     }

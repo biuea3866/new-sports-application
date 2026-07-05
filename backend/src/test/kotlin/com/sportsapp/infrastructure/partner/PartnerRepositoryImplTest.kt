@@ -63,8 +63,8 @@ class PartnerRepositoryImplTest(
         Given("ACTIVE 상태 Partner가 저장돼 있다") {
             val saved = partnerRepositoryImpl.save(Partner.create(name = "정지대상", linkedUserId = 300L))
 
-            When("suspend 후 save하면") {
-                saved.suspend()
+            When("deactivate 후 save하면") {
+                saved.deactivate()
                 partnerRepositoryImpl.save(saved)
 
                 Then("findById 결과의 status가 SUSPENDED로 반영된다") {
