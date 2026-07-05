@@ -12,6 +12,7 @@ import com.sportsapp.application.community.usecase.ListCommunityMembersUseCase
 import com.sportsapp.application.community.usecase.ListMyCommunitiesUseCase
 import com.sportsapp.application.community.usecase.ListPublicCommunitiesUseCase
 import com.sportsapp.application.community.usecase.TransferHostUseCase
+import com.sportsapp.domain.community.exception.AlreadyCommunityMemberException
 import com.sportsapp.domain.community.exception.NotCommunityMemberException
 import com.sportsapp.domain.community.vo.CommunityRole
 import com.sportsapp.domain.community.vo.CommunityVisibility
@@ -255,6 +256,23 @@ class CommunityApiControllerTest : BehaviorSpec({
             Then("200과 함께 ACTIVE 멤버십을 반환한다") {
                 result.andExpect(status().isOk)
                     .andExpect(jsonPath("$.status").value("ACTIVE"))
+            }
+        }
+    }
+
+    Given("이미 ACTIVE 인 사용자의 중복 가입 요청 — 리뷰 p2-①") {
+        val joinCommunityUseCase = mockk<JoinCommunityUseCase>()
+        every {
+            joinCommunityUseCase.execute(match { it.communityId == 1L && it.userId == TEST_USER_ID })
+        } throws AlreadyCommunityMemberException(1L, TEST_USER_ID)
+        val mockMvc = buildMockMvc(joinCommunityUseCase = joinCommunityUseCase)
+
+        When("POST /communities/1/join 요청 시") {
+            val result = mockMvc.perform(post("/communities/1/join"))
+
+            Then("409 를 반환한다 (UNIQUE 제약 500 대신)") {
+                result.andExpect(status().isConflict)
+                    .andExpect(jsonPath("$.code").value("ALREADY_COMMUNITY_MEMBER"))
             }
         }
     }

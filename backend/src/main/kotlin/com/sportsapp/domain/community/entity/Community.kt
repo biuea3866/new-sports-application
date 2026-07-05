@@ -75,12 +75,26 @@ class Community private constructor(
         return events
     }
 
+    /**
+     * 개설 이벤트를 적재한다 — `create()` 시점(IDENTITY 미할당, id=0)이 아니라
+     * DomainService가 `save()`로 id를 확정한 **이후** 호출해야 한다 (리뷰 p2-②).
+     * `AbstractDomainEvent.aggregateId`는 불변 값이라 save 전에 미리 만들어 두면
+     * BE-09 컨텍스트 방 provisioning이 소비할 communityId가 영원히 0으로 고정된다.
+     */
+    fun registerCreatedEvent() {
+        registerEvent(CommunityCreatedEvent(communityId = id, hostUserId = hostUserId))
+    }
+
     private fun registerEvent(event: DomainEvent) {
         domainEvents.add(event)
     }
 
     companion object {
-        /** 신규 커뮤니티 개설 — 개설자가 곧 최초 방장(hostUserId)이 된다. */
+        /**
+         * 신규 커뮤니티 개설 — 개설자가 곧 최초 방장(hostUserId)이 된다.
+         * id가 아직 미확정이므로 이벤트는 여기서 적재하지 않는다 — DomainService가
+         * save() 이후 [registerCreatedEvent]를 호출한다 (리뷰 p2-②).
+         */
         fun create(
             name: String,
             description: String?,
@@ -95,9 +109,7 @@ class Community private constructor(
                 visibility = visibility,
                 sportCategory = sportCategory,
                 hostUserId = hostUserId,
-            ).apply {
-                registerEvent(CommunityCreatedEvent(communityId = id, hostUserId = hostUserId))
-            }
+            )
         }
 
         /** 영속화 계층 복원 — 검증 없이 필드를 그대로 복구한다. */

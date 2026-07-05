@@ -18,7 +18,7 @@ class CommunityMemberRepositoryImplTest(
         Given("PENDING_APPROVAL 멤버가 저장된 상태") {
             val communityId = 900L + System.nanoTime() % 100000
             val userId = 1000L + System.nanoTime() % 100000
-            val member = communityMemberJpaRepository.save(
+            communityMemberJpaRepository.save(
                 CommunityMember.join(communityId, userId, isPublic = false),
             )
 
@@ -75,6 +75,25 @@ class CommunityMemberRepositoryImplTest(
 
                 Then("KICKED 멤버는 제외된다") {
                     members shouldHaveSize 0
+                }
+            }
+        }
+
+        Given("ACTIVE 멤버 2명이 저장된 상태 — 리뷰 p3 (COUNT 쿼리)") {
+            val communityId = 903L + System.nanoTime() % 100000
+            val userIdA = 4000L + System.nanoTime() % 100000
+            val userIdB = 5000L + System.nanoTime() % 100000
+            communityMemberJpaRepository.save(CommunityMember.join(communityId, userIdA, isPublic = true))
+            communityMemberJpaRepository.save(CommunityMember.join(communityId, userIdB, isPublic = true))
+            val kicked = communityMemberJpaRepository.save(CommunityMember.join(communityId, userIdA + 1, isPublic = true))
+            kicked.kick()
+            communityMemberJpaRepository.save(kicked)
+
+            When("countActiveByCommunityId 로 조회하면") {
+                val count = communityMemberRepositoryImpl.countActiveByCommunityId(communityId)
+
+                Then("ACTIVE 멤버 수(2)만 집계되고 KICKED 는 제외된다") {
+                    count shouldBe 2L
                 }
             }
         }

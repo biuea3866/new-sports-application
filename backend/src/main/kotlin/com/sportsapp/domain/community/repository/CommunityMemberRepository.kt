@@ -17,4 +17,10 @@ interface CommunityMemberRepository {
     fun findBy(communityId: Long, userId: Long): CommunityMember?
     fun findActiveBy(communityId: Long, userId: Long): CommunityMember?
     fun findActiveByCommunityId(communityId: Long): List<CommunityMember>
+
+    /**
+     * 커뮤니티의 ACTIVE 멤버 수를 COUNT 쿼리로 집계한다 (리뷰 p3 — `memberCount` 조회 시
+     * `findActiveByCommunityId(..).size`로 전체 로드하지 않도록 분리).
+     */
+    fun countActiveByCommunityId(communityId: Long): Long
 }

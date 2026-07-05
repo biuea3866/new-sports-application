@@ -24,4 +24,7 @@ class CommunityMemberRepositoryImpl(
 
     override fun findActiveByCommunityId(communityId: Long): List<CommunityMember> =
         communityMemberJpaRepository.findAllByCommunityIdAndStatusAndDeletedAtIsNull(communityId, MembershipStatus.ACTIVE)
+
+    override fun countActiveByCommunityId(communityId: Long): Long =
+        communityMemberJpaRepository.countByCommunityIdAndStatusAndDeletedAtIsNull(communityId, MembershipStatus.ACTIVE)
 }

@@ -12,4 +12,5 @@ interface CommunityMemberJpaRepository : JpaRepository<CommunityMember, Long> {
         status: MembershipStatus,
     ): CommunityMember?
     fun findAllByCommunityIdAndStatusAndDeletedAtIsNull(communityId: Long, status: MembershipStatus): List<CommunityMember>
+    fun countByCommunityIdAndStatusAndDeletedAtIsNull(communityId: Long, status: MembershipStatus): Long
 }

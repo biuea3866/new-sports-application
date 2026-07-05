@@ -4,6 +4,7 @@ import com.sportsapp.domain.common.DomainEvent
 import com.sportsapp.domain.common.JpaAuditingBase
 import com.sportsapp.domain.community.event.CommunityMemberJoinedEvent
 import com.sportsapp.domain.community.event.CommunityMemberLeftEvent
+import com.sportsapp.domain.community.exception.AlreadyCommunityMemberException
 import com.sportsapp.domain.community.exception.CannotKickHostException
 import com.sportsapp.domain.community.exception.HostMustTransferBeforeLeaveException
 import com.sportsapp.domain.community.exception.InvalidMembershipStateException
@@ -94,6 +95,37 @@ class CommunityMember private constructor(
         role = CommunityRole.MEMBER
     }
 
+    /**
+     * 탈퇴(LEFT)·강퇴(KICKED) 후 재가입 (리뷰 p2-①).
+     *
+     * `community_members` UNIQUE(community_id, user_id, deleted_at) 제약 하에서 kick()/leave()는
+     * row를 soft-delete하지 않으므로(강퇴 이력·읽음 커서 보존 목적), 재가입을 새 row INSERT로
+     * 처리하면 항상 UNIQUE 충돌(500)이 난다 — 기존 row를 재활성화해야 한다.
+     * 이미 ACTIVE/PENDING_APPROVAL이면(중복 가입) [AlreadyCommunityMemberException]으로 거부한다.
+     * 이 메서드가 호출되는 시점엔 이미 영속화된(id 확정) 레코드이므로 이벤트를 즉시 적재해도 안전하다.
+     */
+    fun rejoin(isPublic: Boolean) {
+        if (status == MembershipStatus.ACTIVE || status == MembershipStatus.PENDING_APPROVAL) {
+            throw AlreadyCommunityMemberException(communityId, userId)
+        }
+        val next = if (isPublic) MembershipStatus.ACTIVE else MembershipStatus.PENDING_APPROVAL
+        transitTo(next)
+        if (next == MembershipStatus.ACTIVE) {
+            joinedAt = ZonedDateTime.now()
+            registerEvent(CommunityMemberJoinedEvent(memberId = id, communityId = communityId, userId = userId))
+        } else {
+            joinedAt = null
+        }
+    }
+
+    /**
+     * 가입 이벤트를 적재한다 — `join()` 시점(IDENTITY 미할당, id=0)이 아니라 DomainService가
+     * `save()`로 id를 확정한 **이후** 호출해야 한다 (리뷰 p2-②, [Community.registerCreatedEvent]와 동일 이유).
+     */
+    fun registerJoinedEvent() {
+        registerEvent(CommunityMemberJoinedEvent(memberId = id, communityId = communityId, userId = userId))
+    }
+
     fun pullDomainEvents(): List<DomainEvent> {
         val events = domainEvents.toList()
         domainEvents.clear()
@@ -110,7 +142,11 @@ class CommunityMember private constructor(
     }
 
     companion object {
-        /** 일반 멤버 가입 — 공개 커뮤니티는 즉시 ACTIVE, 비공개는 PENDING_APPROVAL (FR-2). */
+        /**
+         * 일반 멤버 가입 — 공개 커뮤니티는 즉시 ACTIVE, 비공개는 PENDING_APPROVAL (FR-2).
+         * id가 아직 미확정이므로 이벤트는 여기서 적재하지 않는다 — DomainService가
+         * save() 이후 [registerJoinedEvent]를 호출한다 (리뷰 p2-②).
+         */
         fun join(communityId: Long, userId: Long, isPublic: Boolean): CommunityMember {
             if (isPublic) {
                 return CommunityMember(
@@ -119,9 +155,7 @@ class CommunityMember private constructor(
                     role = CommunityRole.MEMBER,
                     status = MembershipStatus.ACTIVE,
                     joinedAt = ZonedDateTime.now(),
-                ).apply {
-                    registerEvent(CommunityMemberJoinedEvent(memberId = id, communityId = communityId, userId = userId))
-                }
+                )
             }
             return CommunityMember(
                 communityId = communityId,
@@ -132,16 +166,17 @@ class CommunityMember private constructor(
             )
         }
 
-        /** 커뮤니티 개설과 동시에 방장 멤버십을 생성한다. */
+        /**
+         * 커뮤니티 개설과 동시에 방장 멤버십을 생성한다. id가 아직 미확정이므로 이벤트는
+         * 여기서 적재하지 않는다 — DomainService가 save() 이후 [registerJoinedEvent]를 호출한다.
+         */
         fun createHost(communityId: Long, userId: Long): CommunityMember = CommunityMember(
             communityId = communityId,
             userId = userId,
             role = CommunityRole.HOST,
             status = MembershipStatus.ACTIVE,
             joinedAt = ZonedDateTime.now(),
-        ).apply {
-            registerEvent(CommunityMemberJoinedEvent(memberId = id, communityId = communityId, userId = userId))
-        }
+        )
 
         /** 영속화 계층 복원 — 검증 없이 필드를 그대로 복구한다. */
         fun reconstitute(

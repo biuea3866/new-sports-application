@@ -4,6 +4,7 @@ import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import com.sportsapp.domain.community.entity.Community
 import com.sportsapp.domain.community.entity.CommunityMember
+import com.sportsapp.domain.community.exception.AlreadyCommunityMemberException
 import com.sportsapp.domain.community.exception.CannotKickHostException
 import com.sportsapp.domain.community.exception.HostMustTransferBeforeLeaveException
 import com.sportsapp.domain.community.exception.NotCommunityHostException
@@ -20,7 +21,6 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.slot
 import io.mockk.verify
 
 class CommunityDomainServiceTest : BehaviorSpec({
@@ -72,9 +72,10 @@ class CommunityDomainServiceTest : BehaviorSpec({
         }
     }
 
-    Given("공개 커뮤니티에 가입 요청") {
+    Given("공개 커뮤니티에 신규 가입 요청") {
         val community = publicCommunity()
         every { communityRepository.findById(1L) } returns community
+        every { communityMemberRepository.findBy(1L, 200L) } returns null
         every { communityMemberRepository.save(any()) } answers { firstArg() }
 
         When("join 을 호출하면") {
@@ -87,9 +88,10 @@ class CommunityDomainServiceTest : BehaviorSpec({
         }
     }
 
-    Given("비공개 커뮤니티에 가입 요청") {
+    Given("비공개 커뮤니티에 신규 가입 요청") {
         val community = privateCommunity()
         every { communityRepository.findById(2L) } returns community
+        every { communityMemberRepository.findBy(2L, 201L) } returns null
         every { communityMemberRepository.save(any()) } answers { firstArg() }
 
         When("join 을 호출하면") {
@@ -109,6 +111,39 @@ class CommunityDomainServiceTest : BehaviorSpec({
                 shouldThrow<ResourceNotFoundException> {
                     communityDomainService.join(communityId = 999L, userId = 1L)
                 }
+            }
+        }
+    }
+
+    Given("이미 ACTIVE 인 사용자가 재가입을 시도하는 경우 — 리뷰 p2-①") {
+        val community = publicCommunity()
+        val activeMember = CommunityMember.join(communityId = 17L, userId = 209L, isPublic = true)
+        every { communityRepository.findById(17L) } returns community
+        every { communityMemberRepository.findBy(17L, 209L) } returns activeMember
+
+        When("join 을 다시 호출하면") {
+            Then("AlreadyCommunityMemberException 이 발생한다 (UNIQUE 제약 500 대신 명시적 409)") {
+                shouldThrow<AlreadyCommunityMemberException> {
+                    communityDomainService.join(communityId = 17L, userId = 209L)
+                }
+            }
+        }
+    }
+
+    Given("탈퇴(LEFT)했던 사용자가 공개 커뮤니티에 재가입하는 경우 — 리뷰 p2-①") {
+        val community = publicCommunity()
+        val leftMember = CommunityMember.join(communityId = 18L, userId = 210L, isPublic = true)
+        leftMember.leave()
+        every { communityRepository.findById(18L) } returns community
+        every { communityMemberRepository.findBy(18L, 210L) } returns leftMember
+        every { communityMemberRepository.save(any()) } answers { firstArg() }
+
+        When("join 을 호출하면") {
+            val rejoined = communityDomainService.join(communityId = 18L, userId = 210L)
+
+            Then("새 row INSERT 없이 ACTIVE 로 재활성화된다") {
+                rejoined.currentStatus shouldBe MembershipStatus.ACTIVE
+                verify { domainEventPublisher.publishAll(match { it.isNotEmpty() }) }
             }
         }
     }
@@ -239,15 +274,30 @@ class CommunityDomainServiceTest : BehaviorSpec({
         every { communityRepository.save(any()) } answers { firstArg() }
         every { communityMemberRepository.findBy(9L, 100L) } returns oldHost
         every { communityMemberRepository.findBy(9L, 204L) } returns newHostMember
+        every { communityMemberRepository.findActiveBy(9L, 204L) } returns newHostMember
         every { communityMemberRepository.save(any()) } answers { firstArg() }
 
-        When("현재 방장이 transfer 를 호출하면") {
+        When("현재 방장이 ACTIVE 멤버에게 transfer 를 호출하면") {
             communityDomainService.transfer(communityId = 9L, requesterId = 100L, newHostUserId = 204L)
 
             Then("기존 방장은 MEMBER, 신규 사용자는 HOST가 된다") {
                 oldHost.currentRole shouldBe CommunityRole.MEMBER
                 newHostMember.currentRole shouldBe CommunityRole.HOST
                 community.currentHostUserId shouldBe 204L
+            }
+        }
+    }
+
+    Given("방장이 ACTIVE 가 아닌 사용자에게 위임을 시도하는 경우 — 리뷰 p3") {
+        val community = publicCommunity(hostUserId = 100L)
+        every { communityRepository.findById(19L) } returns community
+        every { communityMemberRepository.findActiveBy(19L, 211L) } returns null
+
+        When("transfer 를 호출하면") {
+            Then("NotCommunityMemberException 이 발생한다 (PENDING_APPROVAL 에게 위임 불가)") {
+                shouldThrow<NotCommunityMemberException> {
+                    communityDomainService.transfer(communityId = 19L, requesterId = 100L, newHostUserId = 211L)
+                }
             }
         }
     }
@@ -350,16 +400,15 @@ class CommunityDomainServiceTest : BehaviorSpec({
         }
     }
 
-    Given("커뮤니티 활성 멤버 수 집계") {
-        val activeMember = CommunityMember.join(communityId = 16L, userId = 208L, isPublic = true)
-        activeMember.pullDomainEvents()
-        every { communityMemberRepository.findActiveByCommunityId(16L) } returns listOf(activeMember)
+    Given("커뮤니티 활성 멤버 수 집계 — 리뷰 p3 (COUNT 쿼리 사용)") {
+        every { communityMemberRepository.countActiveByCommunityId(16L) } returns 3L
 
         When("countActiveMembers 를 호출하면") {
             val count = communityDomainService.countActiveMembers(communityId = 16L)
 
-            Then("ACTIVE 멤버 수가 반환된다") {
-                count shouldBe 1
+            Then("countActiveByCommunityId 로 집계한 값이 반환된다 (전체 로드 findActiveByCommunityId 미사용)") {
+                count shouldBe 3
+                verify { communityMemberRepository.countActiveByCommunityId(16L) }
             }
         }
     }

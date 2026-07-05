@@ -9,6 +9,18 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
+/**
+ * `Community.id`는 `@GeneratedValue(IDENTITY)` + Kotlin `val`이라 실제 JPA 저장(Hibernate가
+ * 리플렉션으로 필드에 직접 기록) 없이는 순수 도메인 단위 테스트에서 값을 바꿀 수 없다.
+ * Hibernate가 필드에 직접 쓰는 것과 동일한 방식(리플렉션)으로 "저장 후 id가 확정된 상태"를
+ * 흉내내, `registerCreatedEvent()`가 저장된 id를 정확히 사용하는지(리뷰 p2-②) 검증한다.
+ */
+private fun forceId(community: Community, value: Long) {
+    val field = Community::class.java.getDeclaredField("id")
+    field.isAccessible = true
+    field.setLong(community, value)
+}
+
 class CommunityTest : BehaviorSpec({
 
     Given("공개 커뮤니티 개설 요청") {
@@ -30,16 +42,32 @@ class CommunityTest : BehaviorSpec({
                 community.isPublic() shouldBe true
             }
 
-            Then("CommunityCreatedEvent(hostUserId) 가 적재된다") {
+            Then("create() 시점에는 이벤트가 적재되지 않는다 (id 미확정, 리뷰 p2-②)") {
+                community.pullDomainEvents() shouldHaveSize 0
+            }
+        }
+    }
+
+    Given("저장되어 id가 확정된 커뮤니티 — 리뷰 p2-②") {
+        val community = Community.create(
+            name = "이벤트 aggregateId 검증용",
+            description = null,
+            visibility = CommunityVisibility.PUBLIC,
+            sportCategory = SportCategory.SOCCER,
+            hostUserId = 1L,
+        )
+        forceId(community, 42L)
+
+        When("save 이후 registerCreatedEvent() 를 호출하면 (DomainService 가 수행)") {
+            community.registerCreatedEvent()
+
+            Then("CommunityCreatedEvent.aggregateId 가 저장된 id(42)와 일치한다") {
                 val events = community.pullDomainEvents()
                 events shouldHaveSize 1
                 val event = events.first()
                 event.shouldBeInstanceOf<CommunityCreatedEvent>()
-                (event as CommunityCreatedEvent).hostUserId shouldBe 1L
-            }
-
-            Then("pullDomainEvents 이후 다시 호출하면 빈 리스트다") {
-                community.pullDomainEvents() shouldHaveSize 0
+                event.aggregateId shouldBe 42L
+                event.hostUserId shouldBe 1L
             }
         }
     }
