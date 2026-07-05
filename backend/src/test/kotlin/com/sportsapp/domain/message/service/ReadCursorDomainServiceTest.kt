@@ -1,7 +1,10 @@
 package com.sportsapp.domain.message.service
 
+import com.sportsapp.domain.common.DomainEvent
+import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.message.entity.Room
 import com.sportsapp.domain.message.entity.RoomParticipant
+import com.sportsapp.domain.message.event.RoomReadEvent
 import com.sportsapp.domain.message.exception.NotRoomParticipantException
 import com.sportsapp.domain.message.gateway.MessageBroadcastGateway
 import com.sportsapp.domain.message.gateway.ReadEvent
@@ -29,9 +32,15 @@ class ReadCursorDomainServiceTest : BehaviorSpec({
         val roomParticipantRepository = mockk<RoomParticipantRepository>()
         val messageCustomRepository = mockk<MessageCustomRepository>()
         val messageBroadcastGateway = mockk<MessageBroadcastGateway>(relaxed = true)
-        val service = ReadCursorDomainService(roomParticipantRepository, messageCustomRepository, messageBroadcastGateway)
+        val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
+        val service = ReadCursorDomainService(
+            roomParticipantRepository,
+            messageCustomRepository,
+            messageBroadcastGateway,
+            domainEventPublisher,
+        )
 
-        val room = Room.createDirect()
+        val room = Room.createDirect().withId(1L)
         val participant = RoomParticipant.create(room, 10L)
 
         every { roomParticipantRepository.findActiveByRoomIdAndUserId(1L, 10L) } returns participant
@@ -45,11 +54,14 @@ class ReadCursorDomainServiceTest : BehaviorSpec({
                 verify { roomParticipantRepository.save(participant) }
             }
 
-            Then("상대에게 읽음 이벤트가 브로드캐스트된다") {
-                val eventSlot = slot<ReadEvent>()
-                verify { messageBroadcastGateway.broadcastRead(1L, capture(eventSlot)) }
-                eventSlot.captured.userId shouldBe 10L
-                eventSlot.captured.lastReadMessageId shouldBe 100L
+            Then("커밋 이후 브로드캐스트를 위한 RoomReadEvent 가 발행된다 (동기 브로드캐스트는 하지 않는다)") {
+                val eventSlot = slot<DomainEvent>()
+                verify(exactly = 1) { domainEventPublisher.publish(capture(eventSlot)) }
+                val event = eventSlot.captured as RoomReadEvent
+                event.roomId shouldBe 1L
+                event.userId shouldBe 10L
+                event.lastReadMessageId shouldBe 100L
+                verify(exactly = 0) { messageBroadcastGateway.broadcastRead(any(), any()) }
             }
         }
     }
@@ -58,7 +70,13 @@ class ReadCursorDomainServiceTest : BehaviorSpec({
         val roomParticipantRepository = mockk<RoomParticipantRepository>()
         val messageCustomRepository = mockk<MessageCustomRepository>()
         val messageBroadcastGateway = mockk<MessageBroadcastGateway>(relaxed = true)
-        val service = ReadCursorDomainService(roomParticipantRepository, messageCustomRepository, messageBroadcastGateway)
+        val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
+        val service = ReadCursorDomainService(
+            roomParticipantRepository,
+            messageCustomRepository,
+            messageBroadcastGateway,
+            domainEventPublisher,
+        )
 
         val room = Room.createDirect()
         val participant = RoomParticipant.create(room, 20L)
@@ -80,7 +98,13 @@ class ReadCursorDomainServiceTest : BehaviorSpec({
         val roomParticipantRepository = mockk<RoomParticipantRepository>()
         val messageCustomRepository = mockk<MessageCustomRepository>()
         val messageBroadcastGateway = mockk<MessageBroadcastGateway>(relaxed = true)
-        val service = ReadCursorDomainService(roomParticipantRepository, messageCustomRepository, messageBroadcastGateway)
+        val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
+        val service = ReadCursorDomainService(
+            roomParticipantRepository,
+            messageCustomRepository,
+            messageBroadcastGateway,
+            domainEventPublisher,
+        )
 
         every { roomParticipantRepository.findActiveByRoomIdAndUserId(3L, 99L) } returns null
 
@@ -105,7 +129,13 @@ class ReadCursorDomainServiceTest : BehaviorSpec({
         val roomParticipantRepository = mockk<RoomParticipantRepository>()
         val messageCustomRepository = mockk<MessageCustomRepository>()
         val messageBroadcastGateway = mockk<MessageBroadcastGateway>(relaxed = true)
-        val service = ReadCursorDomainService(roomParticipantRepository, messageCustomRepository, messageBroadcastGateway)
+        val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
+        val service = ReadCursorDomainService(
+            roomParticipantRepository,
+            messageCustomRepository,
+            messageBroadcastGateway,
+            domainEventPublisher,
+        )
 
         val room = Room.createDirect()
         val participant = RoomParticipant.create(room, 30L)
@@ -127,7 +157,13 @@ class ReadCursorDomainServiceTest : BehaviorSpec({
         val roomParticipantRepository = mockk<RoomParticipantRepository>()
         val messageCustomRepository = mockk<MessageCustomRepository>()
         val messageBroadcastGateway = mockk<MessageBroadcastGateway>(relaxed = true)
-        val service = ReadCursorDomainService(roomParticipantRepository, messageCustomRepository, messageBroadcastGateway)
+        val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
+        val service = ReadCursorDomainService(
+            roomParticipantRepository,
+            messageCustomRepository,
+            messageBroadcastGateway,
+            domainEventPublisher,
+        )
 
         val room = Room.createDirect()
         val participant = RoomParticipant.create(room, 40L)
@@ -148,7 +184,13 @@ class ReadCursorDomainServiceTest : BehaviorSpec({
         val roomParticipantRepository = mockk<RoomParticipantRepository>()
         val messageCustomRepository = mockk<MessageCustomRepository>()
         val messageBroadcastGateway = mockk<MessageBroadcastGateway>(relaxed = true)
-        val service = ReadCursorDomainService(roomParticipantRepository, messageCustomRepository, messageBroadcastGateway)
+        val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
+        val service = ReadCursorDomainService(
+            roomParticipantRepository,
+            messageCustomRepository,
+            messageBroadcastGateway,
+            domainEventPublisher,
+        )
 
         val roomA = Room.createDirect().withId(1L)
         val roomB = Room.createDirect().withId(2L)
@@ -166,6 +208,30 @@ class ReadCursorDomainServiceTest : BehaviorSpec({
             Then("방별 안읽은 수가 담긴 Map 을 반환한다") {
                 result[roomA.id] shouldBe 2L
                 result[roomB.id] shouldBe 0L
+            }
+        }
+    }
+
+    Given("커밋 이후 워커가 읽음 이벤트를 받아 브로드캐스트를 위임할 때") {
+        val roomParticipantRepository = mockk<RoomParticipantRepository>()
+        val messageCustomRepository = mockk<MessageCustomRepository>()
+        val messageBroadcastGateway = mockk<MessageBroadcastGateway>(relaxed = true)
+        val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
+        val service = ReadCursorDomainService(
+            roomParticipantRepository,
+            messageCustomRepository,
+            messageBroadcastGateway,
+            domainEventPublisher,
+        )
+
+        When("broadcastRead(roomId=6, userId=60, lastReadMessageId=70) 를 호출하면") {
+            service.broadcastRead(roomId = 6L, userId = 60L, lastReadMessageId = 70L)
+
+            Then("MessageBroadcastGateway.broadcastRead 가 1회 호출된다") {
+                val eventSlot = slot<ReadEvent>()
+                verify(exactly = 1) { messageBroadcastGateway.broadcastRead(6L, capture(eventSlot)) }
+                eventSlot.captured.userId shouldBe 60L
+                eventSlot.captured.lastReadMessageId shouldBe 70L
             }
         }
     }
