@@ -58,6 +58,7 @@ export const CreateFacilityInputSchema = z.object({
   code: z.string().min(1),
   name: z.string().min(1),
   gu: z.string().min(1),
+  sido: z.string().optional(),
   type: FacilityTypeSchema,
   address: z.string().min(1),
   location: z.string().min(1),
@@ -72,6 +73,7 @@ export const UpdateFacilityInputSchema = z
   .object({
     name: z.string().min(1).optional(),
     gu: z.string().min(1).optional(),
+    sido: z.string().optional(),
     type: FacilityTypeSchema.optional(),
     address: z.string().min(1).optional(),
     location: z.string().min(1).optional(),

@@ -12,6 +12,7 @@ import {
   AdminUserSchema,
   AdminUserPageSchema,
   CreateFacilityInputSchema,
+  UpdateFacilityInputSchema,
   CreateEventInputSchema,
   CreateProductInputSchema,
   RestoreStockInputSchema,
@@ -297,6 +298,50 @@ describe("입력 스키마 검증", () => {
         eduYn: false,
       };
       expect(CreateFacilityInputSchema.safeParse(input).success).toBe(false);
+    });
+
+    it("sido를 포함해도 통과한다", () => {
+      const input = {
+        code: "BS-01",
+        name: "해운대 풋살장",
+        gu: "해운대구",
+        sido: "26",
+        type: "OUTDOOR",
+        address: "부산광역시 해운대구",
+        location: "35.16,129.16",
+        parking: false,
+        tel: "051-1234-5678",
+        eduYn: false,
+      };
+      const result = CreateFacilityInputSchema.safeParse(input);
+      expect(result.success).toBe(true);
+    });
+
+    it("sido가 없어도 통과한다(서버 보간)", () => {
+      const input = {
+        code: "GN-01",
+        name: "강남 풋살장",
+        gu: "강남구",
+        type: "INDOOR",
+        address: "서울특별시 강남구",
+        location: "37.5,127.0",
+        parking: true,
+        tel: "02-1234-5678",
+        eduYn: false,
+      };
+      expect(CreateFacilityInputSchema.safeParse(input).success).toBe(true);
+    });
+  });
+
+  describe("UpdateFacilityInputSchema", () => {
+    it("sido만 있어도 통과한다", () => {
+      const result = UpdateFacilityInputSchema.safeParse({ sido: "11" });
+      expect(result.success).toBe(true);
+    });
+
+    it("sido 없이 다른 필드만 있어도 통과한다(회귀)", () => {
+      const result = UpdateFacilityInputSchema.safeParse({ name: "새 이름" });
+      expect(result.success).toBe(true);
     });
   });
 
