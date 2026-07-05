@@ -137,7 +137,13 @@ export interface FacilityResponse {
   type: FacilityType;
   address: string;
   parking: boolean;
-  phone: string;
+  tel: string;
+  lat: number;
+  lng: number;
+  sidoCode: string;
+  sidoName: string;
+  sigunguCode: string;
+  sigunguName: string;
 }
 
 export interface FacilityPageResponse {
@@ -147,6 +153,20 @@ export interface FacilityPageResponse {
   totalElements: number;
   totalPages: number;
   last: boolean;
+}
+
+// --- Air Quality ---
+// BE 계약: GET /air-quality?lat&lng → 실패 시에도 200 + representativeGrade="UNKNOWN" + pm10/pm25 null.
+export type AirQualityGrade = 'GOOD' | 'MODERATE' | 'BAD' | 'VERY_BAD' | 'UNKNOWN';
+
+export interface AirQualityResponse {
+  pm10: number | null;
+  pm25: number | null;
+  pm10Grade: AirQualityGrade;
+  pm25Grade: AirQualityGrade;
+  representativeGrade: AirQualityGrade;
+  stationName: string | null;
+  measuredAt: string | null; // ISO 8601
 }
 
 // --- Event ---
