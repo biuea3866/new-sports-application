@@ -3,7 +3,9 @@
  * 순수 함수. 서버/클라이언트 모두 사용 가능.
  *
  * CSV 컬럼 순서(헤더 행 필수):
- *   code,name,gu,type,address,lat,lng,parking,tel,homePage,eduYn,meta
+ *   code,name,sido,gu,type,address,lat,lng,parking,tel,homePage,eduYn,meta
+ *
+ * sido는 optional이다 — 미입력 시 서버가 address로 시/도를 보간한다.
  */
 
 export type FacilityType = "INDOOR" | "OUTDOOR" | "MIXED";
@@ -15,6 +17,8 @@ export interface CsvFacilityRow {
   rowIndex: number;
   code: string;
   name: string;
+  /** 시/도 표준코드 (2자리). optional — 미입력 시 서버가 주소로 보간한다. */
+  sido: string | undefined;
   gu: string;
   type: FacilityType;
   address: string;
@@ -70,22 +74,23 @@ export function parseCsvFacilities(csvText: string): ParseCsvResult {
 
     const code = (fields[0] ?? "").trim();
     const name = (fields[1] ?? "").trim();
-    const gu = (fields[2] ?? "").trim();
-    const typeRaw = (fields[3] ?? "").trim().toUpperCase();
-    const address = (fields[4] ?? "").trim();
-    const latRaw = (fields[5] ?? "").trim();
-    const lngRaw = (fields[6] ?? "").trim();
-    const parkingRaw = (fields[7] ?? "").trim().toLowerCase();
-    const tel = (fields[8] ?? "").trim();
-    const homePage = (fields[9] ?? "").trim() || undefined;
-    const eduYnRaw = (fields[10] ?? "").trim().toLowerCase();
-    const metaRaw = (fields[11] ?? "").trim() || undefined;
+    const sido = (fields[2] ?? "").trim() || undefined;
+    const gu = (fields[3] ?? "").trim();
+    const typeRaw = (fields[4] ?? "").trim().toUpperCase();
+    const address = (fields[5] ?? "").trim();
+    const latRaw = (fields[6] ?? "").trim();
+    const lngRaw = (fields[7] ?? "").trim();
+    const parkingRaw = (fields[8] ?? "").trim().toLowerCase();
+    const tel = (fields[9] ?? "").trim();
+    const homePage = (fields[10] ?? "").trim() || undefined;
+    const eduYnRaw = (fields[11] ?? "").trim().toLowerCase();
+    const metaRaw = (fields[12] ?? "").trim() || undefined;
 
     if (!code) rowErrors.push("code: 필수 값이 없습니다.");
     if (!name) rowErrors.push("name: 필수 값이 없습니다.");
     if (!gu) rowErrors.push("gu: 필수 값이 없습니다.");
     if (!FACILITY_TYPES.has(typeRaw)) {
-      rowErrors.push(`type: INDOOR|OUTDOOR|MIXED 중 하나여야 합니다. (입력값: "${fields[3] ?? ""}")`);
+      rowErrors.push(`type: INDOOR|OUTDOOR|MIXED 중 하나여야 합니다. (입력값: "${fields[4] ?? ""}")`);
     }
     if (!address) rowErrors.push("address: 필수 값이 없습니다.");
     if (!tel) rowErrors.push("tel: 필수 값이 없습니다.");
@@ -112,6 +117,7 @@ export function parseCsvFacilities(csvText: string): ParseCsvResult {
       rowIndex: dataRowIndex,
       code,
       name,
+      sido,
       gu,
       type: typeRaw as FacilityType,
       address,
