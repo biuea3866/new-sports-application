@@ -96,6 +96,9 @@ services:
     volumes:
       - ./observability/promtail/promtail-config.yaml:/etc/promtail/config.yaml:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      # positions 파일을 named volume에 저장 — 컨테이너 재기동 시 마지막 읽은 위치를 유지해
+      # 로그 중복 수집을 방지한다(promtail-config.yaml positions.filename 참고).
+      - promtail-positions:/data
     depends_on:
       loki:
         condition: service_started
@@ -131,3 +134,4 @@ volumes:
   tempo-data:
   loki-data:
   grafana-data:
+  promtail-positions:

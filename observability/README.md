@@ -261,10 +261,15 @@ LGTM 실기동 E2E(연결율 99% 실측·대시보드 렌더·lag)는 이미지 
   직접 보내게 되면, 같은 컨테이너의 로그가 두 경로(Promtail stdout tail + OTLP)로 중복 수집될 수 있어
   그 시점에 Promtail 쪽 백엔드 컨테이너 로그를 드롭하는 relabel 규칙 추가를 검토해야 합니다(현재는
   중복 발신자가 없어 해당 없음).
-- `service_name` 라벨을 compose 서비스 라벨에서 승격해 Loki 데이터소스의 `tracesToLogsV2`(Tempo↔Loki
-  연동, `datasources.yml:41`)와 라벨 키를 통일했습니다. backend 컨테이너 로그는 `CONSOLE_LOG_PATTERN`의
-  `trace_id=xxxx` 텍스트를 그대로 포함하므로 Loki `derivedFields`(`trace_id_logfmt`,
-  `datasources.yml:76`)가 그대로 매칭되어 로그→trace 점프가 가능합니다.
+- `service_name` 라벨은 **키뿐 아니라 값까지** Tempo↔Loki 연동(`tracesToLogsV2`, `datasources.yml:36-44`)과
+  통일해야 합니다 — `tracesToLogsV2`는 span의 `service.name` 값을 그대로 `{service_name="<값>"}` Loki
+  쿼리에 대입하므로, compose 서비스명(`backend`)을 그대로 쓰면 trace 쪽 값(`sports-application`,
+  `OTEL_SERVICE_NAME` 규약 — 위 §3)과 문자열이 달라 매칭이 0건이 됩니다. 이를 위해
+  `promtail-config.yaml`의 relabel 규칙이 1차로 compose 서비스명을 `service_name`으로 승격한 뒤,
+  backend/web 컨테이너에 한해 2차로 trace 쪽 값(`sports-application`/`sports-web`)으로 덮어씁니다 —
+  다른 컨테이너(mysql·redis·kafka 등, trace 미발신)는 compose 서비스명을 그대로 유지합니다.
+  backend 컨테이너 로그는 `CONSOLE_LOG_PATTERN`의 `trace_id=xxxx` 텍스트를 그대로 포함하므로 Loki
+  `derivedFields`(`trace_id_logfmt`, `datasources.yml:79`)가 그대로 매칭되어 로그→trace 점프가 가능합니다.
 - **보안 트레이드오프**: `docker.sock` 읽기 전용 마운트는 로컬/dev 전용 패턴입니다. prod 환경에서는
   호스트 보안 정책(소켓 접근 권한, rootless Docker 여부)에 맞게 재검토가 필요합니다 — 이번 범위에서는
   로컬/dev 관측 목적으로 한정합니다.
