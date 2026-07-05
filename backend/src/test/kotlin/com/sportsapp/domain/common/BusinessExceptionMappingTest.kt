@@ -50,6 +50,7 @@ class BusinessExceptionMappingTest : BehaviorSpec({
                 ErrorStatus.UNAUTHORIZED.httpStatus shouldBe 401
                 ErrorStatus.FORBIDDEN.httpStatus shouldBe 403
                 ErrorStatus.INTERNAL.httpStatus shouldBe 500
+                ErrorStatus.SERVICE_UNAVAILABLE.httpStatus shouldBe 503
             }
         }
         When("TOO_EARLY의 httpStatus를 조회하면") {

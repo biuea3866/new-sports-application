@@ -34,6 +34,14 @@ const MCP_NAV: ReadonlyArray<NavItem> = [
   },
 ];
 
+const FEATURE_FLAG_NAV: ReadonlyArray<NavItem> = [
+  {
+    href: "/admin/feature-flags",
+    label: "피처 플래그",
+    description: "플래그 목록·전략·감사",
+  },
+];
+
 export function AdminSidebar(): JSX.Element {
   return (
     <aside
@@ -54,6 +62,22 @@ export function AdminSidebar(): JSX.Element {
               >
                 <span className="block font-medium">{item.label}</span>
                 <span className="block text-xs text-gray-500">{item.description}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <h2 className="mb-4 mt-6 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          피처 플래그
+        </h2>
+        <ul className="space-y-1">
+          {FEATURE_FLAG_NAV.map((item) => (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                className="block rounded-md px-3 py-2 text-sm text-foreground hover:bg-accent focus:bg-accent focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <span className="block font-medium">{item.label}</span>
+                <span className="block text-xs text-muted-foreground">{item.description}</span>
               </Link>
             </li>
           ))}

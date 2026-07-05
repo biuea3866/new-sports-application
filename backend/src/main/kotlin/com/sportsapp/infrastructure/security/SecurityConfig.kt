@@ -72,6 +72,8 @@ class SecurityConfig(
         // 내부raise=X-Alert-Token으로 공유 시크릿을 자체 검증하므로 Spring Security 레벨에서는 permitAll.
         auth.requestMatchers("/internal/alerts/**").permitAll()
         auth.requestMatchers("/admin/**").hasRole("ADMIN")
+        // BE-10: 데모 게이팅(FR-9)은 X-User-Id 헤더 기반 평가라 permitAll (AUTH-04 관례)
+        auth.requestMatchers("/feature-demo/**").permitAll()
         auth.requestMatchers("/api/facility-owner/**").authenticated()
         auth.requestMatchers("/api/event-host/**").authenticated()
         auth.requestMatchers("/api/goods-seller/**").authenticated()
