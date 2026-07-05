@@ -14,6 +14,7 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import java.time.ZonedDateTime
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.domain.EntityScan
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase
@@ -47,7 +48,7 @@ import org.testcontainers.junit.jupiter.Container
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @EnableJpaRepositories(basePackageClasses = [AlertJpaRepository::class])
 @EntityScan(basePackageClasses = [Alert::class])
-@Import(AlertRepositoryImpl::class, AlertRepositoryImplTestConfig::class)
+@Import(AlertRepositoryImpl::class, AlertCustomRepositoryImpl::class, AlertRepositoryImplTestConfig::class)
 class AlertRepositoryImplTest(
     @Autowired private val alertRepository: AlertRepository,
 ) : BehaviorSpec() {
@@ -152,6 +153,44 @@ class AlertRepositoryImplTest(
                 Then("DELIVERED·delivered_at이 반영된다") {
                     redelivered.currentStatus shouldBe AlertStatus.DELIVERED
                     redelivered.deliveredAtValue.shouldNotBeNull()
+                }
+            }
+        }
+
+        Given("보존 기간(90일)이 지난 Alert와 최근 발생한 Alert가 함께 존재하는 상태") {
+            val expiredSignal = AlertSignal(
+                endpoint = "/api/v1/expired",
+                source = AlertSource.LATENCY,
+                severity = AlertSeverity.WARN,
+            )
+            val expiredAlert = Alert.reconstitute(
+                signalKey = expiredSignal.cooldownKey("test"),
+                endpoint = expiredSignal.endpoint,
+                source = expiredSignal.source,
+                severity = expiredSignal.severity,
+                env = "test",
+                status = AlertStatus.RAISED,
+                analysis = null,
+                analysisIncluded = null,
+                raisedAt = ZonedDateTime.now().minusDays(91),
+                deliveredAt = null,
+            )
+            val recentSignal = AlertSignal(
+                endpoint = "/api/v1/recent",
+                source = AlertSource.LATENCY,
+                severity = AlertSeverity.WARN,
+            )
+            val recentAlert = Alert.create(recentSignal, env = "test")
+            val expiredSaved = alertRepository.save(expiredAlert)
+            val recentSaved = alertRepository.save(recentAlert)
+
+            When("deleteRaisedBefore(현재로부터 90일 전)를 호출하면") {
+                val deletedCount = alertRepository.deleteRaisedBefore(ZonedDateTime.now().minusDays(90))
+
+                Then("만료된 Alert만 삭제되고 최근 Alert는 남는다") {
+                    deletedCount shouldBe 1L
+                    alertRepository.findById(expiredSaved.id).shouldBeNull()
+                    alertRepository.findById(recentSaved.id).shouldNotBeNull()
                 }
             }
         }
