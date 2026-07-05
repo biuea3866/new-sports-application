@@ -47,6 +47,9 @@ spring:
         jdbc:
           time_zone: UTC
         physical_naming_strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+        # BE-12: 방목록 미리보기 findMyRoomViews 의 N+1 회피를 prepareStatementCount 델타로
+        # 검증하기 위해 테스트 프로파일에서만 통계 수집을 켠다.
+        generate_statistics: true
     open-in-view: false
   flyway:
     enabled: true

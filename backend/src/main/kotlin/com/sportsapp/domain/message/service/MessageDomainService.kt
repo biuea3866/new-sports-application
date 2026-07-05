@@ -14,6 +14,7 @@ import com.sportsapp.domain.message.gateway.TypingEvent
 import com.sportsapp.domain.message.repository.MessageRepository
 import com.sportsapp.domain.message.repository.RoomParticipantRepository
 import com.sportsapp.domain.message.repository.RoomRepository
+import com.sportsapp.domain.message.vo.RoomListView
 import java.time.ZonedDateTime
 import org.springframework.stereotype.Service
 
@@ -55,8 +56,8 @@ class MessageDomainService(
         return room
     }
 
-    fun findMyRooms(userId: Long, keyword: String?): List<Room> =
-        roomRepository.findMyRoomsByKeyword(userId, keyword)
+    fun findMyRoomViews(userId: Long, keyword: String?): List<RoomListView> =
+        roomRepository.findMyRoomViews(userId, keyword)
 
     fun joinRoom(roomId: Long, userId: Long): RoomParticipant {
         val room = roomRepository.findById(roomId)

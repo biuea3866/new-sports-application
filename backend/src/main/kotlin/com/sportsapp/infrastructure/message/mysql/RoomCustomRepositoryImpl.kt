@@ -1,11 +1,15 @@
 package com.sportsapp.infrastructure.message.mysql
 
+import com.querydsl.jpa.JPAExpressions
 import com.querydsl.jpa.impl.JPAQueryFactory
+import com.sportsapp.domain.message.entity.QMessage
 import com.sportsapp.domain.message.entity.QRoom
 import com.sportsapp.domain.message.entity.QRoomParticipant
 import com.sportsapp.domain.message.entity.Room
 import com.sportsapp.domain.message.repository.RoomCustomRepository
+import com.sportsapp.domain.message.vo.QRoomListView
 import com.sportsapp.domain.message.vo.RoomContextType
+import com.sportsapp.domain.message.vo.RoomListView
 import com.sportsapp.domain.message.vo.RoomType
 import org.springframework.stereotype.Component
 
@@ -36,14 +40,39 @@ class RoomCustomRepositoryImpl(
             .fetchFirst()
     }
 
-    override fun findMyRoomsByKeyword(userId: Long, keyword: String?): List<Room> {
+    override fun findMyRoomViews(userId: Long, keyword: String?): List<RoomListView> {
         val room = QRoom.room
         val participant = QRoomParticipant.roomParticipant
-        val query = queryFactory.selectFrom(room)
+        val message = QMessage.message
+        val lastMessage = QMessage("lastMessage")
+
+        val query = queryFactory
+            .select(
+                QRoomListView(
+                    room.id,
+                    room.type,
+                    room.name,
+                    room.contextType,
+                    lastMessage.content,
+                    lastMessage.createdAt,
+                ),
+            )
+            .from(room)
             .join(participant).on(
                 participant.room.id.eq(room.id),
                 participant.userId.eq(userId),
                 participant.deletedAt.isNull,
+            )
+            .leftJoin(lastMessage).on(
+                lastMessage.room.id.eq(room.id),
+                lastMessage.id.eq(
+                    JPAExpressions.select(message.id.max())
+                        .from(message)
+                        .where(
+                            message.room.id.eq(room.id),
+                            message.deletedAt.isNull,
+                        ),
+                ),
             )
             .where(room.deletedAt.isNull)
         if (!keyword.isNullOrBlank()) {

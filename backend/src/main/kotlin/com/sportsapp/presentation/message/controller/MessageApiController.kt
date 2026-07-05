@@ -2,17 +2,18 @@ package com.sportsapp.presentation.message.controller
 
 import com.sportsapp.application.message.usecase.ListMessagesUseCase
 import com.sportsapp.application.message.usecase.SendMessageUseCase
+import com.sportsapp.domain.user.vo.UserPrincipal
 import com.sportsapp.presentation.message.dto.request.SendMessageRequest
 import com.sportsapp.presentation.message.dto.response.ListMessagesResponse
 import com.sportsapp.presentation.message.dto.response.MessageResponse
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -26,21 +27,21 @@ class MessageApiController(
 
     @PostMapping
     fun sendMessage(
-        @RequestHeader("X-User-Id") userId: Long, // TODO(AUTH-03): SecurityContext로 교체
+        @AuthenticationPrincipal principal: UserPrincipal,
         @PathVariable roomId: Long,
         @Valid @RequestBody request: SendMessageRequest,
     ): ResponseEntity<MessageResponse> {
-        val message = sendMessageUseCase.execute(request.toCommand(roomId, userId))
+        val message = sendMessageUseCase.execute(request.toCommand(roomId, principal.id))
         return ResponseEntity.status(HttpStatus.CREATED).body(MessageResponse.of(message))
     }
 
     @GetMapping
     fun listMessages(
-        @RequestHeader("X-User-Id") userId: Long, // TODO(AUTH-03): SecurityContext로 교체
+        @AuthenticationPrincipal principal: UserPrincipal,
         @PathVariable roomId: Long,
         @RequestParam(required = false) cursor: String?,
     ): ResponseEntity<ListMessagesResponse> {
-        val messages = listMessagesUseCase.execute(roomId, userId, cursor)
+        val messages = listMessagesUseCase.execute(roomId, principal.id, cursor)
         return ResponseEntity.ok(ListMessagesResponse.of(messages, PAGE_SIZE))
     }
 
