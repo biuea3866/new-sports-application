@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SidoSelect } from "@/components/ui/SidoSelect";
 import { useFacilityForm, FacilityTypeEnum } from "@/app/portal/facilities/_hooks/useFacilityForm";
 import type { FacilityFormValues } from "@/app/portal/facilities/facility-form-schema";
 
@@ -81,6 +82,17 @@ export function FacilityForm({
           </p>
         )}
       </div>
+
+      <fieldset className="space-y-2 rounded-md border border-input p-3">
+        <legend className="px-1 text-sm font-medium">지역</legend>
+        <SidoSelect
+          id="facility-sido"
+          label="시/도"
+          value={values.sido ?? ""}
+          onChange={(sidoCode) => handleChange("sido", sidoCode)}
+        />
+        <p className="text-xs text-muted-foreground">미선택 시 주소로 자동 판별됩니다.</p>
+      </fieldset>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
