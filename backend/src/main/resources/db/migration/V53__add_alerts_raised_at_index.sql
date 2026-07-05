@@ -1,8 +1,6 @@
--- V52: alerts 이력 보존 정책(90일, mcp_audit_logs 선례) 지원 인덱스 추가
--- ⚠ 번호 주의: 이 worktree는 origin/dev 구버전(#210) 기준으로 분기되어 V52가 비어 있었으나,
---   dev 최신에는 이미 V52__create_feature_flags.sql이 존재한다(#227, 별도 번호 재조정 완료분).
---   본 파일은 origin/dev로 rebase되는 시점에 다음 빈 번호(V53+)로 재배정되어야 한다 — 파일명은
---   의도적으로 여기서 미리 바꾸지 않는다(재배정은 통합 담당이 rebase와 함께 일괄 처리).
+-- V53: alerts 이력 보존 정책(90일, mcp_audit_logs 선례) 지원 인덱스 추가
+-- 번호 재배정 완료: 원래 V52로 작성되었으나 dev 최신에 V52__create_feature_flags.sql(#227)이
+--   이미 점유하고 있어 rebase 시 V53으로 재배정했다(통합 담당 처리 완료).
 -- 근거: private-db-schema-convention "인덱스는 대상 쿼리가 근거" — 신규 정리 배치가
 --       raised_at < cutoff 조건만으로 전체 행을 스캔한다(env·source 등치 조건 없음).
 --       기존 idx_alerts_env_source_raised_at(env, source, raised_at)는 env·source 등치가
