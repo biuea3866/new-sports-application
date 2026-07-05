@@ -37,6 +37,7 @@ function toBeFacilityPayload(input: CreateFacilityInput): Record<string, unknown
     code: input.code,
     name: input.name,
     gu: input.gu,
+    sido: input.sido,
     type: input.type,
     address: input.address,
     lat,
