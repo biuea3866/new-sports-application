@@ -61,6 +61,58 @@ function buildBrokerUrl(apiUrl: string): string {
   return `${webSocketUrl}/ws`;
 }
 
+/** `value`가 null이 아닌 object인지 좁힌다 — 아래 페이로드 가드들의 공통 전제 조건. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+/**
+ * STOMP 인바운드 프레임은 신뢰할 수 없는 외부 데이터다(`no-loose-assertion`).
+ * 필드 타입까지 확인해 `BroadcastMessage`로 좁힌다 — 필드 누락 시 캐시에 `id: undefined`
+ * 같은 오염된 메시지가 유입되는 것을 막는다.
+ */
+function isBroadcastMessage(value: unknown): value is BroadcastMessage {
+  return (
+    isRecord(value) &&
+    typeof value.messageId === 'number' &&
+    typeof value.userId === 'number' &&
+    typeof value.content === 'string' &&
+    typeof value.createdAt === 'string'
+  );
+}
+
+/** STOMP 인바운드 프레임을 `TypingEvent`로 좁힌다. */
+function isTypingEvent(value: unknown): value is TypingEvent {
+  return isRecord(value) && typeof value.userId === 'number' && typeof value.typing === 'boolean';
+}
+
+/** STOMP 인바운드 프레임을 `ReadEvent`로 좁힌다. */
+function isReadEvent(value: unknown): value is ReadEvent {
+  return (
+    isRecord(value) &&
+    typeof value.userId === 'number' &&
+    typeof value.lastReadMessageId === 'number'
+  );
+}
+
+/**
+ * STOMP 인바운드 프레임 body(JSON 문자열)를 안전하게 파싱한다.
+ * 깨진 JSON이거나 타입 가드를 통과하지 못하면 `null`을 반환해 프레임을 드롭한다
+ * (검증 없는 `as` 단언 대신 타입 가드로 좁히기 — `no-loose-assertion`).
+ */
+function parseStompFrame<T>(
+  rawBody: string,
+  isValidPayload: (value: unknown) => value is T
+): T | null {
+  let parsedBody: unknown;
+  try {
+    parsedBody = JSON.parse(rawBody);
+  } catch {
+    return null;
+  }
+  return isValidPayload(parsedBody) ? parsedBody : null;
+}
+
 /** 수신 메시지를 messagesQueryKey 캐시에 append한다. 동일 id는 멱등하게 무시한다(dedup). */
 function appendChatMessage(
   previous: ListMessagesResponse | undefined,
@@ -118,6 +170,18 @@ export function useChatSocket(options: UseChatSocketOptions): UseChatSocketResul
   const hasConnectedOnceRef = useRef(false);
   const lastReceivedMessageIdRef = useRef<number | null>(null);
 
+  /**
+   * `backfill`/`onTyping`/`onRead`의 최신 값을 ref로 보관한다.
+   * 호출 화면이 인라인 핸들러(매 렌더 새 함수 identity)를 넘겨도, 이 ref는 렌더마다
+   * 갱신될 뿐 아래 소켓 연결 effect의 의존성에는 포함되지 않아 재연결을 유발하지 않는다.
+   */
+  const backfillRef = useRef(backfill);
+  backfillRef.current = backfill;
+  const onTypingRef = useRef(onTyping);
+  onTypingRef.current = onTyping;
+  const onReadRef = useRef(onRead);
+  onReadRef.current = onRead;
+
   useEffect(() => {
     if (!isChatRealtimeEnabled()) {
       return undefined;
@@ -149,7 +213,10 @@ export function useChatSocket(options: UseChatSocketOptions): UseChatSocketResul
         setIsConnected(true);
 
         client.subscribe(`/topic/rooms/${roomId}`, (message: IMessage) => {
-          const broadcast = JSON.parse(message.body) as BroadcastMessage;
+          const broadcast = parseStompFrame(message.body, isBroadcastMessage);
+          if (!broadcast) {
+            return;
+          }
           const normalized = normalizeBroadcastMessage(broadcast, roomId);
           lastReceivedMessageIdRef.current = normalized.id;
           queryClient.setQueryData<ListMessagesResponse>(messagesQueryKey(roomId), (previous) =>
@@ -158,25 +225,41 @@ export function useChatSocket(options: UseChatSocketOptions): UseChatSocketResul
         });
 
         client.subscribe(`/topic/rooms/${roomId}/typing`, (message: IMessage) => {
-          const event = JSON.parse(message.body) as TypingEvent;
-          onTyping?.(event);
+          const event = parseStompFrame(message.body, isTypingEvent);
+          if (!event) {
+            return;
+          }
+          onTypingRef.current?.(event);
         });
 
         client.subscribe(`/topic/rooms/${roomId}/read`, (message: IMessage) => {
-          const event = JSON.parse(message.body) as ReadEvent;
-          onRead?.(event);
+          const event = parseStompFrame(message.body, isReadEvent);
+          if (!event) {
+            return;
+          }
+          onReadRef.current?.(event);
         });
 
         // 2단계(FR-10) 경계: 최초 연결이 아니고(재연결), backfill 콜백이 주입된 경우에만 실행한다.
-        if (hasConnectedOnceRef.current && backfill && lastReceivedMessageIdRef.current !== null) {
+        const backfillFn = backfillRef.current;
+        if (
+          hasConnectedOnceRef.current &&
+          backfillFn &&
+          lastReceivedMessageIdRef.current !== null
+        ) {
           const afterMessageId = lastReceivedMessageIdRef.current;
-          void backfill(roomId, afterMessageId).then((backfilledMessages) => {
-            backfilledMessages.forEach((backfilledMessage) => {
-              queryClient.setQueryData<ListMessagesResponse>(messagesQueryKey(roomId), (previous) =>
-                appendChatMessage(previous, backfilledMessage)
-              );
+          void backfillFn(roomId, afterMessageId)
+            .then((backfilledMessages) => {
+              backfilledMessages.forEach((backfilledMessage) => {
+                queryClient.setQueryData<ListMessagesResponse>(
+                  messagesQueryKey(roomId),
+                  (previous) => appendChatMessage(previous, backfilledMessage)
+                );
+              });
+            })
+            .catch(() => {
+              // backfill 실패는 무음 처리한다 — 다음 재연결 시 재시도되며, dedup(멱등)으로 안전하다.
             });
-          });
         }
         hasConnectedOnceRef.current = true;
       },
@@ -199,7 +282,10 @@ export function useChatSocket(options: UseChatSocketOptions): UseChatSocketResul
       clientRef.current = null;
       void client.deactivate();
     };
-  }, [roomId, accessToken, backfill, onTyping, onRead, queryClient, netInfo.isConnected]);
+    // `backfill`/`onTyping`/`onRead`는 ref(backfillRef/onTypingRef/onReadRef)로 최신값을
+    // 참조하므로 의존성에서 제외한다 — 포함 시 호출 화면의 인라인 콜백이 매 렌더 새로
+    // 생성될 때마다 소켓이 재연결돼 실시간성이 훼손된다.
+  }, [roomId, accessToken, queryClient, netInfo.isConnected]);
 
   const send = useCallback(
     async (content: string) => {

@@ -30,6 +30,8 @@ export interface FakeStompClientInstance {
   simulateClose: () => void;
   /** 테스트 전용 헬퍼: 특정 destination 구독 콜백에 메시지를 흘려보낸다. */
   simulateMessage: (destination: string, body: unknown) => void;
+  /** 테스트 전용 헬퍼: 가공하지 않은 raw body(깨진 JSON 등)를 그대로 흘려보낸다. */
+  simulateRawMessage: (destination: string, rawBody: string) => void;
 }
 
 /** 생성된 모든 FakeStompClient 인스턴스. 테스트에서 최신 인스턴스를 조회할 때 사용한다. */
@@ -82,11 +84,15 @@ export class Client implements FakeStompClientInstance {
   }
 
   simulateMessage(destination: string, body: unknown): void {
+    this.simulateRawMessage(destination, JSON.stringify(body));
+  }
+
+  simulateRawMessage(destination: string, rawBody: string): void {
     const callback = this.subscriptionCallbacks.get(destination);
     if (!callback) {
       throw new Error(`구독되지 않은 destination: ${destination}`);
     }
-    callback({ body: JSON.stringify(body) } as IMessage);
+    callback({ body: rawBody } as IMessage);
   }
 }
 

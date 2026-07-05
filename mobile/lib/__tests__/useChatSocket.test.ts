@@ -11,7 +11,7 @@ import { act, createElement } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react-native';
 
-import type { BroadcastMessage, ChatMessage } from '../../api/chat-types';
+import type { BroadcastMessage, ChatMessage, TypingEvent } from '../../api/chat-types';
 import type { ListMessagesResponse, MessageResponse } from '../../api/types';
 import type { FakeStompClientInstance } from './test-helpers/fake-stomp-client';
 
@@ -133,6 +133,91 @@ describe('useChatSocket', () => {
       const cached = queryClient.getQueryData<ListMessagesResponse>(messagesQueryKey(ROOM_ID));
       expect(cached?.messages).toHaveLength(1);
     });
+
+    unmount();
+    queryClient.clear();
+  });
+
+  it('깨진 JSON 프레임을 수신해도 크래시 없이 무시한다', async () => {
+    const { wrapper, queryClient } = createWrapper();
+    const { result, unmount } = renderHook(() => useChatSocket({ roomId: ROOM_ID }), { wrapper });
+
+    await waitFor(() => expect(mockStompClientInstances).toHaveLength(1));
+    const client = latestClient();
+
+    act(() => {
+      client.simulateConnect();
+    });
+
+    expect(() => {
+      act(() => {
+        client.simulateRawMessage(`/topic/rooms/${ROOM_ID}`, '{올바르지 않은 JSON');
+      });
+    }).not.toThrow();
+
+    await waitFor(() => expect(result.current.isConnected).toBe(true));
+    const cached = queryClient.getQueryData<ListMessagesResponse>(messagesQueryKey(ROOM_ID));
+    expect(cached?.messages ?? []).toHaveLength(0);
+
+    unmount();
+    queryClient.clear();
+  });
+
+  it('필수 필드가 누락된 프레임은 메시지 캐시에 들어가지 않는다', async () => {
+    const { wrapper, queryClient } = createWrapper();
+    const { unmount } = renderHook(() => useChatSocket({ roomId: ROOM_ID }), { wrapper });
+
+    await waitFor(() => expect(mockStompClientInstances).toHaveLength(1));
+    const client = latestClient();
+
+    act(() => {
+      client.simulateConnect();
+    });
+
+    // content 필드 누락 — BroadcastMessage 타입 가드를 통과하지 못해야 한다.
+    const incompleteBroadcast = {
+      messageId: 999,
+      userId: 7,
+      createdAt: '2026-07-04T09:03:00Z',
+    };
+
+    act(() => {
+      client.simulateMessage(`/topic/rooms/${ROOM_ID}`, incompleteBroadcast);
+    });
+
+    const cached = queryClient.getQueryData<ListMessagesResponse>(messagesQueryKey(ROOM_ID));
+    expect(cached?.messages ?? []).toHaveLength(0);
+
+    unmount();
+    queryClient.clear();
+  });
+
+  it('onTyping 콜백이 매 렌더 새로 생성돼도 소켓을 재연결하지 않는다', async () => {
+    const { wrapper, queryClient } = createWrapper();
+    const { rerender, unmount } = renderHook(
+      ({ onTyping }: { onTyping: (event: TypingEvent) => void }) =>
+        useChatSocket({ roomId: ROOM_ID, onTyping }),
+      {
+        wrapper,
+        initialProps: { onTyping: () => {} },
+      }
+    );
+
+    await waitFor(() => expect(mockStompClientInstances).toHaveLength(1));
+    const client = latestClient();
+    expect(client.activateCallCount).toBe(1);
+
+    act(() => {
+      client.simulateConnect();
+    });
+
+    // 화면이 인라인 핸들러를 넘긴 것처럼, 리렌더마다 새 함수 identity를 전달한다.
+    rerender({ onTyping: () => {} });
+    rerender({ onTyping: () => {} });
+
+    expect(mockStompClientInstances).toHaveLength(1);
+    expect(client.activateCallCount).toBe(1);
+    expect(client.deactivateCallCount).toBe(0);
 
     unmount();
     queryClient.clear();
