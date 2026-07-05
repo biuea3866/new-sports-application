@@ -1,0 +1,49 @@
+# Promtail — 컨테이너 stdout/stderr 로그 수집 → Loki (⑤ 후속: 옵저버빌리티 + 시뮬레이터 인프라 연동)
+#
+# 배경: 앱(Spring Boot 3.3.5)은 OTLP 로그 자동구성을 지원하지 않아(management.otlp.logging 부재)
+#   logback-spring.xml의 OpenTelemetryAppender가 SDK 미설치 상태로 사실상 no-op이다(로그 유실 아님 —
+#   CONSOLE appender는 항상 정상 출력). 반면 reseed·k6-runner 등 비-Spring 컨테이너는애초에 OTLP 로그
+#   발신 경로가 없다. 이 두 경우를 모두 커버하기 위해 "컨테이너 stdout을 인프라 레벨에서 긁어 Loki로
+#   보내는" 경로를 추가한다 — 앱 코드 변경·Spring Boot 업그레이드 없이 로그 조회 공백을 해소한다.
+#
+# 해소 대상: qa/load/dashboards/simulator.json 운영 안내 패널의 Open Item —
+#   "Loki 로그 수집 에이전트가 docker 컨테이너 stdout을 아직 스크레이프하지 않음".
+#
+# 수집 방식: docker_sd_configs로 실행 중인 컨테이너를 Docker Engine API(/var/run/docker.sock)로
+#   자동 발견해 stdout/stderr를 tail한다. Loki 네이티브 push API(/loki/api/v1/push)로 전송한다
+#   (앱 OTLP 로그는 otel-collector-config.yaml의 별도 파이프라인 — 이 경로와 중복되지 않는다).
+#
+# 라벨: compose 서비스 라벨(com.docker.compose.service)을 service_name으로 승격해
+#   Tempo trace→log 연동 라벨(service_name, datasources.yml 참고)과 동일 키를 사용한다.
+#   backend 컨테이너 로그는 CONSOLE_LOG_PATTERN의 `trace_id=xxxx` 텍스트를 그대로 담고 있어
+#   Loki 데이터소스의 derivedFields(trace_id_logfmt) 정규식이 그대로 매칭되어 log→trace 점프가 된다.
+#
+# 롤백: docker compose -f docker-compose.yml -f docker-compose.observability.yml
+#   -f docker-compose.observability-agents.yml stop promtail
+#   (Loki/Grafana/앱 무영향 — 신규 컨테이너 로그 수집만 중단되고 기존 OTLP 경로는 그대로 동작)
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: docker-containers
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 15s
+    relabel_configs:
+      # 컨테이너명 선행 슬래시 제거 (/sports-backend-1 → sports-backend-1)
+      - source_labels: ["__meta_docker_container_name"]
+        regex: "/(.*)"
+        target_label: container
+      # compose 서비스 라벨 → service_name (Tempo/Loki 상호 연결 라벨과 통일, datasources.yml 참고)
+      - source_labels: ["__meta_docker_container_label_com_docker_compose_service"]
+        target_label: service_name
+      - source_labels: ["__meta_docker_container_label_com_docker_compose_project"]
+        target_label: compose_project
