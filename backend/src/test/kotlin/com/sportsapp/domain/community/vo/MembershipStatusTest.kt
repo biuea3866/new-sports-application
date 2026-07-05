@@ -55,16 +55,42 @@ class MembershipStatusTest : BehaviorSpec({
         }
     }
 
-    Given("종료된(terminal) 멤버십 상태") {
-        When("LEFT에서 ACTIVE로 전이 가능 여부를 물으면") {
-            Then("false를 반환한다") {
-                MembershipStatus.LEFT.canTransitTo(MembershipStatus.ACTIVE) shouldBe false
+    Given("LEFT(탈퇴)한 멤버십") {
+        When("ACTIVE로 전이 가능 여부를 물으면") {
+            Then("true를 반환한다 (공개 커뮤니티 재가입 즉시 재활성화, 리뷰 p2-①)") {
+                MembershipStatus.LEFT.canTransitTo(MembershipStatus.ACTIVE) shouldBe true
             }
         }
 
-        When("KICKED에서 ACTIVE로 전이 가능 여부를 물으면") {
-            Then("false를 반환한다") {
-                MembershipStatus.KICKED.canTransitTo(MembershipStatus.ACTIVE) shouldBe false
+        When("PENDING_APPROVAL로 전이 가능 여부를 물으면") {
+            Then("true를 반환한다 (비공개 커뮤니티 재가입은 다시 승인 대기)") {
+                MembershipStatus.LEFT.canTransitTo(MembershipStatus.PENDING_APPROVAL) shouldBe true
+            }
+        }
+
+        When("KICKED로 전이 가능 여부를 물으면") {
+            Then("false를 반환한다 (탈퇴 상태에서 직접 강퇴로는 전이하지 않음)") {
+                MembershipStatus.LEFT.canTransitTo(MembershipStatus.KICKED) shouldBe false
+            }
+        }
+    }
+
+    Given("KICKED(강퇴)된 멤버십") {
+        When("ACTIVE로 전이 가능 여부를 물으면") {
+            Then("true를 반환한다 (공개 커뮤니티 재가입 즉시 재활성화, 리뷰 p2-①)") {
+                MembershipStatus.KICKED.canTransitTo(MembershipStatus.ACTIVE) shouldBe true
+            }
+        }
+
+        When("PENDING_APPROVAL로 전이 가능 여부를 물으면") {
+            Then("true를 반환한다 (비공개 커뮤니티 재가입은 다시 승인 대기)") {
+                MembershipStatus.KICKED.canTransitTo(MembershipStatus.PENDING_APPROVAL) shouldBe true
+            }
+        }
+
+        When("LEFT로 전이 가능 여부를 물으면") {
+            Then("false를 반환한다 (강퇴 상태에서 직접 자진탈퇴로는 전이하지 않음)") {
+                MembershipStatus.KICKED.canTransitTo(MembershipStatus.LEFT) shouldBe false
             }
         }
     }
