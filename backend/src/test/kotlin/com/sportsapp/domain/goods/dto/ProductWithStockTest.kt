@@ -7,6 +7,7 @@ import com.sportsapp.domain.goods.vo.ProductCategory
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.shouldBe
 import java.math.BigDecimal
 
 private const val OWNER_USER_ID = 500L
@@ -62,6 +63,36 @@ class ProductWithStockTest : BehaviorSpec({
         When("validateQuantityWithin을 호출하면") {
             Then("LimitedDropQuantityExceedsStockException을 던진다") {
                 shouldThrow<LimitedDropQuantityExceedsStockException> { target.validateQuantityWithin(20) }
+            }
+        }
+    }
+
+    Given("가격이 50000원인 Product를 보유한 상황") {
+        val target = productWithStock(stockQuantity = 50)
+
+        When("price를 조회하면") {
+            Then("product.price를 그대로 반환한다") {
+                target.price shouldBe BigDecimal("50000")
+            }
+        }
+    }
+
+    Given("limitedDropId 없이 생성된 상황") {
+        val target = productWithStock(stockQuantity = 50)
+
+        When("limitedDropId를 조회하면") {
+            Then("기본값 null을 반환한다") {
+                target.limitedDropId shouldBe null
+            }
+        }
+    }
+
+    Given("활성 한정판 회차 id가 결합된 상황") {
+        val target = productWithStock(stockQuantity = 50).copy(limitedDropId = 7L)
+
+        When("limitedDropId를 조회하면") {
+            Then("결합된 값을 그대로 반환한다") {
+                target.limitedDropId shouldBe 7L
             }
         }
     }

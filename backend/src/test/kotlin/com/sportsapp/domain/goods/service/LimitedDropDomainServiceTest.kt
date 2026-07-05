@@ -435,10 +435,14 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
             )
 
             Then("SCHEDULED 상태로 저장하고 Redis 카운터를 limitedQuantity로 시드한다") {
-                result.currentStatus shouldBe LimitedDropStatus.SCHEDULED
-                result.productId shouldBe PRODUCT_ID
+                result.first.currentStatus shouldBe LimitedDropStatus.SCHEDULED
+                result.first.productId shouldBe PRODUCT_ID
                 verify(exactly = 1) { limitedDropRepository.save(any()) }
                 verify(exactly = 1) { dropReservationStore.seedIfAbsent(0L, limitedQuantity, any()) }
+            }
+
+            Then("상품 가격을 함께 반환한다") {
+                result.second shouldBe product.price
             }
         }
     }
@@ -544,15 +548,25 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         val goodsDomainService = mockk<GoodsDomainService>()
         val service = buildService(limitedDropRepository, dropReservationStore, goodsDomainService)
         val drop = openDrop()
+        val product = Product.create(
+            name = "한정판 스니커즈",
+            category = ProductCategory.FOOTWEAR,
+            price = BigDecimal("50000"),
+            description = "설명",
+            imageUrl = "https://image",
+            ownerUserId = OWNER_USER_ID,
+        )
+        val productWithStock = ProductWithStock(product = product, stockQuantity = 42)
 
         every { limitedDropRepository.findById(DROP_ID) } returns drop
         every { dropReservationStore.remaining(DROP_ID) } returns 42
+        every { goodsDomainService.getProductWithStock(PRODUCT_ID) } returns productWithStock
 
         When("getView를 호출하면") {
             val result = service.getView(DROP_ID)
 
-            Then("drop과 Redis remaining을 그대로 결합해 반환한다") {
-                result shouldBe (drop to 42)
+            Then("drop과 Redis remaining·상품 가격을 그대로 결합해 반환한다") {
+                result shouldBe Triple(drop, 42, product.price)
             }
         }
     }

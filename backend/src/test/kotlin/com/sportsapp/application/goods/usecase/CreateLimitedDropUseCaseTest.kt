@@ -12,12 +12,14 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import java.math.BigDecimal
 import java.time.ZonedDateTime
 
 private const val PRODUCT_ID = 10L
 private const val OWNER_USER_ID = 500L
 private const val LIMITED_QUANTITY = 30
 private const val PER_USER_LIMIT = 2
+private val PRICE = BigDecimal("50000")
 
 class CreateLimitedDropUseCaseTest : BehaviorSpec({
 
@@ -51,14 +53,15 @@ class CreateLimitedDropUseCaseTest : BehaviorSpec({
                 perUserLimit = PER_USER_LIMIT,
                 ownerUserId = OWNER_USER_ID,
             )
-        } returns drop
+        } returns (drop to PRICE)
 
         When("execute를 호출하면") {
             val result = useCase.execute(requestCommand)
 
             Then("domainService.createDrop 결과를 LimitedDropView로 변환해 반환한다") {
-                result shouldBe LimitedDropView.of(drop, LIMITED_QUANTITY)
+                result shouldBe LimitedDropView.of(drop, LIMITED_QUANTITY, PRICE)
                 result.remaining shouldBe LIMITED_QUANTITY
+                result.price shouldBe PRICE
                 verify(exactly = 1) {
                     limitedDropDomainService.createDrop(
                         productId = PRODUCT_ID,

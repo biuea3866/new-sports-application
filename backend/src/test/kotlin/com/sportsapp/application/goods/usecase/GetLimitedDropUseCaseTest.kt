@@ -12,12 +12,14 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import java.math.BigDecimal
 import java.time.ZonedDateTime
 
 private const val DROP_ID = 7L
 private const val PRODUCT_ID = 10L
 private const val PER_USER_LIMIT = 2
 private const val REMAINING = 42
+private val PRICE = BigDecimal("50000")
 
 class GetLimitedDropUseCaseTest : BehaviorSpec({
 
@@ -35,13 +37,13 @@ class GetLimitedDropUseCaseTest : BehaviorSpec({
         val useCase = GetLimitedDropUseCase(limitedDropDomainService)
         val existingDrop = drop()
 
-        every { limitedDropDomainService.getView(DROP_ID) } returns (existingDrop to REMAINING)
+        every { limitedDropDomainService.getView(DROP_ID) } returns Triple(existingDrop, REMAINING, PRICE)
 
         When("execute를 호출하면") {
             val result = useCase.execute(DROP_ID)
 
-            Then("status·openAt·closeAt·remaining·perUserLimit을 결합한 LimitedDropView를 반환한다") {
-                result shouldBe LimitedDropView.of(existingDrop, REMAINING)
+            Then("status·openAt·closeAt·remaining·perUserLimit·totalQuantity·price를 결합한 LimitedDropView를 반환한다") {
+                result shouldBe LimitedDropView.of(existingDrop, REMAINING, PRICE)
                 verify(exactly = 1) { limitedDropDomainService.getView(DROP_ID) }
             }
         }
@@ -52,13 +54,13 @@ class GetLimitedDropUseCaseTest : BehaviorSpec({
         val useCase = GetLimitedDropUseCase(limitedDropDomainService)
         val scheduledDrop = drop()
 
-        every { limitedDropDomainService.getView(DROP_ID) } returns (scheduledDrop to null)
+        every { limitedDropDomainService.getView(DROP_ID) } returns Triple(scheduledDrop, null, PRICE)
 
         When("execute를 호출하면") {
             val result = useCase.execute(DROP_ID)
 
             Then("remaining을 limitedQuantity로 채운 LimitedDropView를 반환한다") {
-                result shouldBe LimitedDropView.of(scheduledDrop, scheduledDrop.limitedQuantity)
+                result shouldBe LimitedDropView.of(scheduledDrop, scheduledDrop.limitedQuantity, PRICE)
             }
         }
     }

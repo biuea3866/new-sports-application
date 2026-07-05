@@ -147,6 +147,20 @@ class LimitedDropApiControllerTest(
             }
         }
 
+        Given("판매 종료 시각이 이미 지난 한정판 회차") {
+            When("POST /limited-drops/{dropId}/orders로 구매하면") {
+                Then("409와 SOLD_OUT과 구분되는 LIMITED_DROP_CLOSED code를 반환한다") {
+                    val closeAt = ZonedDateTime.now().minusHours(1)
+                    val openAt = closeAt.minusHours(1)
+                    val dropId = createDrop(openAt = openAt, closeAt = closeAt)
+
+                    purchase(dropId, BUYER_USER_ID, UUID.randomUUID().toString())
+                        .andExpect(status().isConflict)
+                        .andExpect(jsonPath("$.properties.code").value("LIMITED_DROP_CLOSED"))
+                }
+            }
+        }
+
         Given("1인 구매 한도에 도달한 사용자") {
             When("같은 사용자가 다른 idempotencyKey로 재구매를 시도하면") {
                 Then("403 PerUserLimit을 반환한다") {
@@ -163,7 +177,7 @@ class LimitedDropApiControllerTest(
 
         Given("개설되어 조회 가능한 한정판 회차") {
             When("GET /limited-drops/{dropId}를 호출하면") {
-                Then("200과 dropId·productId·status·remaining·perUserLimit을 반환한다") {
+                Then("200과 dropId·productId·status·remaining·perUserLimit·totalQuantity·price를 반환한다") {
                     val dropId = createDrop(limitedQuantity = 20, perUserLimit = 3)
 
                     mockMvc.perform(get("/limited-drops/$dropId"))
@@ -172,6 +186,28 @@ class LimitedDropApiControllerTest(
                         .andExpect(jsonPath("$.productId").value(productId.toLong()))
                         .andExpect(jsonPath("$.remaining").value(20))
                         .andExpect(jsonPath("$.perUserLimit").value(3))
+                        .andExpect(jsonPath("$.totalQuantity").value(20))
+                        .andExpect(jsonPath("$.price").value(50000))
+                }
+            }
+        }
+
+        Given("판매자가 회차를 개설하는 상황") {
+            When("POST /limited-drops를 호출하면") {
+                Then("201과 totalQuantity·price를 포함한 회차 정보를 반환한다") {
+                    val openAt = ZonedDateTime.now().minusMinutes(1)
+                    val closeAt = ZonedDateTime.now().plusDays(1)
+
+                    mockMvc.perform(
+                        post("/limited-drops")
+                            .header("X-User-Id", OWNER_USER_ID.toString())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(createDropBody(openAt, closeAt, limitedQuantity = 15, perUserLimit = 2))
+                    )
+                        .andExpect(status().isCreated)
+                        .andExpect(jsonPath("$.totalQuantity").value(15))
+                        .andExpect(jsonPath("$.remaining").value(15))
+                        .andExpect(jsonPath("$.price").value(50000))
                 }
             }
         }
