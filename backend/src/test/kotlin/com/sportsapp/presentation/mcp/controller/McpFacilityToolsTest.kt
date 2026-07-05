@@ -43,7 +43,7 @@ class McpFacilityToolsTest : BehaviorSpec({
             every { listFacilitiesUseCase.execute(capture(criteriaSlot)) } returns
                 PageImpl(listOf(facility), PageRequest.of(0, 50), 1)
 
-            val result = mcpFacilityTools.getFacilities(gu = null, type = null, page = 0, size = 20)
+            val result = mcpFacilityTools.getFacilities(sidoCode = null, sigunguCode = null, gu = null, type = null, page = 0, size = 20)
 
             Then("[U-01] OK 상태와 시설 목록이 반환된다") {
                 result.status shouldBe McpResponseStatus.OK
@@ -60,7 +60,7 @@ class McpFacilityToolsTest : BehaviorSpec({
             every { listFacilitiesUseCase.execute(capture(criteriaSlot)) } returns
                 PageImpl(listOf(facility), PageRequest.of(0, 20), 1)
 
-            mcpFacilityTools.getFacilities(gu = "강남구", type = "FUTSAL", page = 0, size = 20)
+            mcpFacilityTools.getFacilities(sidoCode = null, sigunguCode = null, gu = "강남구", type = "FUTSAL", page = 0, size = 20)
 
             Then("[U-02] FacilityCriteria에 필터 값이 전달된다") {
                 criteriaSlot.captured.gu shouldBe "강남구"
@@ -72,13 +72,26 @@ class McpFacilityToolsTest : BehaviorSpec({
             every { listFacilitiesUseCase.execute(any()) } returns
                 PageImpl(emptyList(), PageRequest.of(0, 20), 0)
 
-            val result = mcpFacilityTools.getFacilities(gu = "존재안함구", type = null, page = 0, size = 20)
+            val result = mcpFacilityTools.getFacilities(sidoCode = null, sigunguCode = null, gu = "존재안함구", type = null, page = 0, size = 20)
 
             Then("[U-03] OK 상태와 빈 목록이 반환된다") {
                 result.status shouldBe McpResponseStatus.OK
                 result.data shouldNotBe null
                 val data = requireNotNull(result.data)
                 data.size shouldBe 0
+            }
+        }
+
+        When("sidoCode 파라미터를 지정해 getFacilities를 호출하면") {
+            val criteriaSlot = slot<FacilityCriteria>()
+            every { listFacilitiesUseCase.execute(capture(criteriaSlot)) } returns
+                PageImpl(listOf(facility), PageRequest.of(0, 20), 1)
+
+            mcpFacilityTools.getFacilities(sidoCode = "26", sigunguCode = "26410", gu = null, type = null, page = 0, size = 20)
+
+            Then("FacilityCriteria에 sidoCode·sigunguCode 값이 전달된다") {
+                criteriaSlot.captured.sidoCode shouldBe "26"
+                criteriaSlot.captured.sigunguCode shouldBe "26410"
             }
         }
     }

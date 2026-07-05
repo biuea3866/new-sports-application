@@ -156,7 +156,7 @@ class McpAuditInterceptorScenarioTest(
 
             When("getFacilities tool을 직접 호출하면") {
                 setMcpSecurityContext(tokenId = tokenId, userId = user.id)
-                mcpFacilityTools.getFacilities(gu = null, type = null, page = 0, size = 10)
+                mcpFacilityTools.getFacilities(sidoCode = null, sigunguCode = null, gu = null, type = null, page = 0, size = 10)
 
                 Then("[S-01] mcp_audit_logs에 1행이 적재되고 toolName=getFacilities, statusCode=200이다") {
                     val logs = auditLogRepository.findByUserIdAndCalledAtBetween(
