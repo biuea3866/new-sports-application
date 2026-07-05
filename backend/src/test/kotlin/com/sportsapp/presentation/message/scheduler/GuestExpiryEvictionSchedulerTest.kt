@@ -50,6 +50,25 @@ class GuestExpiryEvictionSchedulerTest : BehaviorSpec({
         }
     }
 
+    Given("배치가 예외로 실패하고 실패 알림 발송 자체도 예외를 던지는 경우") {
+        val expireGuestsUseCase = mockk<ExpireGuestsUseCase>()
+        val sendRawNotificationUseCase = mockk<SendRawNotificationUseCase>()
+        val scheduler = GuestExpiryScheduler(
+            expireGuestsUseCase = expireGuestsUseCase,
+            sendRawNotificationUseCase = sendRawNotificationUseCase,
+            expiryEnabled = true,
+            notifyUserId = 1L,
+        )
+        every { expireGuestsUseCase.execute() } throws RuntimeException("db unavailable")
+        every { sendRawNotificationUseCase.execute(any()) } throws RuntimeException("discord unavailable")
+
+        When("evictExpiredGuests 를 호출하면") {
+            Then("알림 채널 장애가 배치 스레드에 전파되지 않고 조용히 종료된다") {
+                scheduler.evictExpiredGuests()
+            }
+        }
+    }
+
     Given("만료 방출 플래그가 비활성화된 상태") {
         val expireGuestsUseCase = mockk<ExpireGuestsUseCase>()
         val sendRawNotificationUseCase = mockk<SendRawNotificationUseCase>(relaxed = true)

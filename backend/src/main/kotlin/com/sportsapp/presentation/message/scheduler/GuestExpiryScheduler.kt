@@ -44,18 +44,23 @@ class GuestExpiryScheduler(
         }
     }
 
+    /** 알림 채널 자체의 장애가 배치 스레드에 전파되지 않도록 감싼다 — 배치 실패 로그(위 [evictExpiredGuests])가 우선 보전된다. */
     private fun notifyFailure(exception: Exception) {
-        sendRawNotificationUseCase.execute(
-            SendRawNotificationCommand(
-                userId = notifyUserId,
-                channel = NotificationChannel.DISCORD,
-                templateId = TEMPLATE_ID,
-                payload = mapOf(
-                    "_title" to "게스트 만료 방출 배치 실패",
-                    "_body" to (exception.message ?: "unknown error"),
+        try {
+            sendRawNotificationUseCase.execute(
+                SendRawNotificationCommand(
+                    userId = notifyUserId,
+                    channel = NotificationChannel.DISCORD,
+                    templateId = TEMPLATE_ID,
+                    payload = mapOf(
+                        "_title" to "게스트 만료 방출 배치 실패",
+                        "_body" to (exception.message ?: "unknown error"),
+                    ),
                 ),
-            ),
-        )
+            )
+        } catch (notifyException: Exception) {
+            log.error("GuestExpiryScheduler: failure notification itself failed", notifyException)
+        }
     }
 
     companion object {
