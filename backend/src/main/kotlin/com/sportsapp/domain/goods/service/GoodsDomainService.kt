@@ -55,11 +55,18 @@ class GoodsDomainService(
     /**
      * `/products` 목록 응답의 한정판 진입점 배너용 — 페이지 내 상품 id를 한 번에 모아
      * [LimitedDropRepository.findOpenByProductIds]로 배치 조회한다(N+1 방지).
+     *
+     * 한 상품에 활성 회차가 2건 이상이면 openAt이 가장 최신인 회차를 선택한다 —
+     * 단건 조회 경로([LimitedDropRepository.findOpenByProductId]의
+     * `OrderByOpenAtDesc`)와 선택 기준을 일치시켜, 목록과 상세의 limitedDropId가
+     * 달라지지 않게 한다(코드 리뷰 p3).
      */
     private fun enrichWithLimitedDropId(page: Page<ProductWithStock>): Page<ProductWithStock> {
         if (page.content.isEmpty()) return page
         val productIds = page.content.map { it.product.id }
         val dropIdByProductId = limitedDropRepository.findOpenByProductIds(productIds)
+            .sortedByDescending { it.openAt }
+            .distinctBy { it.productId }
             .associateBy({ it.productId }, { it.id })
         val enrichedContent = page.content.map { it.copy(limitedDropId = dropIdByProductId[it.product.id]) }
         return PageImpl(enrichedContent, page.pageable, page.totalElements)
