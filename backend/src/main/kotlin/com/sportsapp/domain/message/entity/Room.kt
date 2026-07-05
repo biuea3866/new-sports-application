@@ -1,6 +1,7 @@
 package com.sportsapp.domain.message.entity
 
 import com.sportsapp.domain.common.JpaAuditingBase
+import com.sportsapp.domain.message.vo.RoomContextType
 import com.sportsapp.domain.message.vo.RoomType
 import jakarta.persistence.CascadeType
 import jakarta.persistence.Column
@@ -23,6 +24,11 @@ class Room(
     val type: RoomType,
     @Column(name = "name", length = 100)
     var name: String?,
+    @Column(name = "context_type", length = 30)
+    @Enumerated(EnumType.STRING)
+    val contextType: RoomContextType?,
+    @Column(name = "context_id")
+    val contextId: Long?,
 ) : JpaAuditingBase() {
 
     @Id
@@ -48,12 +54,26 @@ class Room(
         lastMessageAt = sentAt
     }
 
+    fun belongsToContext(): Boolean = contextType != null && contextId != null
+
     companion object {
-        fun createDirect(): Room = Room(type = RoomType.DIRECT, name = null)
+        fun createDirect(): Room = Room(type = RoomType.DIRECT, name = null, contextType = null, contextId = null)
 
         fun createGroup(name: String): Room {
             require(name.isNotBlank()) { "Group room name must not be blank" }
-            return Room(type = RoomType.GROUP, name = name)
+            return Room(type = RoomType.GROUP, name = name, contextType = null, contextId = null)
+        }
+
+        fun createForContext(
+            type: RoomType,
+            contextType: RoomContextType,
+            contextId: Long,
+            name: String?,
+        ): Room {
+            if (name != null) {
+                require(name.isNotBlank()) { "Group room name must not be blank" }
+            }
+            return Room(type = type, name = name, contextType = contextType, contextId = contextId)
         }
     }
 }

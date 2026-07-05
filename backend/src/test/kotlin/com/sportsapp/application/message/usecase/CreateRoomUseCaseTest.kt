@@ -17,7 +17,7 @@ class CreateRoomUseCaseTest : BehaviorSpec({
     val createRoomUseCase = CreateRoomUseCase(messageDomainService)
 
     Given("1:1 룸 생성 요청 — 기존 룸이 없는 경우") {
-        val newRoom = Room(type = RoomType.DIRECT, name = null)
+        val newRoom = Room.createDirect()
         every { messageDomainService.createOrFindOneToOne(1L, 2L) } returns newRoom
 
         When("participantIds=[1,2], name=null 로 execute 를 호출하면") {
@@ -32,7 +32,7 @@ class CreateRoomUseCaseTest : BehaviorSpec({
     }
 
     Given("1:1 룸 생성 요청 — 기존 룸이 있는 경우") {
-        val existingRoom = Room(type = RoomType.DIRECT, name = null)
+        val existingRoom = Room.createDirect()
         every { messageDomainService.createOrFindOneToOne(3L, 4L) } returns existingRoom
 
         When("동일 participantIds 로 두 번 호출하면") {
@@ -49,7 +49,7 @@ class CreateRoomUseCaseTest : BehaviorSpec({
     }
 
     Given("그룹 룸 생성 요청 — 호출자가 participantIds에 포함된 경우") {
-        val groupRoom = Room(type = RoomType.GROUP, name = "축구 모임")
+        val groupRoom = Room.createGroup("축구 모임")
         every { messageDomainService.createGroupRoom("축구 모임", listOf(1L, 2L, 3L)) } returns groupRoom
 
         When("requestUserId=1, participantIds=[1,2,3], name='축구 모임' 으로 execute 를 호출하면") {
@@ -65,7 +65,7 @@ class CreateRoomUseCaseTest : BehaviorSpec({
     }
 
     Given("그룹 룸 생성 요청 — 호출자가 participantIds에 미포함된 경우") {
-        val groupRoom = Room(type = RoomType.GROUP, name = "농구 모임")
+        val groupRoom = Room.createGroup("농구 모임")
         every { messageDomainService.createGroupRoom("농구 모임", listOf(1L, 2L, 3L)) } returns groupRoom
 
         When("requestUserId=1, participantIds=[2,3], name='농구 모임' 으로 execute 를 호출하면") {

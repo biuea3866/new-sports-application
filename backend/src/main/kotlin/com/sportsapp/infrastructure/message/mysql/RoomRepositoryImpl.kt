@@ -3,6 +3,7 @@ package com.sportsapp.infrastructure.message.mysql
 import com.sportsapp.domain.message.entity.Room
 import com.sportsapp.domain.message.repository.RoomCustomRepository
 import com.sportsapp.domain.message.repository.RoomRepository
+import com.sportsapp.domain.message.vo.RoomContextType
 import org.springframework.stereotype.Component
 
 @Component
@@ -20,4 +21,7 @@ class RoomRepositoryImpl(
 
     override fun findMyRoomsByKeyword(userId: Long, keyword: String?): List<Room> =
         roomCustomRepository.findMyRoomsByKeyword(userId, keyword)
+
+    override fun findByContext(contextType: RoomContextType, contextId: Long): Room? =
+        roomCustomRepository.findByContext(contextType, contextId)
 }

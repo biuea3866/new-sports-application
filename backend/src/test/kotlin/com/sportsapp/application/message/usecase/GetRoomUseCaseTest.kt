@@ -17,7 +17,7 @@ class GetRoomUseCaseTest : BehaviorSpec({
     val getRoomUseCase = GetRoomUseCase(messageDomainService)
 
     Given("존재하는 Room 의 참여자") {
-        val room = Room(type = RoomType.GROUP, name = "그룹 룸")
+        val room = Room.createGroup("그룹 룸")
         every { messageDomainService.getRoom(10L, 1L) } returns room
 
         When("roomId=10, userId=1 로 execute 를 호출하면") {

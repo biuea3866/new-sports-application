@@ -2,7 +2,6 @@ package com.sportsapp.application.message.usecase
 
 import com.sportsapp.domain.message.entity.Room
 import com.sportsapp.domain.message.service.MessageDomainService
-import com.sportsapp.domain.message.vo.RoomType
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -16,8 +15,8 @@ class ListMyRoomsUseCaseTest : BehaviorSpec({
 
     Given("userId=1 의 룸 2개가 존재") {
         val rooms = listOf(
-            Room(type = RoomType.DIRECT, name = null),
-            Room(type = RoomType.GROUP, name = "그룹"),
+            Room.createDirect(),
+            Room.createGroup("그룹"),
         )
         every { messageDomainService.findMyRooms(1L, null) } returns rooms
 
@@ -31,7 +30,7 @@ class ListMyRoomsUseCaseTest : BehaviorSpec({
     }
 
     Given("keyword 검색") {
-        val matchedRoom = Room(type = RoomType.GROUP, name = "축구 모임")
+        val matchedRoom = Room.createGroup("축구 모임")
         every { messageDomainService.findMyRooms(1L, "축구") } returns listOf(matchedRoom)
 
         When("keyword='축구' 로 execute 를 호출하면") {

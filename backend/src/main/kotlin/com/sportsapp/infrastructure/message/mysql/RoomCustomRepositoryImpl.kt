@@ -5,6 +5,7 @@ import com.sportsapp.domain.message.entity.QRoom
 import com.sportsapp.domain.message.entity.QRoomParticipant
 import com.sportsapp.domain.message.entity.Room
 import com.sportsapp.domain.message.repository.RoomCustomRepository
+import com.sportsapp.domain.message.vo.RoomContextType
 import com.sportsapp.domain.message.vo.RoomType
 import org.springframework.stereotype.Component
 
@@ -49,5 +50,16 @@ class RoomCustomRepositoryImpl(
             query.where(room.name.containsIgnoreCase(keyword))
         }
         return query.fetch()
+    }
+
+    override fun findByContext(contextType: RoomContextType, contextId: Long): Room? {
+        val room = QRoom.room
+        return queryFactory.selectFrom(room)
+            .where(
+                room.contextType.eq(contextType),
+                room.contextId.eq(contextId),
+                room.deletedAt.isNull,
+            )
+            .fetchFirst()
     }
 }
