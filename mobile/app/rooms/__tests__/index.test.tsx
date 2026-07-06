@@ -73,6 +73,25 @@ describe('RoomsListScreen', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    delete process.env.EXPO_PUBLIC_CHAT_COMMUNITY_ENABLED;
+  });
+
+  it('chat.community.enabled 플래그가 OFF면 초대함 버튼이 렌더되지 않는다', () => {
+    process.env.EXPO_PUBLIC_CHAT_COMMUNITY_ENABLED = 'false';
+    mockRoomListItemsReturn({ items: [] });
+
+    render(<RoomsListScreen />);
+
+    expect(screen.queryByLabelText('초대함')).toBeNull();
+    expect(screen.queryByLabelText('초대함, 대기 중인 초대 있음')).toBeNull();
+  });
+
+  it('chat.community.enabled 플래그가 기본값(ON)이면 초대함 버튼이 렌더된다', () => {
+    mockRoomListItemsReturn({ items: [] });
+
+    render(<RoomsListScreen />);
+
+    expect(screen.getByLabelText('초대함')).toBeTruthy();
   });
 
   it('안읽은 수>0인 방에는 배지 숫자가, 0인 방에는 배지가 렌더되지 않는다', () => {

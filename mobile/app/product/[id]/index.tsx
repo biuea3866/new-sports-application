@@ -9,6 +9,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useProducts, useAddCartItem, useCurrentUserId } from '../../../api/goods';
 import { useStartGoodsChat } from '../../../lib/useChat';
+import { isFeatureEnabled } from '../../../lib/feature-flags';
 import { ROUTES } from '../../../lib/navigation';
 import { useTheme } from '../../../theme/useTheme';
 import { Button } from '../../../components/ui/Button';
@@ -181,8 +182,8 @@ export default function ProductDetailScreen() {
         </View>
       </View>
 
-      {/* 판매자와 채팅하기 — 보조 CTA (본인 상품이면 숨김) */}
-      {!isOwnProduct && (
+      {/* 판매자와 채팅하기 — 보조 CTA (본인 상품이면 숨김, chat.goods.enabled 플래그 게이팅) */}
+      {!isOwnProduct && isFeatureEnabled('chat.goods.enabled') && (
         <View style={styles.chatCtaSection}>
           <Button
             label="판매자와 채팅하기"

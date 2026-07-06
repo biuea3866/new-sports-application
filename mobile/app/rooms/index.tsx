@@ -6,7 +6,7 @@
  *
  * 병합 로직(useRooms+useUnreadCounts)은 `lib/useRoomListItems`가 담당하고,
  * 이 화면은 4상태(loading/empty/error/success) 렌더링만 한다. 헤더 우측 초대 수신함
- * 진입 버튼은 여기서 배치만 하고, `chat.community.enabled` 플래그 게이팅은 FE-15가 담당한다.
+ * 진입 버튼은 `chat.community.enabled` 플래그로 게이팅한다(FE-15).
  */
 import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
@@ -18,6 +18,7 @@ import { LoadingView } from '../../components/ui/LoadingView';
 import { ThemedText } from '../../components/ui/ThemedText';
 import { ThemedView } from '../../components/ui/ThemedView';
 import { useTheme } from '../../theme/useTheme';
+import { isFeatureEnabled } from '../../lib/feature-flags';
 import { useMyInvitations } from '../../lib/useInvitations';
 import { useRoomListItems, type RoomListItemView } from '../../lib/useRoomListItems';
 
@@ -83,7 +84,7 @@ export default function RoomsListScreen() {
         <ThemedText variant="primary" style={styles.title}>
           채팅
         </ThemedText>
-        <InvitationInboxButton />
+        {isFeatureEnabled('chat.community.enabled') ? <InvitationInboxButton /> : null}
       </View>
 
       {isLoading ? (
