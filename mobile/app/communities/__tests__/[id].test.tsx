@@ -122,6 +122,7 @@ function mockMyProfile(overrides: Partial<ReturnType<typeof useMyProfile>> = {})
     isLoading: false,
     isError: false,
     error: null,
+    refetch: jest.fn(),
     ...overrides,
   } as unknown as ReturnType<typeof useMyProfile>);
 }
@@ -364,6 +365,30 @@ describe('CommunityDetailScreen', () => {
 
     expect(screen.getByText('멤버 목록은 가입한 멤버만 볼 수 있어요')).toBeTruthy();
     expect(screen.getByLabelText('가입하기')).toBeTruthy();
+  });
+
+  it('내 프로필 조회에 실패하면 가입하기 대신 에러 뷰가 표시되고 재시도하면 프로필을 다시 조회한다', () => {
+    const refetch = jest.fn();
+    mockMyProfile({ isError: true, error: new Error('boom'), data: undefined, refetch });
+
+    renderScreen();
+
+    expect(screen.queryByLabelText('가입하기')).toBeNull();
+    fireEvent.press(screen.getByLabelText('다시 시도'));
+
+    expect(refetch).toHaveBeenCalled();
+  });
+
+  it('잘못된 id로 접근하면 로딩이 무한 유지되지 않고 잘못된 접근 안내가 표시된다', () => {
+    useLocalSearchParamsMock.mockReturnValue({ id: undefined } as unknown as { id: string });
+    mockCommunity({ isLoading: true, data: undefined });
+    mockMembers({ isLoading: true, data: undefined });
+    mockMyProfile({ isLoading: true, data: undefined });
+
+    renderScreen();
+
+    expect(screen.queryByLabelText('로딩 중')).toBeNull();
+    expect(screen.getByText('잘못된 접근이에요')).toBeTruthy();
   });
 
   it('다크 모드에서도 정상 렌더된다', () => {

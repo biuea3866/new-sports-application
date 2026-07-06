@@ -58,6 +58,7 @@ export default function CommunityDetailScreen() {
   const members = membersQuery.data ?? [];
   const membersForbidden = isForbiddenError(membersQuery.error);
   const viewer = resolveViewerMembership({ members, myUserId, isPendingApproval });
+  const isInvalidCommunityId = Number.isNaN(communityId);
 
   function handleJoin() {
     joinMutation.mutate(undefined, {
@@ -114,6 +115,14 @@ export default function CommunityDetailScreen() {
 
   const isLoading = communityQuery.isLoading || membersQuery.isLoading || myProfileQuery.isLoading;
 
+  if (isInvalidCommunityId) {
+    return (
+      <ThemedView style={styles.container} background="background">
+        <EmptyState message="잘못된 접근이에요" description="커뮤니티 링크를 다시 확인해 주세요" />
+      </ThemedView>
+    );
+  }
+
   return (
     <ThemedView style={styles.container} background="background">
       {isLoading && <LoadingView variant="skeleton" skeletonCount={4} />}
@@ -125,54 +134,62 @@ export default function CommunityDetailScreen() {
         />
       )}
 
-      {!isLoading && !communityQuery.isError && communityQuery.data === undefined && (
-        <EmptyState message="커뮤니티를 찾을 수 없어요" />
+      {!isLoading && !communityQuery.isError && myProfileQuery.isError && (
+        <ErrorView message="내 정보를 불러오지 못했어요" onRetry={() => myProfileQuery.refetch()} />
       )}
 
-      {!isLoading && !communityQuery.isError && communityQuery.data !== undefined && (
-        <ScrollView contentContainerStyle={styles.content}>
-          <CommunitySummary
-            community={communityQuery.data}
-            viewer={viewer}
-            onJoin={handleJoin}
-            onEnterChat={handleEnterChat}
-            isJoinPending={joinMutation.isPending}
-          />
+      {!isLoading &&
+        !communityQuery.isError &&
+        !myProfileQuery.isError &&
+        communityQuery.data === undefined && <EmptyState message="커뮤니티를 찾을 수 없어요" />}
 
-          <ThemedView style={styles.membersSection} background="background">
-            {membersForbidden && <EmptyState message={MEMBERS_RESTRICTED_MESSAGE} />}
+      {!isLoading &&
+        !communityQuery.isError &&
+        !myProfileQuery.isError &&
+        communityQuery.data !== undefined && (
+          <ScrollView contentContainerStyle={styles.content}>
+            <CommunitySummary
+              community={communityQuery.data}
+              viewer={viewer}
+              onJoin={handleJoin}
+              onEnterChat={handleEnterChat}
+              isJoinPending={joinMutation.isPending}
+            />
 
-            {!membersForbidden && membersQuery.isError && (
-              <ErrorView
-                message="멤버 목록을 불러오지 못했어요"
-                onRetry={() => membersQuery.refetch()}
-              />
+            <ThemedView style={styles.membersSection} background="background">
+              {membersForbidden && <EmptyState message={MEMBERS_RESTRICTED_MESSAGE} />}
+
+              {!membersForbidden && membersQuery.isError && (
+                <ErrorView
+                  message="멤버 목록을 불러오지 못했어요"
+                  onRetry={() => membersQuery.refetch()}
+                />
+              )}
+
+              {!membersQuery.isError && (
+                <CommunityMemberList
+                  members={members}
+                  canManage={canManageMembers(viewer)}
+                  onKick={handleKick}
+                  onTransfer={handleTransfer}
+                />
+              )}
+            </ThemedView>
+
+            {(viewer.kind === 'member' || viewer.kind === 'host') && (
+              <Pressable
+                style={styles.leaveButton}
+                onPress={handleLeave}
+                accessibilityRole="button"
+                accessibilityLabel="탈퇴하기"
+              >
+                <ThemedText variant="danger" style={styles.leaveText}>
+                  탈퇴하기
+                </ThemedText>
+              </Pressable>
             )}
-
-            {!membersQuery.isError && (
-              <CommunityMemberList
-                members={members}
-                canManage={canManageMembers(viewer)}
-                onKick={handleKick}
-                onTransfer={handleTransfer}
-              />
-            )}
-          </ThemedView>
-
-          {(viewer.kind === 'member' || viewer.kind === 'host') && (
-            <Pressable
-              style={styles.leaveButton}
-              onPress={handleLeave}
-              accessibilityRole="button"
-              accessibilityLabel="탈퇴하기"
-            >
-              <ThemedText variant="danger" style={styles.leaveText}>
-                탈퇴하기
-              </ThemedText>
-            </Pressable>
-          )}
-        </ScrollView>
-      )}
+          </ScrollView>
+        )}
     </ThemedView>
   );
 }
