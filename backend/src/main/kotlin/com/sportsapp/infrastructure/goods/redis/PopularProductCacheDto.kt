@@ -11,7 +11,7 @@ data class PopularProductCacheDto(
     val category: ProductCategory,
     val price: BigDecimal,
     val description: String,
-    val imageUrl: String,
+    val imageUrl: String?,
     val status: ProductStatus,
 ) {
     fun toSnapshot(): PopularProductSnapshot = PopularProductSnapshot(

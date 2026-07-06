@@ -38,6 +38,8 @@ import org.testcontainers.junit.jupiter.Container
  * S-05: 등록되지 않은 일반 RuntimeException은 여전히 500 + INTERNAL_ERROR로 응답된다.
  * [DEF-001] S-06: 무효 enum 쿼리 파라미터 전달 시 500 대신 400을 반환한다.
  * [DEF-001] S-07: 유효 enum 쿼리 파라미터 전달 시 200을 반환한다 (회귀).
+ * [F6] S-08: 필수 @RequestParam 누락 시 500 대신 400을 반환한다.
+ * [F6] S-09: 필수 @RequestParam이 있으면 200을 반환한다 (회귀).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
@@ -63,7 +65,7 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
     init {
         Given("ResourceNotFoundException이 발생하는 엔드포인트") {
             When("GET /test/exceptions/resource-not-found 요청 시") {
-                Then("[S-01] 404 + ProblemDetail (code=RESOURCE_NOT_FOUND) 을 반환한다") {
+                Then("404 + ProblemDetail (code=RESOURCE_NOT_FOUND) 을 반환한다") {
                     mockMvc.perform(
                         get("/test/exceptions/resource-not-found")
                             .with(user("testuser").roles("USER"))
@@ -81,7 +83,7 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
 
         Given("BusinessRuleViolationException이 발생하는 엔드포인트") {
             When("GET /test/exceptions/business-rule-violation 요청 시") {
-                Then("[S-01] 422 + ProblemDetail (code=BUSINESS_RULE_VIOLATION) 을 반환한다") {
+                Then("422 + ProblemDetail (code=BUSINESS_RULE_VIOLATION) 을 반환한다") {
                     mockMvc.perform(
                         get("/test/exceptions/business-rule-violation")
                             .with(user("testuser").roles("USER"))
@@ -97,7 +99,7 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
 
         Given("알 수 없는 RuntimeException이 발생하는 엔드포인트") {
             When("GET /test/exceptions/unknown-error 요청 시") {
-                Then("[S-02] 500 + ProblemDetail (code=INTERNAL_ERROR) 을 반환한다") {
+                Then("500 + ProblemDetail (code=INTERNAL_ERROR) 을 반환한다") {
                     mockMvc.perform(
                         get("/test/exceptions/unknown-error")
                             .with(user("testuser").roles("USER"))
@@ -113,7 +115,7 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
 
         Given("@Valid 검증이 실패하는 요청") {
             When("POST /test/exceptions/validation 에 빈 name 으로 요청 시") {
-                Then("[S-03] 400 + fieldErrors 목록이 포함된 ProblemDetail 을 반환한다") {
+                Then("400 + fieldErrors 목록이 포함된 ProblemDetail 을 반환한다") {
                     mockMvc.perform(
                         post("/test/exceptions/validation")
                             .with(user("testuser").roles("USER"))
@@ -132,7 +134,7 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
 
         Given("ObjectOptimisticLockingFailureException이 발생하는 엔드포인트") {
             When("GET /test/exceptions/optimistic-lock-conflict 요청 시") {
-                Then("[S-04] 409 + ProblemDetail (code=OPTIMISTIC_LOCK_CONFLICT) 을 반환한다") {
+                Then("409 + ProblemDetail (code=OPTIMISTIC_LOCK_CONFLICT) 을 반환한다") {
                     mockMvc.perform(
                         get("/test/exceptions/optimistic-lock-conflict")
                             .with(user("testuser").roles("USER"))
@@ -148,7 +150,7 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
 
         Given("등록되지 않은 일반 RuntimeException이 발생하는 엔드포인트") {
             When("GET /test/exceptions/unknown-error 요청 시") {
-                Then("[S-05] 낙관락 매핑 추가 후에도 여전히 500 + INTERNAL_ERROR 로 응답한다") {
+                Then("낙관락 매핑 추가 후에도 여전히 500 + INTERNAL_ERROR 로 응답한다") {
                     mockMvc.perform(
                         get("/test/exceptions/unknown-error")
                             .with(user("testuser").roles("USER"))
@@ -164,7 +166,7 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
 
         Given("enum 쿼리 파라미터에 정의되지 않은 값을 전달하는 요청") {
             When("GET /test/exceptions/enum-param?value=PAID 요청 시") {
-                Then("[DEF-001][S-06] 500 대신 400 + ProblemDetail (code=INVALID_ENUM_VALUE) 을 반환한다") {
+                Then("500 대신 400 + ProblemDetail (code=INVALID_ENUM_VALUE) 을 반환한다") {
                     mockMvc.perform(
                         get("/test/exceptions/enum-param?value=PAID")
                             .with(user("testuser").roles("USER"))
@@ -178,7 +180,7 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
             }
 
             When("GET /test/exceptions/enum-param?value=INVALID_ANYTHING 요청 시") {
-                Then("[DEF-001][S-06] 임의의 무효 문자열도 400을 반환한다") {
+                Then("임의의 무효 문자열도 400을 반환한다") {
                     mockMvc.perform(
                         get("/test/exceptions/enum-param?value=INVALID_ANYTHING")
                             .with(user("testuser").roles("USER"))
@@ -190,7 +192,7 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
             }
 
             When("GET /test/exceptions/enum-param?value=COMPLETED 요청 시") {
-                Then("[DEF-001][S-07] 유효한 enum 값이면 200을 반환한다 (회귀)") {
+                Then("유효한 enum 값이면 200을 반환한다 (회귀)") {
                     mockMvc.perform(
                         get("/test/exceptions/enum-param?value=COMPLETED")
                             .with(user("testuser").roles("USER"))
@@ -246,6 +248,34 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
                 }
             }
         }
+
+        Given("필수 @RequestParam이 없는 요청") {
+            When("GET /test/exceptions/required-param 을 파라미터 없이 요청 시") {
+                Then("500 대신 400 + ProblemDetail (code=MISSING_REQUEST_PARAMETER) 을 반환한다") {
+                    mockMvc.perform(
+                        get("/test/exceptions/required-param")
+                            .with(user("testuser").roles("USER"))
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isBadRequest)
+                        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                        .andExpect(jsonPath("$.status").value(400))
+                        .andExpect(jsonPath("$.properties.code").value("MISSING_REQUEST_PARAMETER"))
+                        .andExpect(jsonPath("$.detail").value("Required request parameter is missing: category"))
+                }
+            }
+
+            When("GET /test/exceptions/required-param?category=FOOTWEAR 요청 시") {
+                Then("파라미터가 있으면 200을 반환한다 (회귀)") {
+                    mockMvc.perform(
+                        get("/test/exceptions/required-param?category=FOOTWEAR")
+                            .with(user("testuser").roles("USER"))
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isOk)
+                }
+            }
+        }
     }
 }
 
@@ -286,6 +316,11 @@ class ExceptionTriggerController {
     @PostMapping("/enum-body")
     fun receiveEnumBody(@RequestBody request: EnumBodyRequest): String {
         return request.status.name
+    }
+
+    @GetMapping("/required-param")
+    fun receiveRequiredParam(@RequestParam category: String): String {
+        return category
     }
 }
 

@@ -12,7 +12,7 @@ data class ProductWithStockResponse(
     val category: ProductCategory,
     val price: BigDecimal,
     val description: String,
-    val imageUrl: String,
+    val imageUrl: String?,
     val status: ProductStatus,
     val stockQuantity: Int,
     /** 이 상품에 연결된 활성 한정판 회차 id. 없으면 null — FE는 이 값이 있을 때만 진입점 배너를 노출한다. */

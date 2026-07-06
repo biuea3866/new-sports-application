@@ -17,6 +17,15 @@ mcp:
   # 예: MCP_EXTERNAL_URL=https://mcp-api.sportsapp.com
   external-url: ${MCP_EXTERNAL_URL:https://mcp-api.sportsapp.com}
 
+load-shedding:
+  # F2 실측 부하 테스트 — 동시 인플라이트 요청이 CPU 처리 한계를 넘으면 서블릿 큐잉(최대 60초
+  # 대기)으로 한 번 무너지면 재기동 전까지 영구 열화한다. LoadSheddingFilter가 이 값을 초과하는
+  # 요청을 큐잉 없이 즉시 503으로 거부한다(fast-fail). 로컬 개발 기본값 200 — 운영은
+  # LOAD_SHEDDING_MAX_CONCURRENT_REQUESTS 로 override.
+  max-concurrent-requests: ${LOAD_SHEDDING_MAX_CONCURRENT_REQUESTS:200}
+  # 배포 직후 이상 동작 시 즉시 롤백 없이 끌 수 있는 킬스위치. 기본 활성.
+  enabled: ${LOAD_SHEDDING_ENABLED:true}
+
 spring:
   ai:
     mcp:
