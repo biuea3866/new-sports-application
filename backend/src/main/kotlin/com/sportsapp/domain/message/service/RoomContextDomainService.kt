@@ -37,12 +37,14 @@ class RoomContextDomainService(
 
     /**
      * 컨텍스트 방을 provision 한다 — 이미 있으면 새로 만들지 않고 그대로 반환한다(멱등, FR-16).
-     * 신규 생성 시 방장을 첫 참여자로 등록한다.
+     * 신규 생성 시 방장을 `rooms.host_user_id`(BE-13)에 영속하고 첫 참여자로도 등록한다.
      */
     fun provision(contextType: RoomContextType, contextId: Long, name: String?, hostUserId: Long): Room {
         val existingRoom = roomRepository.findByContext(contextType, contextId)
         if (existingRoom != null) return existingRoom
-        val room = roomRepository.save(Room.createForContext(RoomType.GROUP, contextType, contextId, name))
+        val room = roomRepository.save(
+            Room.createForContext(RoomType.GROUP, contextType, contextId, name, hostUserId = hostUserId),
+        )
         roomParticipantRepository.save(RoomParticipant.create(room, hostUserId))
         return room
     }
@@ -92,13 +94,16 @@ class RoomContextDomainService(
      * 판매자(productId 소유자)는 `GoodsProductGateway`로 조회한다. 같은 productId에 구매자가
      * 여럿일 수 있어 `findByContext` 단건 조회 대신 buyer 참여자로 좁힌 [RoomRepository.findByContextAndParticipant]로
      * 구매자-판매자 조합 단위 멱등을 보장한다. 구매자가 판매자 본인이면 [SelfTradeChatException]을 던진다.
+     * 방장(`rooms.host_user_id`, BE-13)은 상품 소유자인 판매자로 지정한다.
      */
     fun createOrFindGoodsTradeRoom(productId: Long, buyerId: Long): Room {
         val sellerId = goodsProductGateway.findOwnerId(productId)
         if (buyerId == sellerId) throw SelfTradeChatException(productId, buyerId)
         val existingRoom = roomRepository.findByContextAndParticipant(RoomContextType.GOODS_PRODUCT, productId, buyerId)
         if (existingRoom != null) return existingRoom
-        val room = roomRepository.save(Room.createForContext(RoomType.GROUP, RoomContextType.GOODS_PRODUCT, productId, null))
+        val room = roomRepository.save(
+            Room.createForContext(RoomType.GROUP, RoomContextType.GOODS_PRODUCT, productId, null, hostUserId = sellerId),
+        )
         roomParticipantRepository.save(RoomParticipant.create(room, buyerId))
         roomParticipantRepository.save(RoomParticipant.create(room, sellerId))
         return room

@@ -45,6 +45,10 @@ class RoomContextDomainServiceGoodsTradeTest : BehaviorSpec({
                 verify(exactly = 1) { roomRepository.save(any()) }
                 verify(exactly = 2) { roomParticipantRepository.save(any()) }
             }
+
+            Then("방장(host_user_id, BE-13)은 판매자(100)로 지정된다") {
+                result.currentHostUserId shouldBe 100L
+            }
         }
     }
 

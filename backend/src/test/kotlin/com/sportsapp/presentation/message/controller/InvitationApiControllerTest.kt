@@ -63,7 +63,11 @@ class InvitationApiControllerTest(
     }
 
     private fun createGroupRoomHostedBy(hostUserId: Long): Room =
-        messageDomainService.createGroupRoom("게스트 초대 테스트방 ${System.nanoTime()}", listOf(hostUserId))
+        messageDomainService.createGroupRoom(
+            "게스트 초대 테스트방 ${System.nanoTime()}",
+            listOf(hostUserId),
+            hostUserId = hostUserId,
+        )
 
     private fun inviteRequestBody(inviteeUserId: Long, canSpeak: Boolean = true, expiresInDays: Long = 7L): String =
         objectMapper.writeValueAsString(

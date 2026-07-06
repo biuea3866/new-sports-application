@@ -50,7 +50,7 @@ class GuestEvictionApiScenarioTest(
             val hostUserId = registerUser(hostEmail)
             val hostToken = login(hostEmail)
 
-            val room = roomJpaRepository.save(Room.createGroup("방장 수동 방출 시나리오"))
+            val room = roomJpaRepository.save(Room.createGroup("방장 수동 방출 시나리오", hostUserId = hostUserId))
             roomParticipantJpaRepository.save(RoomParticipant.create(room, hostUserId))
             val guest = roomParticipantJpaRepository.save(
                 RoomParticipant.forGuest(room = room, userId = 5001L, canSpeak = true, expiresInDays = 7L),
@@ -105,7 +105,7 @@ class GuestEvictionApiScenarioTest(
             val hostUserId = registerUser(hostEmail)
             val hostToken = login(hostEmail)
 
-            val room = roomJpaRepository.save(Room.createGroup("비참여자 방출 시나리오"))
+            val room = roomJpaRepository.save(Room.createGroup("비참여자 방출 시나리오", hostUserId = hostUserId))
             roomParticipantJpaRepository.save(RoomParticipant.create(room, hostUserId))
 
             When("존재하지 않는 참여자를 방출하려 하면") {

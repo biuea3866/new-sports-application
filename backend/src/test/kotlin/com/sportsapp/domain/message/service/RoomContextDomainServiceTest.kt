@@ -55,6 +55,10 @@ class RoomContextDomainServiceTest : BehaviorSpec({
                 verify(exactly = 1) { roomRepository.save(any()) }
                 verify(exactly = 1) { roomParticipantRepository.save(any()) }
             }
+
+            Then("방의 host_user_id(BE-13)가 hostUserId로 영속된다") {
+                result.currentHostUserId shouldBe 1L
+            }
         }
     }
 
