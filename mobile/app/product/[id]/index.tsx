@@ -8,8 +8,10 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'rea
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useProducts, useAddCartItem, useCurrentUserId } from '../../../api/goods';
+import { useStartGoodsChat } from '../../../lib/useChat';
 import { ROUTES } from '../../../lib/navigation';
 import { useTheme } from '../../../theme/useTheme';
+import { Button } from '../../../components/ui/Button';
 
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -20,6 +22,7 @@ export default function ProductDetailScreen() {
 
   const { data: products, isLoading, isError } = useProducts();
   const addCartItem = useAddCartItem(userId);
+  const startGoodsChat = useStartGoodsChat();
 
   const productId = Number(id);
   const product = products?.find((p) => p.id === productId);
@@ -49,6 +52,26 @@ export default function ProductDetailScreen() {
   }
 
   const isOutOfStock = product.stockQuantity === 0;
+  const isOwnProduct = typeof product.ownerId === 'number' && product.ownerId === userId;
+
+  const handleStartChat = () => {
+    Alert.alert('판매자와 채팅', '판매자와 1:1 채팅을 시작할까요?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '확인',
+        onPress: () => {
+          startGoodsChat.mutate(product.id, {
+            onSuccess: (room) => {
+              router.push(ROUTES.rooms.detail(String(room.id)));
+            },
+            onError: () => {
+              Alert.alert('오류', '채팅을 시작하지 못했어요.');
+            },
+          });
+        },
+      },
+    ]);
+  };
 
   const handleAddToCart = () => {
     if (userId <= 0) {
@@ -158,6 +181,18 @@ export default function ProductDetailScreen() {
         </View>
       </View>
 
+      {/* 판매자와 채팅하기 — 보조 CTA (본인 상품이면 숨김) */}
+      {!isOwnProduct && (
+        <View style={styles.chatCtaSection}>
+          <Button
+            label="판매자와 채팅하기"
+            onPress={handleStartChat}
+            variant="surface"
+            loading={startGoodsChat.isPending}
+          />
+        </View>
+      )}
+
       {/* 장바구니 담기 버튼 */}
       <TouchableOpacity
         style={[
@@ -189,6 +224,10 @@ export default function ProductDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  chatCtaSection: {
+    marginHorizontal: 20,
+    marginTop: 24,
+  },
   limitedDropBanner: {
     marginHorizontal: 20,
     marginTop: 16,

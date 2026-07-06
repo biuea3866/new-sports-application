@@ -16,12 +16,18 @@ jest.mock('../../../../api/goods', () => ({
   useCurrentUserId: jest.fn(),
 }));
 
+jest.mock('../../../../lib/useChat', () => ({
+  useStartGoodsChat: jest.fn(),
+}));
+
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAddCartItem, useCurrentUserId, useProducts } from '../../../../api/goods';
+import { useStartGoodsChat } from '../../../../lib/useChat';
 
 const useProductsMock = useProducts as jest.MockedFunction<typeof useProducts>;
 const useAddCartItemMock = useAddCartItem as jest.MockedFunction<typeof useAddCartItem>;
 const useCurrentUserIdMock = useCurrentUserId as jest.MockedFunction<typeof useCurrentUserId>;
+const useStartGoodsChatMock = useStartGoodsChat as jest.MockedFunction<typeof useStartGoodsChat>;
 const useLocalSearchParamsMock = useLocalSearchParams as jest.MockedFunction<
   typeof useLocalSearchParams
 >;
@@ -69,6 +75,10 @@ describe('ProductDetailScreen 한정판 진입점', () => {
       isPending: false,
     } as unknown as ReturnType<typeof useAddCartItem>);
     useCurrentUserIdMock.mockReturnValue(1);
+    useStartGoodsChatMock.mockReturnValue({
+      mutate: jest.fn(),
+      isPending: false,
+    } as unknown as ReturnType<typeof useStartGoodsChat>);
   });
 
   afterEach(() => {
