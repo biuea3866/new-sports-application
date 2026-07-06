@@ -36,7 +36,8 @@ export interface MyFacility {
   sigunguName: string;
   type: FacilityType;
   address: string;
-  location: string;
+  lat: number;
+  lng: number;
   parking: boolean;
   tel: string;
   homePage: string | null;

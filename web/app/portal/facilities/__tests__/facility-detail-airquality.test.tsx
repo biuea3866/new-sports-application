@@ -38,7 +38,8 @@ function baseFacility(overrides: Record<string, unknown> = {}) {
     sigunguName: "해운대구",
     type: "OUTDOOR",
     address: "부산 해운대구 ...",
-    location: "35.1631,129.1636",
+    lat: 35.1631,
+    lng: 129.1636,
     parking: true,
     tel: "051-000-0000",
     homePage: null,
@@ -118,7 +119,7 @@ describe("시설 상세 — 시/도 표시", () => {
 
   it("시/도명이 미지정이면 '지역 미확인'으로 표시된다", async () => {
     stubFetchByUrl({
-      facility: baseFacility({ sidoName: "미지정", location: "" }),
+      facility: baseFacility({ sidoName: "미지정", lat: undefined, lng: undefined }),
     });
 
     const { default: FacilityDetailPage } = await import("../[id]/page");
@@ -157,6 +158,7 @@ describe("시설 상세 — 대기질 카드", () => {
       expect(screen.getByText("나쁨")).toBeInTheDocument();
     });
     expect(screen.getByText(/92/)).toBeInTheDocument();
+    expect(screen.getByText("35.1631, 129.1636")).toBeInTheDocument();
   });
 
   it("대기질 조회 실패 시 상세 본체는 정상이고 카드만 폴백 문구를 표시한다", async () => {
@@ -180,9 +182,9 @@ describe("시설 상세 — 대기질 카드", () => {
     expect(screen.getByText("부산광역시")).toBeInTheDocument();
   });
 
-  it("location 파싱이 실패하면 대기질 카드가 렌더되지 않고 상세는 정상 표시된다", async () => {
+  it("좌표(lat/lng)가 없으면 대기질 카드가 렌더되지 않고 상세는 정상 표시된다", async () => {
     stubFetchByUrl({
-      facility: baseFacility({ location: "invalid-location" }),
+      facility: baseFacility({ lat: undefined, lng: undefined }),
     });
 
     const { default: FacilityDetailPage } = await import("../[id]/page");
