@@ -29,8 +29,9 @@ class MessageDomainService(
 
     fun createDirectRoom(): Room = roomRepository.save(Room.createDirect())
 
-    fun createGroupRoom(name: String, participantIds: List<Long>): Room {
-        val room = roomRepository.save(Room.createGroup(name))
+    /** 그룹 방을 생성한다 — hostUserId(BE-13)를 지정하면 방장으로 영속한다(미지정 시 방장 없음). */
+    fun createGroupRoom(name: String, participantIds: List<Long>, hostUserId: Long? = null): Room {
+        val room = roomRepository.save(Room.createGroup(name, hostUserId = hostUserId))
         participantIds.forEach { userId ->
             roomParticipantRepository.save(RoomParticipant.create(room, userId))
         }

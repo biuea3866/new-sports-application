@@ -30,7 +30,7 @@ class CreateRoomUseCase(
                 } else {
                     listOf(command.requestUserId) + command.participantIds
                 }
-                messageDomainService.createGroupRoom(command.name, allParticipantIds)
+                messageDomainService.createGroupRoom(command.name, allParticipantIds, hostUserId = command.requestUserId)
             }
             else ->
                 throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Group room requires a name")

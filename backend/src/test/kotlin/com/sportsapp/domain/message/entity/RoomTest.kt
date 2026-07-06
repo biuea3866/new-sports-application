@@ -1,5 +1,6 @@
 package com.sportsapp.domain.message.entity
 
+import com.sportsapp.domain.message.exception.NotRoomHostException
 import com.sportsapp.domain.message.vo.RoomContextType
 import com.sportsapp.domain.message.vo.RoomType
 import io.kotest.assertions.throwables.shouldThrow
@@ -100,6 +101,65 @@ class RoomTest : BehaviorSpec({
                 shouldThrow<IllegalStateException> {
                     room.softDelete(1L)
                 }
+            }
+        }
+    }
+
+    Given("host_user_id 가 지정되지 않은 방 (Room.createGroup(name))") {
+        val room = Room.createGroup("호스트 없는 모임")
+
+        Then("currentHostUserId 는 null 이다") {
+            room.currentHostUserId.shouldBeNull()
+        }
+        Then("isHostedBy 는 어떤 userId 에도 false 를 반환한다") {
+            room.isHostedBy(1L) shouldBe false
+        }
+        Then("requireHostedBy 는 누가 호출해도 NotRoomHostException 을 던진다") {
+            shouldThrow<NotRoomHostException> {
+                room.requireHostedBy(1L)
+            }
+        }
+    }
+
+    Given("host_user_id 가 1L 로 지정된 방 (Room.createGroup(name, hostUserId = 1L))") {
+        val room = Room.createGroup("호스트 있는 모임", hostUserId = 1L)
+
+        Then("currentHostUserId 는 1L 이다") {
+            room.currentHostUserId shouldBe 1L
+        }
+        Then("isHostedBy(1L) 은 true, isHostedBy(2L) 은 false 다") {
+            room.isHostedBy(1L) shouldBe true
+            room.isHostedBy(2L) shouldBe false
+        }
+        Then("requireHostedBy(1L) 은 예외 없이 통과한다") {
+            room.requireHostedBy(1L)
+        }
+        Then("requireHostedBy(2L) 은 NotRoomHostException 을 던진다") {
+            shouldThrow<NotRoomHostException> {
+                room.requireHostedBy(2L)
+            }
+        }
+    }
+
+    Given("host 미지정 방에 assignHost(3L) 을 호출하면") {
+        val room = Room.createGroup("호스트 지정 전")
+
+        When("assignHost(3L) 을 호출하면") {
+            room.assignHost(3L)
+
+            Then("currentHostUserId 가 3L 로 갱신되고 requireHostedBy(3L) 이 통과한다") {
+                room.currentHostUserId shouldBe 3L
+                room.requireHostedBy(3L)
+            }
+        }
+    }
+
+    Given("Room.createForContext(..., hostUserId = 7L) 호출") {
+        When("컨텍스트 방을 host 지정과 함께 생성하면") {
+            val room = Room.createForContext(RoomType.GROUP, RoomContextType.COMMUNITY, 10L, "주말축구", hostUserId = 7L)
+
+            Then("currentHostUserId 는 7L 이다") {
+                room.currentHostUserId shouldBe 7L
             }
         }
     }
