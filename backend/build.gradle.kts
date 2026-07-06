@@ -84,6 +84,9 @@ dependencies {
     // AWS SDK v2 (S3 + MinIO Presigned URL)
     implementation("software.amazon.awssdk:s3:2.31.19")
 
+    // 좌표 변환 (WGS84 → 에어코리아 TM 좌표계 EPSG:5181, AirKoreaTmProjection)
+    implementation("org.locationtech.proj4j:proj4j:1.3.0")
+
     // JSON Column
     implementation("io.hypersistence:hypersistence-utils-hibernate-63:3.9.0")
 

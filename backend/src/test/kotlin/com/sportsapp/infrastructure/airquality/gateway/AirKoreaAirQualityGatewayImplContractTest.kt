@@ -16,13 +16,6 @@ import org.springframework.data.redis.core.StringRedisTemplate
 
 private const val TEST_API_KEY = "test-air-korea-service-key"
 
-private fun tmCoordinateResponse(tmX: String, tmY: String): MockResponse = MockResponse()
-    .setHeader("Content-Type", "application/json")
-    .setBody(
-        """{"response":{"header":{"resultCode":"00","resultMsg":"NORMAL SERVICE"},
-        "body":{"items":{"item":[{"umdName":"grid","tmX":"$tmX","tmY":"$tmY"}]}}}}""",
-    )
-
 private fun nearbyStationResponse(stationName: String): MockResponse = MockResponse()
     .setHeader("Content-Type", "application/json")
     .setBody(
@@ -39,7 +32,8 @@ private fun realtimeMeasureResponse(stationName: String, pm10: String, pm25: Str
         )
 
 /**
- * 에어코리아 3단계 체인(getTMStdrCrdnt→getNearbyMsrstnList→getMsrstnAcctoRltmMesureDnsty) 계약 테스트.
+ * 에어코리아 2단계 체인([AirKoreaTmProjection]으로 좌표 변환 → getNearbyMsrstnList
+ * → getMsrstnAcctoRltmMesureDnsty) 계약 테스트.
  * mock 서버(MockWebServer) + 실 Redis(TestContainers, AirQualityRedisCache)로 캐시 히트/미스·장애 degrade 를 검증한다.
  */
 class AirKoreaAirQualityGatewayImplContractTest(
@@ -69,22 +63,22 @@ class AirKoreaAirQualityGatewayImplContractTest(
     }
 
     init {
-        Given("3단계 체인이 모두 정상 응답하면") {
+        Given("2단계 체인이 모두 정상 응답하면") {
             val lat = 37.5665
             val lng = 126.9780
             evictCacheFor(lat, lng)
+            val expectedCoordinate = AirKoreaTmProjection.toTm(lat, lng)
 
             When("current 를 호출하면") {
                 val mockWebServer = ExternalContractSupport.startMockServer()
-                mockWebServer.enqueue(tmCoordinateResponse("152340.12", "412345.67"))
                 mockWebServer.enqueue(nearbyStationResponse("중구"))
                 mockWebServer.enqueue(realtimeMeasureResponse("중구", "42", "18", "2026-07-04 09:15"))
 
                 lateinit var measurement: com.sportsapp.domain.airquality.vo.AirQualityMeasurement
                 withGateway(mockWebServer) { gateway -> measurement = gateway.current(lat, lng) }
 
-                Then("3개 요청이 순서대로 호출되어 pm10·pm25·측정소·측정시각을 파싱한다") {
-                    mockWebServer.requestCount shouldBe 3
+                Then("2개 요청이 순서대로 호출되어 pm10·pm25·측정소·측정시각을 파싱한다") {
+                    mockWebServer.requestCount shouldBe 2
                     measurement.pm10 shouldBe 42
                     measurement.pm25 shouldBe 18
                     measurement.stationName shouldBe "중구"
@@ -93,14 +87,19 @@ class AirKoreaAirQualityGatewayImplContractTest(
                     measurement.measuredAt?.minute shouldBe 15
                 }
 
-                Then("getMsrstnAcctoRltmMesureDnsty 요청에 ver=1.3 파라미터를 포함한다 (미포함 시 실서버가 pm25Value 를 응답에서 누락)") {
-                    mockWebServer.takeRequest()
-                    mockWebServer.takeRequest()
-                    val realtimeMeasureRequest = mockWebServer.takeRequest()
+                Then("nearby 요청은 WGS84→TM 변환된 tmX·tmY, realtime 요청은 ver=1.3·dataTerm=DAILY 를 포함한다") {
+                    // 요청 순서대로 정확히 2건만 소비한다 (takeRequest 를 요청 수보다 많이 호출하면 블로킹된다).
+                    val nearbyRequest = mockWebServer.takeRequest()
+                    nearbyRequest.path.shouldNotBeNull()
+                    nearbyRequest.path?.contains("getNearbyMsrstnList") shouldBe true
+                    nearbyRequest.requestUrl?.queryParameter("tmX") shouldBe expectedCoordinate.tmX
+                    nearbyRequest.requestUrl?.queryParameter("tmY") shouldBe expectedCoordinate.tmY
 
+                    val realtimeMeasureRequest = mockWebServer.takeRequest()
                     realtimeMeasureRequest.path.shouldNotBeNull()
                     realtimeMeasureRequest.path?.contains("getMsrstnAcctoRltmMesureDnsty") shouldBe true
                     realtimeMeasureRequest.requestUrl?.queryParameter("ver") shouldBe "1.3"
+                    realtimeMeasureRequest.requestUrl?.queryParameter("dataTerm") shouldBe "DAILY"
                 }
 
                 mockWebServer.shutdown()
@@ -146,7 +145,6 @@ class AirKoreaAirQualityGatewayImplContractTest(
 
             When("current 를 호출하면") {
                 val mockWebServer = ExternalContractSupport.startMockServer()
-                mockWebServer.enqueue(tmCoordinateResponse("150000.00", "350000.00"))
                 mockWebServer.enqueue(MockResponse().setResponseCode(500))
 
                 lateinit var measurement: com.sportsapp.domain.airquality.vo.AirQualityMeasurement
@@ -163,7 +161,7 @@ class AirKoreaAirQualityGatewayImplContractTest(
             }
         }
 
-        Given("1단계 호출이 read 타임아웃 내에 응답하지 않으면") {
+        Given("1단계(getNearbyMsrstnList) 호출이 read 타임아웃 내에 응답하지 않으면") {
             val lat = 36.1000
             val lng = 128.4000
             evictCacheFor(lat, lng)
@@ -191,7 +189,6 @@ class AirKoreaAirQualityGatewayImplContractTest(
 
             When("연속으로 3회 current 를 호출하면") {
                 val mockWebServer = ExternalContractSupport.startMockServer()
-                mockWebServer.enqueue(tmCoordinateResponse("160000.00", "300000.00"))
                 mockWebServer.enqueue(nearbyStationResponse("제주"))
                 mockWebServer.enqueue(realtimeMeasureResponse("제주", "30", "12", "2026-07-04 10:00"))
 
@@ -200,8 +197,8 @@ class AirKoreaAirQualityGatewayImplContractTest(
                     repeat(3) { results.add(gateway.current(lat, lng)) }
                 }
 
-                Then("TTL 내 캐시로 수렴해 외부 API는 최초 1회만 호출된다(멱등)") {
-                    mockWebServer.requestCount shouldBe 3
+                Then("TTL 내 캐시로 수렴해 외부 API는 최초 1회(2요청)만 호출된다(멱등)") {
+                    mockWebServer.requestCount shouldBe 2
                     results.map { it.pm10 }.toSet() shouldBe setOf(30)
                     results.map { it.stationName }.toSet() shouldBe setOf("제주")
 
