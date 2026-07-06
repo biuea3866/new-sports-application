@@ -209,5 +209,45 @@ class RoomCustomRepositoryImplTest(
                 }
             }
         }
+
+        Given("productId=30 에 대해 구매자별로 서로 다른 GOODS_PRODUCT 컨텍스트 방이 2건 있는 상태") {
+            val roomForBuyerA = roomJpaRepository.save(
+                Room.createForContext(RoomType.GROUP, RoomContextType.GOODS_PRODUCT, 30L, null),
+            )
+            roomParticipantJpaRepository.save(RoomParticipant.create(roomForBuyerA, 401L))
+            roomParticipantJpaRepository.save(RoomParticipant.create(roomForBuyerA, 402L))
+
+            val roomForBuyerB = roomJpaRepository.save(
+                Room.createForContext(RoomType.GROUP, RoomContextType.GOODS_PRODUCT, 30L, null),
+            )
+            roomParticipantJpaRepository.save(RoomParticipant.create(roomForBuyerB, 403L))
+            roomParticipantJpaRepository.save(RoomParticipant.create(roomForBuyerB, 402L))
+
+            When("findByContextAndParticipant(GOODS_PRODUCT, 30, 401) 을 호출하면") {
+                val found = roomCustomRepositoryImpl.findByContextAndParticipant(RoomContextType.GOODS_PRODUCT, 30L, 401L)
+
+                Then("구매자 A(401) 가 참여한 방이 반환된다") {
+                    found.shouldNotBeNull()
+                    found.id shouldBe roomForBuyerA.id
+                }
+            }
+
+            When("findByContextAndParticipant(GOODS_PRODUCT, 30, 403) 을 호출하면") {
+                val found = roomCustomRepositoryImpl.findByContextAndParticipant(RoomContextType.GOODS_PRODUCT, 30L, 403L)
+
+                Then("구매자 B(403) 가 참여한 방이 반환된다") {
+                    found.shouldNotBeNull()
+                    found.id shouldBe roomForBuyerB.id
+                }
+            }
+
+            When("findByContextAndParticipant(GOODS_PRODUCT, 30, 999) 를 참여하지 않은 사용자로 호출하면") {
+                val notFound = roomCustomRepositoryImpl.findByContextAndParticipant(RoomContextType.GOODS_PRODUCT, 30L, 999L)
+
+                Then("null 이 반환된다") {
+                    notFound.shouldBeNull()
+                }
+            }
+        }
     }
 }

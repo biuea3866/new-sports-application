@@ -17,6 +17,8 @@ data class ProductWithStockResponse(
     val stockQuantity: Int,
     /** 이 상품에 연결된 활성 한정판 회차 id. 없으면 null — FE는 이 값이 있을 때만 진입점 배너를 노출한다. */
     val limitedDropId: Long?,
+    /** 상품 소유자(판매자) userId (BE-11, additive) — FE-14 본인상품 CTA 숨김 판정용. */
+    val ownerId: Long,
     @com.fasterxml.jackson.annotation.JsonIgnore
     val product: Product,
 ) {
@@ -32,6 +34,7 @@ data class ProductWithStockResponse(
                 status = productWithStock.product.status,
                 stockQuantity = productWithStock.stockQuantity,
                 limitedDropId = productWithStock.limitedDropId,
+                ownerId = productWithStock.product.ownerId,
                 product = productWithStock.product,
             )
     }

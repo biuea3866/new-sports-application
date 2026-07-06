@@ -91,4 +91,25 @@ class RoomCustomRepositoryImpl(
             )
             .fetchFirst()
     }
+
+    override fun findByContextAndParticipant(
+        contextType: RoomContextType,
+        contextId: Long,
+        participantUserId: Long,
+    ): Room? {
+        val room = QRoom.room
+        val participant = QRoomParticipant.roomParticipant
+        return queryFactory.selectFrom(room)
+            .join(participant).on(
+                participant.room.id.eq(room.id),
+                participant.userId.eq(participantUserId),
+                participant.deletedAt.isNull,
+            )
+            .where(
+                room.contextType.eq(contextType),
+                room.contextId.eq(contextId),
+                room.deletedAt.isNull,
+            )
+            .fetchFirst()
+    }
 }

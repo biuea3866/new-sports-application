@@ -91,6 +91,9 @@ class SecurityConfig(
         // BE-12: /rooms/** 는 RoomApiController/MessageApiController 가 X-User-Id 임시 헤더에서
         // Authorization: Bearer JWT(@AuthenticationPrincipal UserPrincipal) 로 전환됨에 따라 승격.
         auth.requestMatchers("/rooms/**").authenticated()
+        // BE-11: 거래 채팅 생성은 buyerId(principal.id) 식별이 필요해, 아래 `/products/**` permitAll 보다
+        // 먼저 매칭되도록 authenticated()를 선언한다 (ProductChatApiController).
+        auth.requestMatchers(HttpMethod.POST, "/products/*/chat").authenticated()
         // TODO(AUTH-04): SecurityContext 통합 전까지 도메인 API는 X-User-Id 헤더 기반으로 임시 permitAll
         auth.requestMatchers(HttpMethod.POST, "/images/presigned-upload").authenticated()
         auth.requestMatchers(

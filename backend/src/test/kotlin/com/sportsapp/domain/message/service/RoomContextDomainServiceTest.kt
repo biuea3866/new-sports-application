@@ -1,6 +1,7 @@
 package com.sportsapp.domain.message.service
 
 import com.sportsapp.domain.message.entity.Room
+import com.sportsapp.domain.message.gateway.GoodsProductGateway
 import com.sportsapp.domain.message.entity.RoomParticipant
 import com.sportsapp.domain.message.repository.RoomParticipantRepository
 import com.sportsapp.domain.message.repository.RoomRepository
@@ -32,7 +33,8 @@ class RoomContextDomainServiceTest : BehaviorSpec({
     Given("컨텍스트에 연결된 방이 아직 없는 경우") {
         val roomRepository = mockk<RoomRepository>()
         val roomParticipantRepository = mockk<RoomParticipantRepository>()
-        val service = RoomContextDomainService(roomRepository, roomParticipantRepository)
+        val goodsProductGateway = mockk<GoodsProductGateway>()
+        val service = RoomContextDomainService(roomRepository, roomParticipantRepository, goodsProductGateway)
         every { roomRepository.findByContext(RoomContextType.COMMUNITY, 10L) } returns null
         val roomSlot = slot<Room>()
         every { roomRepository.save(capture(roomSlot)) } answers { roomSlot.captured }
@@ -59,7 +61,8 @@ class RoomContextDomainServiceTest : BehaviorSpec({
     Given("컨텍스트에 연결된 방이 이미 있는 경우") {
         val roomRepository = mockk<RoomRepository>()
         val roomParticipantRepository = mockk<RoomParticipantRepository>()
-        val service = RoomContextDomainService(roomRepository, roomParticipantRepository)
+        val goodsProductGateway = mockk<GoodsProductGateway>()
+        val service = RoomContextDomainService(roomRepository, roomParticipantRepository, goodsProductGateway)
         val existingRoom = Room.createForContext(RoomType.GROUP, RoomContextType.COMMUNITY, 20L, "기존 방")
         every { roomRepository.findByContext(RoomContextType.COMMUNITY, 20L) } returns existingRoom
 
@@ -82,7 +85,8 @@ class RoomContextDomainServiceTest : BehaviorSpec({
     Given("컨텍스트 방이 있고 사용자가 아직 참여자가 아닌 경우") {
         val roomRepository = mockk<RoomRepository>()
         val roomParticipantRepository = mockk<RoomParticipantRepository>()
-        val service = RoomContextDomainService(roomRepository, roomParticipantRepository)
+        val goodsProductGateway = mockk<GoodsProductGateway>()
+        val service = RoomContextDomainService(roomRepository, roomParticipantRepository, goodsProductGateway)
         val room = Room.createForContext(RoomType.GROUP, RoomContextType.COMMUNITY, 30L, "방")
         every { roomRepository.findByContext(RoomContextType.COMMUNITY, 30L) } returns room
         every { roomParticipantRepository.existsByRoomIdAndUserId(room.id, 2L) } returns false
@@ -100,7 +104,8 @@ class RoomContextDomainServiceTest : BehaviorSpec({
     Given("컨텍스트 방이 있고 사용자가 이미 참여자인 경우") {
         val roomRepository = mockk<RoomRepository>()
         val roomParticipantRepository = mockk<RoomParticipantRepository>()
-        val service = RoomContextDomainService(roomRepository, roomParticipantRepository)
+        val goodsProductGateway = mockk<GoodsProductGateway>()
+        val service = RoomContextDomainService(roomRepository, roomParticipantRepository, goodsProductGateway)
         val room = Room.createForContext(RoomType.GROUP, RoomContextType.COMMUNITY, 40L, "방")
         every { roomRepository.findByContext(RoomContextType.COMMUNITY, 40L) } returns room
         every { roomParticipantRepository.existsByRoomIdAndUserId(room.id, 3L) } returns true
@@ -117,7 +122,8 @@ class RoomContextDomainServiceTest : BehaviorSpec({
     Given("컨텍스트 방이 아직 provision 되지 않은 상태에서 가입 이벤트를 수신하면") {
         val roomRepository = mockk<RoomRepository>()
         val roomParticipantRepository = mockk<RoomParticipantRepository>()
-        val service = RoomContextDomainService(roomRepository, roomParticipantRepository)
+        val goodsProductGateway = mockk<GoodsProductGateway>()
+        val service = RoomContextDomainService(roomRepository, roomParticipantRepository, goodsProductGateway)
         every { roomRepository.findByContext(RoomContextType.COMMUNITY, 50L) } returns null
 
         When("joinContext 를 호출해도 (provision·join 순서 경합 재현)") {
@@ -133,7 +139,8 @@ class RoomContextDomainServiceTest : BehaviorSpec({
     Given("컨텍스트 방이 아직 provision 되지 않은 상태에서 탈퇴 이벤트를 수신하면") {
         val roomRepository = mockk<RoomRepository>()
         val roomParticipantRepository = mockk<RoomParticipantRepository>()
-        val service = RoomContextDomainService(roomRepository, roomParticipantRepository)
+        val goodsProductGateway = mockk<GoodsProductGateway>()
+        val service = RoomContextDomainService(roomRepository, roomParticipantRepository, goodsProductGateway)
         every { roomRepository.findByContext(RoomContextType.COMMUNITY, 55L) } returns null
 
         When("leaveContext 를 호출해도 (provision·leave 순서 경합 재현)") {
@@ -150,7 +157,8 @@ class RoomContextDomainServiceTest : BehaviorSpec({
     Given("컨텍스트 방에 활성 참여자가 있는 경우") {
         val roomRepository = mockk<RoomRepository>()
         val roomParticipantRepository = mockk<RoomParticipantRepository>()
-        val service = RoomContextDomainService(roomRepository, roomParticipantRepository)
+        val goodsProductGateway = mockk<GoodsProductGateway>()
+        val service = RoomContextDomainService(roomRepository, roomParticipantRepository, goodsProductGateway)
         val room = Room.createForContext(RoomType.GROUP, RoomContextType.COMMUNITY, 60L, "방")
         val participant = RoomParticipant.create(room, 5L)
         every { roomRepository.findByContext(RoomContextType.COMMUNITY, 60L) } returns room
@@ -170,7 +178,8 @@ class RoomContextDomainServiceTest : BehaviorSpec({
     Given("컨텍스트 방에 해당 사용자의 활성 참여 기록이 없는 경우") {
         val roomRepository = mockk<RoomRepository>()
         val roomParticipantRepository = mockk<RoomParticipantRepository>()
-        val service = RoomContextDomainService(roomRepository, roomParticipantRepository)
+        val goodsProductGateway = mockk<GoodsProductGateway>()
+        val service = RoomContextDomainService(roomRepository, roomParticipantRepository, goodsProductGateway)
         val room = Room.createForContext(RoomType.GROUP, RoomContextType.COMMUNITY, 70L, "방")
         every { roomRepository.findByContext(RoomContextType.COMMUNITY, 70L) } returns room
         every { roomParticipantRepository.findActiveByRoomIdAndUserId(room.id, 6L) } returns null

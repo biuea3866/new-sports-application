@@ -2,6 +2,8 @@ package com.sportsapp.domain.message.service
 
 import com.sportsapp.domain.message.entity.Room
 import com.sportsapp.domain.message.entity.RoomParticipant
+import com.sportsapp.domain.message.exception.SelfTradeChatException
+import com.sportsapp.domain.message.gateway.GoodsProductGateway
 import com.sportsapp.domain.message.repository.RoomParticipantRepository
 import com.sportsapp.domain.message.repository.RoomRepository
 import com.sportsapp.domain.message.vo.RoomContextType
@@ -29,6 +31,7 @@ import org.springframework.stereotype.Service
 class RoomContextDomainService(
     private val roomRepository: RoomRepository,
     private val roomParticipantRepository: RoomParticipantRepository,
+    private val goodsProductGateway: GoodsProductGateway,
 ) {
     private val log = LoggerFactory.getLogger(RoomContextDomainService::class.java)
 
@@ -81,5 +84,23 @@ class RoomContextDomainService(
         val participant = roomParticipantRepository.findActiveByRoomIdAndUserId(room.id, userId) ?: return
         participant.softDelete(userId)
         roomParticipantRepository.save(participant)
+    }
+
+    /**
+     * goods 상품 거래 채팅방을 provision·재사용한다 (BE-11, TDD FR-18).
+     *
+     * 판매자(productId 소유자)는 `GoodsProductGateway`로 조회한다. 같은 productId에 구매자가
+     * 여럿일 수 있어 `findByContext` 단건 조회 대신 buyer 참여자로 좁힌 [RoomRepository.findByContextAndParticipant]로
+     * 구매자-판매자 조합 단위 멱등을 보장한다. 구매자가 판매자 본인이면 [SelfTradeChatException]을 던진다.
+     */
+    fun createOrFindGoodsTradeRoom(productId: Long, buyerId: Long): Room {
+        val sellerId = goodsProductGateway.findOwnerId(productId)
+        if (buyerId == sellerId) throw SelfTradeChatException(productId, buyerId)
+        val existingRoom = roomRepository.findByContextAndParticipant(RoomContextType.GOODS_PRODUCT, productId, buyerId)
+        if (existingRoom != null) return existingRoom
+        val room = roomRepository.save(Room.createForContext(RoomType.GROUP, RoomContextType.GOODS_PRODUCT, productId, null))
+        roomParticipantRepository.save(RoomParticipant.create(room, buyerId))
+        roomParticipantRepository.save(RoomParticipant.create(room, sellerId))
+        return room
     }
 }
