@@ -4,7 +4,7 @@ import com.sportsapp.application.community.dto.CreateCommunityCommand
 import com.sportsapp.domain.community.entity.Community
 import com.sportsapp.domain.community.service.CommunityDomainService
 import com.sportsapp.domain.community.vo.CommunityVisibility
-import com.sportsapp.domain.community.vo.SportCategory
+import com.sportsapp.domain.common.vo.SportCategory
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every

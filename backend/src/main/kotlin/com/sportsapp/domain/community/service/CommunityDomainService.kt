@@ -9,7 +9,7 @@ import com.sportsapp.domain.community.repository.CommunityMemberRepository
 import com.sportsapp.domain.community.repository.CommunityRepository
 import com.sportsapp.domain.community.vo.CommunityVisibility
 import com.sportsapp.domain.community.vo.MembershipStatus
-import com.sportsapp.domain.community.vo.SportCategory
+import com.sportsapp.domain.common.vo.SportCategory
 import org.springframework.stereotype.Service
 
 /**

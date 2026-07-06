@@ -4,7 +4,7 @@ import com.sportsapp.BaseIntegrationTest
 import com.sportsapp.domain.community.entity.Community
 import com.sportsapp.domain.community.entity.CommunityMember
 import com.sportsapp.domain.community.vo.CommunityVisibility
-import com.sportsapp.domain.community.vo.SportCategory
+import com.sportsapp.domain.common.vo.SportCategory
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull

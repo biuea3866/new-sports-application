@@ -2,7 +2,7 @@ package com.sportsapp.presentation.community.dto.request
 
 import com.sportsapp.application.community.dto.CreateCommunityCommand
 import com.sportsapp.domain.community.vo.CommunityVisibility
-import com.sportsapp.domain.community.vo.SportCategory
+import com.sportsapp.domain.common.vo.SportCategory
 
 data class CreateCommunityRequest(
     val name: String,

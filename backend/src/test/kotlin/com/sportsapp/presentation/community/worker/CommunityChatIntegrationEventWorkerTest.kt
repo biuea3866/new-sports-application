@@ -12,7 +12,7 @@ import com.sportsapp.application.community.usecase.LeaveCommunityUseCase
 import com.sportsapp.domain.community.event.CommunityCreatedEvent
 import com.sportsapp.domain.community.event.CommunityMemberJoinedEvent
 import com.sportsapp.domain.community.vo.CommunityVisibility
-import com.sportsapp.domain.community.vo.SportCategory
+import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.message.repository.RoomParticipantRepository
 import com.sportsapp.domain.message.repository.RoomRepository
 import com.sportsapp.domain.message.vo.RoomContextType

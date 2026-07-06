@@ -2,7 +2,7 @@ package com.sportsapp.application.community.dto
 
 import com.sportsapp.domain.community.entity.Community
 import com.sportsapp.domain.community.vo.CommunityVisibility
-import com.sportsapp.domain.community.vo.SportCategory
+import com.sportsapp.domain.common.vo.SportCategory
 import java.time.ZonedDateTime
 
 /**

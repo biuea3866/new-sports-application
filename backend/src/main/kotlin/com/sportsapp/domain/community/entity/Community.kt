@@ -5,7 +5,7 @@ import com.sportsapp.domain.common.JpaAuditingBase
 import com.sportsapp.domain.community.event.CommunityCreatedEvent
 import com.sportsapp.domain.community.exception.NotCommunityHostException
 import com.sportsapp.domain.community.vo.CommunityVisibility
-import com.sportsapp.domain.community.vo.SportCategory
+import com.sportsapp.domain.common.vo.SportCategory
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType

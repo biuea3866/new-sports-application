@@ -2,7 +2,7 @@ package com.sportsapp.domain.community.entity
 
 import com.sportsapp.domain.community.event.CommunityCreatedEvent
 import com.sportsapp.domain.community.vo.CommunityVisibility
-import com.sportsapp.domain.community.vo.SportCategory
+import com.sportsapp.domain.common.vo.SportCategory
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldHaveSize

@@ -1,4 +1,4 @@
-package com.sportsapp.domain.community.vo
+package com.sportsapp.domain.common.vo
 
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
@@ -31,6 +31,12 @@ class SportCategoryTest : BehaviorSpec({
         When("ETC 값을 조회하면") {
             Then("ETC enum 인스턴스와 동일하다 (분류 안 되는 종목의 기본값)") {
                 SportCategory.valueOf("ETC") shouldBe SportCategory.ETC
+            }
+        }
+
+        When("클래스의 패키지를 조회하면") {
+            Then("공유 커널 패키지(domain.common.vo)에 위치한다") {
+                SportCategory::class.java.packageName shouldBe "com.sportsapp.domain.common.vo"
             }
         }
     }
