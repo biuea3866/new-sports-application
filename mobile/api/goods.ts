@@ -29,6 +29,13 @@ export interface ProductWithStock {
    * (활성 회차가 없으면 필드 자체가 없거나 null) — 값이 없으면 진입점 배너를 노출하지 않는다.
    */
   limitedDropId?: number;
+  /**
+   * 판매자 userId. FE-14(채팅하기 CTA) 본인 상품 판정용.
+   * BE `ProductWithStockResponse`(presentation/goods)가 아직 이 필드를 응답에 포함하지 않아
+   * 현재는 항상 undefined로 수신된다 — 값이 없으면 본인 여부를 판정하지 않고 CTA를 노출한다.
+   * BE가 필드를 추가하면(후속 티켓) 별도 변경 없이 판정이 활성화된다.
+   */
+  ownerId?: number;
 }
 
 export interface CartItemDto {
