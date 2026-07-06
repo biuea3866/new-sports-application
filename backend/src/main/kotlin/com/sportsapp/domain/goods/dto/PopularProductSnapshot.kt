@@ -11,7 +11,7 @@ data class PopularProductSnapshot(
     val category: ProductCategory,
     val price: BigDecimal,
     val description: String,
-    val imageUrl: String,
+    val imageUrl: String?,
     val status: ProductStatus,
 ) {
     companion object {

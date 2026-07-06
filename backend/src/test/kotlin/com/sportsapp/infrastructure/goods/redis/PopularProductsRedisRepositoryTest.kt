@@ -96,6 +96,33 @@ class PopularProductsRedisRepositoryTest(
             }
         }
 
+        Given("[F5] imageUrl이 null인 상품이 포함된 상태에서") {
+            val category = ProductCategory.EQUIPMENT
+            val key = "popular:products:${category.name}"
+            stringRedisTemplate.unlink(key)
+            val snapshotWithNullImage = PopularProductSnapshot(
+                id = 3L,
+                name = "이미지 없는 상품",
+                category = category,
+                price = BigDecimal("30000"),
+                description = "desc",
+                imageUrl = null,
+                status = ProductStatus.ACTIVE,
+            )
+
+            popularProductsRedisRepository.put(category, listOf(snapshotWithNullImage))
+
+            When("get을 호출하면") {
+                val result = popularProductsRedisRepository.get(category)
+
+                Then("imageUrl이 null인 상태로 예외 없이 복원된다") {
+                    result.shouldNotBeNull()
+                    result shouldHaveSize 1
+                    result[0].imageUrl.shouldBeNull()
+                }
+            }
+        }
+
         Given("캐시가 존재하지 않을 때") {
             val category = ProductCategory.ACCESSORY
             val key = "popular:products:${category.name}"
