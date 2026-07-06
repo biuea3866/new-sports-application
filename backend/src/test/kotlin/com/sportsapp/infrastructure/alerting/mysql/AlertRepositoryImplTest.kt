@@ -6,7 +6,7 @@ import com.sportsapp.domain.alerting.repository.AlertRepository
 import com.sportsapp.domain.alerting.vo.AlertSeverity
 import com.sportsapp.domain.alerting.vo.AlertSignal
 import com.sportsapp.domain.alerting.vo.AlertSource
-import com.sportsapp.domain.alerting.vo.IncidentAnalysis
+import com.sportsapp.domain.alerting.vo.TelemetrySnapshot
 import com.sportsapp.domain.alerting.entity.Alert
 import com.sportsapp.infrastructure.audit.SecurityAuditorAware
 import com.sportsapp.infrastructure.audit.ZonedDateTimeProvider
@@ -32,7 +32,7 @@ import org.testcontainers.junit.jupiter.Container
 /**
  * [AlertRepositoryImpl] 슬라이스 통합 테스트.
  *
- * alerting 도메인의 다른 구현체(TelemetryQueryGateway·IncidentAnalysisGateway)가 아직 없어
+ * alerting 도메인의 다른 구현체(TelemetryQueryGateway)가 아직 없어
  * [AlertDomainService] 빈 생성이 실패하므로 전체 `@SpringBootTest`(BaseJpaIntegrationTest)를 쓰지 않는다.
  * `@DataJpaTest`로 JPA 관련 auto-configuration(Flyway 포함)만 올리고, `SportsApplication`의
  * `@EnableJpaAuditing(auditorAwareRef = "securityAuditorAware", dateTimeProviderRef = "zonedDateTimeProvider")`가
@@ -84,33 +84,28 @@ class AlertRepositoryImplTest(
             }
         }
 
-        Given("IncidentAnalysis가 부착된 Alert") {
+        Given("원지표(TelemetrySnapshot)가 부착된 Alert") {
             val signal = AlertSignal(
                 endpoint = "/api/v1/goods",
                 source = AlertSource.OVERSELL,
                 severity = AlertSeverity.CRITICAL,
             )
             val alert = Alert.create(signal, env = "prod")
-            val analysis = IncidentAnalysis(
-                errorType = "STOCK_RACE_CONDITION",
-                causeEstimation = "재고 차감 동시성 경합으로 초과 판매 발생",
-                remediation = "분산 락 타임아웃을 상향 조정하세요",
-                included = true,
+            val snapshot = TelemetrySnapshot(
+                metricsSummary = "oversell_count=3",
+                logSamples = listOf("stock decrement race detected"),
+                traceSamples = listOf("traceId=xyz"),
             )
-            alert.attachAnalysis(analysis)
+            alert.attachTelemetry(snapshot)
 
             When("저장·조회를 왕복하면") {
                 val saved = alertRepository.save(alert)
                 val found = requireNotNull(alertRepository.findById(saved.id))
 
-                Then("analysis 필드가 손실 없이 복원된다") {
-                    found.currentAnalysis.shouldNotBeNull()
-                    found.currentAnalysis?.errorType shouldBe "STOCK_RACE_CONDITION"
-                    found.currentAnalysis?.causeEstimation shouldBe "재고 차감 동시성 경합으로 초과 판매 발생"
-                    found.currentAnalysis?.remediation shouldBe "분산 락 타임아웃을 상향 조정하세요"
-                    found.currentAnalysis?.included shouldBe true
-                    found.currentAnalysisIncluded shouldBe true
-                    found.currentStatus shouldBe AlertStatus.ANALYZED
+                Then("telemetry 필드가 손실 없이 복원된다") {
+                    found.currentTelemetry.shouldNotBeNull()
+                    found.currentTelemetry shouldBe snapshot
+                    found.currentStatus shouldBe AlertStatus.ENRICHED
                 }
             }
         }
@@ -127,19 +122,18 @@ class AlertRepositoryImplTest(
             }
         }
 
-        Given("ANALYZED 상태로 저장된 Alert") {
+        Given("ENRICHED 상태로 저장된 Alert") {
             val signal = AlertSignal(
                 endpoint = "/api/v1/deploy",
                 source = AlertSource.DEPLOYMENT,
                 severity = AlertSeverity.INFO,
             )
             val alert = Alert.create(signal, env = "dev")
-            alert.attachAnalysis(
-                IncidentAnalysis(
-                    errorType = "DEPLOY_ROLLOUT_DELAY",
-                    causeEstimation = "배포 롤아웃 지연",
-                    remediation = "롤아웃 진행률을 확인하세요",
-                    included = true,
+            alert.attachTelemetry(
+                TelemetrySnapshot(
+                    metricsSummary = "rollout_delay_seconds=120",
+                    logSamples = emptyList(),
+                    traceSamples = emptyList(),
                 )
             )
             val saved = alertRepository.save(alert)
@@ -170,8 +164,7 @@ class AlertRepositoryImplTest(
                 severity = expiredSignal.severity,
                 env = "test",
                 status = AlertStatus.RAISED,
-                analysis = null,
-                analysisIncluded = null,
+                telemetry = null,
                 raisedAt = ZonedDateTime.now().minusDays(91),
                 deliveredAt = null,
             )

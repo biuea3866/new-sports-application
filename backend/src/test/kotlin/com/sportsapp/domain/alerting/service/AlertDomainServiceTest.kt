@@ -5,15 +5,12 @@ import com.sportsapp.domain.alerting.entity.Alert
 import com.sportsapp.domain.alerting.entity.AlertStatus
 import com.sportsapp.domain.alerting.event.AlertDeliveryReadyEvent
 import com.sportsapp.domain.alerting.event.AlertProcessingRequestedEvent
-import com.sportsapp.domain.alerting.exception.IncidentAnalysisException
-import com.sportsapp.domain.alerting.gateway.IncidentAnalysisGateway
 import com.sportsapp.domain.alerting.gateway.TelemetryQueryGateway
 import com.sportsapp.domain.alerting.repository.AlertCooldownRepository
 import com.sportsapp.domain.alerting.repository.AlertRepository
 import com.sportsapp.domain.alerting.vo.AlertSeverity
 import com.sportsapp.domain.alerting.vo.AlertSignal
 import com.sportsapp.domain.alerting.vo.AlertSource
-import com.sportsapp.domain.alerting.vo.IncidentAnalysis
 import com.sportsapp.domain.alerting.vo.TelemetrySnapshot
 import com.sportsapp.domain.common.DomainEvent
 import com.sportsapp.domain.common.DomainEventPublisher
@@ -43,14 +40,12 @@ class AlertDomainServiceTest : BehaviorSpec({
         alertRepository: AlertRepository = mockk(),
         alertCooldownRepository: AlertCooldownRepository = mockk(),
         telemetryQueryGateway: TelemetryQueryGateway = mockk(),
-        incidentAnalysisGateway: IncidentAnalysisGateway = mockk(),
         domainEventPublisher: DomainEventPublisher = mockk(),
         env: String = ENV,
     ) = AlertDomainService(
         alertRepository = alertRepository,
         alertCooldownRepository = alertCooldownRepository,
         telemetryQueryGateway = telemetryQueryGateway,
-        incidentAnalysisGateway = incidentAnalysisGateway,
         domainEventPublisher = domainEventPublisher,
         env = env,
     )
@@ -135,67 +130,60 @@ class AlertDomainServiceTest : BehaviorSpec({
         }
     }
 
-    Given("RAISED 상태 Alert에 대한 process 요청, LLM 분석이 성공하는 상황") {
+    Given("RAISED 상태 Alert에 대한 process 요청, 원지표가 정상 조회되는 상황") {
         val alertRepository = mockk<AlertRepository>()
         val telemetryQueryGateway = mockk<TelemetryQueryGateway>()
-        val incidentAnalysisGateway = mockk<IncidentAnalysisGateway>()
         val domainEventPublisher = mockk<DomainEventPublisher>()
         val service = buildService(
             alertRepository = alertRepository,
             telemetryQueryGateway = telemetryQueryGateway,
-            incidentAnalysisGateway = incidentAnalysisGateway,
             domainEventPublisher = domainEventPublisher,
         )
         val alert = raisedAlert()
         val snapshot = TelemetrySnapshot(metricsSummary = "p95=1200ms", logSamples = listOf("timeout"), traceSamples = emptyList())
-        val analysis = IncidentAnalysis(errorType = "TimeoutException", causeEstimation = "DB 커넥션 풀 고갈", remediation = "풀 확대", included = true)
         val publishedEventsSlot = slot<List<DomainEvent>>()
 
         every { alertRepository.findById(ALERT_ID) } returns alert
         every { telemetryQueryGateway.queryContext(any(), Duration.ofMinutes(10)) } returns snapshot
-        every { incidentAnalysisGateway.analyze(any()) } returns analysis
         every { alertRepository.save(alert) } returns alert
         every { domainEventPublisher.publishAll(capture(publishedEventsSlot)) } returns Unit
 
         When("process를 호출하면") {
             service.process(ALERT_ID)
 
-            Then("ANALYZED로 전이되고 included=true인 채로 발송 이벤트가 발행된다") {
-                alert.currentStatus shouldBe AlertStatus.ANALYZED
-                alert.currentAnalysis?.included shouldBe true
+            Then("ENRICHED로 전이되고 조회한 원지표가 그대로 부착된 채 발송 이벤트가 발행된다") {
+                alert.currentStatus shouldBe AlertStatus.ENRICHED
+                alert.currentTelemetry shouldBe snapshot
                 publishedEventsSlot.captured shouldHaveSize 1
                 publishedEventsSlot.captured[0].shouldBeInstanceOf<AlertDeliveryReadyEvent>()
             }
         }
     }
 
-    Given("RAISED 상태 Alert에 대한 process 요청, IncidentAnalysisGateway가 예외를 던지는 상황") {
+    Given("RAISED 상태 Alert에 대한 process 요청, 원지표를 전혀 조회하지 못한 상황") {
         val alertRepository = mockk<AlertRepository>()
         val telemetryQueryGateway = mockk<TelemetryQueryGateway>()
-        val incidentAnalysisGateway = mockk<IncidentAnalysisGateway>()
         val domainEventPublisher = mockk<DomainEventPublisher>()
         val service = buildService(
             alertRepository = alertRepository,
             telemetryQueryGateway = telemetryQueryGateway,
-            incidentAnalysisGateway = incidentAnalysisGateway,
             domainEventPublisher = domainEventPublisher,
         )
         val alert = raisedAlert()
-        val snapshot = TelemetrySnapshot(metricsSummary = "p95=1200ms", logSamples = emptyList(), traceSamples = emptyList())
+        val emptySnapshot = TelemetrySnapshot.empty()
         val publishedEventsSlot = slot<List<DomainEvent>>()
 
         every { alertRepository.findById(ALERT_ID) } returns alert
-        every { telemetryQueryGateway.queryContext(any(), Duration.ofMinutes(10)) } returns snapshot
-        every { incidentAnalysisGateway.analyze(any()) } throws IncidentAnalysisException("LLM timeout")
+        every { telemetryQueryGateway.queryContext(any(), Duration.ofMinutes(10)) } returns emptySnapshot
         every { alertRepository.save(alert) } returns alert
         every { domainEventPublisher.publishAll(capture(publishedEventsSlot)) } returns Unit
 
         When("process를 호출하면") {
             service.process(ALERT_ID)
 
-            Then("FALLBACK 분석으로 대체되고 발송 이벤트는 여전히 발행된다") {
-                alert.currentStatus shouldBe AlertStatus.FALLBACK
-                alert.currentAnalysis?.included shouldBe false
+            Then("ENRICHED로 전이되고 발송 이벤트는 여전히 발행된다(TelemetryQueryGateway는 예외를 던지지 않으므로 폴백 분기 없음)") {
+                alert.currentStatus shouldBe AlertStatus.ENRICHED
+                alert.currentTelemetry shouldBe emptySnapshot
                 publishedEventsSlot.captured shouldHaveSize 1
                 publishedEventsSlot.captured[0].shouldBeInstanceOf<AlertDeliveryReadyEvent>()
             }
@@ -212,7 +200,7 @@ class AlertDomainServiceTest : BehaviorSpec({
         When("selfCheck를 호출하면") {
             service.selfCheck()
 
-            Then("쿨다운·분석 없이 SELF_CHECK/INFO 발송 이벤트를 발행한다") {
+            Then("쿨다운·원지표 조회 없이 SELF_CHECK/INFO 발송 이벤트를 발행한다") {
                 val event = publishedEventSlot.captured.shouldBeInstanceOf<AlertDeliveryReadyEvent>()
                 event.source shouldBe AlertSource.SELF_CHECK
                 event.severity shouldBe AlertSeverity.INFO

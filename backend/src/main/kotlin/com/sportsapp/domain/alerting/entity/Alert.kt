@@ -6,7 +6,7 @@ import com.sportsapp.domain.alerting.exception.InvalidAlertStateException
 import com.sportsapp.domain.alerting.vo.AlertSeverity
 import com.sportsapp.domain.alerting.vo.AlertSignal
 import com.sportsapp.domain.alerting.vo.AlertSource
-import com.sportsapp.domain.alerting.vo.IncidentAnalysis
+import com.sportsapp.domain.alerting.vo.TelemetrySnapshot
 import com.sportsapp.domain.common.DomainEvent
 import com.sportsapp.domain.common.JpaAuditingBase
 import io.hypersistence.utils.hibernate.type.json.JsonStringType
@@ -24,11 +24,14 @@ import java.time.ZonedDateTime
 import org.hibernate.annotations.Type
 
 /**
- * 지능형 장애 알림 1건의 상태·분석 결과를 캡슐화하는 Aggregate Root (TDD.md §Detail Design).
+ * 지능형 장애 알림 1건의 상태·원지표를 캡슐화하는 Aggregate Root (TDD.md §Detail Design).
  *
  * [LimitedDrop][com.sportsapp.domain.goods.entity.LimitedDrop]과 동일하게 `private constructor` +
  * `create`/`reconstitute` 팩토리 패턴을 따른다. JPA Entity와 domain Entity를 분리하지 않는 이
  * 코드베이스의 기존 관행(Booking·LimitedDrop·Notification 선례)을 그대로 따른다.
+ *
+ * LLM 원인분석은 사용하지 않는다 — 알림 본문의 "원인"은 [TelemetryQueryGateway]가 조회한
+ * Prometheus/Loki/Tempo 원지표([TelemetrySnapshot])를 그대로 렌더링한 결과다.
  */
 @Entity
 @Table(name = "alerts")
@@ -55,11 +58,8 @@ class Alert private constructor(
     private var status: AlertStatus,
 
     @Type(JsonStringType::class)
-    @Column(name = "analysis", columnDefinition = "TEXT")
-    private var analysis: IncidentAnalysis?,
-
-    @Column(name = "analysis_included")
-    private var analysisIncluded: Boolean?,
+    @Column(name = "telemetry", columnDefinition = "TEXT")
+    private var telemetry: TelemetrySnapshot?,
 
     @Column(name = "raised_at", nullable = false)
     val raisedAt: ZonedDateTime,
@@ -84,8 +84,7 @@ class Alert private constructor(
         get() = _domainEvents ?: mutableListOf<DomainEvent>().also { _domainEvents = it }
 
     val currentStatus: AlertStatus get() = status
-    val currentAnalysis: IncidentAnalysis? get() = analysis
-    val currentAnalysisIncluded: Boolean? get() = analysisIncluded
+    val currentTelemetry: TelemetrySnapshot? get() = telemetry
     val deliveredAtValue: ZonedDateTime? get() = deliveredAt
 
     /**
@@ -97,19 +96,19 @@ class Alert private constructor(
     }
 
     /**
-     * LLM 원인분석(또는 폴백) 결과를 부착한다. [analysis]의 [IncidentAnalysis.included] 여부로
-     * ANALYZED/FALLBACK을 판정하고, 두 경우 모두 발송 이벤트를 등록한다(FR-8 — 폴백이어도 발송은 진행).
+     * Prometheus/Loki/Tempo에서 조회한 원지표 스냅샷을 부착한다. LLM 원인분석을 쓰지 않으므로
+     * 조회 결과와 무관하게 항상 ENRICHED로 전이하고 발송 이벤트를 등록한다 —
+     * [com.sportsapp.domain.alerting.gateway.TelemetryQueryGateway]는 소스별 부분 실패를 흡수해
+     * 예외를 던지지 않으므로 폴백 분기가 필요 없다.
      */
-    fun attachAnalysis(analysis: IncidentAnalysis) {
-        val nextStatus = if (analysis.included) AlertStatus.ANALYZED else AlertStatus.FALLBACK
-        transitTo(nextStatus)
-        this.analysis = analysis
-        this.analysisIncluded = analysis.included
+    fun attachTelemetry(snapshot: TelemetrySnapshot) {
+        transitTo(AlertStatus.ENRICHED)
+        this.telemetry = snapshot
         registerEvent(
             AlertDeliveryReadyEvent(
                 alertId = id,
                 title = buildDeliveryTitle(),
-                body = buildDeliveryBody(analysis),
+                body = buildDeliveryBody(snapshot),
                 source = source,
                 severity = severity,
                 env = env,
@@ -145,13 +144,33 @@ class Alert private constructor(
 
     private fun buildDeliveryTitle(): String = "[$severity] $source 알림 — $endpoint"
 
-    private fun buildDeliveryBody(analysis: IncidentAnalysis): String = if (analysis.included) {
-        "원인: ${analysis.causeEstimation}\n해결: ${analysis.remediation}"
-    } else {
-        "원인분석 실패(${analysis.errorType}) — 원지표만 확인하세요."
+    private fun buildDeliveryBody(snapshot: TelemetrySnapshot): String {
+        if (snapshot.isEmpty) return TELEMETRY_UNAVAILABLE_BODY
+        val sections = buildList {
+            if (snapshot.metricsSummary.isNotBlank()) add("- 메트릭: ${truncateSample(snapshot.metricsSummary)}")
+            if (snapshot.logSamples.isNotEmpty()) add(buildSampleSection("로그", snapshot.logSamples))
+            if (snapshot.traceSamples.isNotEmpty()) add(buildSampleSection("trace", snapshot.traceSamples))
+        }
+        return "원인(원지표):\n" + sections.joinToString("\n")
     }
 
+    private fun buildSampleSection(label: String, samples: List<String>): String {
+        val shown = samples.take(MAX_SAMPLES_IN_BODY)
+        val remaining = samples.size - shown.size
+        val lines = shown.map { "  ${truncateSample(it)}" } +
+            if (remaining > 0) listOf("  외 ${remaining}건") else emptyList()
+        return "- $label(${samples.size}건):\n" + lines.joinToString("\n")
+    }
+
+    /** 단일 샘플이 지나치게 길면 절단한다 — Discord 메시지 길이 한계(embed 4096자) 방어. */
+    private fun truncateSample(sample: String): String =
+        if (sample.length > MAX_SAMPLE_LENGTH) sample.take(MAX_SAMPLE_LENGTH) + "…" else sample
+
     companion object {
+        private const val MAX_SAMPLES_IN_BODY = 3
+        private const val MAX_SAMPLE_LENGTH = 500
+        private const val TELEMETRY_UNAVAILABLE_BODY = "원인: 원지표를 조회하지 못했습니다(데이터 없음 또는 조회 실패)."
+
         /** 신규 알림 생성(RAISED) — 쿨다운을 획득했을 때만 호출된다. */
         fun create(signal: AlertSignal, env: String): Alert = Alert(
             signalKey = signal.cooldownKey(env),
@@ -160,8 +179,7 @@ class Alert private constructor(
             severity = signal.severity,
             env = env,
             status = AlertStatus.RAISED,
-            analysis = null,
-            analysisIncluded = null,
+            telemetry = null,
             raisedAt = ZonedDateTime.now(),
             deliveredAt = null,
         )
@@ -174,8 +192,7 @@ class Alert private constructor(
             severity: AlertSeverity,
             env: String,
             status: AlertStatus,
-            analysis: IncidentAnalysis?,
-            analysisIncluded: Boolean?,
+            telemetry: TelemetrySnapshot?,
             raisedAt: ZonedDateTime,
             deliveredAt: ZonedDateTime?,
         ): Alert = Alert(
@@ -185,8 +202,7 @@ class Alert private constructor(
             severity = severity,
             env = env,
             status = status,
-            analysis = analysis,
-            analysisIncluded = analysisIncluded,
+            telemetry = telemetry,
             raisedAt = raisedAt,
             deliveredAt = deliveredAt,
         )
