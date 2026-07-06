@@ -15,7 +15,8 @@ import org.springframework.web.bind.annotation.RestController
  *
  * `/rooms` 하위 경로는 `RoomApiController`/`MessageApiController`와 동일하게 Authorization: Bearer JWT
  * (`@AuthenticationPrincipal UserPrincipal`) 로 신원을 확인한다 — X-User-Id 헤더는 클라이언트가
- * 임의로 조작할 수 있어 방장 검증(`GuestEvictionDomainService.requireHost`)이 무력화되므로 사용하지 않는다.
+ * 임의로 조작할 수 있어 방장 검증(`Room.requireHostedBy`, `GuestEvictionDomainService.evict` 내부에서 위임)이
+ * 무력화되므로 사용하지 않는다.
  */
 @RestController
 @RequestMapping("/rooms/{roomId}/guests/{userId}")

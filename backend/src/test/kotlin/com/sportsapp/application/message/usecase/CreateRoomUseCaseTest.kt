@@ -64,7 +64,7 @@ class CreateRoomUseCaseTest : BehaviorSpec({
                 verify { messageDomainService.createGroupRoom("축구 모임", listOf(1L, 2L, 3L), hostUserId = 1L) }
             }
 
-            Then("요청자(1L)가 방장(hostUserId, BE-13)으로 지정된다") {
+            Then("요청자(1L)가 방장(hostUserId)으로 지정된다") {
                 result.currentHostUserId shouldBe 1L
             }
         }
