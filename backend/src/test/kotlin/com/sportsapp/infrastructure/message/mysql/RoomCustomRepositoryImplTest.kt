@@ -210,7 +210,7 @@ class RoomCustomRepositoryImplTest(
             }
         }
 
-        Given("productId=30 에 대해 구매자별로 서로 다른 GOODS_PRODUCT 컨텍스트 방이 2건 있는 상태 (BE-11)") {
+        Given("productId=30 에 대해 구매자별로 서로 다른 GOODS_PRODUCT 컨텍스트 방이 2건 있는 상태") {
             val roomForBuyerA = roomJpaRepository.save(
                 Room.createForContext(RoomType.GROUP, RoomContextType.GOODS_PRODUCT, 30L, null),
             )
