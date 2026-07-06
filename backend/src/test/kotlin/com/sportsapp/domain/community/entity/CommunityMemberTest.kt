@@ -266,4 +266,32 @@ class CommunityMemberTest : BehaviorSpec({
             }
         }
     }
+
+    Given("HOST 역할의 멤버 — BE-14") {
+        val host = CommunityMember.createHost(communityId = 10L, userId = 113L)
+
+        When("isHost 를 조회하면") {
+            Then("true 를 반환한다") {
+                host.isHost shouldBe true
+            }
+        }
+    }
+
+    Given("MEMBER 역할의 멤버 — BE-14") {
+        val member = CommunityMember.join(communityId = 10L, userId = 114L, isPublic = true)
+
+        When("isHost 를 조회하면") {
+            Then("false 를 반환한다") {
+                member.isHost shouldBe false
+            }
+        }
+
+        When("promoteToHost() 이후 isHost 를 조회하면") {
+            member.promoteToHost()
+
+            Then("true 를 반환한다") {
+                member.isHost shouldBe true
+            }
+        }
+    }
 })

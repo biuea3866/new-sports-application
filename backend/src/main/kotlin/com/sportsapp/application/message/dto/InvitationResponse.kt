@@ -16,9 +16,10 @@ data class InvitationResponse(
     val canSpeak: Boolean,
     val expiresAt: ZonedDateTime,
     val createdAt: ZonedDateTime,
+    val reused: Boolean,
 ) {
     companion object {
-        fun of(invitation: RoomInvitation): InvitationResponse = InvitationResponse(
+        fun of(invitation: RoomInvitation, reused: Boolean = false): InvitationResponse = InvitationResponse(
             id = invitation.id,
             roomId = invitation.room.id,
             inviterUserId = invitation.inviterUserId,
@@ -27,6 +28,7 @@ data class InvitationResponse(
             canSpeak = invitation.canSpeak,
             expiresAt = invitation.expiresAt,
             createdAt = invitation.createdAt,
+            reused = reused,
         )
     }
 }

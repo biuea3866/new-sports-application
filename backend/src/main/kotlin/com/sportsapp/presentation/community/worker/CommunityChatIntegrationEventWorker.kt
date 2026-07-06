@@ -30,8 +30,7 @@ import org.springframework.transaction.event.TransactionalEventListener
  * (이미 물리적으로 커밋된) 리소스 홀더에 새 트랜잭션을 편승시켜 쓰기가 유실될 수 있다
  * (`ProcessAlertUseCase`/`AlertProcessingEventWorker`와 동일한 이유로 `@Async` 채택).
  *
- * CommunityCreatedEvent 에는 커뮤니티 name 이 없어(BE-08 이벤트 계약, 이 티켓 범위 밖) 방 이름은
- * null 로 provision 한다 — 향후 필요 시 이벤트에 name 필드 추가를 후속 과제로 남긴다.
+ * CommunityCreatedEvent.name(BE-14)을 그대로 실어 컨텍스트 방을 이름과 함께 provision 한다.
  */
 @Component
 class CommunityChatIntegrationEventWorker(
@@ -49,7 +48,7 @@ class CommunityChatIntegrationEventWorker(
                 ProvisionContextRoomCommand(
                     contextType = RoomContextType.COMMUNITY,
                     contextId = event.aggregateId,
-                    name = null,
+                    name = event.name,
                     hostUserId = event.hostUserId,
                 ),
             )
