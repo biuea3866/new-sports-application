@@ -81,6 +81,9 @@ class RoomParticipant private constructor(
         }
     }
 
+    /** 정회원(MEMBER) 여부 질의 — 호출부가 내부 상태(participantType)를 직접 비교하지 않도록 캡슐화한다. */
+    fun isMember(): Boolean = participantType == ParticipantType.MEMBER
+
     /**
      * 방출 표시 — GUEST 참여자만 방출 대상이 될 수 있다. 실제 소프트 삭제(deletedAt 기록)는
      * 호출자(방장) 검증을 마친 DomainService가 [softDelete]로 수행한다.
