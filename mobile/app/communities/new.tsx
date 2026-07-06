@@ -123,7 +123,11 @@ export default function CommunityNewScreen() {
         <ThemedText variant="secondary" style={styles.label}>
           종목
         </ThemedText>
-        <View style={styles.sportCategoryRow} accessibilityLabel="종목 목록">
+        <View
+          style={styles.sportCategoryRow}
+          accessibilityRole="radiogroup"
+          accessibilityLabel="종목 목록"
+        >
           {SPORT_CATEGORY_OPTIONS.map((option) => {
             const isSelected = option.value === sportCategory;
 

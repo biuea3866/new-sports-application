@@ -105,6 +105,12 @@ describe('CommunityNewScreen', () => {
     expect(screen.getByLabelText('개설하기').props.accessibilityState.disabled).toBe(false);
   });
 
+  it('종목 선택 칩 그룹이 radiogroup으로 노출된다', () => {
+    render(<CommunityNewScreen />);
+
+    expect(screen.getByLabelText('종목 목록').props.accessibilityRole).toBe('radiogroup');
+  });
+
   it('다크 모드에서도 폼이 정상 렌더된다', () => {
     mockUseColorScheme.mockReturnValue('dark');
 
