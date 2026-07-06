@@ -20,6 +20,7 @@ jest.mock('../../../lib/useRooms', () => ({
 }));
 jest.mock('../../../lib/useChatSocket', () => ({
   useChatSocket: jest.fn(),
+  isChatRealtimeEnabled: jest.fn(),
 }));
 jest.mock('../../../lib/useChat', () => ({
   useMarkRead: jest.fn(),
@@ -30,12 +31,15 @@ jest.mock('../../../lib/useMyProfile', () => ({
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMessages } from '../../../lib/useRooms';
-import { useChatSocket } from '../../../lib/useChatSocket';
+import { isChatRealtimeEnabled, useChatSocket } from '../../../lib/useChatSocket';
 import { useMarkRead } from '../../../lib/useChat';
 import { useMyProfile } from '../../../lib/useMyProfile';
 
 const useMessagesMock = useMessages as jest.MockedFunction<typeof useMessages>;
 const useChatSocketMock = useChatSocket as jest.MockedFunction<typeof useChatSocket>;
+const isChatRealtimeEnabledMock = isChatRealtimeEnabled as jest.MockedFunction<
+  typeof isChatRealtimeEnabled
+>;
 const useMarkReadMock = useMarkRead as jest.MockedFunction<typeof useMarkRead>;
 const useMyProfileMock = useMyProfile as jest.MockedFunction<typeof useMyProfile>;
 const useLocalSearchParamsMock = useLocalSearchParams as jest.MockedFunction<
@@ -92,6 +96,7 @@ describe('RoomChatScreen', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     mockUseColorScheme.mockReturnValue('light');
+    isChatRealtimeEnabledMock.mockReturnValue(true);
     useLocalSearchParamsMock.mockReturnValue({ id: '10' });
     pushMock = jest.fn();
     useRouterMock.mockReturnValue({
@@ -234,6 +239,22 @@ describe('RoomChatScreen', () => {
     render(<RoomChatScreen />);
 
     expect(screen.getByText('실시간 연결이 어려워 새로고침으로 갱신하고 있어요')).toBeTruthy();
+
+    act(() => {
+      jest.advanceTimersByTime(5000);
+    });
+    expect(refetchMock).toHaveBeenCalled();
+  });
+
+  it('chat.realtime.enabled가 꺼져 있으면 연결 배너 없이 REST 폴링만으로 갱신한다', () => {
+    isChatRealtimeEnabledMock.mockReturnValue(false);
+    const refetchMock = jest.fn();
+    mockUseMessagesReturn({ data: buildMessages([]), refetch: refetchMock });
+    mockUseChatSocketReturn({ isConnected: false, pollingFallback: false });
+
+    render(<RoomChatScreen />);
+
+    expect(screen.queryByRole('alert')).toBeNull();
 
     act(() => {
       jest.advanceTimersByTime(5000);
