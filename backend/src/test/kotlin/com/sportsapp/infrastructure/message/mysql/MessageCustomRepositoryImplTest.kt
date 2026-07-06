@@ -3,6 +3,7 @@ package com.sportsapp.infrastructure.message.mysql
 import com.sportsapp.BaseIntegrationTest
 import com.sportsapp.domain.message.entity.Message
 import com.sportsapp.domain.message.entity.Room
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -145,6 +146,79 @@ class MessageCustomRepositoryImplTest(
 
                 Then("unreadCount 는 0 이다 (빈 상태)") {
                     result shouldBe 0L
+                }
+            }
+        }
+
+        Given("afterMessageId 이후 메시지 10건이 쌓인 룸 (재연결 backfill, FR-10)") {
+            val room = roomJpaRepository.save(Room.createDirect())
+            val cursorMessage = messageJpaRepository.save(Message.create(room, 1L, "커서 지점"))
+            val afterMessages = (1..10).map { index ->
+                messageJpaRepository.save(Message.create(room, 1L, "끊긴 구간 메시지$index"))
+            }
+
+            When("findAfter(roomId, cursorMessage.id, pageSize=30) 을 호출하면") {
+                val result = messageCustomRepositoryImpl.findAfter(room.id, cursorMessage.id, 30)
+
+                Then("id > afterMessageId 인 메시지 10건이 id 오름차순으로 반환된다") {
+                    result shouldHaveSize 10
+                    result.map { it.id } shouldBe afterMessages.map { it.id }
+                }
+            }
+
+            When("동일한 afterMessageId 로 재요청하면") {
+                val first = messageCustomRepositoryImpl.findAfter(room.id, cursorMessage.id, 30)
+                val second = messageCustomRepositoryImpl.findAfter(room.id, cursorMessage.id, 30)
+
+                Then("동일한 결과를 반환한다 (멱등)") {
+                    first.map { it.id } shouldBe second.map { it.id }
+                }
+            }
+        }
+
+        Given("끊긴 구간이 없는(최신까지 읽은) 룸") {
+            val room = roomJpaRepository.save(Room.createDirect())
+            val lastMessage = messageJpaRepository.save(Message.create(room, 1L, "마지막 메시지"))
+
+            When("findAfter(roomId, lastMessage.id, pageSize=30) 을 호출하면") {
+                val result = messageCustomRepositoryImpl.findAfter(room.id, lastMessage.id, 30)
+
+                Then("빈 목록을 반환한다") {
+                    result.shouldBeEmpty()
+                }
+            }
+        }
+
+        Given("afterMessageId 이후 pageSize 를 초과하는 메시지가 있는 룸") {
+            val room = roomJpaRepository.save(Room.createDirect())
+            val cursorMessage = messageJpaRepository.save(Message.create(room, 1L, "커서 지점"))
+            repeat(35) { index ->
+                messageJpaRepository.save(Message.create(room, 1L, "메시지$index"))
+            }
+
+            When("findAfter(roomId, cursorMessage.id, pageSize=30) 을 호출하면") {
+                val result = messageCustomRepositoryImpl.findAfter(room.id, cursorMessage.id, 30)
+
+                Then("최대 30건만 반환된다") {
+                    result shouldHaveSize 30
+                }
+            }
+        }
+
+        Given("afterMessageId 이후 soft-delete 된 메시지가 포함된 룸") {
+            val room = roomJpaRepository.save(Room.createDirect())
+            val cursorMessage = messageJpaRepository.save(Message.create(room, 1L, "커서 지점"))
+            val activeMessage = messageJpaRepository.save(Message.create(room, 1L, "활성"))
+            val deletedMessage = messageJpaRepository.save(Message.create(room, 1L, "삭제됨"))
+            deletedMessage.softDelete(1L)
+            messageJpaRepository.save(deletedMessage)
+
+            When("findAfter 를 호출하면") {
+                val result = messageCustomRepositoryImpl.findAfter(room.id, cursorMessage.id, 30)
+
+                Then("소프트 삭제된 메시지는 제외되고 1건만 반환된다") {
+                    result shouldHaveSize 1
+                    result.first().id shouldBe activeMessage.id
                 }
             }
         }

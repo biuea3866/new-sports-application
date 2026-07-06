@@ -61,4 +61,17 @@ class MessageCustomRepositoryImpl(
             )
             .fetchOne() ?: 0L
     }
+
+    override fun findAfter(roomId: Long, afterMessageId: Long, pageSize: Int): List<Message> {
+        val message = QMessage.message
+        return queryFactory.selectFrom(message)
+            .where(
+                message.room.id.eq(roomId),
+                message.id.gt(afterMessageId),
+                message.deletedAt.isNull,
+            )
+            .orderBy(message.id.asc())
+            .limit(pageSize.toLong())
+            .fetch()
+    }
 }
