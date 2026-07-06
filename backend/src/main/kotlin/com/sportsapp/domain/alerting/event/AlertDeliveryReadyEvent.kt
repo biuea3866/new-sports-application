@@ -7,7 +7,8 @@ import com.sportsapp.domain.common.AbstractDomainEvent
 /**
  * 발송 준비 완료 이벤트 — [title]·[body]에 발송 문구를 비정규화해 담는다(DTO 흐름: TDD.md §DTO 흐름).
  * presentation의 DeliveryEventWorker(AFTER_COMMIT @Async)가 소비해 notification
- * `SendNotificationUseCase`(DISCORD 채널)를 호출한다. [Alert.attachAnalysis]와
+ * `SendNotificationUseCase`(DISCORD 채널)를 호출한다.
+ * [com.sportsapp.domain.alerting.entity.Alert.attachTelemetry]와
  * [AlertDomainService.selfCheck][com.sportsapp.domain.alerting.service.AlertDomainService.selfCheck]
  * 양쪽에서 발행한다.
  */

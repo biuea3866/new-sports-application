@@ -129,13 +129,6 @@ alerting:
   discord:
     # AlertDeliveryEventWorker가 알림을 발송할 수신자 (BE-09).
     recipient-user-id: ${ALERT_RECIPIENT_USER_ID:1}
-  llm:
-    # Claude API(Anthropic Messages API) 설정 (BE-06). api-key는 비커밋 환경변수로만 주입한다.
-    base-url: ${ALERTING_LLM_BASE_URL:https://api.anthropic.com}
-    api-key: ${ALERTING_LLM_API_KEY:}
-    model: ${ALERTING_LLM_MODEL:claude-fable-5}
-    read-timeout-seconds: ${ALERTING_LLM_READ_TIMEOUT_SECONDS:55}
-    max-tokens: ${ALERTING_LLM_MAX_TOKENS:1024}
   retention:
     # alerts 이력 보존 정책(mcp_audit_logs 선례와 동일 90일) — AlertRetentionScheduler가 일 1회 정리한다.
     days: ${ALERTING_RETENTION_DAYS:90}

@@ -6,16 +6,14 @@ package com.sportsapp.domain.alerting.entity
  */
 enum class AlertStatus {
     RAISED,
-    ANALYZED,
-    FALLBACK,
+    ENRICHED,
     DELIVERED,
     DELIVERY_FAILED,
     ;
 
     fun canTransitTo(next: AlertStatus): Boolean = when (this) {
-        RAISED -> next == ANALYZED || next == FALLBACK
-        ANALYZED -> next == DELIVERED || next == DELIVERY_FAILED
-        FALLBACK -> next == DELIVERED || next == DELIVERY_FAILED
+        RAISED -> next == ENRICHED
+        ENRICHED -> next == DELIVERED || next == DELIVERY_FAILED
         DELIVERED -> false
         DELIVERY_FAILED -> false
     }
