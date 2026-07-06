@@ -74,6 +74,9 @@ describe('ProductDetailScreen 판매자 채팅하기 CTA', () => {
     mockUseColorScheme.mockReturnValue('light');
     pushMock = jest.fn();
     mutateMock = jest.fn();
+    // chat.goods.enabled는 기본 OFF이므로, 이 describe의 기존 케이스(ON 상태 동작 검증)는
+    // 명시적으로 켠 상태에서 실행한다. OFF 상태 검증은 별도 케이스에서 다룬다.
+    process.env.EXPO_PUBLIC_CHAT_GOODS_ENABLED = 'true';
 
     useLocalSearchParamsMock.mockReturnValue({ id: '1' });
     useRouterMock.mockReturnValue({
@@ -95,6 +98,25 @@ describe('ProductDetailScreen 판매자 채팅하기 CTA', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    delete process.env.EXPO_PUBLIC_CHAT_GOODS_ENABLED;
+  });
+
+  it('chat.goods.enabled 플래그가 기본값(OFF)이면 채팅 CTA가 렌더되지 않는다', () => {
+    delete process.env.EXPO_PUBLIC_CHAT_GOODS_ENABLED;
+    mockUseProductsReturn([sellerProduct]);
+
+    render(<ProductDetailScreen />);
+
+    expect(screen.queryByLabelText('판매자와 채팅하기')).toBeNull();
+  });
+
+  it('chat.goods.enabled 플래그가 ON이면 채팅 CTA가 렌더된다', () => {
+    process.env.EXPO_PUBLIC_CHAT_GOODS_ENABLED = 'true';
+    mockUseProductsReturn([sellerProduct]);
+
+    render(<ProductDetailScreen />);
+
+    expect(screen.getByLabelText('판매자와 채팅하기')).toBeTruthy();
   });
 
   it('"채팅하기" 탭 → 확인 시트 → 확정 시 방으로 이동한다', async () => {
