@@ -17,6 +17,7 @@ import {
   useMyInvitations,
   useRejectInvitation,
 } from '../../../lib/useInvitations';
+import { darkTokens } from '../../../theme/tokens';
 import type { InvitationResponse } from '../../../api/chat-types';
 
 jest.mock('../../../lib/useInvitations', () => ({
@@ -120,6 +121,17 @@ describe('MyInvitationsScreen', () => {
 
     expect(screen.queryByTestId('invitation-card-1')).toBeNull();
     expect(screen.getByTestId('invitation-card-2')).toBeTruthy();
+  });
+
+  it('다크 모드에서 화면 루트가 다크 토큰 배경 값으로 렌더된다', () => {
+    mockUseColorScheme.mockReturnValue('dark');
+    mockMyInvitations({ data: [] });
+
+    render(<MyInvitationsScreen />);
+
+    expect(screen.getByTestId('invitations-screen-root')).toHaveStyle({
+      backgroundColor: darkTokens.background,
+    });
   });
 
   it('이미 만료된 초대 수락 시 서버 거부 안내가 표시된다', () => {

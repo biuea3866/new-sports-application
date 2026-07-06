@@ -22,6 +22,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorView } from '../../components/ui/ErrorView';
 import { LoadingView } from '../../components/ui/LoadingView';
 import { ThemedText } from '../../components/ui/ThemedText';
+import { useTheme } from '../../theme/useTheme';
 import {
   useAcceptInvitation,
   useMyInvitations,
@@ -118,6 +119,7 @@ function InvitationCard({ invitation, onRemove }: InvitationCardProps) {
 
 export default function MyInvitationsScreen() {
   const { data, isLoading, isError, refetch } = useMyInvitations();
+  const { tokens } = useTheme();
   const [removedIds, setRemovedIds] = useState<Set<number>>(new Set());
 
   const handleRemove = (id: number) => {
@@ -139,7 +141,10 @@ export default function MyInvitationsScreen() {
   const invitations = (data ?? []).filter((invitation) => !removedIds.has(invitation.id));
 
   return (
-    <View style={styles.container}>
+    <View
+      testID="invitations-screen-root"
+      style={[styles.container, { backgroundColor: tokens.background }]}
+    >
       <ThemedText variant="primary" style={styles.header} accessibilityRole="header">
         받은 초대
       </ThemedText>
