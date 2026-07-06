@@ -9,7 +9,6 @@ import { FacilityForm } from "@/app/portal/facilities/_components/FacilityForm";
 import { AirQualityCard } from "@/app/portal/facilities/_components/AirQualityCard";
 import { useAirQuality } from "@/app/portal/facilities/_hooks/useAirQuality";
 import { resolveSidoDisplayName } from "@/app/portal/facilities/sido-display";
-import { parseLocation } from "@/app/portal/facilities/parse-location";
 import type { MyFacility } from "@/lib/portal/types";
 import type { FacilityFormValues } from "@/app/portal/facilities/facility-form-schema";
 
@@ -101,10 +100,9 @@ export default function FacilityDetailPage() {
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [deleteError, setDeleteError] = React.useState<string | null>(null);
 
-  const parsedLocation = parseLocation(facility?.location);
   const { status: airQualityStatus, data: airQualityData } = useAirQuality(
-    parsedLocation?.lat,
-    parsedLocation?.lng
+    facility?.lat,
+    facility?.lng
   );
 
   React.useEffect(() => {
@@ -295,7 +293,7 @@ export default function FacilityDetailPage() {
               </div>
               <div>
                 <dt className="font-medium text-muted-foreground">위치 좌표</dt>
-                <dd className="mt-1">{facility.location}</dd>
+                <dd className="mt-1">{facility.lat}, {facility.lng}</dd>
               </div>
               <div>
                 <dt className="font-medium text-muted-foreground">전화번호</dt>
@@ -351,7 +349,7 @@ export default function FacilityDetailPage() {
                 gu: facility.gu,
                 type: facility.type,
                 address: facility.address,
-                location: facility.location,
+                location: `${facility.lat},${facility.lng}`,
                 parking: facility.parking,
                 tel: facility.tel,
                 homePage: facility.homePage ?? "",
