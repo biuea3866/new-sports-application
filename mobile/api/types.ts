@@ -234,10 +234,18 @@ export interface ListEventsResponse {
 // --- Room / Message ---
 export type RoomType = 'DIRECT' | 'GROUP';
 
+// BE 계약(20260704-채팅시스템고도화-tdd.md "RoomResponse (확장)"): contextType/lastMessagePreview/
+// lastMessageAt은 additive 확장 필드라 optional로 선언한다(구 응답·기존 테스트 리터럴과 하위 호환).
 export interface RoomResponse {
   id: number;
   type: RoomType;
   name: string | null;
+  /** 컨텍스트 없으면 null(기존 DIRECT/GROUP) */
+  contextType?: 'COMMUNITY' | 'GOODS_PRODUCT' | null;
+  /** 마지막 메시지 최대 50자. 메시지 없으면 null */
+  lastMessagePreview?: string | null;
+  /** 마지막 메시지 시각(ISO 8601). 없으면 null */
+  lastMessageAt?: string | null;
 }
 
 export interface MessageResponse {
@@ -328,7 +336,12 @@ export interface UpdateCartItemRequest {
 
 // --- GoodsOrder ---
 export type GoodsOrderStatus =
-  'PENDING' | 'PAID' | 'PREPARING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+  | 'PENDING'
+  | 'PAID'
+  | 'PREPARING'
+  | 'SHIPPED'
+  | 'DELIVERED'
+  | 'CANCELLED';
 
 export interface GoodsOrderItemResponse {
   productId: number;

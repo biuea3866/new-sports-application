@@ -1,127 +1,153 @@
 /**
- * 채팅 목록 화면
+ * app/rooms/index.tsx — 채팅방 목록 화면 (S1, 재작성)
+ *
+ * 근거: FE-09 티켓, `20260704-채팅시스템고도화-design-fe-app.md` S1 텍스트 와이어프레임·
+ * 상태 표. 토스 패턴: 리스트 아이템 + 우측 원형 안읽은 배지, 헤더 우측 단일 액션.
+ *
+ * 병합 로직(useRooms+useUnreadCounts)은 `lib/useRoomListItems`가 담당하고,
+ * 이 화면은 4상태(loading/empty/error/success) 렌더링만 한다. 헤더 우측 초대 수신함
+ * 진입 버튼은 여기서 배치만 하고, `chat.community.enabled` 플래그 게이팅은 FE-15가 담당한다.
  */
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
-import { useRooms } from '../../lib/useRooms';
-import type { RoomResponse } from '../../api/types';
+import { Badge } from '../../components/ui/Badge';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { ErrorView } from '../../components/ui/ErrorView';
+import { ListItem } from '../../components/ui/ListItem';
+import { LoadingView } from '../../components/ui/LoadingView';
+import { ThemedText } from '../../components/ui/ThemedText';
+import { ThemedView } from '../../components/ui/ThemedView';
+import { useTheme } from '../../theme/useTheme';
+import { useMyInvitations } from '../../lib/useInvitations';
+import { useRoomListItems, type RoomListItemView } from '../../lib/useRoomListItems';
 
-interface RoomItemProps {
-  room: RoomResponse;
-}
+const EMPTY_MESSAGE = '참여 중인 채팅방이 없어요';
+const ERROR_MESSAGE = '채팅 목록을 불러오지 못했습니다.';
 
-function RoomItem({ room }: RoomItemProps) {
-  const displayName = room.name ?? (room.type === 'DIRECT' ? '1:1 채팅' : '그룹 채팅');
+function InvitationInboxButton() {
+  const { tokens } = useTheme();
+  const { data: invitations } = useMyInvitations();
+  const hasPendingInvitation = (invitations?.length ?? 0) > 0;
+  const accessibilityLabel = hasPendingInvitation ? '초대함, 대기 중인 초대 있음' : '초대함';
 
   return (
     <Pressable
-      style={styles.card}
-      onPress={() => router.push(`/rooms/${room.id}`)}
+      style={styles.inboxButton}
+      onPress={() => router.push('/invitations')}
       accessibilityRole="button"
-      accessibilityLabel={`${displayName} 채팅방 열기`}
+      accessibilityLabel={accessibilityLabel}
     >
-      <Text style={styles.roomName} accessibilityRole="text">
-        {displayName}
-      </Text>
-      <Text style={styles.roomType} accessibilityRole="text">
-        {room.type === 'DIRECT' ? '1:1' : '그룹'}
-      </Text>
+      <ThemedText variant="accent" style={styles.inboxLabel}>
+        초대함
+      </ThemedText>
+      {hasPendingInvitation ? (
+        <View
+          style={[styles.pendingDot, { backgroundColor: tokens.badge }]}
+          accessibilityElementsHidden
+        />
+      ) : null}
     </Pressable>
   );
 }
 
+interface RoomListRowProps {
+  item: RoomListItemView;
+}
+
+function RoomListRow({ item }: RoomListRowProps) {
+  return (
+    <ListItem
+      title={item.displayName}
+      subtitle={item.previewText ?? undefined}
+      onPress={() => router.push(`/rooms/${item.id}`)}
+      trailing={
+        <View style={styles.trailing}>
+          {item.timeLabel ? (
+            <ThemedText variant="secondary" style={styles.timeLabel}>
+              {item.timeLabel}
+            </ThemedText>
+          ) : null}
+          <Badge count={item.unreadCount} />
+        </View>
+      }
+    />
+  );
+}
+
 export default function RoomsListScreen() {
-  const { data, isLoading, isError } = useRooms();
-
-  if (isLoading) {
-    return (
-      <View style={styles.centered} accessibilityLabel="채팅 목록 로딩 중">
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
-  }
-
-  if (isError) {
-    return (
-      <View style={styles.centered} accessibilityLabel="채팅 목록 오류">
-        <Text style={styles.errorText} accessibilityRole="alert">
-          채팅 목록을 불러오지 못했습니다.
-        </Text>
-      </View>
-    );
-  }
-
-  const rooms = data ?? [];
+  const { items, isLoading, isError, isRefreshing, refetch } = useRoomListItems();
 
   return (
-    <View style={styles.container} accessible={true} accessibilityLabel="채팅 목록 화면">
-      <Text style={styles.title}>채팅</Text>
-      {rooms.length === 0 ? (
-        <Text style={styles.emptyText} accessibilityRole="text">
-          채팅방이 없습니다.
-        </Text>
+    <ThemedView style={styles.container} testID="rooms-list-screen">
+      <View style={styles.header}>
+        <ThemedText variant="primary" style={styles.title}>
+          채팅
+        </ThemedText>
+        <InvitationInboxButton />
+      </View>
+
+      {isLoading ? (
+        <LoadingView variant="skeleton" />
+      ) : isError ? (
+        <ErrorView message={ERROR_MESSAGE} onRetry={refetch} />
+      ) : items.length === 0 ? (
+        <EmptyState message={EMPTY_MESSAGE} />
       ) : (
         <FlatList
-          data={rooms}
+          data={items}
           keyExtractor={(item) => String(item.id)}
-          renderItem={({ item }) => <RoomItem room={item} />}
+          renderItem={({ item }) => <RoomListRow item={item} />}
           contentContainerStyle={styles.list}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refetch} />}
         />
       )}
-    </View>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
     paddingTop: 60,
   },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1C1C1E',
-    marginBottom: 20,
-  },
-  list: {
-    paddingBottom: 40,
-  },
-  card: {
-    backgroundColor: '#F2F2F7',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginBottom: 12,
   },
-  roomName: {
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  inboxButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  inboxLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1C1C1E',
-    flex: 1,
+    marginRight: 6,
   },
-  roomType: {
+  pendingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  list: {
+    paddingHorizontal: 16,
+    paddingBottom: 40,
+  },
+  separator: {
+    height: 8,
+  },
+  trailing: {
+    alignItems: 'flex-end',
+  },
+  timeLabel: {
     fontSize: 12,
-    color: '#8E8E93',
-    marginLeft: 8,
-  },
-  emptyText: {
-    fontSize: 15,
-    color: '#8E8E93',
-    textAlign: 'center',
-    marginTop: 40,
-  },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 15,
+    marginBottom: 4,
   },
 });
