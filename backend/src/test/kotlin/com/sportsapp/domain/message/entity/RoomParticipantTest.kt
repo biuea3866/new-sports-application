@@ -150,5 +150,22 @@ class RoomParticipantTest : BehaviorSpec({
                 }
             }
         }
+
+        When("isMember 를 호출하면") {
+            Then("true 를 반환한다") {
+                participant.isMember() shouldBe true
+            }
+        }
+    }
+
+    Given("GUEST 참여자 (isMember 질의)") {
+        val room = Room.createDirect()
+        val participant = RoomParticipant.forGuest(room = room, userId = 5L, canSpeak = true, expiresInDays = 7L)
+
+        When("isMember 를 호출하면") {
+            Then("false 를 반환한다") {
+                participant.isMember() shouldBe false
+            }
+        }
     }
 })

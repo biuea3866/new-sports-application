@@ -7,7 +7,6 @@ import com.sportsapp.domain.message.exception.NotRoomHostException
 import com.sportsapp.domain.message.repository.RoomInvitationRepository
 import com.sportsapp.domain.message.repository.RoomParticipantRepository
 import com.sportsapp.domain.message.repository.RoomRepository
-import com.sportsapp.domain.message.vo.ParticipantType
 import org.springframework.stereotype.Service
 
 /**
@@ -76,7 +75,7 @@ class GuestInvitationDomainService(
 
     private fun requireHost(roomId: Long, userId: Long) {
         val host = roomParticipantRepository.findActiveByRoomId(roomId)
-            .filter { it.participantType == ParticipantType.MEMBER }
+            .filter { it.isMember() }
             .minByOrNull { it.joinedAt }
         if (host == null || host.userId != userId) throw NotRoomHostException(userId, roomId)
     }
