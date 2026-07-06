@@ -6,7 +6,6 @@ import com.sportsapp.domain.message.service.RoomContextDomainService
 import com.sportsapp.domain.message.vo.RoomContextType
 import com.sportsapp.domain.message.vo.RoomType
 import io.kotest.core.spec.style.BehaviorSpec
-import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -34,10 +33,9 @@ class ProvisionContextRoomUseCaseTest : BehaviorSpec({
                 name = "주말 축구 모임",
                 hostUserId = 1L,
             )
-            val result = useCase.execute(command)
+            useCase.execute(command)
 
-            Then("RoomContextDomainService.provision 이 위임 호출되고 결과 방이 반환된다") {
-                result shouldBe room
+            Then("RoomContextDomainService.provision 이 위임 호출된다") {
                 verify(exactly = 1) {
                     roomContextDomainService.provision(
                         contextType = RoomContextType.COMMUNITY,

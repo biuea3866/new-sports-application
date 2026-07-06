@@ -6,6 +6,7 @@ import com.sportsapp.domain.message.repository.RoomParticipantRepository
 import com.sportsapp.domain.message.repository.RoomRepository
 import com.sportsapp.domain.message.vo.RoomContextType
 import com.sportsapp.domain.message.vo.RoomType
+import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -21,6 +22,10 @@ import io.mockk.verify
  * Kotest `BehaviorSpec`은 트리 전체를 단일 패스로 순차 실행하므로(각 leaf마다 재실행되지 않는다),
  * `Given` 블록마다 mock을 새로 만들어 앞선 블록의 호출 이력이 뒤 블록의
  * `verify(exactly = 0)` 검증에 섞여 들지 않도록 격리한다.
+ *
+ * provision·join·leave는 모두 `@Async` AFTER_COMMIT으로 독립 실행되는 순서 경합이 있다(PR #270
+ * 리뷰 p3) — join/leave가 provision보다 먼저 도착하는 경우를 "방 미존재" 케이스로 재현해
+ * 크래시 없이 스킵(+WARN 로깅)됨을 검증한다.
  */
 class RoomContextDomainServiceTest : BehaviorSpec({
 
@@ -115,10 +120,28 @@ class RoomContextDomainServiceTest : BehaviorSpec({
         val service = RoomContextDomainService(roomRepository, roomParticipantRepository)
         every { roomRepository.findByContext(RoomContextType.COMMUNITY, 50L) } returns null
 
-        When("joinContext 를 호출해도") {
-            service.joinContext(RoomContextType.COMMUNITY, 50L, 4L)
+        When("joinContext 를 호출해도 (provision·join 순서 경합 재현)") {
+            Then("예외 없이 크래시하지 않고 아무 참여자도 등록되지 않는다 (WARN 로깅 후 스킵)") {
+                shouldNotThrowAny {
+                    service.joinContext(RoomContextType.COMMUNITY, 50L, 4L)
+                }
+                verify(exactly = 0) { roomParticipantRepository.save(any()) }
+            }
+        }
+    }
 
-            Then("예외 없이 아무 참여자도 등록되지 않는다") {
+    Given("컨텍스트 방이 아직 provision 되지 않은 상태에서 탈퇴 이벤트를 수신하면") {
+        val roomRepository = mockk<RoomRepository>()
+        val roomParticipantRepository = mockk<RoomParticipantRepository>()
+        val service = RoomContextDomainService(roomRepository, roomParticipantRepository)
+        every { roomRepository.findByContext(RoomContextType.COMMUNITY, 55L) } returns null
+
+        When("leaveContext 를 호출해도 (provision·leave 순서 경합 재현)") {
+            Then("예외 없이 크래시하지 않고 아무 작업도 하지 않는다 (WARN 로깅 후 스킵)") {
+                shouldNotThrowAny {
+                    service.leaveContext(RoomContextType.COMMUNITY, 55L, 4L)
+                }
+                verify(exactly = 0) { roomParticipantRepository.findActiveByRoomIdAndUserId(any(), any()) }
                 verify(exactly = 0) { roomParticipantRepository.save(any()) }
             }
         }
