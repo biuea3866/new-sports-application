@@ -8,10 +8,12 @@ import com.sportsapp.domain.facility.gateway.RegionResolveGateway
 import com.sportsapp.domain.facility.gateway.SlotQueryGateway
 import com.sportsapp.domain.facility.repository.FacilityRepository
 import com.sportsapp.domain.facility.vo.FacilityAttributes
+import com.sportsapp.domain.facility.vo.OperatingHours
 import org.springframework.context.annotation.Profile
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
+import java.time.LocalDate
 
 @Service
 @Profile("!test-jpa")
@@ -69,5 +71,30 @@ class FacilityOwnerDomainService(
         }
         facility.softDelete(ownerUserId)
         facilityRepository.save(facility)
+    }
+
+    fun registerOperatingHours(facilityId: String, ownerUserId: Long, operatingHours: List<OperatingHours>): Facility {
+        val facility = getOwnedFacility(facilityId, ownerUserId)
+        facility.registerOperatingHours(operatingHours)
+        return facilityRepository.save(facility)
+    }
+
+    fun addHoliday(facilityId: String, ownerUserId: Long, date: LocalDate): Facility {
+        val facility = getOwnedFacility(facilityId, ownerUserId)
+        facility.addHoliday(date)
+        return facilityRepository.save(facility)
+    }
+
+    fun removeHoliday(facilityId: String, ownerUserId: Long, date: LocalDate): Facility {
+        val facility = getOwnedFacility(facilityId, ownerUserId)
+        facility.removeHoliday(date)
+        return facilityRepository.save(facility)
+    }
+
+    // 존재 여부와 소유 여부를 분리해 소유권 위반을 명시적 예외로 구분한다 (getByIdAndOwner의 not-found 은닉과 다른 용도).
+    private fun getOwnedFacility(facilityId: String, ownerUserId: Long): Facility {
+        val facility = facilityRepository.findById(facilityId) ?: throw FacilityNotFoundException(facilityId)
+        facility.requireOwnedBy(ownerUserId)
+        return facility
     }
 }

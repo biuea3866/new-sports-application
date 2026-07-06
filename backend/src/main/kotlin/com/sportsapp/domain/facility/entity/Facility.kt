@@ -2,8 +2,11 @@ package com.sportsapp.domain.facility.entity
 
 import com.sportsapp.domain.common.BaseDocument
 import com.sportsapp.domain.facility.exception.InvalidFacilityException
+import com.sportsapp.domain.facility.exception.UnauthorizedFacilityAccessException
 import com.sportsapp.domain.facility.vo.FacilityAttributes
 import com.sportsapp.domain.facility.vo.FacilityRegion
+import com.sportsapp.domain.facility.vo.Holiday
+import com.sportsapp.domain.facility.vo.OperatingHours
 import org.springframework.data.annotation.Id
 import org.springframework.data.geo.Point
 import org.springframework.data.mongodb.core.index.CompoundIndex
@@ -13,6 +16,7 @@ import org.springframework.data.mongodb.core.index.GeoSpatialIndexed
 import org.springframework.data.mongodb.core.index.Indexed
 import org.springframework.data.mongodb.core.mapping.Document
 import org.springframework.data.mongodb.core.mapping.Field
+import java.time.LocalDate
 
 @Document(collection = "facilities")
 @CompoundIndexes(
@@ -52,6 +56,9 @@ class Facility(
     sidoName: String?,
     sigunguCode: String?,
     sigunguName: String?,
+    // 레거시(마이그레이션 이전) 문서는 필드 자체가 없다 — additive 임베드라 기본값(빈 목록)으로 보정한다.
+    operatingHours: List<OperatingHours> = emptyList(),
+    holidays: List<Holiday> = emptyList(),
 ) : BaseDocument() {
 
     @Field("owner_user_id")
@@ -75,6 +82,14 @@ class Facility(
     var sigunguName: String = sigunguName ?: FacilityRegion.UNSPECIFIED.sigunguName
         private set
 
+    @Field("operating_hours")
+    var operatingHours: List<OperatingHours> = operatingHours
+        private set
+
+    @Field("holidays")
+    var holidays: List<Holiday> = holidays
+        private set
+
     val lat: Double get() = location.y
     val lng: Double get() = location.x
 
@@ -84,6 +99,25 @@ class Facility(
     }
 
     fun isOwnedBy(userId: Long): Boolean = ownerUserId == userId
+
+    fun requireOwnedBy(userId: Long) {
+        if (!isOwnedBy(userId)) throw UnauthorizedFacilityAccessException(id ?: "unknown")
+    }
+
+    fun registerOperatingHours(hours: List<OperatingHours>) {
+        operatingHours = hours
+    }
+
+    fun addHoliday(date: LocalDate) {
+        if (isHoliday(date)) return
+        holidays = holidays + Holiday(date)
+    }
+
+    fun removeHoliday(date: LocalDate) {
+        holidays = holidays.filterNot { it.date == date }
+    }
+
+    fun isHoliday(date: LocalDate): Boolean = holidays.any { it.date == date }
 
     fun updateMeta(patch: Map<String, String>): Facility =
         Facility(
@@ -104,6 +138,8 @@ class Facility(
             sidoName = sidoName,
             sigunguCode = sigunguCode,
             sigunguName = sigunguName,
+            operatingHours = operatingHours,
+            holidays = holidays,
         )
 
     fun assignRegion(region: FacilityRegion): Facility =
@@ -125,6 +161,8 @@ class Facility(
             sidoName = region.sidoName,
             sigunguCode = region.sigunguCode,
             sigunguName = region.sigunguName,
+            operatingHours = operatingHours,
+            holidays = holidays,
         )
 
     companion object {

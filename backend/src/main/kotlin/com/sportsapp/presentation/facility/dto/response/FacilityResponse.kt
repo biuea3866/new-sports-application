@@ -18,6 +18,8 @@ data class FacilityResponse(
     val sidoName: String,
     val sigunguCode: String,
     val sigunguName: String,
+    val operatingHours: List<OperatingHoursResponse>,
+    val holidays: List<String>,
 ) {
     companion object {
         fun of(facility: Facility): FacilityResponse = FacilityResponse(
@@ -36,6 +38,8 @@ data class FacilityResponse(
             sidoName = facility.sidoName,
             sigunguCode = facility.sigunguCode,
             sigunguName = facility.sigunguName,
+            operatingHours = facility.operatingHours.map { OperatingHoursResponse.of(it) },
+            holidays = facility.holidays.map { it.date.toString() },
         )
     }
 }

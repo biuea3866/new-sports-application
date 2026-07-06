@@ -1,13 +1,20 @@
 package com.sportsapp.domain.facility.entity
 
 import com.sportsapp.domain.facility.exception.InvalidFacilityException
+import com.sportsapp.domain.facility.exception.UnauthorizedFacilityAccessException
 import com.sportsapp.domain.facility.vo.FacilityAttributes
 import com.sportsapp.domain.facility.vo.FacilityRegion
+import com.sportsapp.domain.facility.vo.OperatingHours
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.maps.shouldContainKey
 import io.kotest.matchers.maps.shouldNotContainKey
 import io.kotest.matchers.shouldBe
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.LocalTime
 
 class FacilityTest : BehaviorSpec({
 
@@ -172,6 +179,100 @@ class FacilityTest : BehaviorSpec({
 
             Then("원본 Facility의 region은 변경되지 않는다") {
                 facility.sidoCode shouldBe FacilityRegion.UNSPECIFIED.sidoCode
+            }
+        }
+    }
+
+    Given("운영시간이 등록되지 않은 Facility") {
+        val facility = Facility.create(buildAttributes())
+
+        Then("operatingHours는 빈 목록이다") {
+            facility.operatingHours.shouldBeEmpty()
+        }
+    }
+
+    Given("Facility에 요일별 운영시간을 등록할 때") {
+        val facility = Facility.create(buildAttributes())
+        val hours = listOf(
+            OperatingHours(
+                dayOfWeek = DayOfWeek.MONDAY,
+                openTime = LocalTime.of(6, 0),
+                closeTime = LocalTime.of(22, 0),
+                capacity = 10,
+            ),
+        )
+
+        When("registerOperatingHours를 호출하면") {
+            facility.registerOperatingHours(hours)
+
+            Then("operatingHours가 그대로 반영된다") {
+                facility.operatingHours shouldHaveSize 1
+                facility.operatingHours[0].dayOfWeek shouldBe DayOfWeek.MONDAY
+            }
+        }
+    }
+
+    Given("휴무일이 없는 Facility") {
+        val facility = Facility.create(buildAttributes())
+        val date = LocalDate.of(2026, 7, 6)
+
+        When("addHoliday를 호출하면") {
+            facility.addHoliday(date)
+
+            Then("holidays에 포함되어 isHoliday가 true를 반환한다") {
+                facility.isHoliday(date) shouldBe true
+            }
+        }
+
+        When("addHoliday를 동일 날짜로 두 번 호출하면") {
+            facility.addHoliday(date)
+            facility.addHoliday(date)
+
+            Then("멱등하게 처리되어 holidays에 한 건만 존재한다") {
+                facility.holidays shouldHaveSize 1
+            }
+        }
+    }
+
+    Given("휴무일이 등록된 Facility") {
+        val facility = Facility.create(buildAttributes())
+        val date = LocalDate.of(2026, 7, 6)
+        facility.addHoliday(date)
+
+        When("removeHoliday를 호출하면") {
+            facility.removeHoliday(date)
+
+            Then("holidays에서 제거되어 isHoliday가 false를 반환한다") {
+                facility.isHoliday(date) shouldBe false
+            }
+        }
+    }
+
+    Given("어떤 날짜도 휴무일로 등록되지 않은 Facility") {
+        val facility = Facility.create(buildAttributes())
+
+        When("isHoliday를 호출하면") {
+            Then("false를 반환한다") {
+                facility.isHoliday(LocalDate.of(2026, 7, 6)) shouldBe false
+            }
+        }
+    }
+
+    Given("ownerUserId가 42L로 설정된 Facility") {
+        val facility = Facility.create(buildAttributes())
+        facility.assignOwner(42L)
+
+        When("소유자 본인이 requireOwnedBy를 호출하면") {
+            Then("예외 없이 통과한다") {
+                facility.requireOwnedBy(42L)
+            }
+        }
+
+        When("소유자가 아닌 사용자가 requireOwnedBy를 호출하면") {
+            Then("UnauthorizedFacilityAccessException을 던진다") {
+                shouldThrow<UnauthorizedFacilityAccessException> {
+                    facility.requireOwnedBy(99L)
+                }
             }
         }
     }
