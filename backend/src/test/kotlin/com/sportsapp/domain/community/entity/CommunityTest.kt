@@ -61,7 +61,7 @@ class CommunityTest : BehaviorSpec({
         When("save 이후 registerCreatedEvent() 를 호출하면 (DomainService 가 수행)") {
             community.registerCreatedEvent()
 
-            Then("CommunityCreatedEvent.aggregateId 가 저장된 id(42)와 일치하고 name 을 함께 싣는다 (BE-14)") {
+            Then("CommunityCreatedEvent.aggregateId 가 저장된 id(42)와 일치하고 name 을 함께 싣는다") {
                 val events = community.pullDomainEvents()
                 events shouldHaveSize 1
                 val event = events.first()

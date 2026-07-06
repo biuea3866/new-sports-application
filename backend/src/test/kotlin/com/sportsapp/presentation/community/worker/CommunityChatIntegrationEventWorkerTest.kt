@@ -56,7 +56,7 @@ class CommunityChatIntegrationEventWorkerTest(
             )
 
             When("CommunityCreatedEvent 가 AFTER_COMMIT 이후 비동기로 소비되면") {
-                Then("contextType=COMMUNITY 전용 그룹 방이 커뮤니티 이름을 가지고 자동 생성되고 방장이 참여자로 등록된다 (BE-14)") {
+                Then("contextType=COMMUNITY 전용 그룹 방이 커뮤니티 이름을 가지고 자동 생성되고 방장이 참여자로 등록된다") {
                     eventually(10.seconds) {
                         val room = roomRepository.findByContext(RoomContextType.COMMUNITY, community.id)
                             .shouldNotBeNull()

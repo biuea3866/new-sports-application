@@ -267,7 +267,7 @@ class CommunityMemberTest : BehaviorSpec({
         }
     }
 
-    Given("HOST 역할의 멤버 — BE-14") {
+    Given("HOST 역할의 멤버") {
         val host = CommunityMember.createHost(communityId = 10L, userId = 113L)
 
         When("isHost 를 조회하면") {
@@ -277,7 +277,7 @@ class CommunityMemberTest : BehaviorSpec({
         }
     }
 
-    Given("MEMBER 역할의 멤버 — BE-14") {
+    Given("MEMBER 역할의 멤버") {
         val member = CommunityMember.join(communityId = 10L, userId = 114L, isPublic = true)
 
         When("isHost 를 조회하면") {

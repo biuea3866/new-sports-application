@@ -215,7 +215,7 @@ class CommunityApiControllerTest : BehaviorSpec({
         }
     }
 
-    Given("커뮤니티 멤버 목록 조회 — HOST·MEMBER 혼재 (BE-14)") {
+    Given("커뮤니티 멤버 목록 조회 — HOST·MEMBER 혼재") {
         val listCommunityMembersUseCase = mockk<ListCommunityMembersUseCase>()
         every { listCommunityMembersUseCase.execute(6L, TEST_USER_ID) } returns listOf(
             communityMemberResponse(role = CommunityRole.HOST),
