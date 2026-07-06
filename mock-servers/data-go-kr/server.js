@@ -11,10 +11,11 @@
 //    → 본 mock 은 base-url 뒤 경로 /getVilageFcst 로 동일하게 받는다.
 //    응답: response.body.items.item[] (category/fcstDate/fcstTime/fcstValue)
 //
-// 3) 에어코리아(한국환경공단) 대기질 3단계 체이닝
-//    getTMStdrCrdnt(umdName/addr) → tmX,tmY
+// 3) 에어코리아(한국환경공단) 대기질 2단계 체이닝 (BE 게이트웨이는 WGS84→TM 좌표를
+//    proj4j로 직접 변환하므로 getTMStdrCrdnt 는 더 이상 호출하지 않는다. 이 mock 엔드포인트는
+//    다른 클라이언트 호환을 위해 남겨둔다)
 //    getNearbyMsrstnList(tmX,tmY) → stationName
-//    getMsrstnAcctoRltmMesureDnsty(stationName) → pm10Value/pm25Value/dataTime
+//    getMsrstnAcctoRltmMesureDnsty(stationName, dataTerm 필수) → pm10Value/pm25Value/dataTime
 //    응답: response.body.items.item[] (다른 서비스와 동일 envelope)
 
 const express = require('express');
@@ -201,12 +202,22 @@ app.get('/B552584/MsrstnInfoInqireSvc/getNearbyMsrstnList', (req, res) => {
 app.get('/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty', (req, res) => {
   const stationName = (req.query.stationName || '').toString();
   const ver = (req.query.ver || '').toString();
-  console.log(`[data-go-kr] getMsrstnAcctoRltmMesureDnsty stationName=${stationName} ver=${ver}`);
+  const dataTerm = (req.query.dataTerm || '').toString();
+  console.log(`[data-go-kr] getMsrstnAcctoRltmMesureDnsty stationName=${stationName} ver=${ver} dataTerm=${dataTerm}`);
 
   if (stationName === FAIL_TRIGGER) {
     return res.status(503).json({
       response: {
         header: { resultCode: '99', resultMsg: 'SERVICE_ERROR (mock forced failure)' },
+      },
+    });
+  }
+
+  // 실서버 실측(2026-07-06): dataTerm 파라미터가 없으면 필수 파라미터 누락 오류를 반환한다.
+  if (!dataTerm) {
+    return res.json({
+      response: {
+        header: { resultCode: '11', resultMsg: 'NO_MANDATORY_REQUEST_PARAMETERS_ERROR' },
       },
     });
   }

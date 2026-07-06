@@ -16,10 +16,15 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoField
 
 /**
- * 에어코리아(한국환경공단) 대기질 3단계 체인을 캡슐화한다:
- * getTMStdrCrdnt(umdName) → getNearbyMsrstnList(tmX,tmY) → getMsrstnAcctoRltmMesureDnsty(stationName).
+ * 에어코리아(한국환경공단) 대기질 2단계 체인을 캡슐화한다:
+ * [AirKoreaTmProjection]으로 WGS84 좌표를 TM 좌표로 직접 변환 →
+ * getNearbyMsrstnList(tmX,tmY) → getMsrstnAcctoRltmMesureDnsty(stationName, dataTerm=DAILY).
  * 캐시 히트 시 체인을 건너뛰고, 임의 단계 실패·타임아웃은 예외를 전파하지 않고
  * [AirQualityMeasurement.empty]로 degrade 한다(레디스 키 계약 §4·§5).
+ *
+ * `getTMStdrCrdnt`(umdName/addr → TM 좌표) API는 더 이상 호출하지 않는다 — 그 API는
+ * 동/읍면동 "이름" → 좌표 조회용이라, 위경도 문자열(gridKey)을 이름으로 넘기면 실서버가
+ * 항상 totalCount:0 을 반환해 체인이 항상 empty 로 degrade 되는 결함이 있었다(실서버 실측).
  */
 @Component
 class AirKoreaAirQualityGatewayImpl(
@@ -37,37 +42,23 @@ class AirKoreaAirQualityGatewayImpl(
         if (cached != null) {
             return cached
         }
-        val measurement = fetchFromChain(gridKey)
+        val measurement = fetchFromChain(lat, lng)
         airQualityMeasurementCache.save(gridKey, measurement)
         return measurement
     }
 
-    private fun fetchFromChain(gridKey: String): AirQualityMeasurement {
+    private fun fetchFromChain(lat: Double, lng: Double): AirQualityMeasurement {
         try {
-            val coordinate = fetchTmCoordinate(gridKey) ?: return AirQualityMeasurement.empty()
+            val coordinate = AirKoreaTmProjection.toTm(lat, lng)
             val stationName = fetchNearbyStation(coordinate) ?: return AirQualityMeasurement.empty()
             return fetchRealtimeMeasure(stationName) ?: AirQualityMeasurement.empty()
         } catch (exception: RestClientException) {
-            logger.warn("air quality chain fetch failed (gridKey={}): {}", gridKey, exception.message)
+            logger.warn("air quality chain fetch failed (lat={}, lng={}): {}", lat, lng, exception.message)
             return AirQualityMeasurement.empty()
         }
     }
 
-    private fun fetchTmCoordinate(gridKey: String): AirKoreaTmCoordinateItem? {
-        val response = restClient.get()
-            .uri { builder ->
-                builder.path("/B552584/MsrstnInfoInqireSvc/getTMStdrCrdnt")
-                    .queryParam("serviceKey", properties.apiKey)
-                    .queryParam("returnType", "json")
-                    .queryParam("umdName", gridKey)
-                    .build()
-            }
-            .retrieve()
-            .body(object : ParameterizedTypeReference<AirKoreaEnvelope<AirKoreaTmCoordinateItem>>() {})
-        return response.itemsOrNull(gridKey, "getTMStdrCrdnt")?.first()
-    }
-
-    private fun fetchNearbyStation(coordinate: AirKoreaTmCoordinateItem): String? {
+    private fun fetchNearbyStation(coordinate: AirKoreaTmCoordinate): String? {
         val response = restClient.get()
             .uri { builder ->
                 builder.path("/B552584/MsrstnInfoInqireSvc/getNearbyMsrstnList")
@@ -90,6 +81,7 @@ class AirKoreaAirQualityGatewayImpl(
                     .queryParam("returnType", "json")
                     .queryParam("stationName", stationName)
                     .queryParam("ver", REALTIME_MEASURE_API_VERSION)
+                    .queryParam("dataTerm", REALTIME_MEASURE_DATA_TERM)
                     .build()
             }
             .retrieve()
@@ -149,6 +141,13 @@ class AirKoreaAirQualityGatewayImpl(
          * (실서버 실측 2026-07-06). ver=1.3 을 명시해 pm25Value 를 응답에 포함시킨다.
          */
         private const val REALTIME_MEASURE_API_VERSION = "1.3"
+
+        /**
+         * getMsrstnAcctoRltmMesureDnsty 는 dataTerm 파라미터가 없으면 필수 파라미터 누락
+         * 오류(resultCode=11 NO_MANDATORY_REQUEST_PARAMETERS_ERROR)를 반환한다(실서버 실측 2026-07-06).
+         * 최근 실시간 측정값만 필요하므로 DAILY(최근 24시간)를 지정하고 최신 1건([itemsOrNull]의 first())만 사용한다.
+         */
+        private const val REALTIME_MEASURE_DATA_TERM = "DAILY"
     }
 }
 
@@ -179,12 +178,6 @@ data class AirKoreaResponseBody<T>(
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class AirKoreaItems<T>(
     val item: List<T> = emptyList(),
-)
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-data class AirKoreaTmCoordinateItem(
-    val tmX: String = "",
-    val tmY: String = "",
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
