@@ -33,6 +33,7 @@ import {
 import { sendMessage as sendMessageRest } from '../api/room';
 import type { ListMessagesResponse } from '../api/types';
 import { useAuthStore } from './auth';
+import { isFeatureEnabled } from './feature-flags';
 import { useNetInfo } from './netinfo';
 import { messagesQueryKey } from './useRooms';
 
@@ -42,15 +43,6 @@ const RECONNECT_BASE_DELAY_MS = 1000;
 const RECONNECT_MAX_DELAY_MS = 30000;
 /** 이 횟수만큼 연속으로 연결에 실패하면 REST 폴링 폴백 신호를 노출한다. */
 const POLLING_FALLBACK_THRESHOLD = 3;
-
-/**
- * `chat.realtime.enabled` 기능 플래그.
- * OFF(`'false'`)면 소켓을 연결하지 않고 REST 폴백만 사용한다.
- * 롤백: `EXPO_PUBLIC_CHAT_REALTIME_ENABLED=false`로 즉시 비활성화.
- */
-export function isChatRealtimeEnabled(): boolean {
-  return process.env.EXPO_PUBLIC_CHAT_REALTIME_ENABLED !== 'false';
-}
 
 /** `EXPO_PUBLIC_API_URL`(http/https)을 STOMP 브로커 WebSocket URL(ws/wss + /ws)로 변환한다. */
 function buildBrokerUrl(apiUrl: string): string {
@@ -183,7 +175,7 @@ export function useChatSocket(options: UseChatSocketOptions): UseChatSocketResul
   onReadRef.current = onRead;
 
   useEffect(() => {
-    if (!isChatRealtimeEnabled()) {
+    if (!isFeatureEnabled('chat.realtime.enabled')) {
       return undefined;
     }
     const apiUrl = process.env.EXPO_PUBLIC_API_URL;

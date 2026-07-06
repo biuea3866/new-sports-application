@@ -19,7 +19,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AxiosError } from 'axios';
 
 import { useMessages } from '../../lib/useRooms';
-import { isChatRealtimeEnabled, useChatSocket } from '../../lib/useChatSocket';
+import { useChatSocket } from '../../lib/useChatSocket';
+import { isFeatureEnabled } from '../../lib/feature-flags';
 import { useMarkRead } from '../../lib/useChat';
 import { useMyProfile } from '../../lib/useMyProfile';
 import type { MessageResponse } from '../../api/types';
@@ -97,7 +98,7 @@ export default function RoomChatScreen() {
   // 롤백 플래그(`chat.realtime.enabled` OFF) — 소켓을 아예 켜지 않으므로 `isConnected`는 항상
   // false로 고정된다. 이 상태에서 "연결 끊김" 배너를 보여주면 오히려 오해를 준다(의도된 REST 전용
   // 모드이지 장애가 아님) — realtime이 꺼져 있으면 배너를 숨기고, REST 폴링만으로 갱신한다.
-  const isRealtimeEnabled = isChatRealtimeEnabled();
+  const isRealtimeEnabled = isFeatureEnabled('chat.realtime.enabled');
   const shouldPollAsFallback = !isRealtimeEnabled || pollingFallback;
 
   // 폴링 폴백 — realtime이 꺼져 있거나(롤백) 3회 연속 재연결 실패 시 주기적으로 REST refetch

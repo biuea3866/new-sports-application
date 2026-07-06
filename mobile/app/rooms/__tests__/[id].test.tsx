@@ -20,7 +20,9 @@ jest.mock('../../../lib/useRooms', () => ({
 }));
 jest.mock('../../../lib/useChatSocket', () => ({
   useChatSocket: jest.fn(),
-  isChatRealtimeEnabled: jest.fn(),
+}));
+jest.mock('../../../lib/feature-flags', () => ({
+  isFeatureEnabled: jest.fn(),
 }));
 jest.mock('../../../lib/useChat', () => ({
   useMarkRead: jest.fn(),
@@ -31,15 +33,14 @@ jest.mock('../../../lib/useMyProfile', () => ({
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMessages } from '../../../lib/useRooms';
-import { isChatRealtimeEnabled, useChatSocket } from '../../../lib/useChatSocket';
+import { useChatSocket } from '../../../lib/useChatSocket';
+import { isFeatureEnabled } from '../../../lib/feature-flags';
 import { useMarkRead } from '../../../lib/useChat';
 import { useMyProfile } from '../../../lib/useMyProfile';
 
 const useMessagesMock = useMessages as jest.MockedFunction<typeof useMessages>;
 const useChatSocketMock = useChatSocket as jest.MockedFunction<typeof useChatSocket>;
-const isChatRealtimeEnabledMock = isChatRealtimeEnabled as jest.MockedFunction<
-  typeof isChatRealtimeEnabled
->;
+const isFeatureEnabledMock = isFeatureEnabled as jest.MockedFunction<typeof isFeatureEnabled>;
 const useMarkReadMock = useMarkRead as jest.MockedFunction<typeof useMarkRead>;
 const useMyProfileMock = useMyProfile as jest.MockedFunction<typeof useMyProfile>;
 const useLocalSearchParamsMock = useLocalSearchParams as jest.MockedFunction<
@@ -96,7 +97,7 @@ describe('RoomChatScreen', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     mockUseColorScheme.mockReturnValue('light');
-    isChatRealtimeEnabledMock.mockReturnValue(true);
+    isFeatureEnabledMock.mockReturnValue(true);
     useLocalSearchParamsMock.mockReturnValue({ id: '10' });
     pushMock = jest.fn();
     useRouterMock.mockReturnValue({
@@ -247,7 +248,7 @@ describe('RoomChatScreen', () => {
   });
 
   it('chat.realtime.enabled가 꺼져 있으면 연결 배너 없이 REST 폴링만으로 갱신한다', () => {
-    isChatRealtimeEnabledMock.mockReturnValue(false);
+    isFeatureEnabledMock.mockReturnValue(false);
     const refetchMock = jest.fn();
     mockUseMessagesReturn({ data: buildMessages([]), refetch: refetchMock });
     mockUseChatSocketReturn({ isConnected: false, pollingFallback: false });
