@@ -13,6 +13,7 @@ import { persistQueryClient } from '@tanstack/query-persist-client-core';
 import { useAuthStore } from '../lib/auth';
 import { getItem } from '../lib/secure-store';
 import { queryClient, mmkvPersister } from '../lib/query-client';
+import { ThemeProvider } from '../theme/ThemeProvider';
 
 // 앱 시작 시 한 번만 영속화 구독을 설정합니다.
 persistQueryClient({
@@ -43,15 +44,25 @@ function AuthGuard() {
 export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthGuard />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="product/[id]/index" options={{ headerShown: false }} />
-        <Stack.Screen name="cart/index" options={{ headerShown: false }} />
-        <Stack.Screen name="limited-drop/[id]/index" options={{ headerShown: false }} />
-        <Stack.Screen name="limited-drop/[id]/purchase" options={{ headerShown: false }} />
-      </Stack>
+      <ThemeProvider>
+        <AuthGuard />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="product/[id]/index" options={{ headerShown: false }} />
+          <Stack.Screen name="cart/index" options={{ headerShown: false }} />
+          <Stack.Screen name="limited-drop/[id]/index" options={{ headerShown: false }} />
+          <Stack.Screen name="limited-drop/[id]/purchase" options={{ headerShown: false }} />
+          {/* 채팅 시스템 고도화 — 신규 라우트 등록 (통합 티켓, 각 화면은 자체 헤더를 렌더한다) */}
+          <Stack.Screen name="rooms/index" options={{ headerShown: false }} />
+          <Stack.Screen name="rooms/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="communities/index" options={{ headerShown: false }} />
+          <Stack.Screen name="communities/new" options={{ headerShown: false }} />
+          <Stack.Screen name="communities/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="invite/[roomId]" options={{ headerShown: false }} />
+          <Stack.Screen name="invitations/index" options={{ headerShown: false }} />
+        </Stack>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

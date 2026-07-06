@@ -1,6 +1,6 @@
 /**
- * RootLayout — 한정판 라우트(Stack.Screen) 등록 검증
- * 근거: FE-08 티켓 "테스트 케이스" (Stack에 등록된 두 라우트가 헤더 없이 렌더된다)
+ * RootLayout — 한정판 라우트(Stack.Screen) 등록 검증 + 테마 프로바이더 래핑·
+ * 채팅 시스템 신규 라우트 등록 검증(앱 와이어업 통합 티켓)
  *
  * jest.setup.ts의 전역 expo-router mock은 Stack을 `{ Screen: 'Screen' }` 객체로 대체해
  * 실제 네비게이터로 렌더되지 않는다. 따라서 RootLayout()을 렌더 대신 순수 함수로 호출해
@@ -9,6 +9,7 @@
 import React from 'react';
 
 import RootLayout from '../_layout';
+import { ThemeProvider } from '../../theme/ThemeProvider';
 
 type ElementWithChildren = React.ReactElement<{ children?: React.ReactNode }>;
 
@@ -61,5 +62,56 @@ describe('RootLayout 라우트 등록', () => {
 
     expect(detailScreen.props.options?.headerShown).toBe(false);
     expect(purchaseScreen.props.options?.headerShown).toBe(false);
+  });
+
+  it('채팅 시스템 신규 라우트(rooms·communities·invite·invitations)를 등록한다', () => {
+    const tree = RootLayout() as ElementWithChildren;
+
+    const stackElement = requireDefined(
+      findDescendant(
+        tree,
+        (el) => (el.props as { screenOptions?: unknown }).screenOptions !== undefined
+      ) as ElementWithChildren | undefined,
+      'Stack 엘리먼트를 찾지 못했습니다'
+    );
+
+    const screens = React.Children.toArray(stackElement.props.children) as React.ReactElement<{
+      name?: string;
+      options?: { headerShown?: boolean };
+    }>[];
+
+    const expectedRouteNames = [
+      'rooms/index',
+      'rooms/[id]',
+      'communities/index',
+      'communities/new',
+      'communities/[id]',
+      'invite/[roomId]',
+      'invitations/index',
+    ];
+
+    for (const routeName of expectedRouteNames) {
+      const screen = requireDefined(
+        screens.find((s) => s.props.name === routeName),
+        `${routeName} 라우트가 등록되지 않았습니다`
+      );
+      expect(screen.props.options?.headerShown).toBe(false);
+    }
+  });
+
+  it('앱 루트가 ThemeProvider로 래핑되어 하위 화면(AuthGuard·Stack)이 그 안에 있다', () => {
+    const tree = RootLayout() as ElementWithChildren;
+
+    const themeProviderElement = requireDefined(
+      findDescendant(tree, (el) => el.type === ThemeProvider) as ElementWithChildren | undefined,
+      'ThemeProvider가 트리에 없습니다'
+    );
+
+    const stackInsideThemeProvider = findDescendant(
+      themeProviderElement,
+      (el) => (el.props as { screenOptions?: unknown }).screenOptions !== undefined
+    );
+
+    expect(stackInsideThemeProvider).toBeDefined();
   });
 });
