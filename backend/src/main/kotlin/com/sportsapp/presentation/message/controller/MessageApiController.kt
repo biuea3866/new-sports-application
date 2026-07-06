@@ -1,5 +1,6 @@
 package com.sportsapp.presentation.message.controller
 
+import com.sportsapp.application.message.usecase.BackfillMessagesUseCase
 import com.sportsapp.application.message.usecase.ListMessagesUseCase
 import com.sportsapp.application.message.usecase.SendMessageUseCase
 import com.sportsapp.domain.user.vo.UserPrincipal
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController
 class MessageApiController(
     private val sendMessageUseCase: SendMessageUseCase,
     private val listMessagesUseCase: ListMessagesUseCase,
+    private val backfillMessagesUseCase: BackfillMessagesUseCase,
 ) {
 
     @PostMapping
@@ -43,6 +45,17 @@ class MessageApiController(
     ): ResponseEntity<ListMessagesResponse> {
         val messages = listMessagesUseCase.execute(roomId, principal.id, cursor)
         return ResponseEntity.ok(ListMessagesResponse.of(messages, PAGE_SIZE))
+    }
+
+    /** 재연결 backfill (FR-10) — WebSocket 재연결 후 끊긴 구간(id > afterMessageId)의 메시지를 오름차순으로 반환한다. */
+    @GetMapping("/backfill")
+    fun backfillMessages(
+        @AuthenticationPrincipal principal: UserPrincipal,
+        @PathVariable roomId: Long,
+        @RequestParam afterMessageId: Long,
+    ): ResponseEntity<List<MessageResponse>> {
+        val messages = backfillMessagesUseCase.execute(roomId, principal.id, afterMessageId)
+        return ResponseEntity.ok(messages.map { MessageResponse.of(it) })
     }
 
     companion object {
