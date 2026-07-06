@@ -38,6 +38,8 @@ import org.testcontainers.junit.jupiter.Container
  * S-05: 등록되지 않은 일반 RuntimeException은 여전히 500 + INTERNAL_ERROR로 응답된다.
  * [DEF-001] S-06: 무효 enum 쿼리 파라미터 전달 시 500 대신 400을 반환한다.
  * [DEF-001] S-07: 유효 enum 쿼리 파라미터 전달 시 200을 반환한다 (회귀).
+ * [F6] S-08: 필수 @RequestParam 누락 시 500 대신 400을 반환한다.
+ * [F6] S-09: 필수 @RequestParam이 있으면 200을 반환한다 (회귀).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
@@ -246,6 +248,34 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
                 }
             }
         }
+
+        Given("필수 @RequestParam이 없는 요청") {
+            When("GET /test/exceptions/required-param 을 파라미터 없이 요청 시") {
+                Then("[F6][S-08] 500 대신 400 + ProblemDetail (code=MISSING_REQUEST_PARAMETER) 을 반환한다") {
+                    mockMvc.perform(
+                        get("/test/exceptions/required-param")
+                            .with(user("testuser").roles("USER"))
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isBadRequest)
+                        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                        .andExpect(jsonPath("$.status").value(400))
+                        .andExpect(jsonPath("$.properties.code").value("MISSING_REQUEST_PARAMETER"))
+                        .andExpect(jsonPath("$.detail").value("Required request parameter is missing: category"))
+                }
+            }
+
+            When("GET /test/exceptions/required-param?category=FOOTWEAR 요청 시") {
+                Then("[F6][S-09] 파라미터가 있으면 200을 반환한다 (회귀)") {
+                    mockMvc.perform(
+                        get("/test/exceptions/required-param?category=FOOTWEAR")
+                            .with(user("testuser").roles("USER"))
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isOk)
+                }
+            }
+        }
     }
 }
 
@@ -286,6 +316,11 @@ class ExceptionTriggerController {
     @PostMapping("/enum-body")
     fun receiveEnumBody(@RequestBody request: EnumBodyRequest): String {
         return request.status.name
+    }
+
+    @GetMapping("/required-param")
+    fun receiveRequiredParam(@RequestParam category: String): String {
+        return category
     }
 }
 

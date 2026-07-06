@@ -14,6 +14,7 @@ import org.springframework.security.authorization.AuthorizationDeniedException
 import jakarta.validation.ConstraintViolationException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.MissingRequestHeaderException
+import org.springframework.web.bind.MissingServletRequestParameterException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
@@ -93,6 +94,22 @@ class GlobalExceptionHandler {
             status = ErrorStatus.BAD_REQUEST,
             code = "MISSING_REQUEST_HEADER",
             detail = "Required header is missing: ${exception.headerName}"
+        )
+        return ResponseEntity.status(ErrorStatus.BAD_REQUEST.httpStatus).body(problemDetail)
+    }
+
+    /**
+     * [F6] 필수 @RequestParam 누락 시 던져지는 예외. 매핑이 없으면 generic Exception 핸들러(500)로
+     * 떨어진다 — MissingRequestHeaderException과 동일한 패턴으로 400 처리한다.
+     */
+    @ExceptionHandler(MissingServletRequestParameterException::class)
+    fun handleMissingServletRequestParameterException(
+        exception: MissingServletRequestParameterException,
+    ): ResponseEntity<ProblemDetail> {
+        val problemDetail = ProblemDetailBuilder.build(
+            status = ErrorStatus.BAD_REQUEST,
+            code = "MISSING_REQUEST_PARAMETER",
+            detail = "Required request parameter is missing: ${exception.parameterName}"
         )
         return ResponseEntity.status(ErrorStatus.BAD_REQUEST.httpStatus).body(problemDetail)
     }
