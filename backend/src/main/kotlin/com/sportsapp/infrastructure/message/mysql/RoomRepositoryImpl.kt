@@ -25,4 +25,7 @@ class RoomRepositoryImpl(
 
     override fun findByContext(contextType: RoomContextType, contextId: Long): Room? =
         roomCustomRepository.findByContext(contextType, contextId)
+
+    override fun findByContextAndParticipant(contextType: RoomContextType, contextId: Long, participantUserId: Long): Room? =
+        roomCustomRepository.findByContextAndParticipant(contextType, contextId, participantUserId)
 }
