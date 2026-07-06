@@ -200,7 +200,8 @@ app.get('/B552584/MsrstnInfoInqireSvc/getNearbyMsrstnList', (req, res) => {
 
 app.get('/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty', (req, res) => {
   const stationName = (req.query.stationName || '').toString();
-  console.log(`[data-go-kr] getMsrstnAcctoRltmMesureDnsty stationName=${stationName}`);
+  const ver = (req.query.ver || '').toString();
+  console.log(`[data-go-kr] getMsrstnAcctoRltmMesureDnsty stationName=${stationName} ver=${ver}`);
 
   if (stationName === FAIL_TRIGGER) {
     return res.status(503).json({
@@ -215,9 +216,15 @@ app.get('/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty', (req, res
   const pm25Value = String(10 + (Math.floor(hash / 8) % 70));
   const dataTime = formatDataTime(new Date());
 
+  // 실서버 실측(2026-07-06): ver 파라미터가 없으면 응답에 pm25Value 필드 자체가 없다.
+  // ver=1.3 을 명시해야 pm25Value 가 포함된다. 로컬 mock 도 이 동작을 그대로 재현한다.
+  const item = ver
+    ? { stationName, pm10Value, pm25Value, dataTime }
+    : { stationName, pm10Value, dataTime };
+
   const payload = header(1, 1, 1);
   payload.response.body.items = {
-    item: [{ stationName, pm10Value, pm25Value, dataTime }],
+    item: [item],
   };
   return res.json(payload);
 });
