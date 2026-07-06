@@ -93,6 +93,16 @@ class AirKoreaAirQualityGatewayImplContractTest(
                     measurement.measuredAt?.minute shouldBe 15
                 }
 
+                Then("getMsrstnAcctoRltmMesureDnsty 요청에 ver=1.3 파라미터를 포함한다 (미포함 시 실서버가 pm25Value 를 응답에서 누락)") {
+                    mockWebServer.takeRequest()
+                    mockWebServer.takeRequest()
+                    val realtimeMeasureRequest = mockWebServer.takeRequest()
+
+                    realtimeMeasureRequest.path.shouldNotBeNull()
+                    realtimeMeasureRequest.path?.contains("getMsrstnAcctoRltmMesureDnsty") shouldBe true
+                    realtimeMeasureRequest.requestUrl?.queryParameter("ver") shouldBe "1.3"
+                }
+
                 mockWebServer.shutdown()
             }
         }

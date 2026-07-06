@@ -89,6 +89,7 @@ class AirKoreaAirQualityGatewayImpl(
                     .queryParam("serviceKey", properties.apiKey)
                     .queryParam("returnType", "json")
                     .queryParam("stationName", stationName)
+                    .queryParam("ver", REALTIME_MEASURE_API_VERSION)
                     .build()
             }
             .retrieve()
@@ -142,6 +143,12 @@ class AirKoreaAirQualityGatewayImpl(
         private val SEOUL: ZoneId = ZoneId.of("Asia/Seoul")
         private const val SUCCESS_RESULT_CODE = "00"
         private val DATA_TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+
+        /**
+         * getMsrstnAcctoRltmMesureDnsty 는 ver 파라미터가 없으면 응답에서 pm25Value 필드 자체를 누락한다
+         * (실서버 실측 2026-07-06). ver=1.3 을 명시해 pm25Value 를 응답에 포함시킨다.
+         */
+        private const val REALTIME_MEASURE_API_VERSION = "1.3"
     }
 }
 
