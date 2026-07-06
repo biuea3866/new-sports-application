@@ -74,7 +74,7 @@ class ProductApiControllerTest(
             productId = saved.id
         }
 
-        Given("[F5] image_url이 NULL인 상품이 저장된 상태") {
+        Given("image_url이 NULL인 상품이 저장된 상태") {
             When("GET /products/{id} 로 단건 조회하면") {
                 Then("500 대신 200을 반환한다 (imageUrl은 NON_NULL 직렬화 설정으로 응답에서 생략된다)") {
                     mockMvc.perform(get("/products/$productId").accept(MediaType.APPLICATION_JSON))
@@ -98,7 +98,7 @@ class ProductApiControllerTest(
             }
         }
 
-        Given("[F5] image_url이 NULL인 ACTIVE 상품이 인기 상품 후보인 상태") {
+        Given("image_url이 NULL인 ACTIVE 상품이 인기 상품 후보인 상태") {
             When("GET /products/popular?category=ACCESSORY 를 호출하면") {
                 Then("500 대신 200을 반환한다 (PopularProductSnapshot 매핑 NPE 없음)") {
                     mockMvc.perform(
@@ -112,7 +112,7 @@ class ProductApiControllerTest(
             }
         }
 
-        Given("[F6] 필수 @RequestParam(category)이 없는 상태") {
+        Given("필수 @RequestParam(category)이 없는 상태") {
             When("GET /products/popular 를 category 없이 호출하면") {
                 Then("500 대신 400 + ProblemDetail(code=MISSING_REQUEST_PARAMETER) 을 반환한다") {
                     mockMvc.perform(get("/products/popular").accept(MediaType.APPLICATION_JSON))

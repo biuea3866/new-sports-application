@@ -33,7 +33,7 @@ class LoadSheddingFilterTest : BehaviorSpec({
                 verify(exactly = 0) { filterChain.doFilter(any(), any()) }
             }
 
-            Then("[F2] Retry-After 헤더를 포함한다") {
+            Then("Retry-After 헤더를 포함한다") {
                 response.getHeader("Retry-After") shouldBe "1"
             }
         }
@@ -117,7 +117,7 @@ class LoadSheddingFilterTest : BehaviorSpec({
         }
     }
 
-    Given("[F2] permits=0이지만 load-shedding.enabled=false로 기능이 꺼진 상황") {
+    Given("permits=0이지만 load-shedding.enabled=false로 기능이 꺼진 상황") {
         val filter = LoadSheddingFilter(maxConcurrentRequests = 0, enabled = false)
         val request = MockHttpServletRequest().apply { requestURI = "/products" }
         val response = MockHttpServletResponse()
