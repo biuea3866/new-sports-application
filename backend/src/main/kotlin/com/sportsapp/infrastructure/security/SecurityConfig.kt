@@ -1,5 +1,6 @@
 package com.sportsapp.infrastructure.security
 
+import com.sportsapp.infrastructure.loadshedding.LoadSheddingFilter
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.beans.factory.annotation.Autowired
@@ -29,6 +30,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 class SecurityConfig(
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
     private val partnerApiKeyAuthenticationFilter: PartnerApiKeyAuthenticationFilter,
+    private val loadSheddingFilter: LoadSheddingFilter,
 ) {
     @Autowired(required = false)
     private var mcpTokenAuthenticationFilter: McpTokenAuthenticationFilter? = null
@@ -49,6 +51,8 @@ class SecurityConfig(
                 it.accessDeniedHandler(jsonAccessDeniedHandler())
             }
             .authorizeHttpRequests { configureAuthorization(it) }
+            // F2: 부하 셰딩은 인증 연산(JWT 파싱 등) 이전에 거부하도록 필터 체인 최전방에 둔다.
+            .addFilterBefore(loadSheddingFilter, UsernamePasswordAuthenticationFilter::class.java)
             .also { config ->
                 mcpTokenAuthenticationFilter?.let {
                     config.addFilterBefore(it, UsernamePasswordAuthenticationFilter::class.java)
