@@ -7,6 +7,7 @@ import com.sportsapp.domain.message.entity.RoomParticipant
 import com.sportsapp.domain.message.repository.RoomInvitationRepository
 import com.sportsapp.domain.message.repository.RoomParticipantRepository
 import com.sportsapp.domain.message.repository.RoomRepository
+import com.sportsapp.domain.message.vo.InvitationResult
 import org.springframework.stereotype.Service
 
 /**
@@ -29,12 +30,14 @@ class GuestInvitationDomainService(
         inviteeUserId: Long,
         canSpeak: Boolean,
         expiresInDays: Long,
-    ): RoomInvitation {
+    ): InvitationResult {
         val room = findRoomBy(roomId)
         room.requireHostedBy(inviterUserId)
-        invitationRepository.findPendingBy(roomId, inviteeUserId)?.let { return it }
+        invitationRepository.findPendingBy(roomId, inviteeUserId)?.let {
+            return InvitationResult(invitation = it, reused = true)
+        }
         val invitation = RoomInvitation.create(room, inviterUserId, inviteeUserId, canSpeak, expiresInDays)
-        return invitationRepository.save(invitation)
+        return InvitationResult(invitation = invitationRepository.save(invitation), reused = false)
     }
 
     fun accept(invitationId: Long, userId: Long): RoomInvitation {

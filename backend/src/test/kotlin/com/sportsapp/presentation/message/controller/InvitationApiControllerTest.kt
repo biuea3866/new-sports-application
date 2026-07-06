@@ -88,10 +88,11 @@ class InvitationApiControllerTest(
                     String::class.java,
                 )
 
-                Then("201 응답과 PENDING 초대가 반환된다") {
+                Then("201 응답과 PENDING 초대가 reused=false 로 반환된다") {
                     response.statusCode shouldBe HttpStatus.CREATED
                     response.body shouldContain "PENDING"
                     response.body shouldContain "\"inviteeUserId\":$guestId"
+                    response.body shouldContain "\"reused\":false"
                 }
             }
         }
@@ -116,9 +117,10 @@ class InvitationApiControllerTest(
                     String::class.java,
                 )
 
-                Then("기존 초대와 동일한 id 가 반환된다 (멱등)") {
-                    secondResponse.statusCode shouldBe HttpStatus.CREATED
+                Then("기존 초대와 동일한 id 가 200 OK·reused=true 로 반환된다 (멱등)") {
+                    secondResponse.statusCode shouldBe HttpStatus.OK
                     objectMapper.readTree(secondResponse.body).get("id").asLong() shouldBe firstInvitationId
+                    objectMapper.readTree(secondResponse.body).get("reused").asBoolean() shouldBe true
                 }
             }
         }

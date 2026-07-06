@@ -82,7 +82,7 @@ class Community private constructor(
      * BE-09 컨텍스트 방 provisioning이 소비할 communityId가 영원히 0으로 고정된다.
      */
     fun registerCreatedEvent() {
-        registerEvent(CommunityCreatedEvent(communityId = id, hostUserId = hostUserId))
+        registerEvent(CommunityCreatedEvent(communityId = id, hostUserId = hostUserId, name = name))
     }
 
     private fun registerEvent(event: DomainEvent) {

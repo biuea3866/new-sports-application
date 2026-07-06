@@ -15,6 +15,7 @@ data class CommunityMemberResponse(
     val role: CommunityRole,
     val status: MembershipStatus,
     val joinedAt: ZonedDateTime?,
+    val isHost: Boolean,
 ) {
     companion object {
         fun of(member: CommunityMember): CommunityMemberResponse = CommunityMemberResponse(
@@ -24,6 +25,7 @@ data class CommunityMemberResponse(
             role = member.currentRole,
             status = member.currentStatus,
             joinedAt = member.currentJoinedAt,
+            isHost = member.isHost,
         )
     }
 }

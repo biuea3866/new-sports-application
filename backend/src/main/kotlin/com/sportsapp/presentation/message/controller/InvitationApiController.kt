@@ -40,8 +40,9 @@ class InvitationApiController(
         @PathVariable roomId: Long,
         @RequestBody request: InviteGuestRequest,
     ): ResponseEntity<InvitationResponse> {
-        val invitation = inviteGuestUseCase.execute(request.toCommand(roomId, principal.id))
-        return ResponseEntity.status(HttpStatus.CREATED).body(InvitationResponse.of(invitation))
+        val result = inviteGuestUseCase.execute(request.toCommand(roomId, principal.id))
+        val status = if (result.reused) HttpStatus.OK else HttpStatus.CREATED
+        return ResponseEntity.status(status).body(InvitationResponse.of(result.invitation, result.reused))
     }
 
     @GetMapping("/invitations/me")

@@ -58,10 +58,11 @@ class GuestInvitationDomainServiceTest : BehaviorSpec({
                 expiresInDays = 7L,
             )
 
-            Then("PENDING 초대가 생성되어 저장된다") {
-                result.currentStatus shouldBe InvitationStatus.PENDING
-                result.inviterUserId shouldBe 1L
-                result.inviteeUserId shouldBe 2L
+            Then("PENDING 초대가 생성되어 저장되고 reused=false 로 신호된다") {
+                result.invitation.currentStatus shouldBe InvitationStatus.PENDING
+                result.invitation.inviterUserId shouldBe 1L
+                result.invitation.inviteeUserId shouldBe 2L
+                result.reused shouldBe false
                 verify(exactly = 1) { invitationRepository.save(any()) }
             }
         }
@@ -90,8 +91,9 @@ class GuestInvitationDomainServiceTest : BehaviorSpec({
                 expiresInDays = 7L,
             )
 
-            Then("기존 초대가 그대로 반환되고 신규 저장은 발생하지 않는다 (멱등)") {
-                result shouldBe existingInvitation
+            Then("기존 초대가 그대로 반환되고 reused=true 로 신호되며 신규 저장은 발생하지 않는다 (멱등)") {
+                result.invitation shouldBe existingInvitation
+                result.reused shouldBe true
                 verify(exactly = 0) { invitationRepository.save(any()) }
             }
 

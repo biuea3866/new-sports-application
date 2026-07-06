@@ -105,13 +105,17 @@ class CommunityApiControllerTest : BehaviorSpec({
         createdAt = ZonedDateTime.now(),
     )
 
-    fun communityMemberResponse(status: MembershipStatus = MembershipStatus.ACTIVE) = CommunityMemberResponse(
+    fun communityMemberResponse(
+        status: MembershipStatus = MembershipStatus.ACTIVE,
+        role: CommunityRole = CommunityRole.MEMBER,
+    ) = CommunityMemberResponse(
         id = 1L,
         communityId = 1L,
         userId = TEST_USER_ID,
-        role = CommunityRole.MEMBER,
+        role = role,
         status = status,
         joinedAt = if (status == MembershipStatus.ACTIVE) ZonedDateTime.now() else null,
+        isHost = role == CommunityRole.HOST,
     )
 
     Given("커뮤니티 개설 요청") {
@@ -207,6 +211,25 @@ class CommunityApiControllerTest : BehaviorSpec({
             Then("200과 함께 멤버 목록을 반환한다") {
                 result.andExpect(status().isOk)
                     .andExpect(jsonPath("$.length()").value(1))
+            }
+        }
+    }
+
+    Given("커뮤니티 멤버 목록 조회 — HOST·MEMBER 혼재") {
+        val listCommunityMembersUseCase = mockk<ListCommunityMembersUseCase>()
+        every { listCommunityMembersUseCase.execute(6L, TEST_USER_ID) } returns listOf(
+            communityMemberResponse(role = CommunityRole.HOST),
+            communityMemberResponse(role = CommunityRole.MEMBER),
+        )
+        val mockMvc = buildMockMvc(listCommunityMembersUseCase = listCommunityMembersUseCase)
+
+        When("GET /communities/6/members 요청 시") {
+            val result = mockMvc.perform(get("/communities/6/members"))
+
+            Then("각 멤버의 isHost 가 role 에 맞게 응답에 포함된다") {
+                result.andExpect(status().isOk)
+                    .andExpect(jsonPath("$[0].isHost").value(true))
+                    .andExpect(jsonPath("$[1].isHost").value(false))
             }
         }
     }

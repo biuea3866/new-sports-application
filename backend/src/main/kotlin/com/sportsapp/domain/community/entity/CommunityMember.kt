@@ -64,6 +64,9 @@ class CommunityMember private constructor(
     val currentStatus: MembershipStatus get() = status
     val currentJoinedAt: ZonedDateTime? get() = joinedAt
 
+    /** 방장 여부 질의 — 호출부가 role 을 직접 비교하지 않도록 캡슐화한다 (BE-14). */
+    val isHost: Boolean get() = role == CommunityRole.HOST
+
     /** 방장 승인 — PENDING_APPROVAL → ACTIVE. 승인 요청자가 방장인지는 DomainService가 [Community.requireHost]로 먼저 검증한다. */
     fun approve() {
         transitTo(MembershipStatus.ACTIVE)
