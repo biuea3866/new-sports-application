@@ -5,6 +5,7 @@ import com.sportsapp.application.facility.usecase.ListProgramsUseCase
 import com.sportsapp.application.facility.usecase.RegisterProgramUseCase
 import com.sportsapp.presentation.facility.dto.request.RegisterProgramRequest
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.context.annotation.Profile
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -23,6 +24,7 @@ private const val PROGRAM_ENABLED_PROPERTY = "facility.program.enabled"
  */
 @RestController
 @RequestMapping("/facilities/{facilityId}/programs")
+@Profile("!test-jpa")
 @ConditionalOnProperty(name = [PROGRAM_ENABLED_PROPERTY], havingValue = "true", matchIfMissing = false)
 class ProgramApiController(
     private val registerProgramUseCase: RegisterProgramUseCase,
