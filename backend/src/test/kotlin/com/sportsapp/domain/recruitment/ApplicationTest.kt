@@ -4,6 +4,7 @@ import com.sportsapp.domain.recruitment.entity.Application
 import com.sportsapp.domain.recruitment.event.ApplicationRefundRequestedEvent
 import com.sportsapp.domain.recruitment.entity.ApplicationStatus
 import com.sportsapp.domain.recruitment.exception.ApplicationCancellationClosedException
+import com.sportsapp.domain.recruitment.exception.UnauthorizedApplicationAccessException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldBeNull
@@ -138,6 +139,86 @@ class ApplicationTest : BehaviorSpec({
 
             Then("상태는 REFUNDED로 유지되고 예외가 발생하지 않는다") {
                 application.status shouldBe ApplicationStatus.REFUNDED
+            }
+        }
+    }
+
+    Given("PENDING 상태의 무료(참가비 0원) Application") {
+        val application = Application.create(recruitmentId = 10L, applicantUserId = 1L)
+
+        When("confirmFree를 호출하면") {
+            application.confirmFree()
+
+            Then("paymentId 없이 CONFIRMED로 전이된다") {
+                application.status shouldBe ApplicationStatus.CONFIRMED
+                application.paymentId.shouldBeNull()
+            }
+        }
+    }
+
+    Given("이미 CONFIRMED된 Application (confirmFree 재호출 대상)") {
+        val application = Application.create(recruitmentId = 10L, applicantUserId = 1L)
+        application.confirm(paymentId = 100L)
+
+        When("confirmFree를 다시 호출하면") {
+            application.confirmFree()
+
+            Then("상태와 paymentId가 변경되지 않고 멱등하게 처리된다") {
+                application.status shouldBe ApplicationStatus.CONFIRMED
+                application.paymentId shouldBe 100L
+            }
+        }
+    }
+
+    Given("applicantUserId=1L인 Application") {
+        val application = Application.create(recruitmentId = 10L, applicantUserId = 1L)
+
+        When("본인이 requireOwnedBy를 호출하면") {
+            Then("예외가 발생하지 않는다") {
+                application.requireOwnedBy(1L)
+            }
+        }
+
+        When("타인이 requireOwnedBy를 호출하면") {
+            Then("UnauthorizedApplicationAccessException을 던진다") {
+                shouldThrow<UnauthorizedApplicationAccessException> {
+                    application.requireOwnedBy(99L)
+                }
+            }
+        }
+    }
+
+    Given("CONFIRMED 상태의 Application (개설자 모집 취소로 인한 전액환불 대상)") {
+        val application = Application.create(recruitmentId = 10L, applicantUserId = 1L)
+        application.confirm(paymentId = 100L)
+
+        When("cancelForRecruitmentCancellation을 호출하면") {
+            application.cancelForRecruitmentCancellation(refundAmount = BigDecimal("10000"))
+
+            Then("CANCELLED로 전이되고 전액환불 이벤트가 적재된다") {
+                application.status shouldBe ApplicationStatus.CANCELLED
+                val events = application.pullDomainEvents()
+                events.size shouldBe 1
+                val event = events[0] as ApplicationRefundRequestedEvent
+                event.paymentId shouldBe 100L
+                event.refundAmount.compareTo(BigDecimal("10000")) shouldBe 0
+                event.reason shouldBe "RECRUITMENT_CANCELLED"
+            }
+        }
+    }
+
+    Given("이미 CANCELLED된 Application (개설자 모집 취소가 중복 호출된 상황)") {
+        val application = Application.create(recruitmentId = 10L, applicantUserId = 1L)
+        application.confirm(paymentId = 100L)
+        application.cancelForRecruitmentCancellation(refundAmount = BigDecimal("10000"))
+        application.pullDomainEvents()
+
+        When("cancelForRecruitmentCancellation을 다시 호출하면") {
+            application.cancelForRecruitmentCancellation(refundAmount = BigDecimal("10000"))
+
+            Then("상태 가드로 no-op이며 중복 환불 이벤트가 적재되지 않는다") {
+                application.status shouldBe ApplicationStatus.CANCELLED
+                application.pullDomainEvents().size shouldBe 0
             }
         }
     }

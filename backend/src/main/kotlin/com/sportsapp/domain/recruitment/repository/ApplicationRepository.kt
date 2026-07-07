@@ -8,4 +8,5 @@ interface ApplicationRepository {
     fun countActiveByRecruitmentId(recruitmentId: Long): Int
     fun findByRecruitmentId(recruitmentId: Long): List<Application>
     fun findConfirmedByRecruitmentId(recruitmentId: Long): List<Application>
+    fun findByApplicantUserId(applicantUserId: Long): List<Application>
 }

@@ -3,6 +3,7 @@ package com.sportsapp.domain.recruitment.policy
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.ZonedDateTime
+import org.springframework.stereotype.Component
 
 /**
  * 마감 잔여기간에 따라 3단계로 취소 수수료율을 산정한다.
@@ -12,7 +13,11 @@ import java.time.ZonedDateTime
  *
  * 잔여기간은 하루 단위로 올림 계산한다 — 실행 시점의 미세한 시간 오차(now 평가 지연)로
  * "정확히 N일 전" 경계값이 흔들리지 않도록 하기 위함이다.
+ *
+ * `@Component`: RecruitmentDomainService가 `CancellationPolicy` interface로 주입받기 위한
+ * 유일한 구현체 등록(BE-51에서는 정의만 되고 미등록 상태였음).
  */
+@Component
 class TieredCancellationPolicy : CancellationPolicy {
 
     override fun feeRateFor(applicationDeadline: ZonedDateTime): BigDecimal {
