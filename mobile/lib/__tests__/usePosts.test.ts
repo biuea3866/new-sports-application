@@ -25,7 +25,7 @@ describe('Post API', () => {
     id: 1,
     userId: 42,
     title: '테스트 게시글',
-    type: 'GENERAL',
+    type: 'FREE',
     createdAt: '2026-05-30T00:00:00Z',
   };
 
@@ -34,7 +34,7 @@ describe('Post API', () => {
     userId: 42,
     title: '테스트 게시글',
     content: '게시글 내용입니다.',
-    type: 'GENERAL',
+    type: 'FREE',
     createdAt: '2026-05-30T00:00:00Z',
     comments: [],
   };

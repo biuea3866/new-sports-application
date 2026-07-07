@@ -26,8 +26,11 @@ export async function cancelBooking(
   return res.data;
 }
 
-export async function listSlots(facilityId: string): Promise<SlotResponse[]> {
-  const res = await getBeClient().get<SlotResponse[]>(`/facilities/${facilityId}/slots`);
+/** `GET /facilities/{facilityId}/slots?programId=` — programId 지정 시 해당 program 회차만 필터. */
+export async function listSlots(facilityId: string, programId?: number): Promise<SlotResponse[]> {
+  const res = await getBeClient().get<SlotResponse[]>(`/facilities/${facilityId}/slots`, {
+    params: programId !== undefined ? { programId } : undefined,
+  });
   return res.data;
 }
 

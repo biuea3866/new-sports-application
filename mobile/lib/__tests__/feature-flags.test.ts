@@ -8,6 +8,10 @@ const ENV_KEYS = [
   'EXPO_PUBLIC_CHAT_REALTIME_ENABLED',
   'EXPO_PUBLIC_CHAT_COMMUNITY_ENABLED',
   'EXPO_PUBLIC_CHAT_GOODS_ENABLED',
+  'EXPO_PUBLIC_RECRUITMENT_ENABLED',
+  'EXPO_PUBLIC_FACILITY_PROGRAM_ENABLED',
+  'EXPO_PUBLIC_COMMUNITY_POST_ENABLED',
+  'EXPO_PUBLIC_COMMUNITY_BOOKING_ENABLED',
 ] as const;
 
 function clearFlagEnv() {
@@ -61,5 +65,46 @@ describe('isFeatureEnabled', () => {
     process.env.EXPO_PUBLIC_CHAT_GOODS_ENABLED = '1';
 
     expect(isFeatureEnabled('chat.goods.enabled')).toBe(false);
+  });
+});
+
+describe('isFeatureEnabled — 모집·시설상품·모임게시판·소모임예약 플래그 (design-fe-app "기능 플래그·점진 공개")', () => {
+  afterEach(() => {
+    clearFlagEnv();
+  });
+
+  it.each([
+    ['recruitment.enabled', 'EXPO_PUBLIC_RECRUITMENT_ENABLED'],
+    ['facility.program.enabled', 'EXPO_PUBLIC_FACILITY_PROGRAM_ENABLED'],
+    ['community.post.enabled', 'EXPO_PUBLIC_COMMUNITY_POST_ENABLED'],
+    ['community.booking.enabled', 'EXPO_PUBLIC_COMMUNITY_BOOKING_ENABLED'],
+  ] as const)('%s는 환경변수 미설정 시 기본 OFF다(점진 공개 전제)', (flag, _envKey) => {
+    clearFlagEnv();
+
+    expect(isFeatureEnabled(flag)).toBe(false);
+  });
+
+  it("recruitment.enabled는 환경변수가 'true'일 때만 ON이다", () => {
+    process.env.EXPO_PUBLIC_RECRUITMENT_ENABLED = 'true';
+
+    expect(isFeatureEnabled('recruitment.enabled')).toBe(true);
+  });
+
+  it("facility.program.enabled는 'true' 이외 값이면 OFF다", () => {
+    process.env.EXPO_PUBLIC_FACILITY_PROGRAM_ENABLED = 'yes';
+
+    expect(isFeatureEnabled('facility.program.enabled')).toBe(false);
+  });
+
+  it("community.post.enabled는 환경변수가 'true'일 때만 ON이다", () => {
+    process.env.EXPO_PUBLIC_COMMUNITY_POST_ENABLED = 'true';
+
+    expect(isFeatureEnabled('community.post.enabled')).toBe(true);
+  });
+
+  it("community.booking.enabled는 환경변수가 'true'일 때만 ON이다", () => {
+    process.env.EXPO_PUBLIC_COMMUNITY_BOOKING_ENABLED = 'true';
+
+    expect(isFeatureEnabled('community.booking.enabled')).toBe(true);
   });
 });

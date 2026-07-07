@@ -100,3 +100,37 @@ export interface CommunityMemberResponse {
 export interface MembershipResponse {
   status: Extract<MembershipStatus, 'ACTIVE' | 'PENDING_APPROVAL'>;
 }
+
+// --- 소모임 예약(CommunityBooking) ---
+// 근거: `20260707-모집-시설상품-소모임예약연동-tdd.md` "REST API 계약"·"응답 DTO"
+// (CommunityBookingResponse/CommunityBookingListItemResponse),
+// `application/community/dto/CommunityBookingResponse.kt`.
+
+/** `POST /communities/{communityId}/bookings` 요청 본문. */
+export interface LinkCommunityBookingRequest {
+  slotId: number;
+}
+
+/** `POST /communities/{communityId}/bookings` 응답. */
+export interface CommunityBookingResponse {
+  id: number;
+  communityId: number;
+  slotId: number;
+  linkedByUserId: number;
+  createdAt: string;
+}
+
+/**
+ * `GET /communities/{communityId}/bookings` 목록 응답 항목 — 연결된 slot의 시설·일시
+ * 정보를 함께 담아 반환한다(facility/date/timeRange/capacity는 slot 조회 실패 시 null 가능).
+ */
+export interface CommunityBookingListItemResponse {
+  id: number;
+  communityId: number;
+  slotId: number;
+  linkedByUserId: number;
+  facilityId: string | null;
+  date: string | null;
+  timeRange: string | null;
+  capacity: number | null;
+}

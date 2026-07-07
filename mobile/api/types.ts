@@ -2,6 +2,7 @@
  * BE API 응답 타입 정의
  * BE 컨트랙트에서 추출한 DTO 인터페이스.
  */
+import type { SportCategory } from './community-types';
 
 // --- Auth ---
 export interface LoginResponse {
@@ -100,6 +101,9 @@ export interface CreateBookingRequest {
   slotId: number;
 }
 
+/** BE `domain/booking/entity/SlotStatus` — OPEN(예약 가능)/CLOSED(마감·운영자 수동 마감). */
+export type SlotStatus = 'OPEN' | 'CLOSED';
+
 // BE SlotResponse shape
 export interface SlotResponse {
   id: number;
@@ -108,6 +112,13 @@ export interface SlotResponse {
   timeRange: string;
   capacity: number;
   ownerId: number;
+  /**
+   * BE-59 additive 확장 필드(programId·status). 구 응답·기존 테스트 리터럴과 하위 호환을
+   * 위해 optional로 선언한다(RoomResponse 확장과 동일 패턴).
+   */
+  status?: SlotStatus;
+  /** 시설상품(program) 회차 슬롯이면 해당 program id, 일반 슬롯이면 null */
+  programId?: number | null;
 }
 
 export type PaymentMethod = 'KAKAO' | 'TOSS' | 'NAVER' | 'DANAL' | 'CREDIT_CARD' | 'BANK_TRANSFER';
@@ -130,6 +141,22 @@ export interface CreateBookingResult {
 // --- Facility ---
 export type FacilityType = 'INDOOR' | 'OUTDOOR' | 'MIXED';
 
+/** BE `domain/facility/vo/TimeRange` — 브레이크타임 등 시각 구간. */
+export interface TimeRangeResponse {
+  start: string;
+  end: string;
+}
+
+/** BE `presentation/facility/dto/response/OperatingHoursResponse`. */
+export interface OperatingHoursResponse {
+  dayOfWeek: string;
+  openTime: string;
+  closeTime: string;
+  breaks: TimeRangeResponse[];
+  slotDurationMinutes: number;
+  capacity: number;
+}
+
 export interface FacilityResponse {
   id: number;
   name: string;
@@ -144,6 +171,13 @@ export interface FacilityResponse {
   sidoName: string;
   sigunguCode: string;
   sigunguName: string;
+  /**
+   * 운영시간·휴무는 `FacilityResponse.of(facility)`(BE)가 항상 포함하는 필드이지만,
+   * 기존 테스트 리터럴(구 응답 시점)과 하위 호환을 위해 optional로 선언한다.
+   */
+  operatingHours?: OperatingHoursResponse[];
+  /** 휴무일 목록(ISO-8601 LocalDate 문자열, 예: "2026-07-15") */
+  holidays?: string[];
 }
 
 export interface FacilityPageResponse {
@@ -266,7 +300,8 @@ export interface SendMessageRequest {
 }
 
 // --- Post ---
-export type PostType = string;
+/** BE `domain/post/vo/PostType`. */
+export type PostType = 'FREE' | 'NOTICE' | 'QUESTION' | 'REVIEW';
 
 export interface PostResponse {
   id: number;
@@ -274,6 +309,14 @@ export interface PostResponse {
   title: string;
   type: PostType;
   createdAt: string; // ISO 8601
+  /**
+   * BE-23/25(post-community 연동) additive 확장 필드. 구 응답·기존 테스트 리터럴과
+   * 하위 호환을 위해 optional로 선언한다(RoomResponse 확장과 동일 패턴).
+   * null/미소속이면 전역 게시글.
+   */
+  communityId?: number | null;
+  /** 모임 게시글은 소속 모임 종목을 상속, 전역 게시글은 작성 시 선택(없으면 null) */
+  sportCategory?: SportCategory | null;
 }
 
 export interface CommentResponse {
@@ -284,6 +327,15 @@ export interface CommentResponse {
   createdAt: string; // ISO 8601
 }
 
+/** BE `presentation/post/dto/response/CommentPageResponse` — PageResponse와 필드명(page vs number)이 다르다. */
+export interface CommentPageResponse {
+  content: CommentResponse[];
+  totalElements: number;
+  totalPages: number;
+  page: number;
+  size: number;
+}
+
 export interface PostDetailResponse {
   id: number;
   userId: number;
@@ -292,6 +344,8 @@ export interface PostDetailResponse {
   type: PostType;
   createdAt: string; // ISO 8601
   comments: CommentResponse[];
+  communityId?: number | null;
+  sportCategory?: SportCategory | null;
 }
 
 export interface PageResponse<T> {
@@ -305,6 +359,25 @@ export interface PageResponse<T> {
 export interface CreatePostRequest {
   title: string;
   content: string;
+  type?: PostType;
+  /** 지정 시 모임 게시글(`CreateCommunityPostUseCase` 경로)로 생성된다 */
+  communityId?: number | null;
+  /** 모임 게시글은 BE가 소속 모임 값을 상속하므로 무시된다(FR-5) — 전역 게시글에서만 유효 */
+  sportCategory?: SportCategory | null;
+}
+
+/** `GET /posts` 쿼리 파라미터(page/size 제외) — BE `PostApiController#searchPosts`. */
+export interface PostSearchParams {
+  type?: PostType;
+  userId?: number;
+  keyword?: string;
+  communityId?: number;
+  sportCategory?: SportCategory;
+}
+
+/** `GET /communities/{communityId}/posts` 쿼리 파라미터(page/size 제외). */
+export interface CommunityPostSearchParams {
+  sportCategory?: SportCategory;
 }
 
 // --- Cart ---

@@ -12,6 +12,7 @@ import {
   createPayment,
   preparePayment,
   getPayment,
+  isPreIssuedPaymentParams,
   CreatePaymentBody,
   PaymentResponse,
   PreparePaymentBody,
@@ -183,5 +184,41 @@ describe('getPayment', () => {
     mock.onGet('/payments/9999').reply(404, { message: 'Not Found' });
 
     await expect(getPayment(9999)).rejects.toThrow();
+  });
+});
+
+describe('createPayment · OrderType RECRUITMENT', () => {
+  it('[U-07] orderType RECRUITMENT로 POST /payments를 호출할 수 있다', async () => {
+    const recruitmentBody: CreatePaymentBody = {
+      orderType: 'RECRUITMENT',
+      orderId: 7,
+      method: 'TOSS',
+      amount: 5000,
+      currency: 'KRW',
+    };
+    mock
+      .onPost('/payments')
+      .reply(200, { ...mockCreateResponse, orderType: 'RECRUITMENT', orderId: 7 });
+
+    const result = await createPayment(recruitmentBody, 'test-uuid-recruitment');
+
+    expect(result.orderType).toBe('RECRUITMENT');
+    expect(result.orderId).toBe(7);
+  });
+});
+
+describe('isPreIssuedPaymentParams', () => {
+  it('[U-08] paymentId·checkoutUrl이 모두 단일 문자열이면 true를 반환한다', () => {
+    expect(
+      isPreIssuedPaymentParams({ paymentId: '99', checkoutUrl: 'https://mock-pg.example.com/x' })
+    ).toBe(true);
+  });
+
+  it('[U-09] paymentId·checkoutUrl이 없으면 false를 반환한다(일반 진입)', () => {
+    expect(isPreIssuedPaymentParams({})).toBe(false);
+  });
+
+  it('[U-10] checkoutUrl이 문자열 배열이면 false를 반환한다(비정상 라우트 파라미터)', () => {
+    expect(isPreIssuedPaymentParams({ paymentId: '99', checkoutUrl: ['a', 'b'] })).toBe(false);
   });
 });

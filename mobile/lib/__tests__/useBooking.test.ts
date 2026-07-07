@@ -3,10 +3,27 @@
  * U-02: GET /facilities/{facilityId}/slots 실패(404) 시 에러가 발생한다
  * U-03: POST /bookings 성공 시 CreateBookingResult를 반환한다
  * U-04: POST /bookings 실패(400) 시 에러가 발생한다
+ * U-05: useSlots(facilityId, programId) 훅이 programId를 쿼리 파라미터로 전달한다
+ * U-06: useSlots는 status/programId 필드를 포함한 슬롯을 반환한다(program 회차)
  */
+import { createElement } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { renderHook, waitFor } from '@testing-library/react-native';
 import MockAdapter from 'axios-mock-adapter';
 import { createBeClient } from '../../api/be-client';
 import type { CreateBookingResult, SlotResponse } from '../../api/types';
+
+jest.mock('../../api/booking', () => ({
+  listSlots: jest.fn(),
+  createBooking: jest.fn(),
+  listMyBookings: jest.fn(),
+  cancelBooking: jest.fn(),
+}));
+
+import { listSlots as listSlotsMocked } from '../../api/booking';
+import { useSlots } from '../useBooking';
+
+const listSlotsMock = listSlotsMocked as jest.MockedFunction<typeof listSlotsMocked>;
 
 describe('Booking Slot API', () => {
   const client = createBeClient('http://localhost:8080');
@@ -82,5 +99,60 @@ describe('Booking Slot API', () => {
         })
       ).rejects.toThrow();
     });
+  });
+});
+
+describe('useSlots 훅 — programId 필터(program 회차 예약, A-F2)', () => {
+  afterEach(() => jest.clearAllMocks());
+
+  function createWrapper() {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      createElement(QueryClientProvider, { client: queryClient }, children);
+    return { wrapper };
+  }
+
+  const programSlot: SlotResponse = {
+    id: 5,
+    facilityId: 'facility-1',
+    date: '2026-07-12T14:00:00Z',
+    timeRange: '14:00 - 15:00',
+    capacity: 1,
+    ownerId: 42,
+    status: 'OPEN',
+    programId: 9,
+  };
+
+  it('U-05 programId를 listSlots에 전달한다', async () => {
+    listSlotsMock.mockResolvedValue([programSlot]);
+    const { wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useSlots('facility-1', 9), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(listSlotsMock).toHaveBeenCalledWith('facility-1', 9);
+  });
+
+  it('U-06 status/programId 필드를 포함한 슬롯을 반환한다', async () => {
+    listSlotsMock.mockResolvedValue([programSlot]);
+    const { wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useSlots('facility-1', 9), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.[0].status).toBe('OPEN');
+    expect(result.current.data?.[0].programId).toBe(9);
+  });
+
+  it('programId 없이 호출하면 전체 슬롯을 조회한다(기존 booking/new 화면 하위 호환)', async () => {
+    listSlotsMock.mockResolvedValue([programSlot]);
+    const { wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useSlots('facility-1'), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(listSlotsMock).toHaveBeenCalledWith('facility-1', undefined);
   });
 });
