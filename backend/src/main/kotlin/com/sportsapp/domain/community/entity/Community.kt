@@ -64,6 +64,9 @@ class Community private constructor(
         if (userId != hostUserId) throw NotCommunityHostException(id, userId)
     }
 
+    /** 요청자가 현재 방장인지 순수 질의 — throw 없이 boolean 으로 반환한다 (no-external-state-check 회피용 캡슐화). */
+    fun isHostedBy(userId: Long): Boolean = hostUserId == userId
+
     /** 방장 권한을 [newHostUserId]에게 위임한다 (FR-3). */
     fun transferHostTo(newHostUserId: Long) {
         this.hostUserId = newHostUserId

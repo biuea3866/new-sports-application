@@ -147,4 +147,26 @@ class CommunityTest : BehaviorSpec({
             }
         }
     }
+
+    Given("방장 여부 질의") {
+        val community = Community.create(
+            name = "탁구 모임",
+            description = null,
+            visibility = CommunityVisibility.PUBLIC,
+            sportCategory = SportCategory.ETC,
+            hostUserId = 1L,
+        )
+
+        When("방장 본인 userId 로 isHostedBy 를 호출하면") {
+            Then("true 를 반환한다") {
+                community.isHostedBy(1L) shouldBe true
+            }
+        }
+
+        When("방장이 아닌 userId 로 isHostedBy 를 호출하면") {
+            Then("false 를 반환하고 예외를 던지지 않는다") {
+                community.isHostedBy(99L) shouldBe false
+            }
+        }
+    }
 })
