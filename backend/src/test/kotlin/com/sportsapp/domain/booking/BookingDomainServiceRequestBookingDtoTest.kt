@@ -14,6 +14,7 @@ import com.sportsapp.domain.booking.service.BookingDomainService
 import com.sportsapp.domain.booking.repository.BookingRepository
 import com.sportsapp.domain.booking.repository.SlotRepository
 import com.sportsapp.domain.booking.dto.BookingResult
+import com.sportsapp.domain.booking.exception.SlotClosedException
 import com.sportsapp.domain.booking.exception.SlotFullException
 
 class BookingDomainServiceRequestBookingDtoTest : BehaviorSpec({
@@ -74,6 +75,28 @@ class BookingDomainServiceRequestBookingDtoTest : BehaviorSpec({
             Then("SlotFullException 이 발생한다") {
                 io.kotest.assertions.throwables.shouldThrow<SlotFullException> {
                     service.requestBooking(userId = 1L, slotId = 42L)
+                }
+            }
+        }
+    }
+
+    Given("슬롯이 CLOSED 상태인 상황") {
+        val slot = Slot.create(
+            facilityId = "FAC-01",
+            date = java.time.ZonedDateTime.now(),
+            timeRange = "09:00-10:00",
+            capacity = 5,
+            ownerId = 1L,
+        )
+        slot.close(1L)
+        every { distributedLock.tryLock(any(), any(), any<Duration>()) } returns true
+        every { distributedLock.unlock(any(), any()) } returns true
+        every { slotRepository.findForUpdateById(42L) } returns slot
+
+        When("requestBooking 을 호출하면") {
+            Then("SlotClosedException 이 발생한다") {
+                io.kotest.assertions.throwables.shouldThrow<SlotClosedException> {
+                    service.requestBooking(userId = 2L, slotId = 42L)
                 }
             }
         }

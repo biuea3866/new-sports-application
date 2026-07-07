@@ -1,10 +1,14 @@
 package com.sportsapp.domain.booking.entity
 
 import com.sportsapp.domain.booking.exception.InvalidSlotException
+import com.sportsapp.domain.booking.exception.InvalidSlotStatusException
+import com.sportsapp.domain.booking.exception.SlotClosedException
 import com.sportsapp.domain.booking.exception.UnauthorizedSlotAccessException
 import com.sportsapp.domain.common.JpaAuditingBase
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
@@ -27,6 +31,11 @@ class Slot private constructor(
 
     @Column(nullable = false)
     val ownerId: Long,
+
+    @Column(name = "program_id")
+    val programId: Long?,
+
+    status: SlotStatus,
 ) : JpaAuditingBase() {
 
     @Id
@@ -36,6 +45,11 @@ class Slot private constructor(
 
     @Column(nullable = false)
     var capacity: Int = capacity
+        private set
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    var status: SlotStatus = status
         private set
 
     fun requireOwnedBy(userId: Long) {
@@ -55,6 +69,25 @@ class Slot private constructor(
         }
     }
 
+    fun close(requesterId: Long) {
+        requireOwnedBy(requesterId)
+        transitionTo(SlotStatus.CLOSED)
+    }
+
+    fun open(requesterId: Long) {
+        requireOwnedBy(requesterId)
+        transitionTo(SlotStatus.OPEN)
+    }
+
+    fun requireBookable() {
+        if (status == SlotStatus.CLOSED) throw SlotClosedException(id)
+    }
+
+    private fun transitionTo(target: SlotStatus) {
+        if (!status.canTransitTo(target)) throw InvalidSlotStatusException(status, target)
+        status = target
+    }
+
     companion object {
         private val TIME_RANGE_REGEX = Regex("""^\d{2}:\d{2}-\d{2}:\d{2}$""")
 
@@ -64,6 +97,22 @@ class Slot private constructor(
             timeRange: String,
             capacity: Int,
             ownerId: Long,
+        ): Slot = create(
+            facilityId = facilityId,
+            date = date,
+            timeRange = timeRange,
+            capacity = capacity,
+            ownerId = ownerId,
+            programId = null,
+        )
+
+        fun create(
+            facilityId: String,
+            date: ZonedDateTime,
+            timeRange: String,
+            capacity: Int,
+            ownerId: Long,
+            programId: Long?,
         ): Slot {
             if (!TIME_RANGE_REGEX.matches(timeRange)) {
                 throw InvalidSlotException("timeRange must be HH:mm-HH:mm format, got: $timeRange")
@@ -77,6 +126,8 @@ class Slot private constructor(
                 timeRange = timeRange,
                 capacity = capacity,
                 ownerId = ownerId,
+                programId = programId,
+                status = SlotStatus.OPEN,
             )
         }
     }

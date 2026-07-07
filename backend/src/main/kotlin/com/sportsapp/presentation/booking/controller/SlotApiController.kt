@@ -1,9 +1,13 @@
 package com.sportsapp.presentation.booking.controller
 
+import com.sportsapp.application.booking.dto.CloseSlotCommand
 import com.sportsapp.application.booking.dto.DeleteSlotCommand
+import com.sportsapp.application.booking.dto.OpenSlotCommand
+import com.sportsapp.application.booking.usecase.CloseSlotUseCase
 import com.sportsapp.application.booking.usecase.CreateSlotUseCase
 import com.sportsapp.application.booking.usecase.DeleteSlotUseCase
 import com.sportsapp.application.booking.usecase.ListSlotsUseCase
+import com.sportsapp.application.booking.usecase.OpenSlotUseCase
 import com.sportsapp.application.booking.usecase.UpdateSlotUseCase
 import com.sportsapp.presentation.booking.dto.request.CreateSlotRequest
 import com.sportsapp.presentation.booking.dto.request.UpdateSlotRequest
@@ -18,6 +22,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
@@ -27,6 +32,8 @@ class SlotApiController(
     private val updateSlotUseCase: UpdateSlotUseCase,
     private val listSlotsUseCase: ListSlotsUseCase,
     private val deleteSlotUseCase: DeleteSlotUseCase,
+    private val closeSlotUseCase: CloseSlotUseCase,
+    private val openSlotUseCase: OpenSlotUseCase,
 ) {
     @PostMapping
     fun createSlot(
@@ -42,8 +49,9 @@ class SlotApiController(
     @GetMapping
     fun listSlots(
         @PathVariable facilityId: String,
+        @RequestParam(required = false) programId: Long?,
     ): ResponseEntity<List<SlotResponse>> =
-        ResponseEntity.ok(listSlotsUseCase.execute(facilityId).map { SlotResponse.of(it) })
+        ResponseEntity.ok(listSlotsUseCase.execute(facilityId, programId).map { SlotResponse.of(it) })
 
     @PatchMapping("/{slotId}")
     fun updateSlot(
@@ -53,6 +61,26 @@ class SlotApiController(
     ): ResponseEntity<SlotResponse> {
         if (userId == 0L) return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
         val slot = updateSlotUseCase.execute(request.toCommand(userId, slotId))
+        return ResponseEntity.ok(SlotResponse.of(slot))
+    }
+
+    @PatchMapping("/{slotId}/close")
+    fun closeSlot(
+        @RequestHeader("X-User-Id") userId: Long,
+        @PathVariable slotId: Long,
+    ): ResponseEntity<SlotResponse> {
+        if (userId == 0L) return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
+        val slot = closeSlotUseCase.execute(CloseSlotCommand(requesterId = userId, slotId = slotId))
+        return ResponseEntity.ok(SlotResponse.of(slot))
+    }
+
+    @PatchMapping("/{slotId}/open")
+    fun openSlot(
+        @RequestHeader("X-User-Id") userId: Long,
+        @PathVariable slotId: Long,
+    ): ResponseEntity<SlotResponse> {
+        if (userId == 0L) return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
+        val slot = openSlotUseCase.execute(OpenSlotCommand(requesterId = userId, slotId = slotId))
         return ResponseEntity.ok(SlotResponse.of(slot))
     }
 

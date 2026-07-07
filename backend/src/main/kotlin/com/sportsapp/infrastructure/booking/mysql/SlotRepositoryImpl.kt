@@ -22,8 +22,8 @@ class SlotRepositoryImpl(
     override fun findForUpdateById(id: Long): Slot? =
         slotJpaRepository.findForUpdateById(id)
 
-    override fun findByFacilityId(facilityId: String): List<Slot> =
-        slotJpaRepository.findByFacilityIdAndDeletedAtIsNull(facilityId)
+    override fun findByFacilityId(facilityId: String, programId: Long?): List<Slot> =
+        slotJpaRepository.findByFacilityId(facilityId, programId)
 
     override fun hasPendingOrConfirmedBooking(slotId: Long): Boolean =
         bookingJpaRepository.countBySlotIdAndStatusIn(

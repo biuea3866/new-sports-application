@@ -19,6 +19,22 @@ class SlotDomainService(
         date: ZonedDateTime,
         timeRange: String,
         capacity: Int,
+    ): Slot = createSlot(
+        ownerId = ownerId,
+        facilityId = facilityId,
+        date = date,
+        timeRange = timeRange,
+        capacity = capacity,
+        programId = null,
+    )
+
+    fun createSlot(
+        ownerId: Long,
+        facilityId: String,
+        date: ZonedDateTime,
+        timeRange: String,
+        capacity: Int,
+        programId: Long?,
     ): Slot {
         facilityOwnershipGateway.requireOwner(facilityId, ownerId)
         val slot = Slot.create(
@@ -27,6 +43,7 @@ class SlotDomainService(
             timeRange = timeRange,
             capacity = capacity,
             ownerId = ownerId,
+            programId = programId,
         )
         return slotRepository.save(slot)
     }
@@ -55,8 +72,22 @@ class SlotDomainService(
         slotRepository.save(slot)
     }
 
-    fun listSlots(facilityId: String): List<Slot> =
-        slotRepository.findByFacilityId(facilityId)
+    fun closeSlot(requesterId: Long, slotId: Long): Slot {
+        val slot = slotRepository.findById(slotId)
+            ?: throw ResourceNotFoundException("Slot", slotId)
+        slot.close(requesterId)
+        return slotRepository.save(slot)
+    }
+
+    fun openSlot(requesterId: Long, slotId: Long): Slot {
+        val slot = slotRepository.findById(slotId)
+            ?: throw ResourceNotFoundException("Slot", slotId)
+        slot.open(requesterId)
+        return slotRepository.save(slot)
+    }
+
+    fun listSlots(facilityId: String, programId: Long?): List<Slot> =
+        slotRepository.findByFacilityId(facilityId, programId)
 
     fun countTodayByFacilityIds(facilityIds: List<String>): Long {
         if (facilityIds.isEmpty()) return 0L

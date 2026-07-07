@@ -51,6 +51,7 @@ class BookingDomainService(
         try {
             val slot = slotRepository.findForUpdateById(slotId)
                 ?: throw ResourceNotFoundException("Slot", slotId)
+            slot.requireBookable()
             val activeCount = bookingRepository.countBySlotIdAndStatusIn(
                 slotId,
                 listOf(BookingStatus.PENDING, BookingStatus.CONFIRMED),
