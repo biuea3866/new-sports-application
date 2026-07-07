@@ -6,6 +6,8 @@ import com.sportsapp.domain.booking.service.BookingDomainService
 import com.sportsapp.domain.goods.service.GoodsDomainService
 import com.sportsapp.domain.goods.entity.GoodsOrder
 import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.recruitment.entity.Application
+import com.sportsapp.domain.recruitment.service.RecruitmentDomainService
 import com.sportsapp.domain.ticketing.service.TicketingDomainService
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every
@@ -15,6 +17,18 @@ import io.mockk.verify
 
 class OrderConfirmationGatewayImplTest : BehaviorSpec({
 
+    fun buildGateway(
+        bookingDomainService: BookingDomainService = mockk(),
+        goodsDomainService: GoodsDomainService = mockk(),
+        ticketingDomainService: TicketingDomainService = mockk(),
+        recruitmentDomainService: RecruitmentDomainService = mockk(),
+    ) = OrderConfirmationGatewayImpl(
+        bookingDomainService = bookingDomainService,
+        goodsDomainService = goodsDomainService,
+        ticketingDomainService = ticketingDomainService,
+        recruitmentDomainService = recruitmentDomainService,
+    )
+
     Given("OrderType 이 BOOKING 인 confirm 요청") {
         val bookingDomainService = mockk<BookingDomainService>()
         val goodsDomainService = mockk<GoodsDomainService>()
@@ -23,6 +37,7 @@ class OrderConfirmationGatewayImplTest : BehaviorSpec({
             bookingDomainService = bookingDomainService,
             goodsDomainService = goodsDomainService,
             ticketingDomainService = ticketingDomainService,
+            recruitmentDomainService = mockk(),
         )
         val booking = mockk<Booking>()
         every { bookingDomainService.confirmBooking(bookingId = 10L, paymentId = 100L) } returns booking
@@ -41,6 +56,36 @@ class OrderConfirmationGatewayImplTest : BehaviorSpec({
         }
     }
 
+    Given("OrderType 이 RECRUITMENT 인 confirm 요청") {
+        val recruitmentDomainService = mockk<RecruitmentDomainService>()
+        val gateway = buildGateway(recruitmentDomainService = recruitmentDomainService)
+        val application = mockk<Application>()
+        every { recruitmentDomainService.confirmApplication(applicationId = 40L, paymentId = 400L) } returns application
+
+        When("confirm 을 호출하면") {
+            gateway.confirm(orderType = OrderType.RECRUITMENT, orderId = 40L, paymentId = 400L)
+
+            Then("RecruitmentDomainService.confirmApplication 이 1회 호출된다") {
+                verify(exactly = 1) { recruitmentDomainService.confirmApplication(applicationId = 40L, paymentId = 400L) }
+            }
+        }
+    }
+
+    Given("OrderType 이 RECRUITMENT 인 cancel 요청") {
+        val recruitmentDomainService = mockk<RecruitmentDomainService>()
+        val gateway = buildGateway(recruitmentDomainService = recruitmentDomainService)
+        val application = mockk<Application>()
+        every { recruitmentDomainService.cancelPendingApplication(applicationId = 41L) } returns application
+
+        When("cancel 을 호출하면") {
+            gateway.cancel(orderType = OrderType.RECRUITMENT, orderId = 41L, paymentId = 401L)
+
+            Then("RecruitmentDomainService.cancelPendingApplication 이 1회 호출된다") {
+                verify(exactly = 1) { recruitmentDomainService.cancelPendingApplication(applicationId = 41L) }
+            }
+        }
+    }
+
     Given("OrderType 이 GOODS 인 confirm 요청") {
         val bookingDomainService = mockk<BookingDomainService>()
         val goodsDomainService = mockk<GoodsDomainService>()
@@ -49,6 +94,7 @@ class OrderConfirmationGatewayImplTest : BehaviorSpec({
             bookingDomainService = bookingDomainService,
             goodsDomainService = goodsDomainService,
             ticketingDomainService = ticketingDomainService,
+            recruitmentDomainService = mockk(),
         )
         val goodsOrder = mockk<GoodsOrder>()
         every { goodsDomainService.markPaid(orderId = 20L, paymentId = 200L) } returns goodsOrder
@@ -75,6 +121,7 @@ class OrderConfirmationGatewayImplTest : BehaviorSpec({
             bookingDomainService = bookingDomainService,
             goodsDomainService = goodsDomainService,
             ticketingDomainService = ticketingDomainService,
+            recruitmentDomainService = mockk(),
         )
         val ticketOrderResult = mockk<TicketOrderResult>()
         every { ticketingDomainService.confirmOrder(orderId = 30L, paymentId = 300L) } returns ticketOrderResult
@@ -101,6 +148,7 @@ class OrderConfirmationGatewayImplTest : BehaviorSpec({
             bookingDomainService = bookingDomainService,
             goodsDomainService = goodsDomainService,
             ticketingDomainService = ticketingDomainService,
+            recruitmentDomainService = mockk(),
         )
         justRun { bookingDomainService.cancelPending(bookingId = 10L) }
 
@@ -126,6 +174,7 @@ class OrderConfirmationGatewayImplTest : BehaviorSpec({
             bookingDomainService = bookingDomainService,
             goodsDomainService = goodsDomainService,
             ticketingDomainService = ticketingDomainService,
+            recruitmentDomainService = mockk(),
         )
         justRun { goodsDomainService.cancelPendingOrder(orderId = 20L) }
 
@@ -151,6 +200,7 @@ class OrderConfirmationGatewayImplTest : BehaviorSpec({
             bookingDomainService = bookingDomainService,
             goodsDomainService = goodsDomainService,
             ticketingDomainService = ticketingDomainService,
+            recruitmentDomainService = mockk(),
         )
         justRun { ticketingDomainService.cancelOrder(orderId = 30L) }
 

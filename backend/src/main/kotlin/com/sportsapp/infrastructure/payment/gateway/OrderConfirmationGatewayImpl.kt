@@ -4,6 +4,7 @@ import com.sportsapp.domain.booking.service.BookingDomainService
 import com.sportsapp.domain.goods.service.GoodsDomainService
 import com.sportsapp.domain.payment.gateway.OrderConfirmationGateway
 import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.recruitment.service.RecruitmentDomainService
 import com.sportsapp.domain.ticketing.service.TicketingDomainService
 import org.springframework.stereotype.Component
 
@@ -12,6 +13,7 @@ class OrderConfirmationGatewayImpl(
     private val bookingDomainService: BookingDomainService,
     private val goodsDomainService: GoodsDomainService,
     private val ticketingDomainService: TicketingDomainService,
+    private val recruitmentDomainService: RecruitmentDomainService,
 ) : OrderConfirmationGateway {
 
     override fun confirm(orderType: OrderType, orderId: Long, paymentId: Long) {
@@ -19,6 +21,7 @@ class OrderConfirmationGatewayImpl(
             OrderType.BOOKING -> bookingDomainService.confirmBooking(orderId, paymentId)
             OrderType.GOODS -> goodsDomainService.markPaid(orderId, paymentId)
             OrderType.TICKETING -> ticketingDomainService.confirmOrder(orderId, paymentId)
+            OrderType.RECRUITMENT -> recruitmentDomainService.confirmApplication(orderId, paymentId)
         }
     }
 
@@ -27,6 +30,7 @@ class OrderConfirmationGatewayImpl(
             OrderType.BOOKING -> bookingDomainService.cancelPending(orderId)
             OrderType.GOODS -> goodsDomainService.cancelPendingOrder(orderId)
             OrderType.TICKETING -> ticketingDomainService.cancelOrder(orderId)
+            OrderType.RECRUITMENT -> recruitmentDomainService.cancelPendingApplication(orderId)
         }
     }
 }

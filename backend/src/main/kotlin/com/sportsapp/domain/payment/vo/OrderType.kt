@@ -4,4 +4,5 @@ enum class OrderType {
     BOOKING,
     TICKETING,
     GOODS,
+    RECRUITMENT,
 }
