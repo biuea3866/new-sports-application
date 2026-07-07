@@ -54,10 +54,11 @@ class CommentApiController(
     @GetMapping("/posts/{postId}/comments")
     fun listComments(
         @PathVariable postId: Long,
+        @RequestHeader(value = "X-User-Id", required = false) userId: Long?,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
     ): ResponseEntity<CommentPageResponse> {
-        val commentPage = listCommentsUseCase.execute(postId = postId, page = page, size = size)
+        val commentPage = listCommentsUseCase.execute(postId = postId, requesterId = userId, page = page, size = size)
         return ResponseEntity.ok(CommentPageResponse.of(commentPage))
     }
 }

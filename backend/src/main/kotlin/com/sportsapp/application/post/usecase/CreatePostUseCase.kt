@@ -16,5 +16,7 @@ class CreatePostUseCase(
             userId = command.userId,
             title = command.title,
             content = command.content,
+            type = command.type,
+            sportCategory = command.sportCategory,
         )
 }

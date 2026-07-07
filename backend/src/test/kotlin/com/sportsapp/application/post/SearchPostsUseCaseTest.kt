@@ -96,4 +96,25 @@ class SearchPostsUseCaseTest : BehaviorSpec({
             }
         }
     }
+
+    Given("globalFeedOnly=false 로 요청해도") {
+        val criteriaSlot = slot<PostSearchCriteria>()
+        every { postDomainService.search(capture(criteriaSlot), any()) } returns PageImpl(emptyList())
+
+        When("execute를 호출하면") {
+            val criteria = PostCriteria(
+                type = null,
+                userId = null,
+                keyword = null,
+                globalFeedOnly = false,
+                page = 0,
+                size = 10,
+            )
+            searchPostsUseCase.execute(criteria)
+
+            Then("전역 피드이므로 globalFeedOnly 가 true 로 강제된다") {
+                criteriaSlot.captured.globalFeedOnly shouldBe true
+            }
+        }
+    }
 })

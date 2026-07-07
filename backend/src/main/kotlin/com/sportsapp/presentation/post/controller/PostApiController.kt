@@ -1,9 +1,11 @@
 package com.sportsapp.presentation.post.controller
 
+import com.sportsapp.application.post.usecase.CreateCommunityPostUseCase
 import com.sportsapp.application.post.usecase.CreatePostUseCase
 import com.sportsapp.application.post.usecase.GetPostUseCase
 import com.sportsapp.application.post.usecase.SearchPostsUseCase
 import com.sportsapp.application.post.dto.PostCriteria
+import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.post.vo.PostType
 import com.sportsapp.presentation.post.dto.request.CreatePostRequest
 import com.sportsapp.presentation.post.dto.response.PostDetailResponse
@@ -26,13 +28,18 @@ class PostApiController(
     private val searchPostsUseCase: SearchPostsUseCase,
     private val getPostUseCase: GetPostUseCase,
     private val createPostUseCase: CreatePostUseCase,
+    private val createCommunityPostUseCase: CreateCommunityPostUseCase,
 ) {
     @PostMapping
     fun createPost(
         @RequestHeader("X-User-Id") userId: Long,
         @Valid @RequestBody request: CreatePostRequest,
     ): ResponseEntity<PostResponse> {
-        val post = createPostUseCase.execute(request.toCommand(userId))
+        val post = if (request.communityId != null) {
+            createCommunityPostUseCase.execute(request.toCommunityCommand(userId))
+        } else {
+            createPostUseCase.execute(request.toCommand(userId))
+        }
         return ResponseEntity.status(201).body(PostResponse.of(post))
     }
 
@@ -41,6 +48,8 @@ class PostApiController(
         @RequestParam(required = false) type: PostType?,
         @RequestParam(required = false) userId: Long?,
         @RequestParam(required = false) keyword: String?,
+        @RequestParam(required = false) communityId: Long?,
+        @RequestParam(required = false) sportCategory: SportCategory?,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
     ): ResponseEntity<Page<PostResponse>> {
@@ -48,6 +57,8 @@ class PostApiController(
             type = type,
             userId = userId,
             keyword = keyword,
+            communityId = communityId,
+            sportCategory = sportCategory,
             page = page,
             size = size,
         )
@@ -55,8 +66,11 @@ class PostApiController(
     }
 
     @GetMapping("/{id}")
-    fun getPost(@PathVariable id: Long): ResponseEntity<PostDetailResponse> {
-        val (post, comments) = getPostUseCase.execute(id)
+    fun getPost(
+        @PathVariable id: Long,
+        @RequestHeader(value = "X-User-Id", required = false) userId: Long?,
+    ): ResponseEntity<PostDetailResponse> {
+        val (post, comments) = getPostUseCase.execute(postId = id, requesterId = userId)
         return ResponseEntity.ok(PostDetailResponse.of(post, comments))
     }
 }

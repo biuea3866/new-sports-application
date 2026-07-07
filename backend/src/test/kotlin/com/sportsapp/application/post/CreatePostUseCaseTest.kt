@@ -3,6 +3,7 @@ package com.sportsapp.application.post
 import com.sportsapp.application.post.dto.CreatePostCommand
 import com.sportsapp.application.post.usecase.CreatePostUseCase
 
+import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.post.entity.Post
 import com.sportsapp.domain.post.service.PostDomainService
 import com.sportsapp.domain.post.vo.PostType
@@ -71,6 +72,36 @@ class CreatePostUseCaseTest : BehaviorSpec({
                 userIdSlot.captured shouldBe 42L
                 titleSlot.captured shouldBe "테스트 제목"
                 contentSlot.captured shouldBe "테스트 본문"
+            }
+        }
+    }
+
+    Given("type·sportCategory 를 지정한 CreatePostCommand 를 전달할 때") {
+        val typeSlot = slot<PostType>()
+        val sportCategorySlot = slot<SportCategory>()
+        every {
+            postDomainService.createPost(
+                userId = 1L,
+                title = "제목",
+                content = "본문",
+                type = capture(typeSlot),
+                sportCategory = capture(sportCategorySlot),
+            )
+        } returns buildSavedPost(userId = 1L, title = "제목", content = "본문")
+
+        When("execute를 호출하면") {
+            val command = CreatePostCommand(
+                userId = 1L,
+                title = "제목",
+                content = "본문",
+                type = PostType.QUESTION,
+                sportCategory = SportCategory.SOCCER,
+            )
+            createPostUseCase.execute(command)
+
+            Then("type·sportCategory 가 DomainService에 그대로 전달된다") {
+                typeSlot.captured shouldBe PostType.QUESTION
+                sportCategorySlot.captured shouldBe SportCategory.SOCCER
             }
         }
     }
