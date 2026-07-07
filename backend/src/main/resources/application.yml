@@ -118,6 +118,13 @@ chat:
     # OFF면 CommunityApiController 빈 자체가 등록되지 않아 /communities 전 경로가 404(즉시 롤백 지점).
     enabled: ${CHAT_COMMUNITY_ENABLED:false}
 
+facility:
+  program:
+    # BE-59 Release Scenario 2단계 — 시설상품(program) 도메인 REST 엔드포인트 전체 활성 플래그.
+    # OFF면 ProgramApiController 빈 자체가 등록되지 않아 /facilities/{facilityId}/programs 전 경로가
+    # 404(즉시 롤백 지점). 회차 예약은 기존 booking Slot 경로를 그대로 사용해 무영향.
+    enabled: ${FACILITY_PROGRAM_ENABLED:false}
+
 limited-drop:
   # Release Scenario 4단계 — 회차별 전체 활성 플래그. OFF면 LimitedDropApiController 빈 자체가
   # 등록되지 않아 전 엔드포인트가 404 (즉시 롤백 지점). 운영 기본값은 false — 코드 배포 후 회귀

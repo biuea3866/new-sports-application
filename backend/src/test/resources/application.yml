@@ -70,6 +70,12 @@ chat:
     # 비활성 시나리오(ChatRealtimeDisabledTest)는 @TestPropertySource로 개별 오버라이드.
     enabled: true
 
+facility:
+  program:
+    # 테스트 기본값은 true — BE-59 program 통합/시나리오 테스트가 별도 오버라이드 없이 동작하게 한다.
+    # 비활성 시나리오(ProgramApiControllerFeatureFlagDisabledTest)는 @TestPropertySource로 개별 오버라이드.
+    enabled: true
+
 storage:
   image:
     endpoint: http://localhost:9000
