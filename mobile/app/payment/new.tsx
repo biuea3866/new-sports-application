@@ -12,7 +12,7 @@
  *
  * 외부 PG URL 직접 호출 금지 — checkoutUrl은 우리 mock-pg가 준 URL (BE 경유).
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -27,6 +27,7 @@ import * as Linking from 'expo-linking';
 import {
   preparePayment,
   getPayment,
+  isPreIssuedPaymentParams,
   PaymentMethod,
   OrderType,
   PaymentStatus,
@@ -66,7 +67,9 @@ function generateUUID(): string {
 }
 
 function isValidOrderType(value: string | string[] | undefined): value is OrderType {
-  return typeof value === 'string' && ['BOOKING', 'TICKETING', 'GOODS'].includes(value);
+  return (
+    typeof value === 'string' && ['BOOKING', 'TICKETING', 'GOODS', 'RECRUITMENT'].includes(value)
+  );
 }
 
 async function pollPaymentStatus(paymentId: number): Promise<PaymentStatus> {
@@ -75,7 +78,11 @@ async function pollPaymentStatus(paymentId: number): Promise<PaymentStatus> {
       await new Promise<void>((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
     }
     const detail = await getPayment(paymentId);
-    if (detail.status === 'COMPLETED' || detail.status === 'CANCELLED' || detail.status === 'FAILED') {
+    if (
+      detail.status === 'COMPLETED' ||
+      detail.status === 'CANCELLED' ||
+      detail.status === 'FAILED'
+    ) {
       return detail.status;
     }
   }
@@ -144,10 +151,7 @@ function DonePhase({ doneState, onRetry, onGoBack }: DonePhaseProps) {
   const isSuccess = doneState.status === 'COMPLETED';
   return (
     <View style={styles.container}>
-      <Text
-        style={styles.resultIcon}
-        accessibilityLabel={isSuccess ? '결제 성공' : '결제 실패'}
-      >
+      <Text style={styles.resultIcon} accessibilityLabel={isSuccess ? '결제 성공' : '결제 실패'}>
         {isSuccess ? '✓' : '✗'}
       </Text>
       <Text style={styles.resultTitle}>{isSuccess ? '결제 완료' : '결제 실패'}</Text>
@@ -184,14 +188,34 @@ export default function PaymentNewScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
 
-  const { orderType, orderId, amount: amountParam, itemName: itemNameParam } = params;
+  const {
+    orderType,
+    orderId,
+    amount: amountParam,
+    itemName: itemNameParam,
+    paymentId: paymentIdParam,
+    checkoutUrl: checkoutUrlParam,
+  } = params;
 
   const parsedAmount = typeof amountParam === 'string' ? parseInt(amountParam, 10) : NaN;
   const resolvedItemName = typeof itemNameParam === 'string' ? itemNameParam : '주문 상품';
 
-  const [phase, setPhase] = useState<Phase>('select');
+  // "pre-issued" 모드 — 서버가 신청과 동시에 결제를 이미 prepare한 상태(모집 신청 등)로
+  // 진입한 경우. preparePayment를 건너뛰고 바로 checkoutUrl을 연 뒤 폴링으로 이어간다
+  // (design-fe-app.md "결제 흐름 재사용 결정"). 기존 BOOKING/GOODS/TICKETING 경로는
+  // paymentId/checkoutUrl 파라미터가 없어 이 분기를 타지 않는다(additive).
+  const isPreIssued = isPreIssuedPaymentParams({
+    paymentId: paymentIdParam,
+    checkoutUrl: checkoutUrlParam,
+  });
+  const preIssuedPaymentId =
+    typeof paymentIdParam === 'string' ? parseInt(paymentIdParam, 10) : NaN;
+  const preIssuedCheckoutUrl = typeof checkoutUrlParam === 'string' ? checkoutUrlParam : '';
+
+  const [phase, setPhase] = useState<Phase>(isPreIssued ? 'loading' : 'select');
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
   const [doneState, setDoneState] = useState<DoneState | null>(null);
+  const hasTriggeredPreIssuedRef = useRef(false);
 
   const handlePay = useCallback(async () => {
     if (!selectedMethod) return;
@@ -245,10 +269,43 @@ export default function PaymentNewScreen() {
     }
   }, [selectedMethod, orderType, orderId, parsedAmount, resolvedItemName]);
 
+  const handlePreIssuedPay = useCallback(async () => {
+    if (Number.isNaN(preIssuedPaymentId) || preIssuedCheckoutUrl.length === 0) {
+      setDoneState({ status: 'FAILED', paymentId: 0 });
+      setPhase('done');
+      return;
+    }
+
+    setPhase('loading');
+
+    try {
+      await Linking.openURL(preIssuedCheckoutUrl);
+      const finalStatus = await pollPaymentStatus(preIssuedPaymentId);
+      setDoneState({ status: finalStatus, paymentId: preIssuedPaymentId });
+      setPhase('done');
+    } catch {
+      setDoneState({ status: 'FAILED', paymentId: preIssuedPaymentId });
+      setPhase('done');
+    }
+  }, [preIssuedPaymentId, preIssuedCheckoutUrl]);
+
+  useEffect(() => {
+    if (!isPreIssued || hasTriggeredPreIssuedRef.current) {
+      return;
+    }
+    hasTriggeredPreIssuedRef.current = true;
+    void handlePreIssuedPay();
+  }, [isPreIssued, handlePreIssuedPay]);
+
   const handleRetry = useCallback(() => {
+    if (isPreIssued) {
+      hasTriggeredPreIssuedRef.current = false;
+      void handlePreIssuedPay();
+      return;
+    }
     setPhase('select');
     setDoneState(null);
-  }, []);
+  }, [isPreIssued, handlePreIssuedPay]);
 
   const handleGoBack = useCallback(() => {
     router.back();
