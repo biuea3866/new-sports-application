@@ -271,6 +271,121 @@ export const PaymentSummarySchema = z.object({
 
 export const PaymentSummaryPageSchema = PageSchema(PaymentSummarySchema);
 
+// ─── Facility Schedule (운영시간 / 휴무일) ─────────────────────────────────────
+// BE 계약: FacilityScheduleApiController. 시간은 "HH:mm" 또는 "HH:mm:ss"(LocalTime.toString()),
+// 날짜는 "yyyy-MM-dd"(LocalDate.toString()) 문자열이다.
+
+const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)(:[0-5]\d)?$/;
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+export const DayOfWeekSchema = z.enum([
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+  "SUNDAY",
+]);
+
+export const TimeRangeSchema = z.object({
+  start: z.string(),
+  end: z.string(),
+});
+
+export const OperatingHoursSchema = z.object({
+  dayOfWeek: DayOfWeekSchema,
+  openTime: z.string(),
+  closeTime: z.string(),
+  breaks: z.array(TimeRangeSchema),
+  slotDurationMinutes: z.number().int().positive(),
+  capacity: z.number().int().positive(),
+});
+
+// 시설 상세 응답(FacilityResponse) 중 이 설계가 필요로 하는 부분만 파싱한다.
+// 나머지 필드(name·address 등)는 zod가 알아서 무시한다.
+export const FacilityScheduleSchema = z.object({
+  id: z.string(),
+  operatingHours: z.array(OperatingHoursSchema),
+  holidays: z.array(z.string()),
+});
+
+export const TimeRangeInputSchema = z
+  .object({
+    start: z.string().regex(TIME_PATTERN, { message: "start는 HH:mm 형식이어야 합니다." }),
+    end: z.string().regex(TIME_PATTERN, { message: "end는 HH:mm 형식이어야 합니다." }),
+  })
+  .refine((data) => data.start < data.end, {
+    message: "브레이크 시작 시각은 종료 시각보다 빨라야 합니다.",
+    path: ["end"],
+  });
+
+export const OperatingHoursInputSchema = z
+  .object({
+    dayOfWeek: DayOfWeekSchema,
+    openTime: z.string().regex(TIME_PATTERN, { message: "openTime은 HH:mm 형식이어야 합니다." }),
+    closeTime: z.string().regex(TIME_PATTERN, { message: "closeTime은 HH:mm 형식이어야 합니다." }),
+    breaks: z.array(TimeRangeInputSchema).default([]),
+    slotDurationMinutes: z
+      .number()
+      .int()
+      .positive({ message: "슬롯 단위는 1분 이상이어야 합니다." })
+      .default(60),
+    capacity: z.number().int().positive({ message: "정원은 1 이상이어야 합니다." }),
+  })
+  .refine((data) => data.openTime < data.closeTime, {
+    message: "오픈 시각은 마감 시각보다 빨라야 합니다.",
+    path: ["closeTime"],
+  });
+
+export const RegisterOperatingHoursInputSchema = z.object({
+  operatingHours: z.array(OperatingHoursInputSchema).min(1, {
+    message: "운영시간을 최소 1개 이상 등록해야 합니다.",
+  }),
+});
+
+export const HolidayInputSchema = z.object({
+  date: z.string().regex(DATE_PATTERN, { message: "date는 yyyy-MM-dd 형식이어야 합니다." }),
+});
+
+// ─── Program (시설상품) ─────────────────────────────────────────────────────────
+
+export const ProgramSchema = z.object({
+  id: z.number().int(),
+  facilityId: z.string(),
+  ownerUserId: z.number().int(),
+  name: z.string(),
+  description: z.string().nullable(),
+  price: z.number().nonnegative(),
+  capacity: z.number().int().positive(),
+  durationMinutes: z.number().int().positive(),
+});
+
+export const ProgramListSchema = z.array(ProgramSchema);
+
+export const CreateProgramInputSchema = z.object({
+  name: z.string().min(1, { message: "이름을 입력해 주세요." }),
+  description: z.string().optional(),
+  price: z.number().nonnegative({ message: "가격은 0 이상이어야 합니다." }),
+  capacity: z.number().int().positive({ message: "정원은 1 이상이어야 합니다." }),
+  durationMinutes: z.number().int().positive({ message: "소요 시간은 1분 이상이어야 합니다." }),
+});
+
+// ─── Slot 상태 (open/close) ─────────────────────────────────────────────────────
+
+export const SlotStatusSchema = z.enum(["OPEN", "CLOSED"]);
+
+export const SlotSchema = z.object({
+  id: z.number().int(),
+  facilityId: z.string(),
+  date: z.string(),
+  timeRange: z.string(),
+  capacity: z.number().int(),
+  ownerId: z.number().int(),
+  status: SlotStatusSchema,
+  programId: z.number().int().nullable(),
+});
+
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
 export const FacilitySummarySchema = z.object({

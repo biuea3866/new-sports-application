@@ -192,6 +192,81 @@ export interface NotificationPage {
 }
 
 
+// ─── Facility Schedule (운영시간 / 휴무일) ─────────────────────────────────────
+// BE 계약: FacilityScheduleApiController — PUT/POST/DELETE .../operating-hours,
+// .../holidays. 운영시간·휴무는 시설 상세 응답(FacilityResponse)에 임베드된다.
+
+export type DayOfWeek =
+  | "MONDAY"
+  | "TUESDAY"
+  | "WEDNESDAY"
+  | "THURSDAY"
+  | "FRIDAY"
+  | "SATURDAY"
+  | "SUNDAY";
+
+export interface TimeRange {
+  start: string;
+  end: string;
+}
+
+export interface OperatingHours {
+  dayOfWeek: DayOfWeek;
+  openTime: string;
+  closeTime: string;
+  breaks: TimeRange[];
+  slotDurationMinutes: number;
+  capacity: number;
+}
+
+export interface FacilitySchedule {
+  id: string;
+  operatingHours: OperatingHours[];
+  holidays: string[];
+}
+
+export interface RegisterOperatingHoursInput {
+  operatingHours: OperatingHours[];
+}
+
+// ─── Program (시설상품) ─────────────────────────────────────────────────────────
+// BE 계약: ProgramApiController — POST/GET /facilities/{facilityId}/programs
+
+export interface Program {
+  id: number;
+  facilityId: string;
+  ownerUserId: number;
+  name: string;
+  description: string | null;
+  price: number;
+  capacity: number;
+  durationMinutes: number;
+}
+
+export interface CreateProgramInput {
+  name: string;
+  description?: string;
+  price: number;
+  capacity: number;
+  durationMinutes: number;
+}
+
+// ─── Slot 상태 (open/close) ─────────────────────────────────────────────────────
+// BE 계약: SlotApiController — PATCH .../slots/{slotId}/close · /open
+
+export type SlotStatus = "OPEN" | "CLOSED";
+
+export interface Slot {
+  id: number;
+  facilityId: string;
+  date: string;
+  timeRange: string;
+  capacity: number;
+  ownerId: number;
+  status: SlotStatus;
+  programId: number | null;
+}
+
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
 export interface FacilitySummary {
