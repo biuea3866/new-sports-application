@@ -146,4 +146,18 @@ class FacilityScheduleApiControllerTest : BehaviorSpec({
             }
         }
     }
+
+    Given("소유 시설의 휴무일 제거 요청에 잘못된 형식의 date가 주어졌을 때") {
+        val removeHolidayUseCase = mockk<RemoveHolidayUseCase>()
+        val mockMvc = buildMockMvc(removeHolidayUseCase = removeHolidayUseCase)
+
+        When("DELETE /facilities/{facilityId}/holidays?date=not-a-date 요청 시") {
+            val result = mockMvc.perform(delete("/facilities/f-001/holidays?date=not-a-date"))
+
+            Then("400 Bad Request를 반환하고 UseCase를 호출하지 않는다") {
+                result.andExpect(status().isBadRequest)
+                verify(exactly = 0) { removeHolidayUseCase.execute(any()) }
+            }
+        }
+    }
 })

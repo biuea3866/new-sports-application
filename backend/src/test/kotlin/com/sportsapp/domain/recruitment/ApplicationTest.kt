@@ -2,8 +2,8 @@ package com.sportsapp.domain.recruitment
 
 import com.sportsapp.domain.recruitment.entity.Application
 import com.sportsapp.domain.recruitment.event.ApplicationRefundRequestedEvent
+import com.sportsapp.domain.recruitment.entity.ApplicationStatus
 import com.sportsapp.domain.recruitment.exception.ApplicationCancellationClosedException
-import com.sportsapp.domain.recruitment.vo.ApplicationStatus
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldBeNull

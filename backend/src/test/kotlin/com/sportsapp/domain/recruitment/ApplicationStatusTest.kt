@@ -1,6 +1,6 @@
 package com.sportsapp.domain.recruitment
 
-import com.sportsapp.domain.recruitment.vo.ApplicationStatus
+import com.sportsapp.domain.recruitment.entity.ApplicationStatus
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 

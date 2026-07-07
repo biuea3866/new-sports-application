@@ -1,4 +1,4 @@
-package com.sportsapp.domain.recruitment.vo
+package com.sportsapp.domain.recruitment.entity
 
 enum class ApplicationStatus {
     PENDING,

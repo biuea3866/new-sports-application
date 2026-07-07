@@ -1,9 +1,9 @@
 package com.sportsapp.domain.recruitment
 
 import com.sportsapp.domain.recruitment.entity.Recruitment
+import com.sportsapp.domain.recruitment.entity.RecruitmentStatus
 import com.sportsapp.domain.recruitment.exception.InvalidRecruitmentException
 import com.sportsapp.domain.recruitment.exception.NotRecruiterException
-import com.sportsapp.domain.recruitment.vo.RecruitmentStatus
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -13,11 +13,15 @@ import java.time.ZonedDateTime
 class RecruitmentTest : BehaviorSpec({
 
     fun createRecruitment(
+        title: String = "주말 축구 모임",
+        description: String? = null,
         capacity: Int = 5,
         feeAmount: BigDecimal = BigDecimal.ZERO,
         applicationDeadline: ZonedDateTime = ZonedDateTime.now().plusDays(10),
         recruiterUserId: Long = 1L,
     ): Recruitment = Recruitment.create(
+        title = title,
+        description = description,
         capacity = capacity,
         feeAmount = feeAmount,
         activityAt = applicationDeadline.plusDays(1),
@@ -106,6 +110,51 @@ class RecruitmentTest : BehaviorSpec({
         Then("정상적으로 생성된다") {
             val recruitment = createRecruitment(feeAmount = BigDecimal.ZERO)
             recruitment.feeAmount.compareTo(BigDecimal.ZERO) shouldBe 0
+        }
+    }
+
+    Given("title이 빈 문자열인 모집 생성 요청") {
+        Then("InvalidRecruitmentException을 던진다") {
+            shouldThrow<InvalidRecruitmentException> {
+                createRecruitment(title = "")
+            }
+        }
+    }
+
+    Given("title이 공백 문자로만 이루어진 모집 생성 요청") {
+        Then("InvalidRecruitmentException을 던진다") {
+            shouldThrow<InvalidRecruitmentException> {
+                createRecruitment(title = "   ")
+            }
+        }
+    }
+
+    Given("title이 200자를 초과하는 모집 생성 요청") {
+        Then("InvalidRecruitmentException을 던진다") {
+            shouldThrow<InvalidRecruitmentException> {
+                createRecruitment(title = "가".repeat(201))
+            }
+        }
+    }
+
+    Given("title이 정확히 200자인 모집 생성 요청") {
+        Then("정상적으로 생성된다") {
+            val recruitment = createRecruitment(title = "가".repeat(200))
+            recruitment.title.length shouldBe 200
+        }
+    }
+
+    Given("description 없이 모집을 생성하는 요청") {
+        Then("description은 null로 생성된다") {
+            val recruitment = createRecruitment(description = null)
+            recruitment.description shouldBe null
+        }
+    }
+
+    Given("description을 포함한 모집 생성 요청") {
+        Then("description이 그대로 저장된다") {
+            val recruitment = createRecruitment(description = "매주 토요일 오전 축구 모임입니다")
+            recruitment.description shouldBe "매주 토요일 오전 축구 모임입니다"
         }
     }
 })

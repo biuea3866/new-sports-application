@@ -5,7 +5,6 @@ import com.sportsapp.domain.common.JpaAuditingBase
 import com.sportsapp.domain.recruitment.event.ApplicationRefundRequestedEvent
 import com.sportsapp.domain.recruitment.exception.ApplicationCancellationClosedException
 import com.sportsapp.domain.recruitment.exception.InvalidApplicationStateException
-import com.sportsapp.domain.recruitment.vo.ApplicationStatus
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType

@@ -4,7 +4,6 @@ import com.sportsapp.domain.common.JpaAuditingBase
 import com.sportsapp.domain.recruitment.exception.InvalidRecruitmentException
 import com.sportsapp.domain.recruitment.exception.InvalidRecruitmentStateException
 import com.sportsapp.domain.recruitment.exception.NotRecruiterException
-import com.sportsapp.domain.recruitment.vo.RecruitmentStatus
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -19,6 +18,12 @@ import java.time.ZonedDateTime
 @Entity
 @Table(name = "recruitments")
 class Recruitment private constructor(
+    @Column(name = "title", nullable = false)
+    val title: String,
+
+    @Column(name = "description", nullable = true)
+    val description: String?,
+
     @Column(name = "capacity", nullable = false)
     val capacity: Int,
 
@@ -79,21 +84,24 @@ class Recruitment private constructor(
     private fun isDeadlinePassed(): Boolean = ZonedDateTime.now().isAfter(applicationDeadline)
 
     companion object {
+        private const val TITLE_MAX_LENGTH = 200
+
         fun create(
+            title: String,
             capacity: Int,
             feeAmount: BigDecimal,
             activityAt: ZonedDateTime,
             applicationDeadline: ZonedDateTime,
             communityId: Long?,
             recruiterUserId: Long,
+            description: String? = null,
         ): Recruitment {
-            if (capacity <= 0) {
-                throw InvalidRecruitmentException("capacity must be positive, got: $capacity")
-            }
-            if (feeAmount < BigDecimal.ZERO) {
-                throw InvalidRecruitmentException("feeAmount must not be negative, got: $feeAmount")
-            }
+            validateTitle(title)
+            validateCapacity(capacity)
+            validateFeeAmount(feeAmount)
             return Recruitment(
+                title = title,
+                description = description,
                 capacity = capacity,
                 feeAmount = feeAmount,
                 activityAt = activityAt,
@@ -104,7 +112,30 @@ class Recruitment private constructor(
             )
         }
 
+        private fun validateTitle(title: String) {
+            if (title.isBlank()) {
+                throw InvalidRecruitmentException("title must not be blank")
+            }
+            if (title.length > TITLE_MAX_LENGTH) {
+                throw InvalidRecruitmentException("title must not exceed $TITLE_MAX_LENGTH characters, got: ${title.length}")
+            }
+        }
+
+        private fun validateCapacity(capacity: Int) {
+            if (capacity <= 0) {
+                throw InvalidRecruitmentException("capacity must be positive, got: $capacity")
+            }
+        }
+
+        private fun validateFeeAmount(feeAmount: BigDecimal) {
+            if (feeAmount < BigDecimal.ZERO) {
+                throw InvalidRecruitmentException("feeAmount must not be negative, got: $feeAmount")
+            }
+        }
+
         fun reconstitute(
+            title: String,
+            description: String?,
             capacity: Int,
             feeAmount: BigDecimal,
             activityAt: ZonedDateTime,
@@ -113,6 +144,8 @@ class Recruitment private constructor(
             recruiterUserId: Long,
             status: RecruitmentStatus,
         ): Recruitment = Recruitment(
+            title = title,
+            description = description,
             capacity = capacity,
             feeAmount = feeAmount,
             activityAt = activityAt,

@@ -3,8 +3,9 @@
 --   "MySQL 테이블 정의 6. slots 컬럼 추가", "slots UNIQUE 호환 확인"
 -- 하위 호환 판단:
 --   program_id(nullable) — 컬럼 추가(nullable) → 단일 마이그레이션. NULL=일반 슬롯, non-null=program 회차
---   status(nullable DEFAULT 'OPEN') — 과제 SSOT 요구대로 nullable DEFAULT 'OPEN'. DEFAULT가 기존 행
---     100%를 'OPEN'으로 채워 NULL이 실제로 발생하지 않는다. 코드는 NULL을 OPEN으로 방어적 해석.
+--   status(nullable DEFAULT 'OPEN') — 과제 SSOT 요구대로 컬럼 자체는 nullable DEFAULT 'OPEN'.
+--     DEFAULT가 기존 행 100%를 'OPEN'으로 채워 NULL이 실제로 발생하지 않으므로, 도메인 Entity(Slot.kt)는
+--     status 컬럼을 nullable=false로 매핑한다(NULL 방어 로직 없음 — DEFAULT가 유일한 보장 수단).
 -- UNIQUE 호환: 기존 UNIQUE uq_slots_facility_date_time_range(facility_id, date, time_range, deleted_at)는
 --   변경하지 않는다. program_id/status는 이 UNIQUE 키 구성에 없으므로 자동 슬롯 멱등 재생성 로직
 --   (facility_id, date, time_range 기준 diff 계산)에 영향 없음. program 세션 슬롯도 같은 UNIQUE

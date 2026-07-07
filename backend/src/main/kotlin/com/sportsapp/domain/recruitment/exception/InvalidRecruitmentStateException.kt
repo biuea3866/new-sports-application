@@ -2,7 +2,7 @@ package com.sportsapp.domain.recruitment.exception
 
 import com.sportsapp.domain.common.BusinessException
 import com.sportsapp.domain.common.ErrorStatus
-import com.sportsapp.domain.recruitment.vo.RecruitmentStatus
+import com.sportsapp.domain.recruitment.entity.RecruitmentStatus
 
 class InvalidRecruitmentStateException(
     from: RecruitmentStatus,
