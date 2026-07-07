@@ -1,5 +1,6 @@
 package com.sportsapp.application.post.dto
 
+import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.post.dto.PostSearchCriteria
 import com.sportsapp.domain.post.vo.PostType
 import org.springframework.data.domain.PageRequest
@@ -10,6 +11,9 @@ data class PostCriteria(
     val type: PostType?,
     val userId: Long?,
     val keyword: String?,
+    val communityId: Long? = null,
+    val sportCategory: SportCategory? = null,
+    val globalFeedOnly: Boolean = false,
     val page: Int,
     val size: Int,
 ) {
@@ -26,5 +30,8 @@ data class PostCriteria(
         type = type,
         userId = userId,
         keyword = keyword?.takeIf { it.isNotBlank() },
+        communityId = communityId,
+        sportCategory = sportCategory,
+        globalFeedOnly = globalFeedOnly,
     )
 }
