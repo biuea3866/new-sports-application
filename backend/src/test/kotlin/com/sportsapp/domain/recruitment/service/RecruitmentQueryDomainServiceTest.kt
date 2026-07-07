@@ -105,4 +105,29 @@ class RecruitmentQueryDomainServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("존재하는 신청 건") {
+        val application = Application.create(recruitmentId = 1L, applicantUserId = 100L)
+        every { applicationRepository.findById(11L) } returns application
+
+        When("getApplicationById를 호출하면") {
+            val result = service.getApplicationById(11L)
+
+            Then("해당 신청을 반환한다") {
+                result shouldBe application
+            }
+        }
+    }
+
+    Given("존재하지 않는 신청 조회") {
+        every { applicationRepository.findById(404L) } returns null
+
+        When("getApplicationById를 호출하면") {
+            Then("ResourceNotFoundException을 던진다") {
+                shouldThrow<ResourceNotFoundException> {
+                    service.getApplicationById(404L)
+                }
+            }
+        }
+    }
 })

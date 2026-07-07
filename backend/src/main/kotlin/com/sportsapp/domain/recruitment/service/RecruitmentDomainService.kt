@@ -58,12 +58,12 @@ class RecruitmentDomainService(
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    fun apply(recruitmentId: Long, applicantUserId: Long): Application {
+    fun apply(recruitmentId: Long, applicantUserId: Long): Long {
         val lockKey = "recruitment:$recruitmentId"
         val lockValue = "user:$applicantUserId"
         if (!spinLock(lockKey, lockValue)) throw RecruitmentBusyException(recruitmentId)
         registerUnlockOnCompletion(lockKey, lockValue)
-        return doApply(recruitmentId, applicantUserId, lockKey, lockValue)
+        return doApply(recruitmentId, applicantUserId, lockKey, lockValue).id
     }
 
     private fun doApply(recruitmentId: Long, applicantUserId: Long, lockKey: String, lockValue: String): Application {
@@ -71,7 +71,7 @@ class RecruitmentDomainService(
             val recruitment = recruitmentRepository.findForUpdateById(recruitmentId)
                 ?: throw ResourceNotFoundException("Recruitment", recruitmentId)
             val activeCount = applicationRepository.countActiveByRecruitmentId(recruitmentId)
-            if (activeCount >= recruitment.capacity) throw RecruitmentFullException(recruitmentId)
+            recruitment.requireApplicable(activeCount)
             val saved = applicationRepository.save(Application.create(recruitmentId, applicantUserId))
             recruitment.closeWhenFull(activeCount + 1)
             recruitmentRepository.save(recruitment)
@@ -157,6 +157,10 @@ class RecruitmentDomainService(
     fun getRecruitment(recruitmentId: Long): Recruitment =
         recruitmentRepository.findById(recruitmentId)
             ?: throw ResourceNotFoundException("Recruitment", recruitmentId)
+
+    fun getApplicationById(applicationId: Long): Application =
+        applicationRepository.findById(applicationId)
+            ?: throw ResourceNotFoundException("Application", applicationId)
 
     fun listRecruitments(communityId: Long?): List<Recruitment> =
         recruitmentRepository.findAll(communityId)

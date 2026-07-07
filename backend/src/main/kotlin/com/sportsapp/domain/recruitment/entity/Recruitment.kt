@@ -4,6 +4,9 @@ import com.sportsapp.domain.common.JpaAuditingBase
 import com.sportsapp.domain.recruitment.exception.InvalidRecruitmentException
 import com.sportsapp.domain.recruitment.exception.InvalidRecruitmentStateException
 import com.sportsapp.domain.recruitment.exception.NotRecruiterException
+import com.sportsapp.domain.recruitment.exception.RecruitmentApplicationClosedException
+import com.sportsapp.domain.recruitment.exception.RecruitmentFullException
+import com.sportsapp.domain.recruitment.exception.RecruitmentNotOpenException
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -55,8 +58,17 @@ class Recruitment private constructor(
     var status: RecruitmentStatus = initialStatus
         private set
 
-    fun canApply(currentApplicantCount: Int): Boolean =
-        status == RecruitmentStatus.OPEN && !isDeadlinePassed() && currentApplicantCount < capacity
+    /**
+     * 신청 가능 여부를 자기 상태로 판단해 검증한다. 모집중(OPEN)이 아니거나, 마감이 지났거나,
+     * 정원이 가득 찼으면 각 사유에 맞는 예외를 던진다.
+     */
+    fun requireApplicable(currentApplicantCount: Int) {
+        if (status != RecruitmentStatus.OPEN) throw RecruitmentNotOpenException(id, status)
+        if (isDeadlinePassed()) throw RecruitmentApplicationClosedException(id)
+        if (currentApplicantCount >= capacity) throw RecruitmentFullException(id)
+    }
+
+    fun isFree(): Boolean = feeAmount.signum() == 0
 
     fun closeWhenFull(currentApplicantCount: Int) {
         if (status == RecruitmentStatus.OPEN && currentApplicantCount >= capacity) {

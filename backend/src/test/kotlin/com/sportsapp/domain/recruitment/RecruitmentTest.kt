@@ -4,6 +4,9 @@ import com.sportsapp.domain.recruitment.entity.Recruitment
 import com.sportsapp.domain.recruitment.entity.RecruitmentStatus
 import com.sportsapp.domain.recruitment.exception.InvalidRecruitmentException
 import com.sportsapp.domain.recruitment.exception.NotRecruiterException
+import com.sportsapp.domain.recruitment.exception.RecruitmentApplicationClosedException
+import com.sportsapp.domain.recruitment.exception.RecruitmentFullException
+import com.sportsapp.domain.recruitment.exception.RecruitmentNotOpenException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -33,16 +36,48 @@ class RecruitmentTest : BehaviorSpec({
     Given("정원 여유가 있고 마감 전인 OPEN 상태의 모집") {
         val recruitment = createRecruitment(capacity = 5)
 
-        Then("canApply()는 true를 반환한다") {
-            recruitment.canApply(currentApplicantCount = 2) shouldBe true
+        Then("requireApplicable()은 예외 없이 통과한다") {
+            recruitment.requireApplicable(currentApplicantCount = 2)
         }
     }
 
     Given("마감이 지난 OPEN 상태의 모집") {
         val recruitment = createRecruitment(applicationDeadline = ZonedDateTime.now().minusDays(1))
 
-        Then("canApply()는 false를 반환한다") {
-            recruitment.canApply(currentApplicantCount = 0) shouldBe false
+        Then("requireApplicable()은 RecruitmentApplicationClosedException을 던진다") {
+            shouldThrow<RecruitmentApplicationClosedException> {
+                recruitment.requireApplicable(currentApplicantCount = 0)
+            }
+        }
+    }
+
+    Given("CANCELLED 상태의 모집") {
+        val recruitment = createRecruitment(recruiterUserId = 1L).apply { cancelByHost(userId = 1L) }
+
+        Then("requireApplicable()은 RecruitmentNotOpenException을 던진다") {
+            shouldThrow<RecruitmentNotOpenException> {
+                recruitment.requireApplicable(currentApplicantCount = 0)
+            }
+        }
+    }
+
+    Given("정원이 가득 차 CLOSED로 전이된 모집") {
+        val recruitment = createRecruitment(capacity = 1).apply { closeWhenFull(currentApplicantCount = 1) }
+
+        Then("requireApplicable()은 RecruitmentNotOpenException을 던진다") {
+            shouldThrow<RecruitmentNotOpenException> {
+                recruitment.requireApplicable(currentApplicantCount = 1)
+            }
+        }
+    }
+
+    Given("정원이 3명이고 이미 3명이 신청한 OPEN 상태의 모집") {
+        val recruitment = createRecruitment(capacity = 3)
+
+        Then("requireApplicable()은 RecruitmentFullException을 던진다") {
+            shouldThrow<RecruitmentFullException> {
+                recruitment.requireApplicable(currentApplicantCount = 3)
+            }
         }
     }
 
@@ -110,6 +145,22 @@ class RecruitmentTest : BehaviorSpec({
         Then("정상적으로 생성된다") {
             val recruitment = createRecruitment(feeAmount = BigDecimal.ZERO)
             recruitment.feeAmount.compareTo(BigDecimal.ZERO) shouldBe 0
+        }
+    }
+
+    Given("feeAmount가 0원인 모집") {
+        val recruitment = createRecruitment(feeAmount = BigDecimal.ZERO)
+
+        Then("isFree()는 true를 반환한다") {
+            recruitment.isFree() shouldBe true
+        }
+    }
+
+    Given("feeAmount가 0보다 큰 모집") {
+        val recruitment = createRecruitment(feeAmount = BigDecimal("10000"))
+
+        Then("isFree()는 false를 반환한다") {
+            recruitment.isFree() shouldBe false
         }
     }
 

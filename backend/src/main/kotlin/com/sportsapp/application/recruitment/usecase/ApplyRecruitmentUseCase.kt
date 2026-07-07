@@ -21,11 +21,15 @@ class ApplyRecruitmentUseCase(
     @Transactional
     fun execute(command: ApplyRecruitmentCommand): ApplicationResponse {
         val recruitment = recruitmentDomainService.getRecruitment(command.recruitmentId)
-        val application = recruitmentDomainService.apply(command.recruitmentId, command.applicantUserId)
-        val result = confirmIfFree(recruitment.feeAmount.signum() == 0, application)
+        val applicationId = recruitmentDomainService.apply(command.recruitmentId, command.applicantUserId)
+        val result = confirmIfFree(recruitment.isFree(), applicationId)
         return ApplicationResponse.of(result)
     }
 
-    private fun confirmIfFree(isFree: Boolean, application: Application): Application =
-        if (isFree) recruitmentDomainService.confirmApplication(application.id, null) else application
+    private fun confirmIfFree(isFree: Boolean, applicationId: Long): Application =
+        if (isFree) {
+            recruitmentDomainService.confirmApplication(applicationId, null)
+        } else {
+            recruitmentDomainService.getApplicationById(applicationId)
+        }
 }

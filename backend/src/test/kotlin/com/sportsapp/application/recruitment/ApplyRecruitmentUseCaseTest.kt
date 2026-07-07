@@ -53,7 +53,8 @@ class ApplyRecruitmentUseCaseTest : BehaviorSpec({
         val recruitment = recruitmentWithFee(BigDecimal("10000"))
         val pendingApplication = mockApplication(id = 11L, recruitmentId = 1L, status = ApplicationStatus.PENDING)
         every { recruitmentDomainService.getRecruitment(1L) } returns recruitment
-        every { recruitmentDomainService.apply(1L, 100L) } returns pendingApplication
+        every { recruitmentDomainService.apply(1L, 100L) } returns 11L
+        every { recruitmentDomainService.getApplicationById(11L) } returns pendingApplication
 
         When("execute를 호출하면") {
             val result = useCase.execute(ApplyRecruitmentCommand(recruitmentId = 1L, applicantUserId = 100L))
@@ -68,10 +69,9 @@ class ApplyRecruitmentUseCaseTest : BehaviorSpec({
 
     Given("참가비 0원(무료) 모집 신청") {
         val recruitment = recruitmentWithFee(BigDecimal.ZERO)
-        val pendingApplication = mockApplication(id = 22L, recruitmentId = 2L, status = ApplicationStatus.PENDING)
         val confirmedApplication = mockApplication(id = 22L, recruitmentId = 2L, status = ApplicationStatus.CONFIRMED)
         every { recruitmentDomainService.getRecruitment(2L) } returns recruitment
-        every { recruitmentDomainService.apply(2L, 200L) } returns pendingApplication
+        every { recruitmentDomainService.apply(2L, 200L) } returns 22L
         every { recruitmentDomainService.confirmApplication(22L, null) } returns confirmedApplication
 
         When("execute를 호출하면") {
