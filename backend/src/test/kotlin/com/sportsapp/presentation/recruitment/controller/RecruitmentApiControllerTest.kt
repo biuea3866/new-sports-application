@@ -10,6 +10,7 @@ import com.sportsapp.application.recruitment.usecase.CreateRecruitmentUseCase
 import com.sportsapp.application.recruitment.usecase.GetRecruitmentUseCase
 import com.sportsapp.application.recruitment.usecase.ListApplicationsUseCase
 import com.sportsapp.application.recruitment.usecase.ListRecruitmentsUseCase
+import com.sportsapp.domain.community.exception.NotCommunityMemberException
 import com.sportsapp.domain.recruitment.entity.ApplicationStatus
 import com.sportsapp.domain.recruitment.entity.RecruitmentStatus
 import com.sportsapp.domain.recruitment.exception.NotRecruiterException
@@ -18,6 +19,7 @@ import com.sportsapp.presentation.exception.GlobalExceptionHandler
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import java.math.BigDecimal
 import java.time.ZonedDateTime
 import org.springframework.http.MediaType
@@ -91,7 +93,7 @@ class RecruitmentApiControllerTest : BehaviorSpec({
 
     Given("모집 목록 조회 요청") {
         val listRecruitmentsUseCase = mockk<ListRecruitmentsUseCase>()
-        every { listRecruitmentsUseCase.execute(1L) } returns listOf(recruitmentResponse(1L))
+        every { listRecruitmentsUseCase.execute(1L, null) } returns listOf(recruitmentResponse(1L))
         val mockMvc = buildMockMvc(listRecruitmentsUseCase = listRecruitmentsUseCase)
 
         When("GET /recruitments?communityId=1 요청 시") {
@@ -106,7 +108,7 @@ class RecruitmentApiControllerTest : BehaviorSpec({
 
     Given("소속 모집이 없는 커뮤니티 조회") {
         val listRecruitmentsUseCase = mockk<ListRecruitmentsUseCase>()
-        every { listRecruitmentsUseCase.execute(2L) } returns emptyList()
+        every { listRecruitmentsUseCase.execute(2L, null) } returns emptyList()
         val mockMvc = buildMockMvc(listRecruitmentsUseCase = listRecruitmentsUseCase)
 
         When("GET /recruitments?communityId=2 요청 시") {
@@ -119,9 +121,28 @@ class RecruitmentApiControllerTest : BehaviorSpec({
         }
     }
 
+    Given("PRIVATE 커뮤니티 소속 모집 목록을 비멤버가 조회하면") {
+        val listRecruitmentsUseCase = mockk<ListRecruitmentsUseCase>()
+        every {
+            listRecruitmentsUseCase.execute(3L, TEST_USER_ID)
+        } throws NotCommunityMemberException(3L, TEST_USER_ID)
+        val mockMvc = buildMockMvc(listRecruitmentsUseCase = listRecruitmentsUseCase)
+
+        When("GET /recruitments?communityId=3 요청 시") {
+            val result = mockMvc.perform(
+                get("/recruitments").param("communityId", "3").header("X-User-Id", TEST_USER_ID),
+            )
+
+            Then("403을 반환한다") {
+                result.andExpect(status().isForbidden)
+                    .andExpect(jsonPath("$.code").value("NOT_COMMUNITY_MEMBER"))
+            }
+        }
+    }
+
     Given("모집 상세 조회 요청") {
         val getRecruitmentUseCase = mockk<GetRecruitmentUseCase>()
-        every { getRecruitmentUseCase.execute(1L) } returns recruitmentResponse(1L)
+        every { getRecruitmentUseCase.execute(1L, null) } returns recruitmentResponse(1L)
         val mockMvc = buildMockMvc(getRecruitmentUseCase = getRecruitmentUseCase)
 
         When("GET /recruitments/1 요청 시") {
@@ -130,6 +151,38 @@ class RecruitmentApiControllerTest : BehaviorSpec({
             Then("200과 함께 상세를 반환한다") {
                 result.andExpect(status().isOk)
                     .andExpect(jsonPath("$.id").value(1))
+            }
+        }
+    }
+
+    Given("PRIVATE 모임 소속 모집 상세를 비멤버가 조회하면") {
+        val getRecruitmentUseCase = mockk<GetRecruitmentUseCase>()
+        every {
+            getRecruitmentUseCase.execute(4L, TEST_USER_ID)
+        } throws NotCommunityMemberException(1L, TEST_USER_ID)
+        val mockMvc = buildMockMvc(getRecruitmentUseCase = getRecruitmentUseCase)
+
+        When("GET /recruitments/4 요청 시") {
+            val result = mockMvc.perform(get("/recruitments/4").header("X-User-Id", TEST_USER_ID))
+
+            Then("403을 반환한다") {
+                result.andExpect(status().isForbidden)
+                    .andExpect(jsonPath("$.code").value("NOT_COMMUNITY_MEMBER"))
+            }
+        }
+    }
+
+    Given("X-User-Id 헤더 없이 모집 상세를 조회하면") {
+        val getRecruitmentUseCase = mockk<GetRecruitmentUseCase>()
+        every { getRecruitmentUseCase.execute(5L, null) } returns recruitmentResponse(5L)
+        val mockMvc = buildMockMvc(getRecruitmentUseCase = getRecruitmentUseCase)
+
+        When("GET /recruitments/5 요청 시") {
+            val result = mockMvc.perform(get("/recruitments/5"))
+
+            Then("200과 함께 상세를 반환하고 requesterId 는 null 로 전달된다") {
+                result.andExpect(status().isOk)
+                verify(exactly = 1) { getRecruitmentUseCase.execute(5L, null) }
             }
         }
     }

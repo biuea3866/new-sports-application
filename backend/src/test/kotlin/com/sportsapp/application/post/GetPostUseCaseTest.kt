@@ -37,12 +37,12 @@ class GetPostUseCaseTest : BehaviorSpec({
         }
     }
 
-    Given("[U-02] 존재하지 않는 postId로 조회하면") {
+    Given("존재하지 않는 postId로 조회하면") {
         val (postDomainService, _, getPostUseCase) = newUseCase()
         every { postDomainService.getDetail(99999L) } throws ResourceNotFoundException("Post", 99999L)
 
         When("execute를 호출하면") {
-            Then("[U-02] PostNotFoundException(ResourceNotFoundException)을 던진다") {
+            Then("PostNotFoundException(ResourceNotFoundException)을 던진다") {
                 shouldThrow<ResourceNotFoundException> {
                     getPostUseCase.execute(99999L)
                 }
@@ -50,7 +50,7 @@ class GetPostUseCaseTest : BehaviorSpec({
         }
     }
 
-    Given("[U-03] 댓글 3건이 있는 전역 Post를 조회하면") {
+    Given("댓글 3건이 있는 전역 Post를 조회하면") {
         val (postDomainService, communityDomainService, getPostUseCase) = newUseCase()
         val post = Post.create(userId = 1L, title = "제목", content = "내용", type = PostType.FREE)
             .also { initAuditFields(it) }
@@ -63,7 +63,7 @@ class GetPostUseCaseTest : BehaviorSpec({
         When("execute를 호출하면") {
             val result = getPostUseCase.execute(1L)
 
-            Then("[U-03] 댓글 3건이 포함된 Pair가 반환되고 community 인가는 호출되지 않는다") {
+            Then("댓글 3건이 포함된 Pair가 반환되고 community 인가는 호출되지 않는다") {
                 result.second.size shouldBe 3
                 verify(exactly = 0) { communityDomainService.getCommunity(any(), any()) }
             }

@@ -1,5 +1,6 @@
 package com.sportsapp.application.post.usecase
 
+import com.sportsapp.application.common.GuestRequester
 import com.sportsapp.domain.community.service.CommunityDomainService
 import com.sportsapp.domain.post.entity.Comment
 import com.sportsapp.domain.post.service.PostDomainService
@@ -20,11 +21,7 @@ class ListCommentsUseCase(
     @Transactional(readOnly = true)
     fun execute(postId: Long, requesterId: Long? = null, page: Int, size: Int): Page<Comment> {
         val post = postDomainService.getPost(postId)
-        post.currentCommunityId?.let { communityDomainService.getCommunity(it, requesterId ?: GUEST_REQUESTER_ID) }
+        post.currentCommunityId?.let { communityDomainService.getCommunity(it, requesterId ?: GuestRequester.ID) }
         return postDomainService.listComments(postId = postId, page = page, size = size)
-    }
-
-    companion object {
-        private const val GUEST_REQUESTER_ID = 0L
     }
 }

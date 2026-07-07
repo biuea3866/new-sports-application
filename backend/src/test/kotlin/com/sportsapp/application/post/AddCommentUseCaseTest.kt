@@ -39,7 +39,7 @@ class AddCommentUseCaseTest : BehaviorSpec({
         return comment
     }
 
-    Given("[U-01] 전역 Post에 댓글 작성 시") {
+    Given("전역 Post에 댓글 작성 시") {
         val (postDomainService, communityDomainService, addCommentUseCase) = newUseCase()
         val post = Post.create(userId = 1L, title = "제목", content = "내용")
         val comment = makeComment(post = post, userId = 10L, content = "댓글 내용")
@@ -49,7 +49,7 @@ class AddCommentUseCaseTest : BehaviorSpec({
         When("execute를 호출하면") {
             val result = addCommentUseCase.execute(AddCommentCommand(postId = 1L, userId = 10L, content = "댓글 내용"))
 
-            Then("[U-01] CommentResponse가 반환되고 community 인가는 호출되지 않는다") {
+            Then("CommentResponse가 반환되고 community 인가는 호출되지 않는다") {
                 result.postId shouldBe post.id
                 result.userId shouldBe 10L
                 result.content shouldBe "댓글 내용"
@@ -58,12 +58,12 @@ class AddCommentUseCaseTest : BehaviorSpec({
         }
     }
 
-    Given("[U-01] 미존재 Post에 댓글 작성 시") {
+    Given("미존재 Post에 댓글 작성 시") {
         val (postDomainService, _, addCommentUseCase) = newUseCase()
         every { postDomainService.getPost(99999L) } throws ResourceNotFoundException("Post", 99999L)
 
         When("execute를 호출하면") {
-            Then("[U-01] ResourceNotFoundException을 던진다") {
+            Then("ResourceNotFoundException을 던진다") {
                 shouldThrow<ResourceNotFoundException> {
                     addCommentUseCase.execute(AddCommentCommand(postId = 99999L, userId = 10L, content = "댓글"))
                 }

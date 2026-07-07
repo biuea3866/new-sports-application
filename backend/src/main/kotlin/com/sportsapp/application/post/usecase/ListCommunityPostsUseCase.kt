@@ -1,5 +1,6 @@
 package com.sportsapp.application.post.usecase
 
+import com.sportsapp.application.common.GuestRequester
 import com.sportsapp.application.post.dto.PostCriteria
 import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.community.service.CommunityDomainService
@@ -20,7 +21,7 @@ class ListCommunityPostsUseCase(
 ) {
     @Transactional(readOnly = true)
     fun execute(communityId: Long, requesterId: Long?, sportCategory: SportCategory?, page: Int, size: Int): Page<Post> {
-        communityDomainService.getCommunity(communityId, requesterId ?: GUEST_REQUESTER_ID)
+        communityDomainService.getCommunity(communityId, requesterId ?: GuestRequester.ID)
         val criteria = PostCriteria(
             type = null,
             userId = null,
@@ -32,9 +33,5 @@ class ListCommunityPostsUseCase(
             size = size,
         )
         return postDomainService.search(criteria.toSearchCriteria(), criteria.toPageable())
-    }
-
-    companion object {
-        private const val GUEST_REQUESTER_ID = 0L
     }
 }

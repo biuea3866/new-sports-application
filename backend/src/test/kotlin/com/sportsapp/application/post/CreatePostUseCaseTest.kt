@@ -30,7 +30,7 @@ class CreatePostUseCaseTest : BehaviorSpec({
         return post
     }
 
-    Given("[U-01] 유효한 제목과 본문으로 CreatePostCommand를 전달할 때") {
+    Given("유효한 제목과 본문으로 CreatePostCommand를 전달할 때") {
         val commandSlot = slot<String>()
         every {
             postDomainService.createPost(
@@ -44,7 +44,7 @@ class CreatePostUseCaseTest : BehaviorSpec({
             val command = CreatePostCommand(userId = 1L, title = "제목", content = "본문 내용")
             val result = createPostUseCase.execute(command)
 
-            Then("[U-01] PostResponse가 반환된다") {
+            Then("PostResponse가 반환된다") {
                 result.userId shouldBe 1L
                 result.title shouldBe "제목"
                 result.type shouldBe PostType.FREE
@@ -52,7 +52,7 @@ class CreatePostUseCaseTest : BehaviorSpec({
         }
     }
 
-    Given("[U-02] DomainService에 전달되는 파라미터 검증") {
+    Given("DomainService에 전달되는 파라미터 검증") {
         val userIdSlot = slot<Long>()
         val titleSlot = slot<String>()
         val contentSlot = slot<String>()
@@ -68,7 +68,7 @@ class CreatePostUseCaseTest : BehaviorSpec({
             val command = CreatePostCommand(userId = 42L, title = "테스트 제목", content = "테스트 본문")
             createPostUseCase.execute(command)
 
-            Then("[U-02] Command의 userId/title/content가 DomainService에 그대로 전달된다") {
+            Then("Command의 userId/title/content가 DomainService에 그대로 전달된다") {
                 userIdSlot.captured shouldBe 42L
                 titleSlot.captured shouldBe "테스트 제목"
                 contentSlot.captured shouldBe "테스트 본문"

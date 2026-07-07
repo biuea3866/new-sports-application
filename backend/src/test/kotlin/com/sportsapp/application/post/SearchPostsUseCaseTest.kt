@@ -32,7 +32,7 @@ class SearchPostsUseCaseTest : BehaviorSpec({
         return post
     }
 
-    Given("[U-01] type/userId/keyword 복합 Criteria가 주어졌을 때") {
+    Given("type/userId/keyword 복합 Criteria가 주어졌을 때") {
         val criteriaSlot = slot<PostSearchCriteria>()
         every { postDomainService.search(capture(criteriaSlot), any()) } returns PageImpl(emptyList())
 
@@ -54,7 +54,7 @@ class SearchPostsUseCaseTest : BehaviorSpec({
         }
     }
 
-    Given("[U-01] 빈 keyword가 주어졌을 때") {
+    Given("빈 keyword가 주어졌을 때") {
         val criteriaSlot = slot<PostSearchCriteria>()
         every { postDomainService.search(capture(criteriaSlot), any()) } returns PageImpl(emptyList())
 
@@ -72,7 +72,7 @@ class SearchPostsUseCaseTest : BehaviorSpec({
         val posts = (1..3).map { buildPost(userId = it.toLong(), type = PostType.FREE) }
         every { postDomainService.search(any(), any()) } returns PageImpl(posts)
 
-        When("[U-01] type=FREE로 조회하면") {
+        When("type=FREE로 조회하면") {
             val criteria = PostCriteria(type = PostType.FREE, userId = null, keyword = null, page = 0, size = 20)
             val result = searchPostsUseCase.execute(criteria)
 

@@ -44,15 +44,17 @@ class RecruitmentApiController(
 
     @GetMapping
     fun list(
+        @RequestHeader(value = "X-User-Id", required = false) requesterId: Long?,
         @RequestParam(required = false) communityId: Long?,
     ): ResponseEntity<List<RecruitmentResponse>> =
-        ResponseEntity.ok(listRecruitmentsUseCase.execute(communityId))
+        ResponseEntity.ok(listRecruitmentsUseCase.execute(communityId, requesterId))
 
     @GetMapping("/{id}")
     fun get(
+        @RequestHeader(value = "X-User-Id", required = false) requesterId: Long?,
         @PathVariable id: Long,
     ): ResponseEntity<RecruitmentResponse> =
-        ResponseEntity.ok(getRecruitmentUseCase.execute(id))
+        ResponseEntity.ok(getRecruitmentUseCase.execute(id, requesterId))
 
     @GetMapping("/{id}/applications")
     fun listApplications(

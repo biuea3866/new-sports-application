@@ -38,7 +38,7 @@ class ListCommentsUseCaseTest : BehaviorSpec({
         return comment
     }
 
-    Given("[U-03] 전역 Post에 댓글이 3건 있는 상태에서") {
+    Given("전역 Post에 댓글이 3건 있는 상태에서") {
         val (postDomainService, communityDomainService, listCommentsUseCase) = newUseCase()
         val post = Post.create(userId = 1L, title = "제목", content = "내용")
         val comments = (1..3).map { makeComment(post = post, userId = it.toLong(), content = "댓글 $it") }
@@ -49,7 +49,7 @@ class ListCommentsUseCaseTest : BehaviorSpec({
         When("execute를 호출하면") {
             val result = listCommentsUseCase.execute(postId = 1L, page = 0, size = 20)
 
-            Then("[U-03] 댓글 3건이 담긴 Page가 반환되고 community 인가는 호출되지 않는다") {
+            Then("댓글 3건이 담긴 Page가 반환되고 community 인가는 호출되지 않는다") {
                 result.totalElements shouldBe 3
                 result.content.size shouldBe 3
                 result.number shouldBe 0
@@ -59,7 +59,7 @@ class ListCommentsUseCaseTest : BehaviorSpec({
         }
     }
 
-    Given("[U-03] 전역 Post에 댓글이 없는 상태에서") {
+    Given("전역 Post에 댓글이 없는 상태에서") {
         val (postDomainService, _, listCommentsUseCase) = newUseCase()
         val post = Post.create(userId = 1L, title = "제목", content = "내용")
         val commentPage = PageImpl(emptyList<Comment>(), PageRequest.of(0, 20), 0)
@@ -69,7 +69,7 @@ class ListCommentsUseCaseTest : BehaviorSpec({
         When("execute를 호출하면") {
             val result = listCommentsUseCase.execute(postId = 1L, page = 0, size = 20)
 
-            Then("[U-03] 빈 CommentPageResponse가 반환된다") {
+            Then("빈 CommentPageResponse가 반환된다") {
                 result.totalElements shouldBe 0
                 result.content.size shouldBe 0
             }
