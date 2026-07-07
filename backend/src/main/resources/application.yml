@@ -129,6 +129,17 @@ limited-drop:
     # 전환한다(오버셀 0 유지, 처리량만 감소). 이 값 자체는 문서화 목적이며 폴백 구현은 후속 티켓 범위.
     enabled: ${LIMITED_DROP_REDIS_GATE_ENABLED:true}
 
+facility:
+  autoslot:
+    # BE-58 롤백 지점 — OFF(기본값)면 GenerateSlotsScheduler 빈 자체가 등록되지 않아 대량 슬롯
+    # 생성 사고를 막는다. 코드 배포 후 소수 시설로 회귀 확인을 마친 뒤 FACILITY_AUTOSLOT_ENABLED=true로
+    # 명시 전환한다.
+    enabled: ${FACILITY_AUTOSLOT_ENABLED:false}
+    # 향후 며칠치 슬롯을 생성할지 — SlotGenerationDomainService.generate의 windowDays.
+    window-days: ${FACILITY_AUTOSLOT_WINDOW_DAYS:14}
+    # 1일 1회 실행 — McpAnomalyScheduler 선례와 동일하게 새벽 시간대(01:00)로 고정한다.
+    cron: ${FACILITY_AUTOSLOT_CRON:0 0 1 * * *}
+
 # BE-10: 지능형 장애 알림 통합 와이어업. alerting.enabled=false(기본값)면 웹훅은 202만 반환하고
 # 파이프라인을 트리거하지 않는다(무중단 배포·즉시 롤백 지점, Release Scenario).
 alerting:
