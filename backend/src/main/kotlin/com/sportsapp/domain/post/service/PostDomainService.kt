@@ -1,12 +1,14 @@
 package com.sportsapp.domain.post.service
 
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
+import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.post.dto.PostSearchCriteria
 import com.sportsapp.domain.post.entity.Comment
 import com.sportsapp.domain.post.entity.Post
 import com.sportsapp.domain.post.repository.CommentRepository
 import com.sportsapp.domain.post.repository.PostCustomRepository
 import com.sportsapp.domain.post.repository.PostRepository
+import com.sportsapp.domain.post.vo.PostType
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
@@ -20,8 +22,41 @@ class PostDomainService(
     private val commentRepository: CommentRepository,
     private val postCustomRepository: PostCustomRepository,
 ) {
-    fun createPost(userId: Long, title: String, content: String): Post {
-        val post = Post.create(userId = userId, title = title, content = content)
+    fun createPost(
+        userId: Long,
+        title: String,
+        content: String,
+        type: PostType = PostType.FREE,
+        sportCategory: SportCategory? = null,
+    ): Post {
+        val post = Post.create(userId = userId, title = title, content = content, type = type, sportCategory = sportCategory)
+        return postRepository.save(post)
+    }
+
+    /**
+     * 모임 소속 게시글을 생성한다. NOTICE 규칙·종목 상속·전역 노출 여부는 [Post.createInCommunity]
+     * 내부에서 판정하며, 이 메서드는 community 인가 결과를 primitive 로만 전달받는다(R1).
+     */
+    fun createCommunityPost(
+        userId: Long,
+        title: String,
+        content: String,
+        type: PostType,
+        communityId: Long,
+        sportCategory: SportCategory?,
+        authorIsHost: Boolean,
+        communityIsPublic: Boolean,
+    ): Post {
+        val post = Post.createInCommunity(
+            userId = userId,
+            title = title,
+            content = content,
+            type = type,
+            communityId = communityId,
+            sportCategory = sportCategory,
+            authorIsHost = authorIsHost,
+            communityIsPublic = communityIsPublic,
+        )
         return postRepository.save(post)
     }
 

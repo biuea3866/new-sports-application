@@ -32,6 +32,9 @@ class PostCustomRepositoryImpl(
         criteria.keyword?.takeIf { it.isNotBlank() }?.let {
             predicate.and(post.title.containsIgnoreCase(it).or(post.content.containsIgnoreCase(it)))
         }
+        criteria.communityId?.let { predicate.and(post.communityId.eq(it)) }
+        criteria.sportCategory?.let { predicate.and(post.sportCategory.eq(it)) }
+        if (criteria.globalFeedOnly) predicate.and(post.globalListed.isTrue)
         return predicate
     }
 

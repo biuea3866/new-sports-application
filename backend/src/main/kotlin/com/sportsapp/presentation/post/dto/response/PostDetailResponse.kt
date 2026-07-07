@@ -1,5 +1,6 @@
 package com.sportsapp.presentation.post.dto.response
 
+import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.post.entity.Comment
 import com.sportsapp.domain.post.entity.Post
 import com.sportsapp.domain.post.vo.PostType
@@ -13,6 +14,8 @@ data class PostDetailResponse(
     val type: PostType,
     val createdAt: ZonedDateTime,
     val comments: List<CommentResponse>,
+    val communityId: Long?,
+    val sportCategory: SportCategory?,
 ) {
     companion object {
         fun of(post: Post, comments: List<Comment>): PostDetailResponse = PostDetailResponse(
@@ -23,6 +26,8 @@ data class PostDetailResponse(
             type = post.type,
             createdAt = post.createdAt,
             comments = comments.map { CommentResponse.of(it) },
+            communityId = post.currentCommunityId,
+            sportCategory = post.currentSportCategory,
         )
     }
 }
