@@ -4,9 +4,12 @@ import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import com.sportsapp.domain.facility.entity.Program
 import com.sportsapp.domain.facility.exception.FacilityNotFoundException
 import com.sportsapp.domain.facility.repository.FacilityRepository
+import com.sportsapp.domain.facility.repository.ProgramCustomRepository
 import com.sportsapp.domain.facility.repository.ProgramRepository
 import java.math.BigDecimal
 import org.springframework.context.annotation.Profile
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 
 /**
@@ -23,6 +26,7 @@ import org.springframework.stereotype.Service
 class ProgramDomainService(
     private val programRepository: ProgramRepository,
     private val facilityRepository: FacilityRepository,
+    private val programCustomRepository: ProgramCustomRepository,
 ) {
     fun register(
         facilityId: String,
@@ -55,4 +59,7 @@ class ProgramDomainService(
         program.requireOwnedBy(requesterId)
         return program
     }
+
+    fun searchForCatalog(keyword: String?, pageable: Pageable): Page<Program> =
+        programCustomRepository.searchForCatalog(keyword, pageable)
 }
