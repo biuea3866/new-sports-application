@@ -50,7 +50,7 @@ class RecruitmentApplyDomainServiceTest : BehaviorSpec({
         val distributedLock = mockk<DistributedLock>()
         val cancellationPolicy = mockk<CancellationPolicy>()
         val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
-        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher)
+        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher, mockk(relaxed = true), mockk(relaxed = true))
 
         every { distributedLock.tryLock(any(), any(), any<Duration>()) } returns false
 
@@ -70,7 +70,7 @@ class RecruitmentApplyDomainServiceTest : BehaviorSpec({
         val distributedLock = mockk<DistributedLock>()
         val cancellationPolicy = mockk<CancellationPolicy>()
         val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
-        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher)
+        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher, mockk(relaxed = true), mockk(relaxed = true))
 
         val recruitment = recruitmentOf(capacity = 3)
         every { distributedLock.tryLock(any(), any(), any<Duration>()) } returns true
@@ -94,7 +94,7 @@ class RecruitmentApplyDomainServiceTest : BehaviorSpec({
         val distributedLock = mockk<DistributedLock>()
         val cancellationPolicy = mockk<CancellationPolicy>()
         val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
-        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher)
+        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher, mockk(relaxed = true), mockk(relaxed = true))
 
         every { distributedLock.tryLock(any(), any(), any<Duration>()) } returns true
         every { distributedLock.unlock(any(), any()) } returns true
@@ -116,7 +116,7 @@ class RecruitmentApplyDomainServiceTest : BehaviorSpec({
         val distributedLock = mockk<DistributedLock>()
         val cancellationPolicy = mockk<CancellationPolicy>()
         val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
-        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher)
+        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher, mockk(relaxed = true), mockk(relaxed = true))
 
         val recruitment = recruitmentOf(capacity = 5).apply { cancelByHost(userId = 1L) }
         every { distributedLock.tryLock(any(), any(), any<Duration>()) } returns true
@@ -140,7 +140,7 @@ class RecruitmentApplyDomainServiceTest : BehaviorSpec({
         val distributedLock = mockk<DistributedLock>()
         val cancellationPolicy = mockk<CancellationPolicy>()
         val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
-        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher)
+        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher, mockk(relaxed = true), mockk(relaxed = true))
 
         val recruitment = recruitmentOf(capacity = 1).apply { closeWhenFull(currentApplicantCount = 1) }
         every { distributedLock.tryLock(any(), any(), any<Duration>()) } returns true
@@ -164,7 +164,7 @@ class RecruitmentApplyDomainServiceTest : BehaviorSpec({
         val distributedLock = mockk<DistributedLock>()
         val cancellationPolicy = mockk<CancellationPolicy>()
         val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
-        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher)
+        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher, mockk(relaxed = true), mockk(relaxed = true))
 
         val recruitment = recruitmentOf(capacity = 5, applicationDeadline = ZonedDateTime.now().minusDays(1))
         every { distributedLock.tryLock(any(), any(), any<Duration>()) } returns true
@@ -188,7 +188,7 @@ class RecruitmentApplyDomainServiceTest : BehaviorSpec({
         val distributedLock = mockk<DistributedLock>()
         val cancellationPolicy = mockk<CancellationPolicy>()
         val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
-        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher)
+        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher, mockk(relaxed = true), mockk(relaxed = true))
 
         val recruitment = recruitmentOf(capacity = 5)
         val applicationSlot = slot<Application>()
@@ -218,7 +218,7 @@ class RecruitmentApplyDomainServiceTest : BehaviorSpec({
         val distributedLock = mockk<DistributedLock>()
         val cancellationPolicy = mockk<CancellationPolicy>()
         val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
-        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher)
+        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher, mockk(relaxed = true), mockk(relaxed = true))
 
         val recruitment = recruitmentOf(capacity = 3)
         every { distributedLock.tryLock(any(), any(), any<Duration>()) } returns true

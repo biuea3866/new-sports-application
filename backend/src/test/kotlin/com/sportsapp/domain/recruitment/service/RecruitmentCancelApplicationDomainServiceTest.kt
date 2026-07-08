@@ -45,7 +45,7 @@ class RecruitmentCancelApplicationDomainServiceTest : BehaviorSpec({
         val distributedLock = mockk<DistributedLock>(relaxed = true)
         val cancellationPolicy = mockk<CancellationPolicy>()
         val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
-        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher)
+        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher, mockk(relaxed = true), mockk(relaxed = true))
 
         val application = Application.create(recruitmentId = 1L, applicantUserId = 100L)
         application.confirm(paymentId = 500L)
@@ -74,7 +74,7 @@ class RecruitmentCancelApplicationDomainServiceTest : BehaviorSpec({
         val distributedLock = mockk<DistributedLock>(relaxed = true)
         val cancellationPolicy = mockk<CancellationPolicy>()
         val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
-        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher)
+        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher, mockk(relaxed = true), mockk(relaxed = true))
 
         val application = Application.create(recruitmentId = 2L, applicantUserId = 100L)
         application.confirm(paymentId = 501L)
@@ -102,7 +102,7 @@ class RecruitmentCancelApplicationDomainServiceTest : BehaviorSpec({
         val distributedLock = mockk<DistributedLock>(relaxed = true)
         val cancellationPolicy = mockk<CancellationPolicy>()
         val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
-        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher)
+        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher, mockk(relaxed = true), mockk(relaxed = true))
 
         val application = Application.create(recruitmentId = 3L, applicantUserId = 100L)
         application.confirm(paymentId = 502L)
@@ -132,7 +132,7 @@ class RecruitmentCancelApplicationDomainServiceTest : BehaviorSpec({
         val distributedLock = mockk<DistributedLock>(relaxed = true)
         val cancellationPolicy = mockk<CancellationPolicy>()
         val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
-        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher)
+        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher, mockk(relaxed = true), mockk(relaxed = true))
 
         val application = Application.create(recruitmentId = 4L, applicantUserId = 100L)
         every { applicationRepository.findById(4L) } returns application
@@ -153,7 +153,7 @@ class RecruitmentCancelApplicationDomainServiceTest : BehaviorSpec({
         val distributedLock = mockk<DistributedLock>(relaxed = true)
         val cancellationPolicy = mockk<CancellationPolicy>()
         val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
-        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher)
+        val service = RecruitmentDomainService(recruitmentRepository, applicationRepository, distributedLock, cancellationPolicy, domainEventPublisher, mockk(relaxed = true), mockk(relaxed = true))
 
         every { applicationRepository.findById(5L) } returns null
 
