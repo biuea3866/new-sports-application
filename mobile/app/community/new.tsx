@@ -1,36 +1,71 @@
 /**
- * 커뮤니티 게시글 작성 화면
+ * 게시글 작성 화면 — A-P3 (전역 게시글 작성 + 모임 게시글 작성 공용)
+ *
+ * 근거: `20260707-모집-시설상품-소모임예약-게시글연동-design-fe-app.md` "화면 목록" A-P3,
+ * "API 연동 표"(모임글은 BE가 소속 모임 종목을 상속하므로 sportCategory 미전송),
+ * "화면별 4상태 표" A-P3(403→"작성 권한이 없어요"(NOTICE 비host 포함)).
+ *
+ * `?communityId=` 쿼리 파라미터 유무로 분기한다: 모임글이면 종목 선택 UI를 숨기고
+ * `communityId`만 전송, 전역글이면 종목 선택 칩(SportCategoryChips)을 노출한다.
  */
 import { useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+
+import type { SportCategory } from '../../api/community-types';
+import { SportCategoryChips } from '../../components/community/SportCategoryChips';
+import { ThemedText, ThemedView } from '../../components/ui';
+import { isForbiddenError } from '../../lib/http-error';
 import { useCreatePost } from '../../lib/usePosts';
+import { useTheme } from '../../theme/useTheme';
+
+const FORBIDDEN_MESSAGE = '작성 권한이 없어요';
+const GENERIC_ERROR_MESSAGE = '게시글 등록에 실패했습니다. 다시 시도해주세요.';
 
 export default function CommunityNewScreen() {
+  const { tokens } = useTheme();
   const router = useRouter();
+  const { communityId: communityIdParam } = useLocalSearchParams<{ communityId?: string }>();
+  const communityId =
+    typeof communityIdParam === 'string' && communityIdParam.length > 0
+      ? Number(communityIdParam)
+      : null;
+  const isCommunityPost = communityId !== null && !Number.isNaN(communityId);
+
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const { mutate, isPending, isError } = useCreatePost();
+  const [sportCategory, setSportCategory] = useState<SportCategory | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { mutate, isPending } = useCreatePost();
 
   const isSubmitDisabled = title.trim().length === 0 || content.trim().length === 0 || isPending;
 
   const handleSubmit = () => {
     if (isSubmitDisabled) return;
+    setErrorMessage(null);
     mutate(
-      { title: title.trim(), content: content.trim() },
+      {
+        title: title.trim(),
+        content: content.trim(),
+        communityId: isCommunityPost ? communityId : undefined,
+        sportCategory: isCommunityPost ? undefined : sportCategory,
+      },
       {
         onSuccess: () => {
           router.back();
+        },
+        onError: (error: unknown) => {
+          setErrorMessage(
+            isForbiddenError(error as Error) ? FORBIDDEN_MESSAGE : GENERIC_ERROR_MESSAGE
+          );
         },
       }
     );
@@ -41,72 +76,83 @@ export default function CommunityNewScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.header}>
+      <ThemedView style={styles.header} background="background">
         <Pressable
           onPress={() => router.back()}
           accessibilityRole="button"
           accessibilityLabel="뒤로 가기"
         >
-          <Text style={styles.cancelText}>취소</Text>
+          <ThemedText variant="secondary" style={styles.cancelText}>
+            취소
+          </ThemedText>
         </Pressable>
-        <Text style={styles.headerTitle} accessibilityRole="header">
+        <ThemedText variant="primary" style={styles.headerTitle} accessibilityRole="header">
           게시글 작성
-        </Text>
+        </ThemedText>
         <Pressable
           onPress={handleSubmit}
           disabled={isSubmitDisabled}
           accessibilityRole="button"
           accessibilityLabel="게시글 등록"
+          accessibilityState={{ disabled: isSubmitDisabled, busy: isPending }}
         >
-          {isPending ? (
-            <ActivityIndicator size="small" color="#007AFF" />
-          ) : (
-            <Text style={[styles.submitText, isSubmitDisabled && styles.submitTextDisabled]}>
-              등록
-            </Text>
-          )}
+          <ThemedText variant={isSubmitDisabled ? 'muted' : 'accent'} style={styles.submitText}>
+            {isPending ? '등록 중' : '등록'}
+          </ThemedText>
         </Pressable>
-      </View>
+      </ThemedView>
 
       <ScrollView style={styles.body} keyboardShouldPersistTaps="handled">
-        {isError && (
-          <Text style={styles.errorText} accessibilityRole="alert">
-            게시글 등록에 실패했습니다. 다시 시도해주세요.
-          </Text>
+        {errorMessage !== null && (
+          <ThemedText
+            variant="danger"
+            style={styles.errorText}
+            accessibilityRole="alert"
+            accessibilityLabel={errorMessage}
+          >
+            {errorMessage}
+          </ThemedText>
+        )}
+
+        {!isCommunityPost && (
+          <View style={styles.fieldGroup}>
+            <ThemedText variant="secondary" style={styles.label}>
+              종목(선택)
+            </ThemedText>
+            <SportCategoryChips selected={sportCategory} onSelect={setSportCategory} />
+          </View>
         )}
 
         <View style={styles.fieldGroup}>
-          <Text nativeID="titleLabel" style={styles.label}>
+          <ThemedText nativeID="titleLabel" variant="secondary" style={styles.label}>
             제목 *
-          </Text>
+          </ThemedText>
           <TextInput
-            style={styles.titleInput}
+            style={[styles.titleInput, { borderColor: tokens.border, color: tokens.textPrimary }]}
             value={title}
             onChangeText={setTitle}
             placeholder="제목을 입력하세요"
-            placeholderTextColor="#C7C7CC"
+            placeholderTextColor={tokens.textTertiary}
             maxLength={200}
             accessibilityLabel="제목 입력"
-            accessibilityLabelledBy="titleLabel"
             returnKeyType="next"
           />
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text nativeID="contentLabel" style={styles.label}>
+          <ThemedText nativeID="contentLabel" variant="secondary" style={styles.label}>
             내용 *
-          </Text>
+          </ThemedText>
           <TextInput
-            style={styles.contentInput}
+            style={[styles.contentInput, { borderColor: tokens.border, color: tokens.textPrimary }]}
             value={content}
             onChangeText={setContent}
             placeholder="내용을 입력하세요"
-            placeholderTextColor="#C7C7CC"
+            placeholderTextColor={tokens.textTertiary}
             maxLength={10000}
             multiline
             textAlignVertical="top"
             accessibilityLabel="내용 입력"
-            accessibilityLabelledBy="contentLabel"
           />
         </View>
       </ScrollView>
@@ -117,7 +163,6 @@ export default function CommunityNewScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   header: {
     flexDirection: 'row',
@@ -126,32 +171,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 56,
     paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#1C1C1E',
   },
   cancelText: {
     fontSize: 17,
-    color: '#8E8E93',
   },
   submitText: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#007AFF',
-  },
-  submitTextDisabled: {
-    color: '#C7C7CC',
   },
   body: {
     flex: 1,
     padding: 20,
   },
   errorText: {
-    color: '#FF3B30',
     fontSize: 14,
     marginBottom: 16,
   },
@@ -161,26 +197,21 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#3C3C43',
     marginBottom: 8,
   },
   titleInput: {
     borderWidth: 1,
-    borderColor: '#E5E5EA',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
-    color: '#1C1C1E',
   },
   contentInput: {
     borderWidth: 1,
-    borderColor: '#E5E5EA',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
-    color: '#1C1C1E',
     minHeight: 200,
   },
 });

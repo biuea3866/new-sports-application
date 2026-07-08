@@ -1,52 +1,39 @@
 /**
- * 커뮤니티 탭 — 게시글 목록
+ * 커뮤니티 탭 — 전역 게시글 목록 + 종목별 필터 (A-P5)
+ *
+ * 근거: `20260707-모집-시설상품-소모임예약-게시글연동-design-fe-app.md` "화면 목록" A-P5,
+ * "텍스트 와이어프레임" A-P5(토스 카테고리 칩 — 가로 스크롤, 선택 시 accent 1곳),
+ * "화면별 4상태 표"(종목 0건은 정상 empty). `community.post.enabled` 플래그로 종목 필터
+ * 진입점을 게이트한다(design-fe-app "Release Scenario").
  */
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { useState } from 'react';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
+
+import type { SportCategory } from '../../api/community-types';
+import { PostCard } from '../../components/community/PostCard';
+import { SportCategoryChips } from '../../components/community/SportCategoryChips';
+import { EmptyState, ErrorView, LoadingView, ThemedText, ThemedView } from '../../components/ui';
+import { isFeatureEnabled } from '../../lib/feature-flags';
 import { usePosts } from '../../lib/usePosts';
-import type { PostResponse } from '../../api/types';
+import { useTheme } from '../../theme/useTheme';
 
-function formatDate(iso: string): string {
-  const date = new Date(iso);
-  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
-}
-
-interface PostCardProps {
-  post: PostResponse;
-  onPress: () => void;
-}
-
-function PostCard({ post, onPress }: PostCardProps) {
-  return (
-    <Pressable
-      style={styles.card}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`게시글: ${post.title}`}
-    >
-      <Text style={styles.cardTitle} numberOfLines={2}>
-        {post.title}
-      </Text>
-      <View style={styles.cardMeta}>
-        <Text style={styles.cardUserId} accessibilityLabel={`작성자 ID ${post.userId}`}>
-          {`사용자 ${post.userId}`}
-        </Text>
-        <Text style={styles.cardDate}>{formatDate(post.createdAt)}</Text>
-      </View>
-    </Pressable>
-  );
-}
+const EMPTY_MESSAGE = '게시글이 없어요';
+const CATEGORY_EMPTY_MESSAGE = '이 종목 글이 아직 없어요';
+const ERROR_MESSAGE = '게시글을 불러오지 못했습니다.';
 
 export default function CommunityTabScreen() {
+  const { tokens } = useTheme();
   const router = useRouter();
-  const { data, isLoading, isError } = usePosts(0, 20);
+  const isCategoryFilterEnabled = isFeatureEnabled('community.post.enabled');
+
+  const [sportCategory, setSportCategory] = useState<SportCategory | null>(null);
+  const { data, isLoading, isError, refetch } = usePosts(
+    0,
+    20,
+    sportCategory !== null ? { sportCategory } : undefined
+  );
+  const posts = data?.content ?? [];
 
   const handleNewPost = () => {
     router.push('/community/new');
@@ -57,60 +44,59 @@ export default function CommunityTabScreen() {
   };
 
   return (
-    <View style={styles.container} accessible={true} accessibilityLabel="커뮤니티 화면">
+    <ThemedView style={styles.container} background="background">
       <View style={styles.header}>
-        <Text style={styles.title} accessibilityRole="header">
+        <ThemedText variant="primary" style={styles.title} accessibilityRole="header">
           커뮤니티
-        </Text>
+        </ThemedText>
         <Pressable
-          style={styles.newButton}
+          style={[styles.newButton, { backgroundColor: tokens.accent }]}
           onPress={handleNewPost}
           accessibilityRole="button"
           accessibilityLabel="게시글 작성"
         >
-          <Text style={styles.newButtonText}>+</Text>
+          <ThemedText variant="onAccent" style={styles.newButtonText}>
+            +
+          </ThemedText>
         </Pressable>
       </View>
 
-      {isLoading && (
-        <View style={styles.centered} accessibilityLabel="게시글 목록 로딩 중">
-          <ActivityIndicator size="large" color="#007AFF" />
+      {isCategoryFilterEnabled && (
+        <View style={styles.chipsWrapper}>
+          <SportCategoryChips
+            selected={sportCategory}
+            onSelect={setSportCategory}
+            allLabel="전체"
+          />
         </View>
       )}
 
-      {isError && (
-        <View style={styles.centered} accessibilityLabel="게시글 목록 오류">
-          <Text style={styles.errorText} accessibilityRole="alert">
-            게시글을 불러오지 못했습니다.
-          </Text>
-        </View>
+      {isLoading && <LoadingView variant="skeleton" />}
+
+      {!isLoading && isError && (
+        <ErrorView message={ERROR_MESSAGE} onRetry={() => void refetch()} />
       )}
 
       {!isLoading && !isError && (
         <FlatList
-          data={data?.content ?? []}
+          data={posts}
           keyExtractor={(item) => String(item.id)}
           renderItem={({ item }) => (
             <PostCard post={item} onPress={() => handlePostPress(item.id)} />
           )}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
-            <View style={styles.centered}>
-              <Text style={styles.emptyText} accessibilityRole="text">
-                게시글이 없습니다.
-              </Text>
-            </View>
+            <EmptyState message={sportCategory !== null ? CATEGORY_EMPTY_MESSAGE : EMPTY_MESSAGE} />
           }
         />
       )}
-    </View>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   header: {
     flexDirection: 'row',
@@ -119,66 +105,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 56,
     paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1C1C1E',
   },
   newButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#007AFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
   newButtonText: {
     fontSize: 24,
-    color: '#fff',
     lineHeight: 30,
   },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
+  chipsWrapper: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
   list: {
     padding: 16,
-  },
-  card: {
-    backgroundColor: '#F2F2F7',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1C1C1E',
-    marginBottom: 8,
-  },
-  cardMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  cardUserId: {
-    fontSize: 13,
-    color: '#8E8E93',
-  },
-  cardDate: {
-    fontSize: 13,
-    color: '#8E8E93',
-  },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 15,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#8E8E93',
   },
 });

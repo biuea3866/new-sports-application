@@ -28,9 +28,58 @@ jest.mock('../../../lib/useMyProfile', () => ({
   useMyProfile: jest.fn(),
 }));
 
+jest.mock('../../../lib/feature-flags', () => ({
+  isFeatureEnabled: jest.fn(),
+}));
+
 jest.mock('expo-router', () => ({
   useLocalSearchParams: jest.fn(),
   router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() },
+}));
+
+// 게시판·소모임예약 섹션은 각자 __tests__(CommunityBoardSection.test.tsx·
+// CommunityBookingSection.test.tsx)에서 4상태를 전수 검증한다. 이 화면 테스트는 탭 전환·
+// props 배선(communityId·canWrite·canLink·콜백)만 스텁으로 검증한다.
+jest.mock('../../../components/community/CommunityBoardSection', () => ({
+  CommunityBoardSection: (props: {
+    communityId: number;
+    canWrite: boolean;
+    onCreatePost: () => void;
+    onPostPress: (postId: number) => void;
+  }) => {
+    const { Pressable, Text } = jest.requireActual('react-native');
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`게시판 섹션 communityId=${props.communityId} canWrite=${props.canWrite}`}
+        onPress={() => {
+          props.onCreatePost();
+          props.onPostPress(999);
+        }}
+      >
+        <Text>게시판 섹션 스텁</Text>
+      </Pressable>
+    );
+  },
+}));
+
+jest.mock('../../../components/community/CommunityBookingSection', () => ({
+  CommunityBookingSection: (props: {
+    communityId: number;
+    canLink: boolean;
+    onLinkPress: () => void;
+  }) => {
+    const { Pressable, Text } = jest.requireActual('react-native');
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`활동 섹션 communityId=${props.communityId} canLink=${props.canLink}`}
+        onPress={props.onLinkPress}
+      >
+        <Text>활동 섹션 스텁</Text>
+      </Pressable>
+    );
+  },
 }));
 
 import { router, useLocalSearchParams } from 'expo-router';
@@ -43,6 +92,7 @@ import {
   useTransferHost,
 } from '../../../lib/useCommunity';
 import { useMyProfile } from '../../../lib/useMyProfile';
+import { isFeatureEnabled } from '../../../lib/feature-flags';
 import CommunityDetailScreen from '../[id]';
 
 const useCommunityMock = useCommunity as jest.MockedFunction<typeof useCommunity>;
@@ -57,6 +107,7 @@ const useMyProfileMock = useMyProfile as jest.MockedFunction<typeof useMyProfile
 const useLocalSearchParamsMock = useLocalSearchParams as jest.MockedFunction<
   typeof useLocalSearchParams
 >;
+const isFeatureEnabledMock = isFeatureEnabled as jest.MockedFunction<typeof isFeatureEnabled>;
 const routerPushMock = router.push as jest.MockedFunction<typeof router.push>;
 
 const MY_USER_ID = 1;
@@ -171,6 +222,7 @@ describe('CommunityDetailScreen', () => {
   beforeEach(() => {
     mockUseColorScheme.mockReturnValue('light');
     useLocalSearchParamsMock.mockReturnValue({ id: String(baseCommunity.id) });
+    isFeatureEnabledMock.mockReturnValue(true);
     mockCommunity();
     mockMembers();
     mockMyProfile();
@@ -216,6 +268,7 @@ describe('CommunityDetailScreen', () => {
     });
 
     renderScreen();
+    fireEvent.press(screen.getByLabelText('멤버'));
 
     expect(screen.getByLabelText(`사용자 #${OTHER_MEMBER_USER_ID} 강퇴`)).toBeTruthy();
     expect(screen.getByLabelText(`사용자 #${OTHER_MEMBER_USER_ID} 방장 위임`)).toBeTruthy();
@@ -230,6 +283,7 @@ describe('CommunityDetailScreen', () => {
     });
 
     renderScreen();
+    fireEvent.press(screen.getByLabelText('멤버'));
 
     expect(screen.queryByLabelText(`사용자 #${HOST_USER_ID} 강퇴`)).toBeNull();
   });
@@ -298,6 +352,7 @@ describe('CommunityDetailScreen', () => {
     });
 
     const { invalidateSpy } = renderScreen();
+    fireEvent.press(screen.getByLabelText('멤버'));
     fireEvent.press(screen.getByLabelText(`사용자 #${OTHER_MEMBER_USER_ID} 강퇴`));
 
     expect(alertSpy).toHaveBeenCalled();
@@ -322,6 +377,7 @@ describe('CommunityDetailScreen', () => {
     });
 
     renderScreen();
+    fireEvent.press(screen.getByLabelText('멤버'));
     fireEvent.press(screen.getByLabelText(`사용자 #${OTHER_MEMBER_USER_ID} 방장 위임`));
 
     expect(transferMutate).toHaveBeenCalledWith({ newHostUserId: OTHER_MEMBER_USER_ID });
@@ -362,9 +418,11 @@ describe('CommunityDetailScreen', () => {
     mockMembers({ data: undefined, isError: true, error: forbiddenError });
 
     renderScreen();
+    expect(screen.getByLabelText('가입하기')).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText('멤버'));
 
     expect(screen.getByText('멤버 목록은 가입한 멤버만 볼 수 있어요')).toBeTruthy();
-    expect(screen.getByLabelText('가입하기')).toBeTruthy();
   });
 
   it('내 프로필 조회에 실패하면 가입하기 대신 에러 뷰가 표시되고 재시도하면 프로필을 다시 조회한다', () => {
@@ -397,5 +455,74 @@ describe('CommunityDetailScreen', () => {
     renderScreen();
 
     expect(screen.getByText(baseCommunity.name)).toBeTruthy();
+  });
+
+  it('community.post.enabled·community.booking.enabled가 OFF면 게시판·활동 탭이 렌더되지 않는다', () => {
+    isFeatureEnabledMock.mockReturnValue(false);
+
+    renderScreen();
+
+    expect(screen.queryByLabelText('게시판')).toBeNull();
+    expect(screen.queryByLabelText('활동')).toBeNull();
+    expect(screen.getByLabelText('소개')).toBeTruthy();
+    expect(screen.getByLabelText('멤버')).toBeTruthy();
+  });
+
+  it('게시판 탭을 선택하면 communityId·ACTIVE 멤버 canWrite로 게시판 섹션이 렌더된다', () => {
+    mockMembers({ data: [member({ id: 1, userId: MY_USER_ID, role: 'MEMBER' })] });
+
+    renderScreen();
+    fireEvent.press(screen.getByLabelText('게시판'));
+
+    expect(
+      screen.getByLabelText(`게시판 섹션 communityId=${baseCommunity.id} canWrite=true`)
+    ).toBeTruthy();
+  });
+
+  it('게시판 섹션의 글쓰기 콜백을 탭하면 communityId 파라미터로 작성 화면에 이동한다', () => {
+    mockMembers({ data: [member({ id: 1, userId: MY_USER_ID, role: 'MEMBER' })] });
+
+    renderScreen();
+    fireEvent.press(screen.getByLabelText('게시판'));
+    fireEvent.press(
+      screen.getByLabelText(`게시판 섹션 communityId=${baseCommunity.id} canWrite=true`)
+    );
+
+    expect(routerPushMock).toHaveBeenCalledWith(`/community/new?communityId=${baseCommunity.id}`);
+    expect(routerPushMock).toHaveBeenCalledWith('/community/999');
+  });
+
+  it('활동 탭을 선택하면 방장만 canLink=true로 활동 섹션이 렌더된다', () => {
+    mockMembers({ data: [member({ id: 1, userId: MY_USER_ID, role: 'HOST' })] });
+
+    renderScreen();
+    fireEvent.press(screen.getByLabelText('활동'));
+
+    expect(
+      screen.getByLabelText(`활동 섹션 communityId=${baseCommunity.id} canLink=true`)
+    ).toBeTruthy();
+  });
+
+  it('활동 섹션의 연결하기 콜백을 탭하면 예약 연결 화면으로 이동한다', () => {
+    mockMembers({ data: [member({ id: 1, userId: MY_USER_ID, role: 'HOST' })] });
+
+    renderScreen();
+    fireEvent.press(screen.getByLabelText('활동'));
+    fireEvent.press(
+      screen.getByLabelText(`활동 섹션 communityId=${baseCommunity.id} canLink=true`)
+    );
+
+    expect(routerPushMock).toHaveBeenCalledWith(`/communities/${baseCommunity.id}/bookings/new`);
+  });
+
+  it('일반 멤버는 활동 섹션에 canLink=false로 전달된다', () => {
+    mockMembers({ data: [member({ id: 1, userId: MY_USER_ID, role: 'MEMBER' })] });
+
+    renderScreen();
+    fireEvent.press(screen.getByLabelText('활동'));
+
+    expect(
+      screen.getByLabelText(`활동 섹션 communityId=${baseCommunity.id} canLink=false`)
+    ).toBeTruthy();
   });
 });
