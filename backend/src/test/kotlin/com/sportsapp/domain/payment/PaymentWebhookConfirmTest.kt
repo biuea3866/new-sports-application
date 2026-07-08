@@ -81,7 +81,7 @@ class PaymentWebhookConfirmTest : BehaviorSpec({
                 verify(exactly = 1) { domainEventPublisher.publishAll(any()) }
                 capturedEvents.filterIsInstance<PaymentCompletedEvent>().size shouldBe 1
                 val confirmed = capturedEvents.filterIsInstance<PaymentConfirmedEvent>().single()
-                confirmed.topic shouldBe "payment.order-confirmed.v1"
+                confirmed.topic shouldBe "event.payment.order-confirmed"
                 confirmed.orderType shouldBe OrderType.TICKETING
                 confirmed.orderId shouldBe orderId
                 confirmed.paymentId shouldBe readyPayment.id
@@ -148,7 +148,7 @@ class PaymentWebhookConfirmTest : BehaviorSpec({
             Then("PaymentCancelledEvent 가 orderType/orderId/paymentId 와 함께 발행된다") {
                 verify(exactly = 1) { domainEventPublisher.publishAll(any()) }
                 val cancelled = capturedEvents.filterIsInstance<PaymentCancelledEvent>().single()
-                cancelled.topic shouldBe "payment.order-cancelled.v1"
+                cancelled.topic shouldBe "event.payment.order-cancelled"
                 cancelled.orderType shouldBe OrderType.BOOKING
                 cancelled.orderId shouldBe orderId
                 cancelled.paymentId shouldBe readyPayment.id

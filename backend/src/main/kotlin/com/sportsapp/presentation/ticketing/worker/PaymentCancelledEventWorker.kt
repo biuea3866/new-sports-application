@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component
 class PaymentCancelledEventWorker(
     private val cancelTicketingPaymentUseCase: CancelTicketingPaymentUseCase,
 ) {
-    @KafkaListener(topics = ["payment.order-cancelled.v1"], groupId = "ticketing-payment-cancel")
+    @KafkaListener(topics = ["event.payment.order-cancelled"], groupId = "ticketing-payment-cancel")
     fun consume(event: PaymentCancelledEvent) {
         if (event.orderType != OrderType.TICKETING) return
         cancelTicketingPaymentUseCase.execute(event.orderId)

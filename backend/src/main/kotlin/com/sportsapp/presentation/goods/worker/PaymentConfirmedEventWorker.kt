@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component
 class PaymentConfirmedEventWorker(
     private val confirmGoodsPaymentUseCase: ConfirmGoodsPaymentUseCase,
 ) {
-    @KafkaListener(topics = ["payment.order-confirmed.v1"], groupId = "goods-payment-order")
+    @KafkaListener(topics = ["event.payment.order-confirmed"], groupId = "goods-payment-order")
     fun consume(event: PaymentConfirmedEvent) {
         if (event.orderType != OrderType.GOODS) return
         confirmGoodsPaymentUseCase.execute(event.orderId, event.paymentId)

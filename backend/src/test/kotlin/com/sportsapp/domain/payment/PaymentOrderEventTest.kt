@@ -29,7 +29,7 @@ class PaymentOrderEventTest : BehaviorSpec({
 
         When("topic 과 필드를 확인하면") {
             Then("전용 확정 토픽과 orderType/orderId/paymentId 를 노출한다") {
-                event.topic shouldBe "payment.order-confirmed.v1"
+                event.topic shouldBe "event.payment.order-confirmed"
                 event.aggregateId shouldBe 42L
                 event.paymentId shouldBe 42L
                 event.orderType shouldBe OrderType.BOOKING
@@ -43,7 +43,7 @@ class PaymentOrderEventTest : BehaviorSpec({
 
         When("topic 과 필드를 확인하면") {
             Then("전용 취소 토픽과 orderType/orderId/paymentId 를 노출한다") {
-                event.topic shouldBe "payment.order-cancelled.v1"
+                event.topic shouldBe "event.payment.order-cancelled"
                 event.aggregateId shouldBe 7L
                 event.paymentId shouldBe 7L
                 event.orderType shouldBe OrderType.GOODS

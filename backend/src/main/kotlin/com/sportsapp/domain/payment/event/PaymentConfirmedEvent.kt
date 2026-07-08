@@ -17,5 +17,5 @@ class PaymentConfirmedEvent(
     val orderId: Long,
 ) : AbstractDomainEvent(
     aggregateId = paymentId,
-    topic = "payment.order-confirmed.v1",
+    topic = "event.payment.order-confirmed",
 )

@@ -17,5 +17,5 @@ class PaymentCancelledEvent(
     val orderId: Long,
 ) : AbstractDomainEvent(
     aggregateId = paymentId,
-    topic = "payment.order-cancelled.v1",
+    topic = "event.payment.order-cancelled",
 )
