@@ -81,5 +81,68 @@ class EventCustomRepositoryImplTest(
                 }
             }
         }
+
+        Given("keyword 검색을 위한 Event 픽스처") {
+            // 같은 클래스의 앞선 Given 픽스처와 테이블을 공유하므로(SharedTestContainers, 클래스 전체 SingleInstance)
+            // 날짜 범위를 이 Given 전용으로 분리해 다른 Given의 잔여 데이터와 섞이지 않게 한다.
+            val catalogTime = baseTime.plusYears(1)
+            val rock = eventJpaRepository.save(
+                Event(0L, "Rock Festival", "Seoul Arena", catalogTime, EventStatus.OPEN, 1L)
+            )
+            eventJpaRepository.save(
+                Event(0L, "Jazz Night", "Busan Arena", catalogTime, EventStatus.OPEN, 1L)
+            )
+            val closedRock = eventJpaRepository.save(
+                Event(0L, "Rock Legends", "Daegu Arena", catalogTime, EventStatus.CLOSED, 1L)
+            )
+
+            When("keyword=\"Rock\" + status=OPEN으로 조회하면") {
+                val criteria = EventCriteria(status = EventStatus.OPEN, startsAtFrom = null, startsAtTo = null, keyword = "Rock")
+                val pageable = PageRequest.of(0, 10)
+                val result = eventCustomRepositoryImpl.findByCriteria(criteria, pageable)
+
+                Then("제목에 Rock을 포함하는 OPEN 이벤트만 반환된다") {
+                    result.totalElements shouldBe 1L
+                    result.content.first().id shouldBe rock.id
+                }
+            }
+
+            When("keyword가 null이면") {
+                val criteria = EventCriteria(
+                    status = EventStatus.OPEN,
+                    startsAtFrom = catalogTime.minusDays(1),
+                    startsAtTo = catalogTime.plusDays(1),
+                    keyword = null,
+                )
+                val pageable = PageRequest.of(0, 10)
+                val result = eventCustomRepositoryImpl.findByCriteria(criteria, pageable)
+
+                Then("OPEN 이벤트 전체가 페이지네이션으로 조회된다") {
+                    result.totalElements shouldBe 2L
+                }
+            }
+
+            When("keyword=\"Rock\" + status=CLOSED로 조회하면") {
+                val criteria = EventCriteria(status = EventStatus.CLOSED, startsAtFrom = null, startsAtTo = null, keyword = "Rock")
+                val pageable = PageRequest.of(0, 10)
+                val result = eventCustomRepositoryImpl.findByCriteria(criteria, pageable)
+
+                Then("CLOSED 상태의 Rock Legends만 반환된다 (OPEN 카탈로그에서는 제외 대상)") {
+                    result.totalElements shouldBe 1L
+                    result.content.first().id shouldBe closedRock.id
+                }
+            }
+
+            When("keyword와 일치하는 이벤트가 없으면") {
+                val criteria = EventCriteria(status = EventStatus.OPEN, startsAtFrom = null, startsAtTo = null, keyword = "Nonexistent")
+                val pageable = PageRequest.of(0, 10)
+                val result = eventCustomRepositoryImpl.findByCriteria(criteria, pageable)
+
+                Then("빈 페이지가 반환된다") {
+                    result.totalElements shouldBe 0L
+                    result.content shouldBe emptyList()
+                }
+            }
+        }
     }
 }

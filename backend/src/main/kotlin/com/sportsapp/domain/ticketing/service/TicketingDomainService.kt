@@ -5,6 +5,7 @@ import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import com.sportsapp.domain.ticketing.dto.EventSalesInfo
 import com.sportsapp.domain.ticketing.dto.TicketKpiSummary
 import com.sportsapp.domain.ticketing.dto.TicketOrderResult
+import com.sportsapp.domain.ticketing.dto.TicketOrderWithEventTitle
 import com.sportsapp.domain.ticketing.dto.TicketSalesSummary
 import com.sportsapp.domain.ticketing.entity.Event
 import com.sportsapp.domain.ticketing.entity.EventStatus
@@ -90,6 +91,17 @@ class TicketingDomainService(
 
     fun listEvents(criteria: EventCriteria, pageable: Pageable): Page<Event> =
         eventCustomRepository.findByCriteria(criteria, pageable)
+
+    // catalog 통합검색용 — status=OPEN 고정 + keyword 부분 일치. CLOSED/CANCELLED는 결과에서 제외한다.
+    fun searchOpenEvents(keyword: String?, pageable: Pageable): Page<Event> =
+        listEvents(
+            EventCriteria(status = EventStatus.OPEN, startsAtFrom = null, startsAtTo = null, keyword = keyword),
+            pageable,
+        )
+
+    // order 통합조회용 — TicketOrder에 이벤트명(title)을 조인한 표시용 프로젝션.
+    fun listTicketOrdersBy(userId: Long): List<TicketOrderWithEventTitle> =
+        ticketOrderCustomRepository.findBy(userId)
 
     fun tryLockSeats(eventId: Long, seatIds: List<Long>, userId: Long): String {
         val lockedSeatIds = mutableListOf<Long>()
