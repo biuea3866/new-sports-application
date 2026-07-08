@@ -9,6 +9,7 @@ import { FacilityForm } from "@/app/portal/facilities/_components/FacilityForm";
 import { AirQualityCard } from "@/app/portal/facilities/_components/AirQualityCard";
 import { useAirQuality } from "@/app/portal/facilities/_hooks/useAirQuality";
 import { resolveSidoDisplayName } from "@/app/portal/facilities/sido-display";
+import { FacilityTabs } from "./_components/FacilityTabs";
 import type { MyFacility } from "@/lib/portal/types";
 import type { FacilityFormValues } from "@/app/portal/facilities/facility-form-schema";
 
@@ -257,82 +258,87 @@ export default function FacilityDetailPage() {
         </div>
 
         {viewMode === "detail" ? (
-          <section aria-label="시설 상세 정보" className="rounded-md border p-6 space-y-4">
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
-              <div>
-                <dt className="font-medium text-muted-foreground">코드</dt>
-                <dd className="mt-1">{facility.code}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-muted-foreground">유형</dt>
-                <dd className="mt-1">
-                  <Badge variant="secondary">
-                    {FACILITY_TYPE_LABELS[facility.type] ?? facility.type}
-                  </Badge>
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium text-muted-foreground">시/도</dt>
-                <dd className="mt-1">{resolveSidoDisplayName(facility.sidoName)}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-muted-foreground">구</dt>
-                <dd className="mt-1">{facility.gu}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-muted-foreground">주차</dt>
-                <dd className="mt-1">
-                  <Badge variant={facility.parking ? "default" : "outline"}>
-                    {facility.parking ? "가능" : "불가"}
-                  </Badge>
-                </dd>
-              </div>
-              <div className="col-span-2">
-                <dt className="font-medium text-muted-foreground">주소</dt>
-                <dd className="mt-1">{facility.address}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-muted-foreground">위치 좌표</dt>
-                <dd className="mt-1">{facility.lat}, {facility.lng}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-muted-foreground">전화번호</dt>
-                <dd className="mt-1">{facility.tel}</dd>
-              </div>
-              {facility.homePage && (
-                <div className="col-span-2">
-                  <dt className="font-medium text-muted-foreground">홈페이지</dt>
-                  <dd className="mt-1">
-                    <a
-                      href={facility.homePage}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                      aria-label={`${facility.name} 홈페이지 열기 (새 탭)`}
-                    >
-                      {facility.homePage}
-                    </a>
-                  </dd>
-                </div>
-              )}
-              <div>
-                <dt className="font-medium text-muted-foreground">교육 여부</dt>
-                <dd className="mt-1">{facility.eduYn ? "예" : "아니오"}</dd>
-              </div>
-              {facility.meta && (
-                <div className="col-span-2">
-                  <dt className="font-medium text-muted-foreground">메타 정보</dt>
-                  <dd className="mt-1 whitespace-pre-wrap">{facility.meta}</dd>
-                </div>
-              )}
-            </dl>
+          <FacilityTabs
+            facilityId={id}
+            infoContent={
+              <section aria-label="시설 상세 정보" className="rounded-md border p-6 space-y-4">
+                <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                  <div>
+                    <dt className="font-medium text-muted-foreground">코드</dt>
+                    <dd className="mt-1">{facility.code}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-medium text-muted-foreground">유형</dt>
+                    <dd className="mt-1">
+                      <Badge variant="secondary">
+                        {FACILITY_TYPE_LABELS[facility.type] ?? facility.type}
+                      </Badge>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="font-medium text-muted-foreground">시/도</dt>
+                    <dd className="mt-1">{resolveSidoDisplayName(facility.sidoName)}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-medium text-muted-foreground">구</dt>
+                    <dd className="mt-1">{facility.gu}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-medium text-muted-foreground">주차</dt>
+                    <dd className="mt-1">
+                      <Badge variant={facility.parking ? "default" : "outline"}>
+                        {facility.parking ? "가능" : "불가"}
+                      </Badge>
+                    </dd>
+                  </div>
+                  <div className="col-span-2">
+                    <dt className="font-medium text-muted-foreground">주소</dt>
+                    <dd className="mt-1">{facility.address}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-medium text-muted-foreground">위치 좌표</dt>
+                    <dd className="mt-1">{facility.lat}, {facility.lng}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-medium text-muted-foreground">전화번호</dt>
+                    <dd className="mt-1">{facility.tel}</dd>
+                  </div>
+                  {facility.homePage && (
+                    <div className="col-span-2">
+                      <dt className="font-medium text-muted-foreground">홈페이지</dt>
+                      <dd className="mt-1">
+                        <a
+                          href={facility.homePage}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline"
+                          aria-label={`${facility.name} 홈페이지 열기 (새 탭)`}
+                        >
+                          {facility.homePage}
+                        </a>
+                      </dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt className="font-medium text-muted-foreground">교육 여부</dt>
+                    <dd className="mt-1">{facility.eduYn ? "예" : "아니오"}</dd>
+                  </div>
+                  {facility.meta && (
+                    <div className="col-span-2">
+                      <dt className="font-medium text-muted-foreground">메타 정보</dt>
+                      <dd className="mt-1 whitespace-pre-wrap">{facility.meta}</dd>
+                    </div>
+                  )}
+                </dl>
 
-            {airQualityStatus !== "idle" && (
-              <div className="border-t pt-4">
-                <AirQualityCard status={airQualityStatus} data={airQualityData} />
-              </div>
-            )}
-          </section>
+                {airQualityStatus !== "idle" && (
+                  <div className="border-t pt-4">
+                    <AirQualityCard status={airQualityStatus} data={airQualityData} />
+                  </div>
+                )}
+              </section>
+            }
+          />
         ) : (
           <section aria-label="시설 수정">
             {updateError && (

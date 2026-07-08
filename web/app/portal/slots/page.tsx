@@ -14,16 +14,21 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/toast";
 import {
   type SlotResponse,
   type CreateSlotInput,
   type UpdateSlotInput,
   createSlot,
+  closeSlot,
   deleteSlot,
   fetchSlots,
+  openSlot,
   updateSlot,
 } from "@/lib/portal/slots";
 import { cn } from "@/lib/utils";
+import { SlotRow } from "./_components/SlotRow";
+import { SlotCloseConfirmDialog } from "./_components/SlotCloseConfirmDialog";
 
 interface FacilityOption {
   id: string;
@@ -82,6 +87,10 @@ export default function SlotsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [deletingSlot, setDeletingSlot] = useState<SlotResponse | null>(null);
+  const [closingSlot, setClosingSlot] = useState<SlotResponse | null>(null);
+  const [closeSubmitting, setCloseSubmitting] = useState(false);
+  const [openingSlotId, setOpeningSlotId] = useState<number | null>(null);
+  const { addToast } = useToast();
 
   useEffect(() => {
     fetch("/api/portal/facilities?page=0&size=100")
@@ -192,6 +201,40 @@ export default function SlotsPage() {
       setError(err instanceof Error ? err.message : "삭제에 실패했습니다.");
     } finally {
       setDeletingSlot(null);
+    }
+  }
+
+  async function confirmClose() {
+    if (!closingSlot) return;
+    setCloseSubmitting(true);
+    try {
+      await closeSlot(facilityId, closingSlot.id);
+      await loadSlots();
+      addToast({ title: "슬롯이 마감됐습니다.", variant: "default" });
+      setClosingSlot(null);
+    } catch (err) {
+      addToast({
+        title: err instanceof Error ? err.message : "슬롯 마감에 실패했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setCloseSubmitting(false);
+    }
+  }
+
+  async function handleOpen(slot: SlotResponse) {
+    setOpeningSlotId(slot.id);
+    try {
+      await openSlot(facilityId, slot.id);
+      await loadSlots();
+      addToast({ title: "슬롯이 오픈됐습니다.", variant: "default" });
+    } catch (err) {
+      addToast({
+        title: err instanceof Error ? err.message : "슬롯 오픈에 실패했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setOpeningSlotId(null);
     }
   }
 
@@ -345,30 +388,16 @@ export default function SlotsPage() {
                 </span>
                 <ul className="mt-1 space-y-0.5" aria-label={`${dayLabel} 슬롯 목록`}>
                   {daySlots.map((slot) => (
-                    <li key={slot.id} className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        className="flex-1 truncate rounded bg-blue-100 px-1 py-0.5 text-left text-xs text-blue-800 hover:bg-blue-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openEditModal(slot);
-                        }}
-                        aria-label={`슬롯 ${slot.timeRange} 편집`}
-                      >
-                        {slot.timeRange}
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded px-1 py-0.5 text-xs text-red-600 hover:bg-red-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeletingSlot(slot);
-                        }}
-                        aria-label={`슬롯 ${slot.timeRange} 삭제`}
-                      >
-                        ×
-                      </button>
-                    </li>
+                    <SlotRow
+                      key={slot.id}
+                      slot={slot}
+                      onEdit={() => openEditModal(slot)}
+                      onDelete={() => setDeletingSlot(slot)}
+                      onClose={() => setClosingSlot(slot)}
+                      onOpen={() => void handleOpen(slot)}
+                      closing={closingSlot?.id === slot.id && closeSubmitting}
+                      opening={openingSlotId === slot.id}
+                    />
                   ))}
                 </ul>
               </div>
@@ -483,6 +512,14 @@ export default function SlotsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* 슬롯 마감 확인 Dialog */}
+      <SlotCloseConfirmDialog
+        open={closingSlot !== null}
+        timeRange={closingSlot?.timeRange ?? null}
+        submitting={closeSubmitting}
+        onConfirm={() => void confirmClose()}
+        onCancel={() => setClosingSlot(null)}
+      />
     </main>
   );
 }
