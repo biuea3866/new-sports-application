@@ -4,6 +4,7 @@ import com.sportsapp.domain.goods.entity.Product
 import com.sportsapp.domain.goods.vo.ProductCategory
 import com.sportsapp.domain.goods.entity.ProductStatus
 import com.sportsapp.domain.goods.dto.ProductWithStock
+import com.sportsapp.domain.goods.vo.SellerType
 import java.math.BigDecimal
 
 data class ProductWithStockResponse(
@@ -19,6 +20,8 @@ data class ProductWithStockResponse(
     val limitedDropId: Long?,
     /** 상품 소유자(판매자) userId (BE-11, additive) — FE-14 본인상품 CTA 숨김 판정용. */
     val ownerId: Long,
+    /** 판매자 유형(B2C/B2B, BE-03). 배치 백필(BE-11) 전 레거시 상품은 null일 수 있다. */
+    val sellerType: SellerType?,
     @com.fasterxml.jackson.annotation.JsonIgnore
     val product: Product,
 ) {
@@ -35,6 +38,7 @@ data class ProductWithStockResponse(
                 stockQuantity = productWithStock.stockQuantity,
                 limitedDropId = productWithStock.limitedDropId,
                 ownerId = productWithStock.product.ownerId,
+                sellerType = productWithStock.product.sellerType,
                 product = productWithStock.product,
             )
     }

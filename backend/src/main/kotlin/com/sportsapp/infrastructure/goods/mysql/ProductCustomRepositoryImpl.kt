@@ -5,7 +5,9 @@ import com.querydsl.core.types.OrderSpecifier
 import com.querydsl.jpa.impl.JPAQueryFactory
 import com.sportsapp.domain.goods.repository.ProductCustomRepository
 import com.sportsapp.domain.goods.vo.ProductCategory
+import com.sportsapp.domain.goods.vo.SellerType
 import com.sportsapp.domain.goods.dto.ProductWithStock
+import com.sportsapp.domain.goods.entity.ProductStatus
 import com.sportsapp.domain.goods.entity.QProduct.product
 import com.sportsapp.domain.goods.entity.QStock.stock
 import jakarta.persistence.EntityManager
@@ -30,27 +32,32 @@ class ProductCustomRepositoryImpl : ProductCustomRepository {
         keyword: String?,
         priceMin: BigDecimal?,
         priceMax: BigDecimal?,
+        sellerType: SellerType?,
         pageable: Pageable,
     ): Page<ProductWithStock> {
-        val condition = buildCondition(category, keyword, priceMin, priceMax)
+        val condition = buildCondition(category, keyword, priceMin, priceMax, sellerType)
         val orderSpecifiers = buildOrderSpecifiers(pageable)
         val content = fetchContent(condition, orderSpecifiers, pageable)
         val total = fetchCount(condition)
         return PageImpl(content, pageable, total)
     }
 
+    /** 공개 검색은 항상 ACTIVE 상품만 대상이다(상태 보호, BE-03) — INACTIVE는 노출 대상이 아니다. */
     private fun buildCondition(
         category: ProductCategory?,
         keyword: String?,
         priceMin: BigDecimal?,
         priceMax: BigDecimal?,
+        sellerType: SellerType?,
     ): BooleanBuilder {
         val builder = BooleanBuilder()
         builder.and(product.deletedAt.isNull)
+        builder.and(product.status.eq(ProductStatus.ACTIVE))
         category?.let { builder.and(product.category.eq(it)) }
         keyword?.takeIf { it.isNotBlank() }?.let { builder.and(product.name.containsIgnoreCase(it)) }
         priceMin?.let { builder.and(product.price.goe(it)) }
         priceMax?.let { builder.and(product.price.loe(it)) }
+        sellerType?.let { builder.and(product.sellerType.eq(it)) }
         return builder
     }
 

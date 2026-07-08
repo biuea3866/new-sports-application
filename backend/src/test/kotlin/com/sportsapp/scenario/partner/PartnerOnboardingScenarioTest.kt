@@ -74,6 +74,15 @@ class PartnerOnboardingScenarioTest(
             ),
         )
 
+    private fun sellerTypeOfProduct(productId: Long): String =
+        requireNotNull(
+            jdbcTemplate.queryForObject(
+                "SELECT seller_type FROM products WHERE id = ?",
+                String::class.java,
+                productId,
+            ),
+        )
+
     private fun createProductRequestBody(category: String = "EQUIPMENT"): String =
         objectMapper.writeValueAsString(
             mapOf(
@@ -117,6 +126,20 @@ class PartnerOnboardingScenarioTest(
 
                     val productId = objectMapper.readTree(responseBody).get("id").asLong()
                     ownerIdOfProduct(productId) shouldBe linkedUserIdOf(created.partnerId)
+                }
+            }
+
+            When("파트너 API Key 경유로 상품을 등록하면") {
+                Then("sellerType이 B2B로 100% 판별된다") {
+                    val responseBody = mockMvc.perform(
+                        post("/api/goods-seller/products")
+                            .header("Authorization", "Bearer ${created.plainApiKey}")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(createProductRequestBody()),
+                    ).andExpect(status().isCreated).andReturn().response.contentAsString
+
+                    val productId = objectMapper.readTree(responseBody).get("id").asLong()
+                    sellerTypeOfProduct(productId) shouldBe "B2B"
                 }
             }
 
