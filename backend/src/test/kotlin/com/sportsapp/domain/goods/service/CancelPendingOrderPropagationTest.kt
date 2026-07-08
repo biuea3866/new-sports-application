@@ -64,7 +64,7 @@ class BE11CancelPendingOrderPropagationTest : BehaviorSpec({
         }
     }
 
-    Given("[S-04] 이미 CANCELLED 상태인 orderId로 cancelPendingOrder를 재호출하면") {
+    Given("이미 CANCELLED 상태인 orderId로 cancelPendingOrder를 재호출하면") {
         val goodsOrderRepository = mockk<GoodsOrderRepository>()
         val goodsOrderItemRepository = mockk<GoodsOrderItemRepository>()
         val stockRepository = mockk<StockRepository>()
@@ -75,12 +75,12 @@ class BE11CancelPendingOrderPropagationTest : BehaviorSpec({
 
         every { goodsOrderRepository.findById(2L) } returns cancelledOrder
 
-        When("[S-04] cancelPendingOrder를 다시 호출하면") {
-            Then("[S-04] InvalidGoodsOrderStateException이 발생하고 아이템 삭제는 일어나지 않는다") {
-                shouldThrow<InvalidGoodsOrderStateException> {
-                    service.cancelPendingOrder(2L)
-                }
+        When("cancelPendingOrder를 다시 호출하면") {
+            Then("멱등하게 무시되어 예외 없이 CANCELLED로 유지되고 재고 복원·아이템 삭제가 다시 일어나지 않는다") {
+                service.cancelPendingOrder(2L)
+                cancelledOrder.status shouldBe GoodsOrderStatus.CANCELLED
                 verify(exactly = 0) { goodsOrderItemRepository.saveAll(any()) }
+                verify(exactly = 0) { stockRepository.save(any()) }
             }
         }
     }

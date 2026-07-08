@@ -3,9 +3,8 @@ package com.sportsapp.domain.payment
 import com.sportsapp.domain.common.DomainEvent
 import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.payment.entity.Payment
-import com.sportsapp.domain.payment.event.PaymentCancelledEvent
 import com.sportsapp.domain.payment.event.PaymentCompletedEvent
-import com.sportsapp.domain.payment.event.PaymentConfirmedEvent
+import com.sportsapp.domain.payment.event.PaymentEvent
 import com.sportsapp.domain.payment.gateway.PaymentGateway
 import com.sportsapp.domain.payment.repository.PaymentRepository
 import com.sportsapp.domain.payment.service.PaymentDomainService
@@ -80,8 +79,8 @@ class PaymentWebhookConfirmTest : BehaviorSpec({
             Then("알림용 완료 이벤트와 주문 확정 이벤트가 함께 발행된다") {
                 verify(exactly = 1) { domainEventPublisher.publishAll(any()) }
                 capturedEvents.filterIsInstance<PaymentCompletedEvent>().size shouldBe 1
-                val confirmed = capturedEvents.filterIsInstance<PaymentConfirmedEvent>().single()
-                confirmed.topic shouldBe "event.payment.order-confirmed"
+                val confirmed = capturedEvents.filterIsInstance<PaymentEvent.Confirmed>().single()
+                confirmed.topic shouldBe "event.payment.payment.v1"
                 confirmed.orderType shouldBe OrderType.TICKETING
                 confirmed.orderId shouldBe orderId
                 confirmed.paymentId shouldBe readyPayment.id
@@ -145,17 +144,17 @@ class PaymentWebhookConfirmTest : BehaviorSpec({
         When("confirmWebhook(eventType=PAYMENT_CANCELED) 를 호출하면") {
             service.confirmWebhook(tid = tid, eventType = "PAYMENT_CANCELED")
 
-            Then("PaymentCancelledEvent 가 orderType/orderId/paymentId 와 함께 발행된다") {
+            Then("PaymentEvent.Cancelled 가 orderType/orderId/paymentId 와 함께 발행된다") {
                 verify(exactly = 1) { domainEventPublisher.publishAll(any()) }
-                val cancelled = capturedEvents.filterIsInstance<PaymentCancelledEvent>().single()
-                cancelled.topic shouldBe "event.payment.order-cancelled"
+                val cancelled = capturedEvents.filterIsInstance<PaymentEvent.Cancelled>().single()
+                cancelled.topic shouldBe "event.payment.payment.v1"
                 cancelled.orderType shouldBe OrderType.BOOKING
                 cancelled.orderId shouldBe orderId
                 cancelled.paymentId shouldBe readyPayment.id
             }
 
-            Then("확정 이벤트(PaymentConfirmedEvent)는 발행되지 않는다") {
-                capturedEvents.filterIsInstance<PaymentConfirmedEvent>().size shouldBe 0
+            Then("확정 이벤트(PaymentEvent.Confirmed)는 발행되지 않는다") {
+                capturedEvents.filterIsInstance<PaymentEvent.Confirmed>().size shouldBe 0
             }
         }
     }

@@ -13,8 +13,8 @@ import org.springframework.stereotype.Service
 /**
  * 참가비 0원(무료) 모집은 PG 없이 즉시 CONFIRMED 확정한다.
  * 참가비>0 모집은 PENDING 신청 후 PaymentDomainService.createPending/initiatePg로 PG 결제를 개시한다
- * (OrderType.RECRUITMENT). PG 웹훅 수신 시 payment가 PaymentConfirmedEvent를 발행하고,
- * recruitment의 PaymentConfirmedEventWorker가 이를 구독해 confirmApplication으로 최종 CONFIRMED로 전이한다.
+ * (OrderType.RECRUITMENT). PG 웹훅 수신 시 payment가 PaymentEvent.Confirmed를 발행하고,
+ * recruitment의 RecruitmentPaymentEventWorker가 이를 구독해 confirmApplication으로 최종 CONFIRMED로 전이한다.
  * PG 네트워크 호출을 감싸지 않도록 클래스 레벨 @Transactional을 두지 않는다(CreateBookingUseCase와 동형) —
  * recruitmentDomainService.apply/confirmApplication, paymentDomainService.createPending/initiatePg는
  * 각자 자기 트랜잭션 경계를 관리한다.

@@ -2,9 +2,8 @@ package com.sportsapp.domain.payment.entity
 
 import com.sportsapp.domain.common.DomainEvent
 import com.sportsapp.domain.common.JpaAuditingBase
-import com.sportsapp.domain.payment.event.PaymentCancelledEvent
 import com.sportsapp.domain.payment.event.PaymentCompletedEvent
-import com.sportsapp.domain.payment.event.PaymentConfirmedEvent
+import com.sportsapp.domain.payment.event.PaymentEvent
 import com.sportsapp.domain.payment.exception.InvalidFailureReasonException
 import com.sportsapp.domain.payment.exception.InvalidPaymentStateException
 import com.sportsapp.domain.payment.vo.OrderType
@@ -109,7 +108,7 @@ class Payment private constructor(
         this.status = PaymentStatus.COMPLETED
         this.paidAt = paidAt
         registerEvent(PaymentCompletedEvent(paymentId = id))
-        registerEvent(PaymentConfirmedEvent(paymentId = id, orderType = orderType, orderId = orderId))
+        registerEvent(PaymentEvent.Confirmed(paymentId = id, orderType = orderType, orderId = orderId))
     }
 
     fun markCancelled() {
@@ -117,7 +116,7 @@ class Payment private constructor(
             throw InvalidPaymentStateException(status, PaymentStatus.CANCELLED)
         }
         this.status = PaymentStatus.CANCELLED
-        registerEvent(PaymentCancelledEvent(paymentId = id, orderType = orderType, orderId = orderId))
+        registerEvent(PaymentEvent.Cancelled(paymentId = id, orderType = orderType, orderId = orderId))
     }
 
     fun markFailed(reason: String) {
