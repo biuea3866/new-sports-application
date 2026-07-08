@@ -53,7 +53,7 @@ function mockPosts(overrides: Partial<ReturnType<typeof usePosts>> = {}) {
   } as unknown as ReturnType<typeof usePosts>);
 }
 
-describe('CommunityTabScreen(A-P5)', () => {
+describe('커뮤니티 탭 화면', () => {
   const pushMock = jest.fn();
 
   beforeEach(() => {

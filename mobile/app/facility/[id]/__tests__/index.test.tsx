@@ -200,7 +200,7 @@ describe('FacilityDetailScreen', () => {
     expect(screen.queryByText('대기질 정보를 불러올 수 없습니다')).toBeNull();
   });
 
-  describe('시설상품(program) 섹션 — FE-28 A-F1', () => {
+  describe('시설상품(program) 섹션', () => {
     it('facility.program.enabled 플래그 OFF면 섹션이 렌더되지 않는다', () => {
       isFeatureEnabledMock.mockReturnValue(false);
       mockFacilityDetail({ data: BASE_FACILITY });

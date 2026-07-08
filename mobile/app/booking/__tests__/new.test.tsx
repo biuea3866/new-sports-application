@@ -252,7 +252,7 @@ describe('BookingNewScreen', () => {
     );
   });
 
-  describe('program 예약(A-F2) — programId 지정 시 program.price 배선', () => {
+  describe('program 예약 — programId 지정 시 program.price 배선', () => {
     beforeEach(() => {
       mockUseAirQualityReturn({});
     });

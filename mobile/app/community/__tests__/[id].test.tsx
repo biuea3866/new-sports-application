@@ -85,7 +85,7 @@ function mockAddComment(overrides: Record<string, unknown> = {}) {
   } as unknown as ReturnType<typeof useAddComment>);
 }
 
-describe('CommunityDetailScreen(A-P4)', () => {
+describe('커뮤니티 게시글 상세 화면', () => {
   beforeEach(() => {
     mockUseColorScheme.mockReturnValue('light');
     useLocalSearchParamsMock.mockReturnValue({ id: '1' });
