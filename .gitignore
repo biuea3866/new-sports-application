@@ -8,10 +8,11 @@
 
 # ===== 환경 변수 =====
 .env
-.env.local
-.env.*.local
+.env.*
 !.env.example
 !.env.local.example
+!.env.sample
+!.env.observability.example
 backend/.env*
 web/.env.local
 mobile/.env
@@ -51,10 +52,26 @@ mobile/android/.gradle/
 mobile/coverage/
 
 # ===== Claude Code 런타임 =====
-.feature-pipeline-state.json
+.feature-pipeline-state.json*
 .claude/cache/
 .analysis/findings/
 .claire/
+
+# ===== ops 스크립트 산출물 =====
+scripts/ops/admin-click-baseline/results/
+# fixtures/*.log 는 dry-run 검증용이므로 *.log 패턴에서 예외 처리
+!scripts/ops/admin-click-baseline/fixtures/*.log
+
+# ===== QA e2e 런타임 아티팩트 (소스 아님) =====
+qa/e2e/node_modules/
+qa/e2e/test-results/
+
+# k6 부하테스트 raw 출력 (수 GB — summary.json/threshold.txt만 추적, raw.json 제외)
+.analysis/outputs/qa/**/raw.json
+
+# ===== 상시 트래픽 시뮬레이터 런타임 산출물 (INFRA-09) — k6-runner/reseed가 컨테이너에서 기록 =====
+qa/load/results/*
+!qa/load/results/.gitkeep
 
 # ===== Misc =====
 *.tsbuildinfo

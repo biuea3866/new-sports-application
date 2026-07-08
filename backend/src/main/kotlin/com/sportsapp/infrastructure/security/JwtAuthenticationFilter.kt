@@ -1,8 +1,8 @@
 package com.sportsapp.infrastructure.security
 
-import com.sportsapp.domain.user.JwtBlacklistStore
-import com.sportsapp.domain.user.JwtIssuer
-import com.sportsapp.domain.user.UserPrincipal
+import com.sportsapp.domain.user.gateway.JwtBlacklistStore
+import com.sportsapp.domain.user.gateway.JwtIssuer
+import com.sportsapp.domain.user.vo.UserPrincipal
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse

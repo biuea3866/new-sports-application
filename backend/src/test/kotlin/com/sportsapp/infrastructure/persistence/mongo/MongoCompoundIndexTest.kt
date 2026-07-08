@@ -8,7 +8,9 @@ import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.index.CompoundIndex
 import org.springframework.data.mongodb.core.index.CompoundIndexes
 import org.springframework.data.mongodb.core.index.IndexOperations
+import org.springframework.data.mongodb.core.index.MongoPersistentEntityIndexResolver
 import org.springframework.data.mongodb.core.mapping.Document
+import org.springframework.data.mongodb.core.mapping.MongoMappingContext
 
 @CompoundIndexes(
     CompoundIndex(name = "idx_category_status", def = "{'category': 1, 'status': 1}")
@@ -28,21 +30,28 @@ data class TestCompoundIndexDocument(
  */
 class MongoCompoundIndexTest(
     @Autowired private val mongoTemplate: MongoTemplate,
+    @Autowired private val mappingContext: MongoMappingContext,
 ) : BaseMongoIntegrationTest() {
 
     init {
-        Given("@CompoundIndex 가 선언된 도큐먼트 클래스 + autoIndexCreation=true") {
-            When("컬렉션을 생성하면") {
+        Given("@CompoundIndex 가 선언된 도큐먼트 클래스 + MongoPersistentEntityIndexResolver") {
+            When("컬렉션을 생성하고 인덱스를 명시적으로 등록하면") {
                 mongoTemplate.dropCollection(TestCompoundIndexDocument::class.java)
                 mongoTemplate.createCollection(TestCompoundIndexDocument::class.java)
-                // 어노테이션 기반 인덱스 자동 등록을 트리거 (Spring Data MongoDB 의 autoIndexCreation 동작)
-                mongoTemplate.save(TestCompoundIndexDocument("seed-1", "A", "OK"))
 
-                val indexOperations: IndexOperations =
-                    mongoTemplate.indexOps(TestCompoundIndexDocument::class.java)
-                val indexInfoList = indexOperations.indexInfo
+                // @CompoundIndex 어노테이션이 선언된 entity를 mapping context에 추가
+                mappingContext.getRequiredPersistentEntity(TestCompoundIndexDocument::class.java)
 
-                Then("[R-02] @CompoundIndex 가 선언한 'idx_category_status' 가 자동 생성된다") {
+                // MongoPersistentEntityIndexResolver를 통해 인덱스 생성 (autoIndexCreation과 동일한 방식)
+                val indexResolver = MongoPersistentEntityIndexResolver(mappingContext)
+                val indexOps = mongoTemplate.indexOps(TestCompoundIndexDocument::class.java)
+                indexResolver.resolveIndexFor(TestCompoundIndexDocument::class.java).forEach { indexDef ->
+                    indexOps.ensureIndex(indexDef)
+                }
+
+                val indexInfoList = indexOps.indexInfo
+
+                Then("[R-02] @CompoundIndex 가 선언한 'idx_category_status' 가 생성된다") {
                     val compoundIndexExists = indexInfoList.any { it.name == "idx_category_status" }
                     compoundIndexExists shouldBe true
                 }

@@ -64,7 +64,7 @@ abstract class JpaAuditingBase {
      * 소프트 삭제. 이미 삭제된 entity 에 재호출 시 IllegalStateException.
      * @param userId 삭제 수행자 user id. 시스템 자동 청산은 null.
      */
-    fun softDelete(userId: Long?) {
+    open fun softDelete(userId: Long?) {
         check(deletedAt == null) { "Entity is already soft-deleted" }
         deletedAt = ZonedDateTime.now()
         deletedBy = userId

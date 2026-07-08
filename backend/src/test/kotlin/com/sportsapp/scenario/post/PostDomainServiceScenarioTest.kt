@@ -1,8 +1,8 @@
 package com.sportsapp.scenario.post
 
 import com.sportsapp.BaseJpaIntegrationTest
-import com.sportsapp.domain.post.PostDomainService
-import com.sportsapp.domain.post.PostRepository
+import com.sportsapp.domain.post.service.PostDomainService
+import com.sportsapp.domain.post.repository.PostRepository
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 
 import io.kotest.assertions.throwables.shouldThrow

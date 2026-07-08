@@ -1,11 +1,11 @@
 package com.sportsapp.scenario.post
 
 import com.sportsapp.BaseJpaIntegrationTest
-import com.sportsapp.domain.post.Comment
-import com.sportsapp.domain.post.Post
-import com.sportsapp.domain.post.PostType
-import com.sportsapp.infrastructure.persistence.post.CommentJpaRepository
-import com.sportsapp.infrastructure.persistence.post.PostJpaRepository
+import com.sportsapp.domain.post.entity.Comment
+import com.sportsapp.domain.post.entity.Post
+import com.sportsapp.domain.post.vo.PostType
+import com.sportsapp.infrastructure.post.mysql.CommentJpaRepository
+import com.sportsapp.infrastructure.post.mysql.PostJpaRepository
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -66,7 +66,7 @@ class PostQueryScenarioTest(
                 Post.create(userId = 1L, title = "게시글 제목", content = "게시글 내용", type = PostType.FREE)
             )
             repeat(3) { i ->
-                commentJpaRepository.save(Comment.create(postId = post.id, userId = 1L, content = "댓글 $i"))
+                commentJpaRepository.save(Comment.create(post = post, userId = 1L, content = "댓글 $i"))
             }
 
             When("[S-02] GET /posts/{id} 단건 조회 시") {

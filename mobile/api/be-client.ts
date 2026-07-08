@@ -12,10 +12,10 @@ import axios, {
   AxiosRequestConfig,
   InternalAxiosRequestConfig,
 } from 'axios';
-import * as SecureStore from 'expo-secure-store';
 import { router } from 'expo-router';
 
 import { getRefreshToken, useAuthStore } from '../lib/auth';
+import { setItem as setSecureItem, deleteItem as deleteSecureItem } from '../lib/secure-store';
 
 const REFRESH_TOKEN_KEY = 'refreshToken';
 
@@ -34,7 +34,7 @@ let refreshPromise: Promise<string> | null = null;
  * 3. 로그인 화면으로 이동
  */
 export async function handleRefreshFailure(): Promise<void> {
-  await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+  await deleteSecureItem(REFRESH_TOKEN_KEY);
   useAuthStore.getState().setAccessToken(null);
   router.replace('/(auth)/login');
 }
@@ -102,7 +102,7 @@ export function createBeClient(baseURL: string): AxiosInstance {
 
               // 새 토큰 저장
               useAuthStore.getState().setAccessToken(accessToken);
-              await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, newRefreshToken);
+              await setSecureItem(REFRESH_TOKEN_KEY, newRefreshToken);
 
               return accessToken;
             } finally {

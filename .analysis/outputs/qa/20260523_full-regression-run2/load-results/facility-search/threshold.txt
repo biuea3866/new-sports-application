@@ -1,0 +1,26 @@
+LOAD-01 facility-search — Threshold 위반 기록
+실행 일시: 2026-05-23T18:10:16+09:00 ~ 18:11:16+09:00
+
+=== 위반 항목 ===
+
+[FAIL] LOAD_01_failures   rate<0.005    실측=100.00%  (목표 0.5% 대비 200배 초과)
+[FAIL] http_req_failed    rate<0.01     실측=100.00%  (목표 1% 대비 100배 초과)
+
+=== 통과 항목 ===
+
+[PASS] LOAD_01_latency    p(95)<300ms   실측=8.26ms   (여유 97.2%)
+[PASS] LOAD_01_latency    p(99)<800ms   실측=13.52ms  (여유 98.3%)
+
+=== 원인 분석 ===
+
+모든 HTTP 요청(1459건)이 401 Unauthorized 반환.
+응답 body: {"error":"unauthorized","message":"missing or invalid bearer token"}
+k6 스크립트(facility-search.js)는 미인증 엔드포인트로 기술되어 토큰 없이 호출.
+SecurityConfig.kt 에서 /facilities/** 는 permitAll() 로 설정되어 있으나
+실제 응답은 401.
+
+추가 관찰: curl 단일 호출 시 X-RateLimit-Remaining 헤더 확인됨.
+→ 시드 데이터 없음(qa/load/seeds/facility-search.sql 파일 미존재)으로
+  DB 조회 자체는 빈 결과를 반환해야 하나, 인증 레이어에서 차단됨.
+
+k6 exit code: 99 (threshold violation)

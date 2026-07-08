@@ -1,4 +1,8 @@
 package com.sportsapp.domain.ticketing
+import com.sportsapp.domain.ticketing.entity.OrderStatus
+import com.sportsapp.domain.ticketing.entity.TicketStatus
+import com.sportsapp.domain.ticketing.entity.TicketOrder
+import com.sportsapp.domain.ticketing.entity.Ticket
 
 import com.sportsapp.domain.ticketing.exception.InvalidTicketStateException
 import io.kotest.assertions.throwables.shouldThrow
@@ -8,12 +12,21 @@ import io.kotest.matchers.shouldNotBe
 
 class TicketTest : BehaviorSpec({
 
-    fun buildTicket(status: TicketStatus) = Ticket(
-        ticketOrderId = 1L,
-        seatId = 101L,
-        status = status,
-        code = "a".repeat(64),
-    )
+    fun buildTicket(status: TicketStatus): Ticket {
+        val order = TicketOrder(
+            userId = 1L,
+            status = OrderStatus.PENDING,
+            paymentId = null,
+            lockedEventId = 10L,
+            lockedSeatIds = listOf(101L),
+        )
+        return Ticket(
+            ticketOrder = order,
+            seatId = 101L,
+            status = status,
+            code = "a".repeat(64),
+        )
+    }
 
     Given("ISSUED 상태의 Ticket") {
         val ticket = buildTicket(TicketStatus.ISSUED)
@@ -39,8 +52,16 @@ class TicketTest : BehaviorSpec({
     }
 
     Given("Ticket.issue 팩토리 메서드") {
-        When("issue(ticketOrderId, seatId)를 호출하면") {
-            val ticket = Ticket.issue(ticketOrderId = 5L, seatId = 201L)
+        val order = TicketOrder(
+            userId = 5L,
+            status = OrderStatus.PENDING,
+            paymentId = null,
+            lockedEventId = 1L,
+            lockedSeatIds = listOf(201L),
+        )
+
+        When("issue(ticketOrder, seatId)를 호출하면") {
+            val ticket = Ticket.issue(ticketOrder = order, seatId = 201L)
 
             Then("[U-03] code가 64자 엔트로피로 생성된다") {
                 ticket.code shouldNotBe null
@@ -48,7 +69,7 @@ class TicketTest : BehaviorSpec({
             }
 
             Then("[U-03] 두 번 호출하면 다른 code가 생성된다") {
-                val other = Ticket.issue(ticketOrderId = 5L, seatId = 201L)
+                val other = Ticket.issue(ticketOrder = order, seatId = 201L)
                 ticket.code shouldNotBe other.code
             }
 
@@ -56,9 +77,50 @@ class TicketTest : BehaviorSpec({
                 ticket.status shouldBe TicketStatus.ISSUED
             }
 
-            Then("ticketOrderId와 seatId가 설정된다") {
-                ticket.ticketOrderId shouldBe 5L
+            Then("ticketOrder와 seatId가 설정된다") {
+                ticket.ticketOrder shouldBe order
                 ticket.seatId shouldBe 201L
+            }
+        }
+    }
+
+    Given("[U-01] Ticket.issueComplimentary 팩토리 메서드") {
+        When("issueComplimentary(seatId)를 호출하면") {
+            val ticket = Ticket.issueComplimentary(seatId = 300L)
+
+            Then("[U-01] ticketOrder 가 null 이다") {
+                ticket.ticketOrder shouldBe null
+            }
+
+            Then("[U-01] seatId 와 status 가 올바르게 설정된다") {
+                ticket.seatId shouldBe 300L
+                ticket.status shouldBe TicketStatus.ISSUED
+            }
+
+            Then("[U-01] isComplimentary 가 true 를 반환한다") {
+                ticket.isComplimentary shouldBe true
+            }
+        }
+    }
+
+    Given("[U-02] Ticket.issue 팩토리 메서드 — 정상 주문 발권 경로") {
+        val order = TicketOrder(
+            userId = 42L,
+            status = OrderStatus.PENDING,
+            paymentId = null,
+            lockedEventId = 2L,
+            lockedSeatIds = listOf(400L),
+        )
+
+        When("issue(ticketOrder, seatId)를 호출하면") {
+            val ticket = Ticket.issue(ticketOrder = order, seatId = 400L)
+
+            Then("[U-02] ticketOrder 가 해당 order를 가리킨다") {
+                ticket.ticketOrder shouldBe order
+            }
+
+            Then("[U-02] isComplimentary 가 false 를 반환한다") {
+                ticket.isComplimentary shouldBe false
             }
         }
     }

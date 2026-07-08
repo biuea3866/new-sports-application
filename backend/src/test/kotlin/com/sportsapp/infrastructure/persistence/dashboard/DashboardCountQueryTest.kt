@@ -1,16 +1,18 @@
 package com.sportsapp.infrastructure.persistence.dashboard
 
 import com.sportsapp.BaseJpaIntegrationTest
-import com.sportsapp.domain.goods.Product
-import com.sportsapp.domain.goods.ProductCategory
-import com.sportsapp.domain.goods.ProductStatus
-import com.sportsapp.domain.goods.Stock
-import com.sportsapp.domain.ticketing.Event
-import com.sportsapp.domain.ticketing.EventStatus
-import com.sportsapp.infrastructure.persistence.goods.ProductJpaRepository
-import com.sportsapp.infrastructure.persistence.goods.StockJpaRepository
-import com.sportsapp.infrastructure.persistence.ticketing.EventCustomRepositoryImpl
-import com.sportsapp.infrastructure.persistence.ticketing.EventJpaRepository
+import com.sportsapp.domain.goods.entity.Product
+import com.sportsapp.domain.goods.vo.ProductCategory
+import com.sportsapp.domain.goods.entity.ProductStatus
+import com.sportsapp.domain.goods.entity.Stock
+import com.sportsapp.domain.goods.repository.StockCustomRepository
+import com.sportsapp.domain.ticketing.entity.Event
+import com.sportsapp.domain.ticketing.entity.EventStatus
+import com.sportsapp.infrastructure.goods.mysql.ProductJpaRepository
+import com.sportsapp.infrastructure.goods.mysql.StockCustomRepositoryImpl
+import com.sportsapp.infrastructure.goods.mysql.StockJpaRepository
+import com.sportsapp.infrastructure.ticketing.mysql.EventCustomRepositoryImpl
+import com.sportsapp.infrastructure.ticketing.mysql.EventJpaRepository
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.jdbc.core.JdbcTemplate
@@ -20,6 +22,7 @@ import java.time.ZonedDateTime
 class DashboardCountQueryTest(
     @Autowired private val productJpaRepository: ProductJpaRepository,
     @Autowired private val stockJpaRepository: StockJpaRepository,
+    @Autowired private val stockCustomRepositoryImpl: StockCustomRepositoryImpl,
     @Autowired private val eventJpaRepository: EventJpaRepository,
     @Autowired private val eventCustomRepositoryImpl: EventCustomRepositoryImpl,
     @Autowired private val jdbcTemplate: JdbcTemplate,
@@ -124,7 +127,7 @@ class DashboardCountQueryTest(
 
             When("[R-02] countByOwnerIdAndStatus + countOutOfStockByOwnerId 쿼리 실행 시") {
                 val activeCount = productJpaRepository.countByOwnerIdAndStatusAndDeletedAtIsNull(200L, ProductStatus.ACTIVE)
-                val outOfStockCount = stockJpaRepository.countOutOfStockByOwnerId(200L)
+                val outOfStockCount = stockCustomRepositoryImpl.countOutOfStockByOwnerId(200L)
 
                 Then("[R-02] ACTIVE 4건, outOfStock(stock=0) 1건이 반환된다") {
                     activeCount shouldBe 4L

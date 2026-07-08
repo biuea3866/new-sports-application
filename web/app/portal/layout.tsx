@@ -17,6 +17,12 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/portal/bookings", label: "예약", requiredRole: "FACILITY_OWNER" },
   { href: "/portal/events", label: "경기", requiredRole: "EVENT_HOST" },
   { href: "/portal/products", label: "상품", requiredRole: "GOODS_SELLER" },
+  { href: "/portal/payments", label: "매출", requiredRole: null },
+  { href: "/portal/users", label: "회원", requiredRole: "ADMIN" },
+  { href: "/portal/insights", label: "인사이트", requiredRole: null },
+  { href: "/portal/inbox", label: "알림센터", requiredRole: null },
+  { href: "/portal/notifications", label: "알림", requiredRole: "ADMIN" },
+  { href: "/portal/facilities-import", label: "시설 import", requiredRole: "ADMIN" },
 ];
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {

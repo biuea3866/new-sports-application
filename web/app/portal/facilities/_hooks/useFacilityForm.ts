@@ -7,6 +7,7 @@ import type { FacilityFormValues, FacilityTypeValue } from "@/app/portal/facilit
 export interface FormErrors {
   code?: string;
   name?: string;
+  sido?: string;
   gu?: string;
   type?: string;
   address?: string;
@@ -33,6 +34,7 @@ export interface UseFacilityFormReturn {
 const INITIAL_VALUES: FacilityFormValues = {
   code: "",
   name: "",
+  sido: "",
   gu: "",
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
   type: "INDOOR" as FacilityTypeValue,

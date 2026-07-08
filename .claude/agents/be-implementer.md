@@ -18,8 +18,12 @@ tools: Read, Grep, Glob, Bash, Write, Edit
 | no-double-bang | `!!` | `requireNotNull()` / `?:` / `?.let` |
 | no-repository-in-consumer | Consumer 내 `Repository.save/find` | Facade/Service 경유 |
 | no-transactional-in-repository | `@Transactional` in `*Repository*.kt` | UseCase에서만 선언 |
-| no-infra-in-domain | `import *.infrastructure.*` in `domain/**` | Port interface 사용 |
-| no-infra-in-application | `import *.infrastructure.*` in `application/**` | Domain interface 사용 |
+| no-infra-in-domain | `import *.infrastructure.*` in `domain/**` | domain에 정의한 Repository/Gateway interface 직접 사용 (**OutputPort/Port 패턴 금지**) |
+| no-infra-in-application | `import *.infrastructure.*` in `application/**` | DomainService 경유 (domain interface 사용) |
+| no-manytomany | `@ManyToMany` / `@JoinTable` | 매핑 테이블을 독립 Entity로 풀어쓰기 (자체 PK·audit·부여 컬럼) |
+| no-optional-import | `import java.util.Optional` | Kotlin nullable(`T?`). 예외: Spring `AuditorAware<Long>` |
+| no-hard-delete | `DELETE FROM` / `repository.delete()` | `softDelete(userId)` (논리 삭제) |
+| no-softdelete-in-repositoryimpl | `*RepositoryImpl.kt` 내 `.softDelete()` 호출·중복 해소·상태 결정 | DomainService로 (RepositoryImpl은 조회/위임만) |
 
 ---
 
@@ -52,6 +56,7 @@ tools: Read, Grep, Glob, Bash, Write, Edit
 2. 대상 레포의 `CLAUDE.md`가 있으면 반드시 먼저 읽는다. 레포별 오버라이드 규칙이 있을 수 있다.
 3. `.claude/harness-rules.json` 로드 — `forbidden_patterns`, `variable_naming`, `integration_test_style` 확인.
 4. 영향받는 도메인 기존 코드를 Grep/Glob으로 파악한다 (구조 파악 후 작업, 추측 금지).
+5. **유사 context의 검증된 설계 참고** — 신규/유사 도메인 구현 시 기존 유사 context(`domain/<context>`, `application/<context>`)가 같은 문제(aggregate 경계·상태 전이·동시성 방어선·이벤트 전파)를 어떻게 풀었는지 Read로 확인하고 패턴을 재사용한다. 새 방식을 발명하기 전에 일관성을 우선한다.
 
 ---
 
@@ -68,7 +73,7 @@ tools: Read, Grep, Glob, Bash, Write, Edit
 
 **레이어 의존 방향**: `presentation → application → domain ← infrastructure`
 
-Domain은 어느 레이어도 import하지 않는다. Infrastructure는 Domain의 Repository interface를 구현한다.
+Domain은 infrastructure·다른 도메인 패키지를 import하지 않는다. 단 **JPA Entity = Domain Entity 단일 모델**이므로 `jakarta.persistence.*`·`org.springframework.data.annotation.*`·`org.hibernate.annotations.*` 매핑 어노테이션 import는 허용한다 (별도 `~Entity.kt` POJO 분리·toEntity/toDomain 매퍼 생성 금지). Infrastructure는 Domain의 Repository/Gateway interface를 구현한다.
 
 ---
 
@@ -132,6 +137,31 @@ class RequestRentalUseCase(
 - Domain Event는 `@Transient domainEvents` 리스트에 적재 → DomainService가 `DomainEventPublisher.publish()` 호출
 - `DomainEventPublisher` interface는 **domain 레이어에 정의**, 구현체는 infrastructure 레이어에 위치
 - 다른 도메인 데이터는 **ID(Long)만 보유**
+- **JPA Entity = Domain Entity 단일 모델**: `@Entity`+비즈니스 메서드를 한 클래스에. 영속화용 POJO(`~Entity.kt`)·매퍼 금지. 클래스명은 도메인명 그대로(`User.kt` — 접미사 `Entity` 금지)
+- **audit/soft-delete**: 모든 비즈니스 Entity는 `JpaAuditingBase` 상속(MongoDB는 `BaseDocument`). hard delete 금지 — `softDelete(userId)` 한 곳으로만. CREATE TABLE은 audit 6컬럼 포함
+- **@ManyToMany 금지**: 다대다는 매핑 테이블을 독립 Entity로. `@ManyToMany`/`@JoinTable` 사용 금지
+- **Self-Validation 캡슐화**: Entity 자기 상태로 답하는 검증(`requireActive()`, `requireSufficient()`)·인자 형식 검증(`require(quantity > 0)`)은 Entity 메서드/팩토리에. DomainService에 `validateXxx(entity)` private helper 금지
+- **Optional 금지**: Kotlin nullable(`T?`). 예외: Spring `AuditorAware<Long>`
+
+### Aggregate 생명주기 — 고아 금지 (`be-code-convention.md` "Aggregate 생명주기")
+
+- DB FK·JPA cascade 가 없으므로 **자식 생명주기는 DomainService 가 손으로 전파**한다.
+- 루트를 soft-delete/취소하는 메서드는 **같은 트랜잭션에서 자식도 soft-delete/취소** — Post→Comment, TicketOrder→Ticket, Event→Seat, Order→Item. 루트만 지우고 끝내면 고아 발생.
+- 전파용 `softDeleteByXxxId` 를 만들면 루트 종료 경로에서 **반드시 호출** (정의만 하고 안 부르면 안 됨).
+- aggregate 마다 "루트 soft-delete → 자식 조회 0건" 테스트를 RED 로 먼저 작성.
+
+### RepositoryImpl 순수성 — 비즈니스 로직 금지
+
+- `*RepositoryImpl.kt` 는 JpaRepository 위임 + QueryDSL 조회만. **중복 해소·`.softDelete()` 호출·상태 결정·활성마커 관리 금지** — 전부 DomainService 로.
+- RepositoryImpl 메서드가 `if/when` 분기하거나 엔티티 상태를 바꾸면 거의 항상 위반. 멱등 보정이 필요하면 `resolveDuplicateXxx` 같은 DomainService 메서드로 끌어내고 RepositoryImpl 은 raw 조회만 제공.
+
+### 결제·동시성 (`be-code-convention.md` "동시성·멱등성 최종 방어선")
+
+- UseCase 에서 `when/if (payment.status)` 동기 분기 금지 — `prepare` 직후 status 는 항상 READY. 완료는 **웹훅/이벤트(AFTER_COMMIT)** 로 받아 주문 확정.
+- capacity/좌석/재고는 락 외에 **DB unique 제약을 최종 방어선**으로 둔다 (락 TTL 만료 대비).
+- `@Version` 충돌은 `@Retryable` 또는 도메인예외(409)로, 500 으로 새지 않게.
+- `@Transactional` 안에서 외부 Gateway 호출 금지, 도메인 이벤트는 AFTER_COMMIT.
+- **OSIV**: `@Transactional` 메서드는 JPA Entity 가 아닌 DTO/primitive/Unit 를 반환한다 — 트랜잭션 안에서 Entity → DTO 매핑을 끝내고 detach 된 값만 내보낸다. `spring.jpa.open-in-view` 는 false 유지. DomainService 가 Entity 를 UseCase 로 넘기는 패턴은 UseCase 트랜잭션 안에서 매핑되면 허용 (단 트랜잭션은 UseCase 한 곳에만).
 
 ### Repository 구현 전략
 
@@ -237,6 +267,20 @@ grep -rn "!!" --include="*.kt" <모듈경로>/src/main
 ### 3. 티켓 테스트 케이스 충족
 
 티켓 md의 **테스트 케이스** 항목을 실제 테스트 코드와 대조. 누락된 시나리오가 있으면 추가.
+
+### 4. DDD / OO / 품질 자가 검증 (7대 기준 — 모두 ✅ 여야 완료)
+
+| # | 기준 | 통과 조건 |
+|---|---|---|
+| 1 | **객체지향** | Rich Domain·캡슐화·Tell-Don't-Ask. getter/setter 만 있는 Anemic Entity 금지. 검증/상태전이/계산이 Entity 메서드 안에 있다 |
+| 2 | **DDD 개념** | Entity / **VO(값 동등성·불변)** / DomainService / **Factory(`create()`)** / Aggregate / **DomainEvent** 역할이 분리돼 있다. 도메인 이벤트는 Entity 가 `registerEvent` 로 적재 → DomainService 가 `publishAll(pullDomainEvents())` 로 발행(AFTER_COMMIT) |
+| 3 | **클린코드** | UseCase `execute()` ≤10줄, DomainService 메서드 ≤15줄, guard clause, 중첩 depth ≤2, 매직값 금지. **detekt baseline 에 신규 위반을 억제(append)해서 통과시키지 않는다** — 실제로 고친다 |
+| 4 | **테스트 커버리지** | 단위/레포지토리/시나리오 3계층 + happy·불변식·상태전이·경계값·분기 + 동시성·멱등·보상 커버. Kover 로 변경 클래스 라인/브랜치 확인. 시나리오/Testcontainers 테스트를 "느려서" 생략하지 않는다 |
+| 5 | **동시성** | capacity/좌석/재고/예약은 **DB unique 또는 비관락을 최종 방어선**으로 둔다. `@Version` 낙관락 충돌은 409/재시도로 처리(500 노출 금지). `@Transactional` 안에서 외부 Gateway(PG·SMS·푸시) 호출 금지 |
+| 6 | **JPA Aggregate 매핑** | **같은 aggregate 내부 자식**은 `@OneToMany`/`@ManyToOne`/`@OneToOne` 연관관계 + `cascade=[PERSIST, MERGE]` 로 연결한다. **다른 aggregate** 는 FK id(Long). soft-delete 코드베이스이므로 **`orphanRemoval`/`CascadeType.REMOVE`(hard delete) 금지** |
+| 7 | **Aggregate 트랜잭션 / 고아 금지** | 루트 생명주기 종료(soft-delete·취소) 시 자식 `softDelete()` 를 **같은 트랜잭션에서 전파**. "루트 soft-delete → 자식 조회 0건" 테스트 필수. **정의만 하고 호출 안 한 전파 메서드 금지**(고아 신호) |
+
+7개 중 하나라도 미충족이면 **완료 단언 금지** — `in-progress` 로 보고하고 보완한다.
 
 ---
 

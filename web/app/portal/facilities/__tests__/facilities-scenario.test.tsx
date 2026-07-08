@@ -29,6 +29,12 @@ vi.mock("@/components/ui/toast", async (importOriginal) => {
 
 const mockFetch = vi.fn();
 
+function toUrlString(input: RequestInfo | URL): string {
+  if (typeof input === "string") return input;
+  if (input instanceof URL) return input.toString();
+  return input.url;
+}
+
 describe("[S-01] 시설 등록 성공 시 목록으로 이동", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", mockFetch);
@@ -86,6 +92,58 @@ describe("[S-01] 시설 등록 성공 시 목록으로 이동", () => {
         expect.objectContaining({ method: "POST" })
       );
       expect(mockPush).toHaveBeenCalledWith("/portal/facilities");
+    });
+  });
+
+  it("시/도를 선택하고 등록하면 POST body에 sido 코드가 포함된다", async () => {
+    const { default: NewFacilityPage } = await import("../new/page");
+
+    mockFetch.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: "fac-001",
+          code: "GN-01",
+          name: "강남 풋살장",
+          gu: "강남구",
+          sido: "11",
+          type: "INDOOR",
+          address: "서울특별시 강남구",
+          location: "37.5,127.0",
+          parking: true,
+          tel: "02-1234-5678",
+          homePage: null,
+          eduYn: false,
+          meta: null,
+          ownerUserId: 1,
+          createdAt: "2026-01-01T00:00:00Z",
+          updatedAt: "2026-01-01T00:00:00Z",
+        }),
+        { status: 201, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    render(<NewFacilityPage />);
+
+    fireEvent.change(screen.getByLabelText(/시설 코드/i), { target: { value: "GN-01" } });
+    fireEvent.change(screen.getByLabelText(/시설명/i), { target: { value: "강남 풋살장" } });
+    fireEvent.change(screen.getByLabelText(/^구/i), { target: { value: "강남구" } });
+    fireEvent.change(screen.getByLabelText(/주소/i), { target: { value: "서울특별시 강남구" } });
+    fireEvent.change(screen.getByLabelText(/위치 좌표/i), { target: { value: "37.5,127.0" } });
+    fireEvent.change(screen.getByLabelText(/전화번호/i), { target: { value: "02-1234-5678" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "시/도" }), { target: { value: "11" } });
+
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: /등록/i }));
+    });
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith(
+        "/api/portal/facilities",
+        expect.objectContaining({
+          method: "POST",
+          body: expect.stringContaining('"sido":"11"'),
+        })
+      );
     });
   });
 
@@ -147,26 +205,43 @@ describe("[S-02] 시설 삭제 409 응답 시 사용자 친화 메시지 표시"
       updatedAt: "2026-01-01T00:00:00Z",
     };
 
-    // GET 성공, DELETE 409
-    mockFetch
-      .mockResolvedValueOnce(
+    // GET(시설)/GET(대기질) 성공, DELETE 409 — URL로 라우팅한다(FE-09에서 상세가 대기질도 조회하므로).
+    mockFetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = toUrlString(input);
+      if (init?.method === "DELETE") {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              message: "이미 존재하거나 충돌이 발생했습니다.",
+              detail: "활성 슬롯이 있는 시설은 삭제할 수 없습니다.",
+            }),
+            { status: 409, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.includes("/air-quality")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              pm10: 30,
+              pm25: 12,
+              pm10Grade: "GOOD",
+              pm25Grade: "GOOD",
+              representativeGrade: "GOOD",
+              stationName: "강남구",
+              measuredAt: "2026-01-01T00:00:00Z",
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      return Promise.resolve(
         new Response(JSON.stringify(facilityData), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         })
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            message: "이미 존재하거나 충돌이 발생했습니다.",
-            detail: "활성 슬롯이 있는 시설은 삭제할 수 없습니다.",
-          }),
-          {
-            status: 409,
-            headers: { "Content-Type": "application/json" },
-          }
-        )
       );
+    });
 
     const { default: FacilityDetailPage } = await import("../[id]/page");
     render(<FacilityDetailPage />);
@@ -212,19 +287,39 @@ describe("[S-02] 시설 삭제 409 응답 시 사용자 친화 메시지 표시"
       updatedAt: "2026-01-01T00:00:00Z",
     };
 
-    mockFetch
-      .mockResolvedValueOnce(
+    mockFetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = toUrlString(input);
+      if (init?.method === "DELETE") {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ message: "이미 존재하거나 충돌이 발생했습니다." }),
+            { status: 409, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.includes("/air-quality")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              pm10: 30,
+              pm25: 12,
+              pm10Grade: "GOOD",
+              pm25Grade: "GOOD",
+              representativeGrade: "GOOD",
+              stationName: "강남구",
+              measuredAt: "2026-01-01T00:00:00Z",
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      return Promise.resolve(
         new Response(JSON.stringify(facilityData), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         })
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ message: "이미 존재하거나 충돌이 발생했습니다." }),
-          { status: 409, headers: { "Content-Type": "application/json" } }
-        )
       );
+    });
 
     const { default: FacilityDetailPage } = await import("../[id]/page");
     render(<FacilityDetailPage />);

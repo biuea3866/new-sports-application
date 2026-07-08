@@ -15,5 +15,8 @@ enum class ErrorStatus(val httpStatus: Int) {
     BAD_REQUEST(400),
     UNAUTHORIZED(401),
     FORBIDDEN(403),
+    TOO_MANY_REQUESTS(429),
+    TOO_EARLY(425),
     INTERNAL(500),
+    SERVICE_UNAVAILABLE(503),
 }

@@ -1,9 +1,10 @@
 package com.sportsapp.scenario.facility
 
 import com.sportsapp.BaseMongoIntegrationTest
-import com.sportsapp.domain.facility.Facility
-import com.sportsapp.domain.facility.FacilityAttributes
-import com.sportsapp.domain.facility.FacilityRepository
+import com.sportsapp.domain.facility.entity.Facility
+import com.sportsapp.domain.facility.vo.FacilityAttributes
+import com.sportsapp.domain.facility.vo.FacilityRegion
+import com.sportsapp.domain.facility.repository.FacilityRepository
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -21,7 +22,12 @@ class FacilityListScenarioTest(
     @Autowired private val mongoTemplate: MongoTemplate,
 ) : BaseMongoIntegrationTest() {
 
-    private fun buildAttributes(code: String, gu: String, type: String) = FacilityAttributes(
+    private fun buildAttributes(
+        code: String,
+        gu: String,
+        type: String,
+        region: FacilityRegion = FacilityRegion.UNSPECIFIED,
+    ) = FacilityAttributes(
         code = code,
         name = "시설 $code",
         gu = gu,
@@ -34,6 +40,7 @@ class FacilityListScenarioTest(
         homePage = "",
         eduYn = false,
         meta = emptyMap(),
+        region = region,
     )
 
     init {
@@ -88,6 +95,65 @@ class FacilityListScenarioTest(
                     response
                         .andExpect(status().isOk)
                         .andExpect(jsonPath("$.totalElements").value(5))
+                }
+            }
+
+            When("region 정보 없이 저장된 레거시 시설을 GET /facilities로 조회하면") {
+                val response = mockMvc.perform(
+                    get("/facilities")
+                        .param("gu", "강남구")
+                        .accept(MediaType.APPLICATION_JSON)
+                )
+
+                Then("응답의 sidoName·sigunguName이 미지정으로 노출된다") {
+                    response
+                        .andExpect(status().isOk)
+                        .andExpect(jsonPath("$.content[0].sidoCode").value(FacilityRegion.UNSPECIFIED.sidoCode))
+                        .andExpect(jsonPath("$.content[0].sidoName").value(FacilityRegion.UNSPECIFIED.sidoName))
+                        .andExpect(jsonPath("$.content[0].sigunguCode").value(FacilityRegion.UNSPECIFIED.sigunguCode))
+                        .andExpect(jsonPath("$.content[0].sigunguName").value(FacilityRegion.UNSPECIFIED.sigunguName))
+                }
+            }
+        }
+
+        Given("부산 해운대구 시설 1건, 서울 강남구(부산과 동일한 gu명) 시설 1건이 저장된 상태") {
+            mongoTemplate.dropCollection(Facility::class.java)
+            val busan = FacilityRegion.of("26", "부산광역시", "26410", "해운대구")
+            val seoul = FacilityRegion.of("11", "서울특별시", "11680", "강남구")
+            facilityRepository.save(Facility.create(buildAttributes("BUSAN-001", "해운대구", "수영장", busan)))
+            facilityRepository.save(Facility.create(buildAttributes("SEOUL-001", "강남구", "수영장", seoul)))
+
+            When("GET /facilities?sidoCode=26 요청 시") {
+                val response = mockMvc.perform(
+                    get("/facilities")
+                        .param("sidoCode", "26")
+                        .accept(MediaType.APPLICATION_JSON)
+                )
+
+                Then("부산 시설 1건만 반환되고 지역 4필드가 응답에 포함된다") {
+                    response
+                        .andExpect(status().isOk)
+                        .andExpect(jsonPath("$.totalElements").value(1))
+                        .andExpect(jsonPath("$.content[0].sidoCode").value("26"))
+                        .andExpect(jsonPath("$.content[0].sidoName").value("부산광역시"))
+                        .andExpect(jsonPath("$.content[0].sigunguCode").value("26410"))
+                        .andExpect(jsonPath("$.content[0].sigunguName").value("해운대구"))
+                }
+            }
+
+            When("GET /facilities?sidoCode=26&sigunguCode=26410 요청 시") {
+                val response = mockMvc.perform(
+                    get("/facilities")
+                        .param("sidoCode", "26")
+                        .param("sigunguCode", "26410")
+                        .accept(MediaType.APPLICATION_JSON)
+                )
+
+                Then("시도·시군구 필터에 정확히 일치하는 시설만 반환된다") {
+                    response
+                        .andExpect(status().isOk)
+                        .andExpect(jsonPath("$.totalElements").value(1))
+                        .andExpect(jsonPath("$.content[0].gu").value("해운대구"))
                 }
             }
         }

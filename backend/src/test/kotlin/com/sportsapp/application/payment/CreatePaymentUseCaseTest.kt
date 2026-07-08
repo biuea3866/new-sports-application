@@ -1,17 +1,21 @@
 package com.sportsapp.application.payment
 
-import com.sportsapp.domain.payment.MissingIdempotencyKeyException
-import com.sportsapp.domain.payment.OrderType
-import com.sportsapp.domain.payment.Payment
-import com.sportsapp.domain.payment.PaymentDomainService
-import com.sportsapp.domain.payment.PaymentMethod
-import com.sportsapp.domain.payment.PaymentStatus
+import com.sportsapp.domain.payment.exception.MissingIdempotencyKeyException
+import com.sportsapp.application.payment.dto.CreatePaymentCommand
+import com.sportsapp.application.payment.usecase.CreatePaymentUseCase
+import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.payment.entity.Payment
+import com.sportsapp.domain.payment.service.PaymentDomainService
+import com.sportsapp.domain.payment.vo.PaymentMethod
+import com.sportsapp.domain.payment.entity.PaymentStatus
+import com.sportsapp.domain.payment.dto.PgInitiateCommand
+import com.sportsapp.domain.payment.dto.PgInitiateResult
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.verify
+import io.mockk.slot
 import java.math.BigDecimal
 import java.time.ZonedDateTime
 
@@ -30,9 +34,9 @@ class CreatePaymentUseCaseTest : BehaviorSpec({
         currency = "KRW",
     )
 
-    fun buildMockPayment(status: PaymentStatus): Payment {
+    fun buildMockPayment(status: PaymentStatus, paymentId: Long = 1L): Payment {
         val payment = mockk<Payment>()
-        every { payment.id } returns 1L
+        every { payment.id } returns paymentId
         every { payment.orderType } returns OrderType.BOOKING
         every { payment.orderId } returns 10L
         every { payment.method } returns PaymentMethod.CREDIT_CARD
@@ -40,14 +44,17 @@ class CreatePaymentUseCaseTest : BehaviorSpec({
         every { payment.status } returns status
         every { payment.createdAt } returns ZonedDateTime.now()
         every { payment.paidAt } returns if (status == PaymentStatus.COMPLETED) ZonedDateTime.now() else null
+        every { payment.checkoutUrl } returns "http://localhost:9090/pg/card/checkout?tid=MOCK_CARD_abc"
         return payment
     }
 
-    Given("동일 idempotencyKey 가 이미 존재하는 경우 (멱등 hit)") {
+    Given("동일 idempotencyKey 가 이미 존재하는 경우 — createPending 이 기존 paymentId 반환") {
         val idempotencyKey = "idem-hit-01"
-        val existingPayment = buildMockPayment(PaymentStatus.COMPLETED)
+        val existingPaymentId = 99L
+        val existingPayment = buildMockPayment(PaymentStatus.COMPLETED, existingPaymentId)
+
         every {
-            paymentDomainService.create(
+            paymentDomainService.createPending(
                 userId = any(),
                 idempotencyKey = idempotencyKey,
                 orderType = any(),
@@ -56,22 +63,35 @@ class CreatePaymentUseCaseTest : BehaviorSpec({
                 amount = any(),
                 currency = any(),
             )
-        } returns existingPayment
+        } returns existingPaymentId
+
+        every {
+            paymentDomainService.initiatePg(any<PgInitiateCommand>())
+        } returns PgInitiateResult(
+            paymentId = existingPaymentId,
+            status = PaymentStatus.COMPLETED,
+            pgTransactionId = "MOCK_tid",
+            checkoutUrl = "http://localhost:9090/pg/card/checkout?tid=MOCK_tid",
+        )
+
+        every { paymentDomainService.getPayment(userId = 1L, paymentId = existingPaymentId) } returns existingPayment
 
         When("execute 를 호출하면") {
             val result = useCase.execute(buildCommand(idempotencyKey))
 
-            Then("[U-01] 기존 Payment 의 상태를 그대로 반환한다") {
+            Then("기존 Payment 의 상태를 그대로 반환한다") {
                 result.status shouldBe PaymentStatus.COMPLETED
             }
         }
     }
 
-    Given("신규 idempotencyKey + PG 성공 케이스 (멱등 miss)") {
+    Given("신규 idempotencyKey + PG 성공 케이스 — createPending → initiatePg → getPayment 순서로 호출된다") {
         val idempotencyKey = "idem-miss-01"
-        val completedPayment = buildMockPayment(PaymentStatus.COMPLETED)
+        val newPaymentId = 1L
+        val readyPayment = buildMockPayment(PaymentStatus.READY, newPaymentId)
+
         every {
-            paymentDomainService.create(
+            paymentDomainService.createPending(
                 userId = any(),
                 idempotencyKey = idempotencyKey,
                 orderType = any(),
@@ -80,55 +100,37 @@ class CreatePaymentUseCaseTest : BehaviorSpec({
                 amount = any(),
                 currency = any(),
             )
-        } returns completedPayment
+        } returns newPaymentId
+
+        val pgCommandSlot = slot<PgInitiateCommand>()
+        every {
+            paymentDomainService.initiatePg(capture(pgCommandSlot))
+        } returns PgInitiateResult(
+            paymentId = newPaymentId,
+            status = PaymentStatus.READY,
+            pgTransactionId = "MOCK_CARD_abc",
+            checkoutUrl = "http://localhost:9090/pg/card/checkout?tid=MOCK_CARD_abc",
+        )
+
+        every { paymentDomainService.getPayment(userId = 1L, paymentId = newPaymentId) } returns readyPayment
 
         When("execute 를 호출하면") {
             val result = useCase.execute(buildCommand(idempotencyKey))
 
-            Then("[U-01] COMPLETED 상태의 PaymentResponse 를 반환한다") {
-                result.status shouldBe PaymentStatus.COMPLETED
-                verify(exactly = 1) {
-                    paymentDomainService.create(
-                        userId = any(),
-                        idempotencyKey = idempotencyKey,
-                        orderType = any(),
-                        orderId = any(),
-                        method = any(),
-                        amount = any(),
-                        currency = any(),
-                    )
-                }
+            Then("READY 상태의 PaymentResponse 와 checkoutUrl 을 반환한다") {
+                result.status shouldBe PaymentStatus.READY
+                result.checkoutUrl shouldBe "http://localhost:9090/pg/card/checkout?tid=MOCK_CARD_abc"
             }
-        }
-    }
 
-    Given("신규 idempotencyKey + PG 실패 케이스 (멱등 miss)") {
-        val idempotencyKey = "idem-miss-fail-01"
-        val failedPayment = buildMockPayment(PaymentStatus.FAILED)
-        every {
-            paymentDomainService.create(
-                userId = any(),
-                idempotencyKey = idempotencyKey,
-                orderType = any(),
-                orderId = any(),
-                method = any(),
-                amount = any(),
-                currency = any(),
-            )
-        } returns failedPayment
-
-        When("execute 를 호출하면") {
-            val result = useCase.execute(buildCommand(idempotencyKey))
-
-            Then("[U-01] FAILED 상태의 PaymentResponse 를 반환한다") {
-                result.status shouldBe PaymentStatus.FAILED
+            Then("PG 주문명은 기술 식별자가 아닌 orderType 도메인 라벨이다") {
+                pgCommandSlot.captured.itemName shouldBe OrderType.BOOKING.displayName
             }
         }
     }
 
     Given("Idempotency-Key 가 빈 문자열인 경우") {
         When("Controller 레이어에서 빈 키 감지 후 MissingIdempotencyKeyException 을 던지면") {
-            Then("[U-03] MissingIdempotencyKeyException 이 발생한다") {
+            Then("MissingIdempotencyKeyException 이 발생한다") {
                 shouldThrow<MissingIdempotencyKeyException> {
                     throw MissingIdempotencyKeyException()
                 }

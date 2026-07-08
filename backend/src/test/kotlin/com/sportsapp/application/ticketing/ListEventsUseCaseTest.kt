@@ -1,9 +1,11 @@
 package com.sportsapp.application.ticketing
+import com.sportsapp.application.ticketing.dto.EventResponse
+import com.sportsapp.application.ticketing.usecase.ListEventsUseCase
 
-import com.sportsapp.domain.ticketing.Event
-import com.sportsapp.domain.ticketing.EventCriteria
-import com.sportsapp.domain.ticketing.EventStatus
-import com.sportsapp.domain.ticketing.TicketingDomainService
+import com.sportsapp.domain.ticketing.entity.Event
+import com.sportsapp.domain.ticketing.dto.EventCriteria
+import com.sportsapp.domain.ticketing.entity.EventStatus
+import com.sportsapp.domain.ticketing.service.TicketingDomainService
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every

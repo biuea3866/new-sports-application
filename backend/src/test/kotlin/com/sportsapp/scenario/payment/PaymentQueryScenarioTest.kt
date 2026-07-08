@@ -1,11 +1,11 @@
 package com.sportsapp.scenario.payment
 
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.domain.payment.OrderType
-import com.sportsapp.domain.payment.Payment
-import com.sportsapp.domain.payment.PaymentRepository
-import com.sportsapp.domain.payment.PaymentMethod
-import com.sportsapp.domain.payment.PaymentStatus
+import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.payment.entity.Payment
+import com.sportsapp.domain.payment.repository.PaymentRepository
+import com.sportsapp.domain.payment.vo.PaymentMethod
+import com.sportsapp.domain.payment.entity.PaymentStatus
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -32,7 +32,10 @@ class PaymentQueryScenarioTest(
             method = PaymentMethod.CREDIT_CARD,
             amount = BigDecimal("10000"),
             currency = "KRW",
-        ).also { it.markCompleted(ZonedDateTime.now()) }
+        ).also {
+            it.markReady("txn-query-$idempotencyKey", "card", "http://checkout")
+            it.markCompleted(ZonedDateTime.now())
+        }
         return paymentRepository.save(payment)
     }
 

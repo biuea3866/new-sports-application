@@ -1,9 +1,13 @@
 package com.sportsapp.infrastructure.persistence.post
 
+import com.sportsapp.infrastructure.post.mysql.PostJpaRepository
+import com.sportsapp.infrastructure.post.mysql.PostCustomRepositoryImpl
+
 import com.sportsapp.BaseJpaIntegrationTest
-import com.sportsapp.domain.post.Post
-import com.sportsapp.domain.post.PostSearchCriteria
-import com.sportsapp.domain.post.PostType
+import com.sportsapp.domain.common.vo.SportCategory
+import com.sportsapp.domain.post.entity.Post
+import com.sportsapp.domain.post.dto.PostSearchCriteria
+import com.sportsapp.domain.post.vo.PostType
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.domain.PageRequest
@@ -106,6 +110,106 @@ class PostCustomRepositoryImplTest(
                 Then("최신 Post가 먼저 반환된다") {
                     result.content.first().id shouldBe post3.id
                     result.content.last().id shouldBe post1.id
+                }
+            }
+        }
+
+        Given("[R-04] 전역 게시글과 서로 다른 모임 소속 게시글이 혼재할 때") {
+            postJpaRepository.save(Post.create(userId = 1L, title = "전역글", content = "내용", type = PostType.FREE))
+            postJpaRepository.save(
+                Post.createInCommunity(
+                    userId = 1L,
+                    title = "모임10 글",
+                    content = "내용",
+                    type = PostType.FREE,
+                    communityId = 10L,
+                    sportCategory = SportCategory.SOCCER,
+                    authorIsHost = true,
+                    communityIsPublic = true,
+                ),
+            )
+            postJpaRepository.save(
+                Post.createInCommunity(
+                    userId = 1L,
+                    title = "모임20 글",
+                    content = "내용",
+                    type = PostType.FREE,
+                    communityId = 20L,
+                    sportCategory = SportCategory.TENNIS,
+                    authorIsHost = true,
+                    communityIsPublic = true,
+                ),
+            )
+
+            When("[R-04] communityId=10 으로 조회하면") {
+                val criteria = PostSearchCriteria(type = null, userId = null, keyword = null, communityId = 10L)
+                val pageable = PageRequest.of(0, 10)
+                val result = postCustomRepositoryImpl.findByCriteria(criteria, pageable)
+
+                Then("모임10 소속 게시글 1건만 반환된다") {
+                    result.totalElements shouldBe 1L
+                    result.content.first().currentCommunityId shouldBe 10L
+                }
+            }
+        }
+
+        Given("[R-05] 종목이 서로 다른 게시글이 혼재할 때") {
+            postJpaRepository.save(
+                Post.create(userId = 1L, title = "축구글", content = "내용", type = PostType.FREE, sportCategory = SportCategory.SOCCER),
+            )
+            postJpaRepository.save(
+                Post.create(userId = 1L, title = "테니스글", content = "내용", type = PostType.FREE, sportCategory = SportCategory.TENNIS),
+            )
+            postJpaRepository.save(Post.create(userId = 1L, title = "종목없음", content = "내용", type = PostType.FREE))
+
+            When("[R-05] sportCategory=SOCCER 로 조회하면") {
+                val criteria = PostSearchCriteria(type = null, userId = null, keyword = null, sportCategory = SportCategory.SOCCER)
+                val pageable = PageRequest.of(0, 10)
+                val result = postCustomRepositoryImpl.findByCriteria(criteria, pageable)
+
+                Then("SOCCER 종목 게시글 1건만 반환된다") {
+                    result.totalElements shouldBe 1L
+                    result.content.first().currentSportCategory shouldBe SportCategory.SOCCER
+                }
+            }
+        }
+
+        Given("[R-06] 전역 노출 게시글과 비공개 모임 게시글이 혼재할 때") {
+            postJpaRepository.save(Post.create(userId = 1L, title = "전역글", content = "내용", type = PostType.FREE))
+            postJpaRepository.save(
+                Post.createInCommunity(
+                    userId = 1L,
+                    title = "공개모임 글",
+                    content = "내용",
+                    type = PostType.FREE,
+                    communityId = 30L,
+                    sportCategory = SportCategory.RUNNING,
+                    authorIsHost = true,
+                    communityIsPublic = true,
+                ),
+            )
+            postJpaRepository.save(
+                Post.createInCommunity(
+                    userId = 1L,
+                    title = "비공개모임 글",
+                    content = "내용",
+                    type = PostType.FREE,
+                    communityId = 40L,
+                    sportCategory = SportCategory.RUNNING,
+                    authorIsHost = true,
+                    communityIsPublic = false,
+                ),
+            )
+
+            When("[R-06] globalFeedOnly=true 로 조회하면") {
+                val criteria = PostSearchCriteria(type = null, userId = null, keyword = null, globalFeedOnly = true)
+                val pageable = PageRequest.of(0, 10)
+                val result = postCustomRepositoryImpl.findByCriteria(criteria, pageable)
+
+                Then("전역 노출(globalListed=true) 게시글 2건만 반환되고 비공개 모임 글은 제외된다") {
+                    result.totalElements shouldBe 2L
+                    result.content.all { it.isGlobalListed } shouldBe true
+                    result.content.none { it.currentCommunityId == 40L } shouldBe true
                 }
             }
         }

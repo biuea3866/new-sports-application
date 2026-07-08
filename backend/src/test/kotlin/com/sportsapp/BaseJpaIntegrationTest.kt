@@ -3,6 +3,7 @@ package com.sportsapp
 import io.kotest.core.spec.style.BehaviorSpec
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection
+import org.springframework.context.annotation.Import
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.TestPropertySource
 import org.testcontainers.containers.MySQLContainer
@@ -14,23 +15,28 @@ import org.testcontainers.junit.jupiter.Container
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test-jpa")
+@Import(TestJpaGatewayStubConfig::class)
 @TestPropertySource(properties = [
+    "spring.data.jpa.repositories.enabled=true",
     "spring.data.mongodb.auto-index-creation=false",
     "spring.autoconfigure.exclude=" +
         "org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration," +
         "org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration," +
         "org.springframework.boot.autoconfigure.data.mongo.MongoRepositoriesAutoConfiguration," +
-        "org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration",
+        "org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration," +
+        "org.springframework.ai.mcp.server.common.autoconfigure.McpServerAutoConfiguration," +
+        "org.springframework.ai.mcp.server.common.autoconfigure.McpServerObjectMapperAutoConfiguration," +
+        "org.springframework.ai.mcp.server.common.autoconfigure.ToolCallbackConverterAutoConfiguration," +
+        "org.springframework.ai.mcp.server.autoconfigure.McpServerSseWebMvcAutoConfiguration," +
+        "org.springframework.ai.mcp.server.autoconfigure.McpServerStreamableHttpWebMvcAutoConfiguration," +
+        "org.springframework.ai.mcp.server.autoconfigure.McpServerStatelessWebMvcAutoConfiguration",
 ])
 abstract class BaseJpaIntegrationTest : BehaviorSpec() {
 
     companion object {
+        @JvmField
         @Container
         @ServiceConnection
-        val mysqlContainer: MySQLContainer<*> = MySQLContainer("mysql:8.0")
-            .withDatabaseName("sports")
-            .withUsername("test")
-            .withPassword("test")
-            .also { it.start() }
+        val mysqlContainer: MySQLContainer<*> = SharedTestContainers.mysql
     }
 }

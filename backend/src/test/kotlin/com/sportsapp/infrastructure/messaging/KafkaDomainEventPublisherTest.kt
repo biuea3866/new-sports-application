@@ -22,8 +22,8 @@ import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
 /**
- * [R-01] KafkaDomainEventPublisher.publishAll — N개 이벤트가 모두 발행되고 각 페이로드가 정확히 매핑된다
- * [R-02] 트랜잭션 롤백 시 발행 검증 (KafkaDomainEventPublisher.publish 직접 테스트)
+ * KafkaDomainEventPublisher — N개 이벤트가 모두 발행되고 라우팅 key 가 aggregateId 와 일치한다.
+ * topic 이 null 인 내부 이벤트는 Kafka 로 발행되지 않는다.
  */
 class KafkaDomainEventPublisherTest : BehaviorSpec({
 
@@ -35,7 +35,6 @@ class KafkaDomainEventPublisherTest : BehaviorSpec({
     ) : com.sportsapp.domain.common.DomainEvent
 
     val kafkaContainer = KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.6.1"))
-        .withReuse(true)
 
     beforeSpec { kafkaContainer.start() }
 
@@ -67,10 +66,10 @@ class KafkaDomainEventPublisherTest : BehaviorSpec({
             jsonDeserializer,
         )
 
-        val received = LinkedBlockingQueue<OrderPlacedEvent>()
+        val received = LinkedBlockingQueue<Pair<String?, OrderPlacedEvent>>()
         val containerProperties = ContainerProperties(topicName)
         containerProperties.messageListener = MessageListener<String, OrderPlacedEvent> { record ->
-            received.offer(record.value())
+            received.offer(record.key() to record.value())
         }
         val listenerContainer = KafkaMessageListenerContainer(consumerFactory, containerProperties)
         listenerContainer.start()
@@ -87,14 +86,15 @@ class KafkaDomainEventPublisherTest : BehaviorSpec({
             }
             publisher.publishAll(events)
 
-            Then("[R-01] 3개 이벤트가 모두 Kafka 에 도착한다") {
-                val receivedEvents = mutableListOf<OrderPlacedEvent>()
+            Then("3개 이벤트가 모두 Kafka 에 도착하고 라우팅 key 가 aggregateId 와 일치한다") {
+                val receivedRecords = mutableListOf<Pair<String?, OrderPlacedEvent>>()
                 repeat(3) {
-                    val event = received.poll(10, TimeUnit.SECONDS)
-                    event.shouldNotBeNull()
-                    receivedEvents.add(event)
+                    val record = received.poll(10, TimeUnit.SECONDS)
+                    record.shouldNotBeNull()
+                    receivedRecords.add(record)
                 }
-                receivedEvents.map { it.aggregateId }.sorted() shouldBe listOf(1L, 2L, 3L)
+                receivedRecords.map { it.second.aggregateId }.sorted() shouldBe listOf(1L, 2L, 3L)
+                receivedRecords.forEach { (key, event) -> key shouldBe event.aggregateId.toString() }
             }
         }
 
@@ -108,7 +108,7 @@ class KafkaDomainEventPublisherTest : BehaviorSpec({
 
             publisher.publish(InternalEvent(aggregateId = 99L))
 
-            Then("[R-01] Kafka 에 발행되지 않는다 (received 큐에 추가 이벤트 없음)") {
+            Then("Kafka 에 발행되지 않는다 (received 큐에 추가 이벤트 없음)") {
                 val unexpected = received.poll(2, TimeUnit.SECONDS)
                 unexpected shouldBe null
             }

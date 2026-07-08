@@ -1,0 +1,49 @@
+# docker-compose.lb.yml — backend 다중 인스턴스 + nginx LB (⑦ 상시 트래픽 시뮬레이터 소유)
+#
+# 근거: TDD.md "nginx LB 설계"(FR-1)·"compose 파일 소유 경계". INFRA-02.
+# 소유: ⑦ 전용 파일 — base(docker-compose.yml, ⑧)·override(docker-compose.{dev,prod}.yml, ⑧)·
+#       observability(docker-compose.observability*.yml, ⑤)는 이 파일에서 수정하지 않는다.
+#
+# 무엇을: backend 서비스를 3 replica로 확장하고(내부 8080만 유지, 정적 host 포트 제거),
+#         모든 트래픽의 유일 진입점인 nginx-lb(host 8088)를 추가한다.
+#         replicas:3에서는 compose가 backend에 정적 host 포트를 부여할 수 없으므로
+#         prod override의 18080 publish를 `!reset []`으로 제거하고 nginx-lb만 노출한다.
+#
+# 병합 예:
+#   dev + LB: docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.lb.yml up -d
+#   prod + LB + 관측 + 시뮬:
+#     docker compose -p sports-prod \
+#       -f docker-compose.yml -f docker-compose.prod.yml \
+#       -f docker-compose.observability.yml \
+#       -f docker-compose.lb.yml -f docker-compose.sim.yml up -d
+#
+# 롤백: `-f docker-compose.lb.yml`을 병합 명령에서 제거(오버레이 OFF) → backend가 override의
+#       host 포트로 직접 노출되는 기존 흐름으로 즉시 복귀. nginx-lb는 `docker compose ... down nginx-lb`
+#       또는 재기동 시 정의 자체가 없어져 자동으로 내려간다.
+services:
+  backend:
+    deploy:
+      replicas: 3
+    # prod override(docker-compose.prod.yml)가 부여한 "18080:8080" publish를 제거한다.
+    # replicas:3인 서비스에 정적 host 포트를 매핑할 수 없고(포트 충돌), LB가 유일 진입점이어야 하므로
+    # Compose spec의 `!reset` 병합 태그로 상위 레이어의 ports 값을 완전히 비운다.
+    # (base docker-compose.yml은 애초에 backend host 포트를 publish하지 않으므로 dev 병합 시에도 안전.)
+    ports: !reset []
+
+  # 모든 경로(/)를 프록시하는 LB — mcp.conf(MCP 전용 443 엔드포인트)와는 별개의 인그레스.
+  nginx-lb:
+    image: nginx:1.27-alpine
+    ports:
+      - "8088:80"   # 8088: dev backend(8080)·prod backend(18080)·grafana(3000)·prometheus(9090)와 미충돌
+    volumes:
+      - ./infra/nginx/lb.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s

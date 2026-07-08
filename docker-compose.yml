@@ -1,9 +1,108 @@
 services:
+  # ---- Application ----
+  # 호스트 포트 publish 없음 — dev/prod override(docker-compose.{dev,prod}.yml)가 부여한다.
+  backend:
+    image: sports-backend:${DOCKER_TAG:-local}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/sports?serverTimezone=UTC
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-}
+      MONGODB_URI: mongodb://mongodb:27017/sports
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ---- 데이터스토어 (단일 소유자 — ⑤ observability는 재정의하지 않고 참조만 한다) ----
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: sports
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # 서비스명 반드시 mongodb (mongo 아님 — ⑤ exporter 접속 기준, SSOT)
+  mongodb:
+    image: mongo:7.0
+    volumes:
+      - mongodb-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  redis:
+    image: redis:7
+    # maxmemory-policy=noeviction 근거: 이 Redis가 보유한 키(seat:lock:*, goods:limited-drop:*:remaining 등)는
+    #   look-aside 캐시가 아니라 게이트 권위 데이터다. eviction되면 remaining 카운터가 사라져 오버셀로 직결되므로
+    #   evict 대신 OOM 에러로 실패를 명시적으로 드러낸다(private-redis-convention "서버 설정"). 순수 캐시 키가
+    #   이후 추가되면 같은 인스턴스에 volatile-lru로 섞지 말고 별도 인스턴스/논리 DB로 분리 검토(연관 노트).
+    # maxmemory=256mb 근거: 로컬 dev 규모 기준 상한. prod 사이징은 이 작업 범위 밖 — prod override에서 별도 결정 필요.
+    # persistence(AOF/RDB) 비활성 근거: remaining 카운터는 DB stock 기준으로 seedIfAbsent(SET NX)로 재시드 가능해
+    #   Redis 재기동으로 유실돼도 판매자가 회차를 다시 열면 복구된다. AOF 필수 아님(private-redis-convention 서버 설정).
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy noeviction
+      --save ""
+      --appendonly no
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # KRaft 단일 브로커 (ZooKeeper 없음)
+  kafka:
+    image: bitnami/kafka:3.7
+    environment:
+      KAFKA_CFG_NODE_ID: "1"
+      KAFKA_CFG_PROCESS_ROLES: broker,controller
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_KRAFT_CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+    volumes:
+      - kafka-data:/bitnami/kafka
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/bitnami/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # ---- 기존 mock (유지 — 제거 0). 호스트 포트는 dev/prod override(INFRA-05/06) 소유로 이관 ----
   minio:
     image: minio/minio:latest
-    ports:
-      - "9000:9000"
-      - "9001:9001"
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
@@ -27,5 +126,44 @@ services:
       mc mb --ignore-existing local/sports-app;
       "
 
+  mock-pg:
+    build:
+      context: ./mock-pg
+      dockerfile: Dockerfile
+    environment:
+      PORT: 9090
+      BE_WEBHOOK_URL: ${BE_WEBHOOK_URL:-http://host.docker.internal:8080/payments/webhook}
+    restart: unless-stopped
+
+  # ---- 외부 Open API mock (유료/키필요 서비스 로컬 대체) ----
+  mock-kakao-local:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./mock-servers/kakao-local:/app
+    command: sh -c "npm install --no-audit --no-fund && node server.js"
+
+  mock-data-go-kr:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./mock-servers/data-go-kr:/app
+    command: sh -c "npm install --no-audit --no-fund && node server.js"
+
+  mock-solapi:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./mock-servers/solapi:/app
+    command: sh -c "npm install --no-audit --no-fund && node server.js"
+
+  # 이메일 catcher (SMTP 1025, Web UI 8025)
+  mailhog:
+    image: mailhog/mailhog:latest
+
 volumes:
   minio-data:
+  mysql-data:
+  mongodb-data:
+  redis-data:
+  kafka-data:

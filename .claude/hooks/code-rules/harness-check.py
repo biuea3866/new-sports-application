@@ -284,7 +284,10 @@ def check_code_patterns(rules, tool_input):
     violations = []
     for rule in forbidden.get("rules", []):
         file_glob = rule.get("file_glob", "*")
-        if not fnmatch(Path(file_path).name, file_glob):
+        # 전체 경로 우선 매칭 + 파일명 매칭 폴백 (하위 호환).
+        # 경로 기반 glob(`*/infrastructure/*/mysql/*.kt`)과 파일명 glob(`*Request.kt`) 모두 지원.
+        if not (_matches_any_glob(file_path, file_glob)
+                or _matches_any_glob(Path(file_path).name, file_glob)):
             continue
 
         exclude_glob = rule.get("exclude_glob")
@@ -293,6 +296,11 @@ def check_code_patterns(rules, tool_input):
 
         pattern = rule["pattern"]
         if re.search(pattern, content, re.MULTILINE):
+            # `must_also_contain`: 패턴이 매치돼도 요구 토큰이 모두 있으면 위반이 아니다.
+            # (예: CREATE TABLE 발견 시 audit 컬럼/인덱스 토큰이 모두 있으면 통과)
+            must_also_contain = rule.get("must_also_contain")
+            if must_also_contain and all(token in content for token in must_also_contain):
+                continue
             severity = rule.get("severity", "error")
             rule_id = rule.get("id", "unknown")
             violations.append((severity, rule["message"], rule_id))

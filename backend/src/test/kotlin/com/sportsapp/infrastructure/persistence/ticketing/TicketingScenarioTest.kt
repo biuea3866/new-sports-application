@@ -1,11 +1,11 @@
 package com.sportsapp.infrastructure.persistence.ticketing
 
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.domain.ticketing.Event
-import com.sportsapp.domain.ticketing.EventStatus
-import com.sportsapp.domain.ticketing.Seat
-import com.sportsapp.domain.ticketing.SeatSpec
-import com.sportsapp.domain.ticketing.TicketingDomainService
+import com.sportsapp.domain.ticketing.entity.Event
+import com.sportsapp.domain.ticketing.entity.EventStatus
+import com.sportsapp.domain.ticketing.entity.Seat
+import com.sportsapp.domain.ticketing.service.SeatSpec
+import com.sportsapp.domain.ticketing.service.TicketingDomainService
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.shouldBe
@@ -14,6 +14,8 @@ import org.springframework.dao.DataIntegrityViolationException
 import java.math.BigDecimal
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
+import com.sportsapp.infrastructure.ticketing.mysql.EventRepositoryImpl
+import com.sportsapp.infrastructure.ticketing.mysql.SeatJpaRepository
 
 class TicketingScenarioTest(
     @Autowired private val ticketingDomainService: TicketingDomainService,

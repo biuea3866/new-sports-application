@@ -1,7 +1,40 @@
 server:
   port: 8080
+  tomcat:
+    # SSE 동시 연결 대응: 기본 200 스레드로는 장기 연결 소진 위험
+    # SSE 는 비동기(DeferredResult/WebFlux) 구현 시 스레드를 점유하지 않으나,
+    # 동기 서블릿 SSE(SseEmitter) 사용 시 연결 1개당 스레드 1개 소비.
+    # 운영 환경에서는 MCP_TOMCAT_MAX_THREADS 로 override.
+    threads:
+      max: ${MCP_TOMCAT_MAX_THREADS:400}
+      min-spare: ${MCP_TOMCAT_MIN_SPARE_THREADS:20}
+    max-connections: ${MCP_TOMCAT_MAX_CONNECTIONS:8192}
+    accept-count: ${MCP_TOMCAT_ACCEPT_COUNT:100}
+    connection-timeout: ${MCP_TOMCAT_CONNECTION_TIMEOUT:20000}
+
+mcp:
+  # 외부 노출 URL placeholder — DevOps Open Issue #B 결정 후 환경변수로 변경
+  # 예: MCP_EXTERNAL_URL=https://mcp-api.sportsapp.com
+  external-url: ${MCP_EXTERNAL_URL:https://mcp-api.sportsapp.com}
+
+load-shedding:
+  # F2 실측 부하 테스트 — 동시 인플라이트 요청이 CPU 처리 한계를 넘으면 서블릿 큐잉(최대 60초
+  # 대기)으로 한 번 무너지면 재기동 전까지 영구 열화한다. LoadSheddingFilter가 이 값을 초과하는
+  # 요청을 큐잉 없이 즉시 503으로 거부한다(fast-fail). 로컬 개발 기본값 200 — 운영은
+  # LOAD_SHEDDING_MAX_CONCURRENT_REQUESTS 로 override.
+  max-concurrent-requests: ${LOAD_SHEDDING_MAX_CONCURRENT_REQUESTS:200}
+  # 배포 직후 이상 동작 시 즉시 롤백 없이 끌 수 있는 킬스위치. 기본 활성.
+  enabled: ${LOAD_SHEDDING_ENABLED:true}
 
 spring:
+  ai:
+    mcp:
+      server:
+        enabled: true
+        name: sports-mcp-server
+        version: 1.0.0
+        sse-endpoint: /mcp/sse
+        sse-message-endpoint: /mcp/message
   application:
     name: sports-application
   config:
@@ -9,9 +42,13 @@ spring:
   data:
     mongodb:
       uri: ${MONGODB_URI:mongodb://localhost:27017/sports}
+      repositories:
+        type: auto
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      repositories:
+        enabled: false
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/sports?serverTimezone=UTC}
     username: ${DB_USERNAME:root}
@@ -40,6 +77,17 @@ spring:
         spring.json.trusted.packages: "com.sportsapp.*"
     producer:
       acks: all
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:false}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS:false}
 
 notification:
   templates:
@@ -53,12 +101,94 @@ notification:
       title: "가입 완료"
       body: "{userName}님, 스포츠 앱에 오신 것을 환영합니다."
 
+partner:
+  auth:
+    # B2B 파트너 API Key 인증 필터 게이트. expand-contract 배포: 코드 배포 시 false로 시작해
+    # 관리 API로 테스트 파트너 등록·회귀 확인 후 PARTNER_AUTH_ENABLED=true로 전환한다.
+    enabled: ${PARTNER_AUTH_ENABLED:false}
+
+chat:
+  realtime:
+    # BE-04 Release Scenario 2단계 — 실시간 전송 계층(WebSocket/STOMP) 전체 활성 플래그.
+    # OFF면 WebSocketConfig/MessageBroadcastGatewayImpl/MessageBroadcastEventWorker/
+    # ChatStompController 빈 자체가 등록되지 않아 /ws 가 404(즉시 롤백 지점). REST 채팅 경로는 무영향.
+    enabled: ${CHAT_REALTIME_ENABLED:false}
+  community:
+    # BE-08 Release Scenario 2단계 — 커뮤니티 도메인 REST 엔드포인트 전체 활성 플래그.
+    # OFF면 CommunityApiController 빈 자체가 등록되지 않아 /communities 전 경로가 404(즉시 롤백 지점).
+    enabled: ${CHAT_COMMUNITY_ENABLED:false}
+
+facility:
+  program:
+    # BE-59 Release Scenario 2단계 — 시설상품(program) 도메인 REST 엔드포인트 전체 활성 플래그.
+    # OFF면 ProgramApiController 빈 자체가 등록되지 않아 /facilities/{facilityId}/programs 전 경로가
+    # 404(즉시 롤백 지점). 회차 예약은 기존 booking Slot 경로를 그대로 사용해 무영향.
+    enabled: ${FACILITY_PROGRAM_ENABLED:false}
+  autoslot:
+    # BE-58 롤백 지점 — OFF(기본값)면 GenerateSlotsScheduler 빈 자체가 등록되지 않아 대량 슬롯
+    # 생성 사고를 막는다. 코드 배포 후 소수 시설로 회귀 확인을 마친 뒤 FACILITY_AUTOSLOT_ENABLED=true로
+    # 명시 전환한다.
+    enabled: ${FACILITY_AUTOSLOT_ENABLED:false}
+    # 향후 며칠치 슬롯을 생성할지 — SlotGenerationDomainService.generate의 windowDays.
+    window-days: ${FACILITY_AUTOSLOT_WINDOW_DAYS:14}
+    # 1일 1회 실행 — McpAnomalyScheduler 선례와 동일하게 새벽 시간대(01:00)로 고정한다.
+    cron: ${FACILITY_AUTOSLOT_CRON:0 0 1 * * *}
+
+community:
+  booking:
+    # BE-60 Release Scenario — 소모임 예약 연동(CommunityBooking) REST 엔드포인트 활성 플래그.
+    # OFF면 CommunityBookingApiController 빈 자체가 등록되지 않아 /communities/{id}/bookings 전 경로가
+    # 404(즉시 롤백 지점). 대안 롤백: 역방향 DDL로 community_bookings 테이블 DROP.
+    enabled: ${COMMUNITY_BOOKING_ENABLED:false}
+
+limited-drop:
+  # Release Scenario 4단계 — 회차별 전체 활성 플래그. OFF면 LimitedDropApiController 빈 자체가
+  # 등록되지 않아 전 엔드포인트가 404 (즉시 롤백 지점). 운영 기본값은 false — 코드 배포 후 회귀
+  # 확인을 마친 뒤 LIMITED_DROP_ENABLED=true로 명시 전환한다(코드 리뷰 p1). 로컬 개발 편의는
+  # dev 프로파일(application-dev.yml)에만 true로 override한다.
+  enabled: ${LIMITED_DROP_ENABLED:false}
+  redis-gate:
+    # Release Scenario 5단계 — Redis 게이트 서브플래그. OFF 시 DB @Version + 세마포어 폴백(방안 B)으로
+    # 전환한다(오버셀 0 유지, 처리량만 감소). 이 값 자체는 문서화 목적이며 폴백 구현은 후속 티켓 범위.
+    enabled: ${LIMITED_DROP_REDIS_GATE_ENABLED:true}
+
+# BE-10: 지능형 장애 알림 통합 와이어업. alerting.enabled=false(기본값)면 웹훅은 202만 반환하고
+# 파이프라인을 트리거하지 않는다(무중단 배포·즉시 롤백 지점, Release Scenario).
+alerting:
+  enabled: ${ALERTING_ENABLED:false}
+  # grafana 경로(Authorization Bearer)·내부 raise 경로(X-Alert-Token) 공유 시크릿 (BE-08).
+  webhook-token: ${ALERT_WEBHOOK_TOKEN:}
+  discord:
+    # AlertDeliveryEventWorker가 알림을 발송할 수신자 (BE-09).
+    recipient-user-id: ${ALERT_RECIPIENT_USER_ID:1}
+  retention:
+    # alerts 이력 보존 정책(mcp_audit_logs 선례와 동일 90일) — AlertRetentionScheduler가 일 1회 정리한다.
+    days: ${ALERTING_RETENTION_DAYS:90}
+    cron: ${ALERTING_RETENTION_CRON:0 30 3 * * *}
+  telemetry:
+    # Prometheus/Loki/Tempo 접속 정보 (BE-05). 기본값은 로컬 observability compose 포트(⑤).
+    prometheus-base-url: ${ALERTING_TELEMETRY_PROMETHEUS_BASE_URL:http://localhost:9090}
+    loki-base-url: ${ALERTING_TELEMETRY_LOKI_BASE_URL:http://localhost:3100}
+    tempo-base-url: ${ALERTING_TELEMETRY_TEMPO_BASE_URL:http://localhost:3200}
+
 app:
+  # BE-04: AlertCooldownRepositoryImpl 등 알람 쿨다운 키(INFRA-01 계약) 조립에 쓰는 배포 환경 값.
+  # APP_ENV 단일 원천(management.metrics.tags.env와 동일 값) 재사용 — ADR-005와 동일한 원칙.
+  env: ${APP_ENV:local}
   payment:
     mock:
       success-rate: 1.0
+    pg:
+      mock-base-url: ${PG_MOCK_BASE_URL:http://localhost:9090}
+  limited-drop:
+    reservation:
+      # DropReservationStoreImpl 인프로세스 세마포어(FR-7) — 단일 인스턴스 전제(TDD Open Questions).
+      semaphore-permits: ${LIMITED_DROP_SEMAPHORE_PERMITS:200}
+      acquire-timeout-millis: ${LIMITED_DROP_ACQUIRE_TIMEOUT_MILLIS:200}
+      marker-ttl-seconds: ${LIMITED_DROP_MARKER_TTL_SECONDS:600}
   jwt:
-    secret: ${APP_JWT_SECRET}
+    # 로컬 개발 기본값. 운영에서는 반드시 APP_JWT_SECRET 환경변수로 override 한다.
+    secret: ${APP_JWT_SECRET:local-dev-only-jwt-secret-key-change-me-0123456789abcdef0123456789abcdef}
   notifications:
     templates:
       payment-completed:
@@ -86,11 +216,65 @@ storage:
       - image/png
       - image/webp
 
+# 외부 Open API — 키가 있으면 실 host, 없으면 docker-compose mock host(localhost:910x).
+external:
+  geocoding:
+    base-url: ${EXTERNAL_GEOCODING_BASE_URL:http://localhost:9101}
+    api-key: ${KAKAO_REST_API_KEY:}
+  public-facility:
+    base-url: ${EXTERNAL_PUBLIC_FACILITY_BASE_URL:http://localhost:9102}
+    api-key: ${DATA_GO_KR_SERVICE_KEY:mock-service-key}
+  weather:
+    base-url: ${EXTERNAL_WEATHER_BASE_URL:http://localhost:9102}
+    api-key: ${DATA_GO_KR_SERVICE_KEY:mock-service-key}
+  air-quality:
+    base-url: ${EXTERNAL_AIR_QUALITY_BASE_URL:http://localhost:9102}
+    api-key: ${DATA_GO_KR_SERVICE_KEY:mock-service-key}
+  push:
+    base-url: ${EXTERNAL_PUSH_BASE_URL:https://exp.host}
+    api-key: ${EXPO_ACCESS_TOKEN:}
+  sms:
+    base-url: ${EXTERNAL_SMS_BASE_URL:http://localhost:9103}
+    api-key: ${SOLAPI_API_KEY:mock-api-key}
+    from: ${SMS_SENDER_NUMBER:0700000000}
+  email:
+    from: ${MAIL_FROM:no-reply@sportsapp.local}
+  discord:
+    # BE-02: NotificationChannel.DISCORD 발송용 Incoming Webhook. URL은 비커밋 환경변수로만 주입한다.
+    webhook-url: ${DISCORD_WEBHOOK_URL:}
+    username: ${DISCORD_WEBHOOK_USERNAME:SportsApp Alert}
+
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus,metrics
   endpoint:
     health:
       show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      env: ${APP_ENV:local}
+      service: mcp
+    distribution:
+      percentiles-histogram:
+        # INFRA-02 실측: Grafana P95 규칙이 http_server_requests_seconds_bucket 히스토그램을 소비한다.
+        # 없으면 규칙이 NoData가 된다.
+        http:
+          server:
+            requests: true
+  tracing:
+    sampling:
+      # 100% 샘플링 (NFR) — trace 연결율 99%+ 목표, 개인 프로젝트 트래픽 규모라 비용 문제 없음
+      probability: 1.0
+  otlp:
+    tracing:
+      # MANAGEMENT_OTLP_TRACING_ENDPOINT 미주입 시 로컬 기본값으로 사실상 no-op(피처 플래그 등가) — Collector 준비 전에도 앱 정상 부팅
+      # Spring Boot 3.3.5의 OTLP tracing은 HTTP 전용이므로 Collector HTTP 포트(4318) + /v1/traces 경로를 사용한다.
+      # (transport 프로퍼티는 Spring Boot 3.4+에서만 유효 — 3.3.5에서는 바인딩되지 않는 죽은 설정이라 두지 않는다.)
+      endpoint: ${MANAGEMENT_OTLP_TRACING_ENDPOINT:http://localhost:4318/v1/traces}
+  opentelemetry:
+    resource-attributes:
+      # env → deployment.environment 매핑 (ADR-005, 신규 라벨 키 미도입 — APP_ENV 단일 원천 재사용)
+      deployment.environment: ${APP_ENV:local}

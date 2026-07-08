@@ -2,15 +2,15 @@ package com.sportsapp.scenario.goods
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.domain.goods.Product
-import com.sportsapp.domain.goods.ProductCategory
-import com.sportsapp.domain.goods.ProductStatus
-import com.sportsapp.domain.goods.Stock
-import com.sportsapp.infrastructure.persistence.goods.CartItemJpaRepository
-import com.sportsapp.infrastructure.persistence.goods.CartJpaRepository
-import com.sportsapp.infrastructure.persistence.goods.ProductJpaRepository
-import com.sportsapp.infrastructure.persistence.goods.StockJpaRepository
-import com.sportsapp.infrastructure.persistence.payment.PaymentJpaRepository
+import com.sportsapp.domain.goods.entity.Product
+import com.sportsapp.domain.goods.vo.ProductCategory
+import com.sportsapp.domain.goods.entity.ProductStatus
+import com.sportsapp.domain.goods.entity.Stock
+import com.sportsapp.infrastructure.goods.mysql.CartItemJpaRepository
+import com.sportsapp.infrastructure.goods.mysql.CartJpaRepository
+import com.sportsapp.infrastructure.goods.mysql.ProductJpaRepository
+import com.sportsapp.infrastructure.goods.mysql.StockJpaRepository
+import com.sportsapp.infrastructure.payment.mysql.PaymentJpaRepository
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.springframework.beans.factory.annotation.Autowired
@@ -94,7 +94,7 @@ class GoodsOrderFromCartScenarioTest(
             }
 
             When("[S-cart-01] fromCart=true로 POST /goods-orders 호출하면") {
-                Then("GoodsOrder PENDING + Payment 발급 + Cart 비워짐이 검증된다") {
+                Then("GoodsOrder PENDING + Payment 발급이 확인되고 주문은 PENDING 상태로 남는다") {
                     val idempotencyKey = UUID.randomUUID().toString()
                     val result = mockMvc.perform(
                         post("/goods-orders")
@@ -121,12 +121,12 @@ class GoodsOrderFromCartScenarioTest(
                     payment.isPresent shouldBe true
                     payment.get().idempotencyKey shouldBe idempotencyKey
 
-                    // Cart 비워짐 확인 (soft-delete: deletedAt IS NULL 기준)
-                    val cart = cartJpaRepository.findByUserId(userId)
+                    // 주문 생성 시 카트는 아직 비워지지 않는다 (웹훅 확정 이후 처리)
+                    val cart = cartJpaRepository.findByUserIdAndDeletedAtIsNull(userId)
                     cart shouldNotBe null
                     val activeCartId = requireNotNull(cart).id
                     val activeItems = cartItemJpaRepository.findAllByCartIdAndDeletedAtIsNull(activeCartId)
-                    activeItems.size shouldBe 0
+                    activeItems.size shouldBe 2
                 }
             }
         }

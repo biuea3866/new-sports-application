@@ -2,13 +2,13 @@ package com.sportsapp.scenario.goods
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.domain.goods.Product
-import com.sportsapp.domain.goods.ProductCategory
-import com.sportsapp.domain.goods.ProductStatus
-import com.sportsapp.domain.goods.Stock
-import com.sportsapp.infrastructure.persistence.goods.GoodsOrderJpaRepository
-import com.sportsapp.infrastructure.persistence.goods.ProductJpaRepository
-import com.sportsapp.infrastructure.persistence.goods.StockJpaRepository
+import com.sportsapp.domain.goods.entity.Product
+import com.sportsapp.domain.goods.vo.ProductCategory
+import com.sportsapp.domain.goods.entity.ProductStatus
+import com.sportsapp.domain.goods.entity.Stock
+import com.sportsapp.infrastructure.goods.mysql.GoodsOrderJpaRepository
+import com.sportsapp.infrastructure.goods.mysql.ProductJpaRepository
+import com.sportsapp.infrastructure.goods.mysql.StockJpaRepository
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -122,7 +122,7 @@ class GoodsOrderScenarioTest(
             }
 
             When("[S-list] GET /goods-orders/me로 내 주문 목록 조회하면") {
-                Then("해당 userId의 주문 목록만 반환된다") {
+                Then("해당 userId의 주문 목록만 반환되고 상태가 PENDING이다") {
                     mockMvc.perform(
                         post("/goods-orders")
                             .header("X-User-Id", "5")
@@ -139,6 +139,29 @@ class GoodsOrderScenarioTest(
                         .andExpect(jsonPath("$.content[0].status").value("PENDING"))
                 }
             }
+
+            When("[S-03] 주문 생성 후 GET /goods-orders/{id}로 현재 상태를 조회하면") {
+                Then("PENDING 상태의 주문이 조회된다") {
+                    val result = mockMvc.perform(
+                        post("/goods-orders")
+                            .header("X-User-Id", "6")
+                            .header("Idempotency-Key", UUID.randomUUID().toString())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""{"method":"CREDIT_CARD","fromCart":false,"items":[{"productId":$productId,"quantity":1}]}""")
+                    ).andExpect(status().isAccepted)
+                        .andReturn()
+
+                    val orderId = objectMapper.readTree(result.response.contentAsString)
+                        .get("id").asLong()
+
+                    mockMvc.perform(
+                        get("/goods-orders/$orderId")
+                            .header("X-User-Id", "6")
+                    ).andExpect(status().isOk)
+                        .andExpect(jsonPath("$.status").value("PENDING"))
+                        .andExpect(jsonPath("$.id").value(orderId))
+                }
+            }
         }
 
         Given("빈 items로 주문 시도할 때") {
@@ -151,6 +174,73 @@ class GoodsOrderScenarioTest(
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""{"method":"CREDIT_CARD","fromCart":false,"items":[]}""")
                     ).andExpect(status().isBadRequest)
+                }
+            }
+        }
+
+        Given("동일 Idempotency-Key로 POST /goods-orders를 두 번 호출할 때") {
+            lateinit var productId: String
+            val idempotencyKey = "idem-goods-order-e2e-06-r02"
+
+            beforeEach {
+                jdbcTemplate.execute("DELETE FROM goods_order_items")
+                jdbcTemplate.execute("DELETE FROM goods_orders")
+                jdbcTemplate.execute("DELETE FROM payments")
+                jdbcTemplate.execute("DELETE FROM stocks")
+                jdbcTemplate.execute("DELETE FROM products")
+
+                val product = productJpaRepository.save(
+                    Product(
+                        name = "멱등 테스트 상품",
+                        category = ProductCategory.EQUIPMENT,
+                        price = BigDecimal("30000"),
+                        description = "멱등성 검증용",
+                        imageUrl = "https://example.com/idem.jpg",
+                        status = ProductStatus.ACTIVE,
+                        ownerId = 1L,
+                    )
+                )
+                stockJpaRepository.save(Stock(productId = product.id, quantity = 10))
+                productId = product.id.toString()
+            }
+
+            When("[E2E-06-R02] 동일 Idempotency-Key로 /goods-orders 재호출 시 동일 order id 반환") {
+                Then("두 번째 호출은 새 주문을 생성하지 않고 첫 번째 응답과 동일한 order id를 반환한다") {
+                    val requestBody = """{"method":"CREDIT_CARD","fromCart":false,"items":[{"productId":$productId,"quantity":2}]}"""
+
+                    val firstResult = mockMvc.perform(
+                        post("/goods-orders")
+                            .header("X-User-Id", "10")
+                            .header("Idempotency-Key", idempotencyKey)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(requestBody)
+                    ).andExpect(status().isAccepted)
+                        .andExpect(jsonPath("$.id").isNumber)
+                        .andReturn()
+
+                    val firstOrderId = objectMapper.readTree(firstResult.response.contentAsString)
+                        .get("id").asLong()
+
+                    val secondResult = mockMvc.perform(
+                        post("/goods-orders")
+                            .header("X-User-Id", "10")
+                            .header("Idempotency-Key", idempotencyKey)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(requestBody)
+                    ).andExpect(status().isAccepted)
+                        .andExpect(jsonPath("$.id").isNumber)
+                        .andReturn()
+
+                    val secondOrderId = objectMapper.readTree(secondResult.response.contentAsString)
+                        .get("id").asLong()
+
+                    secondOrderId shouldBe firstOrderId
+
+                    val orderCount = jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM goods_orders WHERE user_id = 10",
+                        Long::class.java,
+                    )
+                    orderCount shouldBe 1L
                 }
             }
         }

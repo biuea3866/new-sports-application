@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.time.Duration
 
 plugins {
     id("org.springframework.boot")
@@ -8,6 +9,7 @@ plugins {
     kotlin("plugin.jpa")
     kotlin("kapt")
     id("io.gitlab.arturbosch.detekt")
+    id("org.jetbrains.kotlinx.kover")
 }
 
 val javaVersion: String by project
@@ -26,12 +28,31 @@ repositories {
 }
 
 dependencies {
+    // Spring AI MCP (1.1.6 GA — Gate #A 검증, Java 17 minimum 충족)
+    implementation(platform("org.springframework.ai:spring-ai-bom:1.1.6"))
+    implementation("org.springframework.ai:spring-ai-starter-mcp-server-webmvc")
+    testImplementation("org.springframework.ai:spring-ai-test")
+
+    // Monitoring (Prometheus 메트릭 + OTel 분산 추적 — ADR-001)
+    implementation("io.micrometer:micrometer-registry-prometheus")
+    implementation("io.micrometer:micrometer-tracing-bridge-otel")
+    implementation("io.opentelemetry:opentelemetry-exporter-otlp")
+    implementation("io.opentelemetry.instrumentation:opentelemetry-logback-appender-1.0:2.4.0-alpha")
+
     // Spring Boot
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.boot:spring-boot-starter-mail")
+
+    // WebSocket / STOMP (BE-04 실시간 전송 계층 — chat.realtime.enabled 플래그로 조건부 활성화)
+    implementation("org.springframework.boot:spring-boot-starter-websocket")
+
+    // Retry (동시 INSERT 경합 → fresh tx 재시도)
+    implementation("org.springframework.retry:spring-retry")
+    implementation("org.springframework:spring-aspects")
 
     // JWT
     implementation("io.jsonwebtoken:jjwt-api:0.12.6")
@@ -63,6 +84,9 @@ dependencies {
     // AWS SDK v2 (S3 + MinIO Presigned URL)
     implementation("software.amazon.awssdk:s3:2.31.19")
 
+    // 좌표 변환 (WGS84 → 에어코리아 TM 좌표계 EPSG:5181, AirKoreaTmProjection)
+    implementation("org.locationtech.proj4j:proj4j:1.3.0")
+
     // JSON Column
     implementation("io.hypersistence:hypersistence-utils-hibernate-63:3.9.0")
 
@@ -89,6 +113,9 @@ dependencies {
     testImplementation("org.testcontainers:mongodb")
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
+
+    // External API 계약 검증 하네스 (ADR-002) — 버전은 Spring Boot BOM(okhttp-bom)이 관리
+    testImplementation("com.squareup.okhttp3:mockwebserver")
 }
 
 kapt {
@@ -103,12 +130,58 @@ tasks.withType<KotlinCompile> {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    maxHeapSize = "2g"
+    testLogging {
+        showStandardStreams = true
+        showExceptions = true
+        showCauses = true
+    }
+    // 테스트 종료 후 Spring 컨텍스트의 non-daemon 스레드(Kafka 리스너·Tomcat) 누수로
+    // 워커 JVM 이 종료 단계에서 멈추면, 이 JVM 이 소유한 Testcontainers 가 무한정 남는다.
+    // timeout 으로 멈춘 워커를 강제 종료해 ryuk 가 컨테이너를 회수하도록 한다.
+    timeout.set(Duration.ofMinutes(30))
+}
+
+// -------- 기본 test: live 태그 계약 스모크 제외 (ADR-002) --------
+// 실 키가 있을 때만 도는 계약 스모크(live 태그)는 CI 상시 test 에서 제외한다.
+// Kotest 는 시스템 프로퍼티 kotest.tags 로 포함/제외 태그 표현식을 읽는다.
+tasks.named<Test>("test") {
+    systemProperty("kotest.tags", "!Live")
+}
+
+// -------- verifyExternalLive: 외부 API 계약 live 태그 스모크 (opt-in) --------
+// 실 키가 env 에 있을 때만 유효한 검증이 되는 live 태그 스펙만 선택 실행한다.
+// 클래스별 와이어업 없이 Kotest 태그 필터만으로 동작한다(BE-02/03/04 는 태그만 부여).
+val verifyExternalLive by tasks.registering(Test::class) {
+    description = "외부 API 계약 live 태그 스모크 실행 (opt-in, 실 키 필요)"
+    group = "verification"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    systemProperty("kotest.tags", "Live")
+    shouldRunAfter(tasks.test)
+}
+
+// -------- archTest: 아키텍처 규칙 전용 태스크 --------
+// com.sportsapp.architecture 패키지의 fitness function 테스트만 별도로 실행한다.
+// 기존 test 소스셋의 testClassesDirs·classpath 를 재사용하고, useJUnitPlatform/maxHeapSize/
+// testLogging/timeout 은 위 tasks.withType<Test> 설정이 Test 타입 전체에 이미 적용된다.
+// 2단계(게이트 승격, ADR-005): check 가 archTest 에 의존해 규칙 위반 시 빌드를 실패시킨다.
+val archTest by tasks.registering(Test::class) {
+    description = "아키텍처 경계 규칙 fitness function 실행 (com.sportsapp.architecture)"
+    group = "verification"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    filter {
+        includeTestsMatching("com.sportsapp.architecture.*")
+    }
+    shouldRunAfter(tasks.test)
 }
 
 // -------- detekt --------
 detekt {
     buildUponDefaultConfig = true
     config.setFrom(files("${rootDir}/config/detekt/detekt.yml"))
+    baseline = file("${rootDir}/detekt-baseline.xml")
     source.setFrom(
         "src/main/kotlin",
         "src/test/kotlin"
@@ -119,7 +192,7 @@ tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
     jvmTarget = "17"
     reports {
         html.required.set(true)
-        xml.required.set(false)
+        xml.required.set(true)
         txt.required.set(false)
     }
 }
@@ -177,4 +250,5 @@ val harnessCheck by tasks.registering {
 
 tasks.named("check") {
     dependsOn(harnessCheck)
+    dependsOn(archTest)
 }

@@ -1,0 +1,139 @@
+# Grafana Alerting 규칙 — 핵심 트랜잭션 API(결제·예약·티케팅) P95 500ms 지연 (INFRA-02)
+# 근거: TDD "PRD Open Q3"(1차 범위=핵심 트랜잭션 API 한정), PRD 유저 시나리오 1, ADR-001.
+#
+# 데이터소스: Prometheus uid=prometheus (실측: observability/grafana/provisioning/datasources/datasources.yml).
+# 대상 엔드포인트(실측: backend/src/main/kotlin/.../presentation/*/controller/*ApiController.kt @RequestMapping):
+#   결제 /payments, 예약 /bookings, 티케팅 /ticket-orders·/events.
+# env 라벨은 management.metrics.tags.env(APP_ENV) 로 이미 부여되어 http_server_requests_seconds_* 에 실려온다
+# (실측: backend/src/main/resources/application.yml:186, observability/prometheus/prometheus.yml 은 app 잡에
+#  별도 env relabel 을 두지 않음 — 중복 부여 방지).
+# endpoint 라벨(ticket 명시)은 uri 라벨을 label_replace 로 별칭 부여한다.
+#
+# ⚠ 실측으로 확인된 선행 요구사항(미해결 — 본 티켓 범위 밖, backend 소유):
+#   backend/src/main/resources/application.yml 에 http.server.requests 히스토그램 버킷 노출 설정
+#   (management.metrics.distribution.percentiles-histogram.http.server.requests: true) 이 없다.
+#   현재 상태로는 http_server_requests_seconds_bucket 샘플이 노출되지 않아 아래 histogram_quantile
+#   쿼리가 데이터 없음(NoData)으로 평가된다. noDataState=NoData 로 명시해 조용히 묻히지 않게 한다.
+#
+# 배포 게이트 선결 항목 후속 수정: 두 규칙 모두 `notification_settings.receiver: backend-webhook`를
+# 더 이상 파일에 명시하지 않는다. 이 디렉토리의 모든 yaml은 Grafana 부팅 시 한 번에 해석되는데,
+# `backend-webhook` contact point를 더 이상 파일(contact-points.yaml)로 정의하지 않으므로
+# (webhook secureSettings의 Authorization 헤더가 파일 프로비저닝 경로로 발송할 때 누락되는
+# Grafana 11.1.0/11.4.0 공통 결함을 실측 확인 — 상세는
+# observability/grafana/bootstrap/register_webhook_contact_point.py 모듈 docstring 참고)
+# 여기서 그 이름을 참조하면 Grafana 기동이 "receiver backend-webhook does not exist"로 실패한다.
+# 대신 두 규칙 모두 **기본 라우트(default route)를 그대로 상속**하고,
+# register_webhook_contact_point.py가 Grafana 기동 후 Alertmanager 설정 API로 backend-webhook
+# 리시버를 등록하며 루트 라우트의 기본 수신자로 지정한다(docker-compose.observability.yml의
+# grafana-alerting-bootstrap 서비스가 실행).
+#
+# 롤백: 이 파일을 비우거나 rules 를 제거하면 두 규칙 모두 비활성화(피처 플래그 없이 즉시 제거로 롤백).
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: core-transaction-latency
+    folder: Sports Alerting
+    interval: 1m
+    rules:
+      # ---- warn: 5분 연속 P95 > 500ms ----
+      - uid: core-transaction-p95-latency-warn
+        title: "핵심 트랜잭션 API P95 500ms 초과 (5분, warn)"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: >-
+                label_replace(
+                  histogram_quantile(0.95, sum by (le, uri, env) (
+                    rate(http_server_requests_seconds_bucket{uri=~"/payments.*|/bookings.*|/ticket-orders.*|/events.*"}[5m])
+                  )),
+                  "endpoint", "$1", "uri", "(.*)"
+                )
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0.5]
+                  operator:
+                    type: and
+                  query:
+                    params: ["A"]
+                  reducer:
+                    type: last
+                  type: query
+        for: 5m
+        noDataState: NoData
+        execErrState: Error
+        labels:
+          source: latency
+          severity: warn
+        annotations:
+          summary: "{{ $labels.endpoint }} P95 지연시간이 500ms를 5분 이상 초과했습니다 ({{ $labels.env }})"
+          description: "핵심 트랜잭션 API(결제·예약·티케팅) 중 {{ $labels.endpoint }} 의 P95 응답시간이 임계값(500ms)을 5분 이상 초과했습니다. 현재값: {{ $values.A }}s"
+        # notification_settings.receiver를 규칙에 직접 지정하지 않는다(파일 상단 "배포 게이트 선결
+        # 항목 후속 수정" 참고) — 기본 라우트(register_webhook_contact_point.py가 부트스트랩으로
+        # backend-webhook을 기본 수신자로 지정)를 그대로 상속받는다.
+
+      # ---- critical: 15분 연속 P95 > 500ms (동일 임계, 지속시간 기반 심각도 상향) ----
+      - uid: core-transaction-p95-latency-critical
+        title: "핵심 트랜잭션 API P95 500ms 초과 (15분, critical)"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: >-
+                label_replace(
+                  histogram_quantile(0.95, sum by (le, uri, env) (
+                    rate(http_server_requests_seconds_bucket{uri=~"/payments.*|/bookings.*|/ticket-orders.*|/events.*"}[5m])
+                  )),
+                  "endpoint", "$1", "uri", "(.*)"
+                )
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0.5]
+                  operator:
+                    type: and
+                  query:
+                    params: ["A"]
+                  reducer:
+                    type: last
+                  type: query
+        for: 15m
+        noDataState: NoData
+        execErrState: Error
+        labels:
+          source: latency
+          severity: critical
+        annotations:
+          summary: "{{ $labels.endpoint }} P95 지연시간이 500ms를 15분 이상 초과했습니다 ({{ $labels.env }}) — 장애 의심"
+          description: "핵심 트랜잭션 API(결제·예약·티케팅) 중 {{ $labels.endpoint }} 의 P95 응답시간이 임계값(500ms)을 15분 이상 초과했습니다. 현재값: {{ $values.A }}s"
+        # notification_settings.receiver를 규칙에 직접 지정하지 않는다 — 위 warn 규칙과 동일 사유.

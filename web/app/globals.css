@@ -20,10 +20,24 @@
     --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
+    --aq-good: 211 100% 96%;
+    --aq-good-foreground: 211 90% 35%;
+    --aq-moderate: 142 60% 94%;
+    --aq-moderate-foreground: 142 70% 28%;
+    --aq-bad: 35 100% 94%;
+    --aq-bad-foreground: 30 90% 40%;
+    --aq-verybad: 0 90% 96%;
+    --aq-verybad-foreground: 0 75% 45%;
+    --aq-unknown: 210 16% 93%;
+    --aq-unknown-foreground: 215 16% 47%;
   }
 
   .dark {
@@ -43,9 +57,23 @@
     --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
+    --success: 142 64% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 84% 46%;
+    --warning-foreground: 0 0% 100%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
+    --aq-good: 211 60% 20%;
+    --aq-good-foreground: 211 90% 80%;
+    --aq-moderate: 142 40% 18%;
+    --aq-moderate-foreground: 142 60% 75%;
+    --aq-bad: 30 60% 20%;
+    --aq-bad-foreground: 35 90% 70%;
+    --aq-verybad: 0 55% 22%;
+    --aq-verybad-foreground: 0 85% 78%;
+    --aq-unknown: 217 20% 22%;
+    --aq-unknown-foreground: 215 20% 65%;
   }
 }
 

@@ -1,4 +1,17 @@
+mcp:
+  external-url: http://localhost:8080
+
 spring:
+  ai:
+    mcp:
+      server:
+        enabled: true
+        name: sports-mcp-server-test
+        version: 1.0.0
+        sse-endpoint: /mcp/sse
+        sse-message-endpoint: /mcp/message
+  main:
+    allow-bean-definition-overriding: true
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
@@ -8,13 +21,19 @@ spring:
         spring.json.trusted.packages: "com.sportsapp.*"
     producer:
       acks: all
+    listener:
+      auto-startup: false
   data:
     mongodb:
       uri: ${MONGODB_URI:mongodb://localhost:27017/sports}
       auto-index-creation: true
+      repositories:
+        type: auto
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      repositories:
+        enabled: false
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/sports?serverTimezone=UTC}
     username: ${DB_USERNAME:root}
@@ -28,10 +47,34 @@ spring:
         jdbc:
           time_zone: UTC
         physical_naming_strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+        # BE-12: 방목록 미리보기 findMyRoomViews 의 N+1 회피를 prepareStatementCount 델타로
+        # 검증하기 위해 테스트 프로파일에서만 통계 수집을 켠다.
+        generate_statistics: true
     open-in-view: false
   flyway:
     enabled: true
     locations: classpath:db/migration
+  mail:
+    host: localhost
+    port: 1025
+
+partner:
+  auth:
+    # 테스트 기본값은 true — Partner 관련 통합/시나리오 테스트가 별도 오버라이드 없이
+    # 필터 동작을 검증할 수 있게 한다. 비활성 시나리오는 @TestPropertySource로 개별 오버라이드.
+    enabled: true
+
+chat:
+  realtime:
+    # 테스트 기본값은 true — BE-04 STOMP 통합 테스트가 별도 오버라이드 없이 동작하게 한다.
+    # 비활성 시나리오(ChatRealtimeDisabledTest)는 @TestPropertySource로 개별 오버라이드.
+    enabled: true
+
+facility:
+  program:
+    # 테스트 기본값은 true — BE-59 program 통합/시나리오 테스트가 별도 오버라이드 없이 동작하게 한다.
+    # 비활성 시나리오(ProgramApiControllerFeatureFlagDisabledTest)는 @TestPropertySource로 개별 오버라이드.
+    enabled: true
 
 storage:
   image:
@@ -57,15 +100,29 @@ notification:
       title: "가입 완료"
       body: "{userName}님, 스포츠 앱에 오신 것을 환영합니다."
 
+limited-drop:
+  enabled: true
+  redis-gate:
+    enabled: true
+
 app:
   jwt:
     secret: test-secret-key-for-integration-tests-that-is-at-least-32-chars-long
+  limited-drop:
+    reservation:
+      semaphore-permits: 200
+      acquire-timeout-millis: 200
+      marker-ttl-seconds: 600
 
 management:
   health:
+    defaults:
+      enabled: false
     mongo:
       enabled: false
     redis:
+      enabled: false
+    db:
       enabled: false
   endpoints:
     web:
@@ -74,3 +131,8 @@ management:
   endpoint:
     health:
       show-details: always
+
+logging:
+  level:
+    org.springframework.data.repository.config: DEBUG
+    org.springframework.cache: TRACE

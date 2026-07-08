@@ -128,3 +128,26 @@ describe("[U-04] 선택 필드 처리", () => {
     }
   });
 });
+
+describe("[U-05] 시/도(sido) 선택 필드 처리", () => {
+  it("sido 없이도 필수 필드가 유효하면 통과한다(하위 호환)", () => {
+    const result = facilityFormSchema.safeParse(VALID_INPUT);
+    expect(result.success).toBe(true);
+  });
+
+  it("sido가 빈 문자열이어도 통과한다(미선택 → 서버 주소 자동 판별)", () => {
+    const result = facilityFormSchema.safeParse({ ...VALID_INPUT, sido: "" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.sido).toBe("");
+    }
+  });
+
+  it("sido에 유효한 표준코드가 있으면 그대로 통과한다", () => {
+    const result = facilityFormSchema.safeParse({ ...VALID_INPUT, sido: "11" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.sido).toBe("11");
+    }
+  });
+});

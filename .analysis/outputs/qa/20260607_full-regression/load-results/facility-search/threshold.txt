@@ -1,0 +1,16 @@
+LOAD-01 facility-search — THRESHOLD VIOLATED
+
+위반 항목:
+  - LOAD_01_latency: p(95)=1.39s (목표: <300ms) — 목표 대비 363% 초과
+  - LOAD_01_latency: p(99)=4.81s (목표: <800ms) — 목표 대비 501% 초과
+
+측정값 전체:
+  RPS:        19.1 req/s
+  p90:        552.46ms
+  p95:        1.39s
+  p99:        4.81s
+  avg:        256.88ms
+  error rate: 0.00% (http_req_failed)
+
+참고: error rate 자체는 0%로 정상. 응답 지연만 초과.
+로컬 docker-compose 환경 특성상 절대치는 회귀 추세 비교용.

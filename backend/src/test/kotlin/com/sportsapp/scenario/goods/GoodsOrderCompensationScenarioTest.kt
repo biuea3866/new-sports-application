@@ -1,26 +1,24 @@
 package com.sportsapp.scenario.goods
 
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.application.goods.CreateGoodsOrderCommand
-import com.sportsapp.application.goods.CreateGoodsOrderUseCase
-import com.sportsapp.domain.goods.GoodsOrderStatus
-import com.sportsapp.domain.goods.OrderItemInput
-import com.sportsapp.domain.goods.Product
-import com.sportsapp.domain.goods.ProductCategory
-import com.sportsapp.domain.goods.ProductStatus
-import com.sportsapp.domain.goods.Stock
-import com.sportsapp.domain.payment.PaymentMethod
-import com.sportsapp.infrastructure.persistence.goods.GoodsOrderJpaRepository
-import com.sportsapp.infrastructure.persistence.goods.ProductJpaRepository
-import com.sportsapp.infrastructure.persistence.goods.StockJpaRepository
+import com.sportsapp.application.goods.dto.CreateGoodsOrderCommand
+import com.sportsapp.application.goods.usecase.CreateGoodsOrderUseCase
+import com.sportsapp.domain.goods.entity.GoodsOrderStatus
+import com.sportsapp.domain.goods.vo.OrderItemInput
+import com.sportsapp.domain.goods.entity.Product
+import com.sportsapp.domain.goods.vo.ProductCategory
+import com.sportsapp.domain.goods.entity.ProductStatus
+import com.sportsapp.domain.goods.entity.Stock
+import com.sportsapp.domain.payment.vo.PaymentMethod
+import com.sportsapp.infrastructure.goods.mysql.GoodsOrderJpaRepository
+import com.sportsapp.infrastructure.goods.mysql.ProductJpaRepository
+import com.sportsapp.infrastructure.goods.mysql.StockJpaRepository
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.jdbc.core.JdbcTemplate
-import org.springframework.test.context.TestPropertySource
 import java.math.BigDecimal
 import java.util.UUID
 
-@TestPropertySource(properties = ["app.payment.mock.success-rate=0.0"])
 class GoodsOrderCompensationScenarioTest(
     @Autowired private val createGoodsOrderUseCase: CreateGoodsOrderUseCase,
     @Autowired private val productJpaRepository: ProductJpaRepository,
@@ -38,7 +36,7 @@ class GoodsOrderCompensationScenarioTest(
             jdbcTemplate.execute("DELETE FROM products")
         }
 
-        Given("[S-comp-01] PG가 항상 실패하는 환경에서 재고 있는 상품 주문 시") {
+        Given("재고 있는 상품으로 주문 생성 시") {
             var productId = 0L
 
             beforeEach {
@@ -57,8 +55,8 @@ class GoodsOrderCompensationScenarioTest(
                 productId = product.id
             }
 
-            When("createGoodsOrderUseCase를 호출하면") {
-                Then("[S-comp-01] PG 5xx 실패 시 GoodsOrder가 CANCELLED로 전이되고 Stock은 원복된다") {
+            When("createGoodsOrderUseCase를 성공적으로 호출하면") {
+                Then("주문이 PENDING 상태로 저장되고 동기 확정은 일어나지 않는다") {
                     val command = CreateGoodsOrderCommand(
                         userId = 1L,
                         idempotencyKey = UUID.randomUUID().toString(),
@@ -67,14 +65,14 @@ class GoodsOrderCompensationScenarioTest(
                         items = listOf(OrderItemInput(productId = productId, quantity = 2)),
                     )
 
-                    runCatching { createGoodsOrderUseCase.execute(command) }
+                    createGoodsOrderUseCase.execute(command)
 
                     val orders = goodsOrderJpaRepository.findAll()
                     orders.size shouldBe 1
-                    orders.first().status shouldBe GoodsOrderStatus.CANCELLED
+                    orders.first().status shouldBe GoodsOrderStatus.PENDING
 
                     val stock = requireNotNull(stockJpaRepository.findByProductId(productId))
-                    stock.quantity shouldBe 5
+                    stock.quantity shouldBe 3
                 }
             }
         }

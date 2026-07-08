@@ -4,20 +4,27 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import java.time.Duration
 import org.springframework.beans.factory.annotation.Autowired
+import com.sportsapp.SharedTestContainers
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.ApplicationContextInitializer
+import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.data.redis.core.StringRedisTemplate
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
-import org.testcontainers.containers.GenericContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
+import org.springframework.test.context.ContextConfiguration
+import org.springframework.test.context.TestPropertySource
+import org.springframework.test.context.support.TestPropertySourceUtils
 
 /**
  * [R-02] TTL 자동 해제 — TTL 만료 후 다음 tryLock 이 성공한다.
  */
 @SpringBootTest(classes = [RedisDistributedLockTtlTest.TestApp::class])
-@Testcontainers
+@ContextConfiguration(initializers = [RedisDistributedLockTtlTest.RedisInitializer::class])
+@TestPropertySource(properties = [
+    "spring.autoconfigure.exclude=" +
+        "org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration," +
+        "org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration," +
+        "org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration",
+])
 class RedisDistributedLockTtlTest @Autowired constructor(
     private val redisTemplate: StringRedisTemplate,
 ) : BehaviorSpec({
@@ -42,21 +49,21 @@ class RedisDistributedLockTtlTest @Autowired constructor(
     @SpringBootApplication
     class TestApp
 
+    class RedisInitializer : ApplicationContextInitializer<ConfigurableApplicationContext> {
+        override fun initialize(applicationContext: ConfigurableApplicationContext) {
+            TestPropertySourceUtils.addInlinedPropertiesToEnvironment(
+                applicationContext,
+                "spring.data.redis.host=${SharedTestContainers.redis.host}",
+                "spring.data.redis.port=${SharedTestContainers.redis.getMappedPort(6379)}",
+            )
+        }
+    }
+
     companion object {
         const val WAIT_AFTER_EXPIRE_MS = 1500L
-        private const val REDIS_PORT = 6379
 
-        @Container
-        @JvmStatic
-        val redis: GenericContainer<*> = GenericContainer("redis:7-alpine")
-            .withExposedPorts(REDIS_PORT)
-            .withReuse(true)
-
-        @DynamicPropertySource
-        @JvmStatic
-        fun props(registry: DynamicPropertyRegistry) {
-            registry.add("spring.data.redis.host") { redis.host }
-            registry.add("spring.data.redis.port") { redis.getMappedPort(REDIS_PORT) }
+        init {
+            SharedTestContainers.redis
         }
     }
 }

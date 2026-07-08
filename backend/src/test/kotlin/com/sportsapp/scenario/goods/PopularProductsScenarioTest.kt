@@ -1,12 +1,12 @@
 package com.sportsapp.scenario.goods
 
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.application.goods.InvalidateCacheUseCase
-import com.sportsapp.domain.goods.PopularProductsCache
-import com.sportsapp.domain.goods.Product
-import com.sportsapp.domain.goods.ProductCategory
-import com.sportsapp.domain.goods.ProductStatus
-import com.sportsapp.infrastructure.persistence.goods.ProductJpaRepository
+import com.sportsapp.application.goods.usecase.InvalidateCacheUseCase
+import com.sportsapp.domain.goods.repository.PopularProductsCache
+import com.sportsapp.domain.goods.entity.Product
+import com.sportsapp.domain.goods.vo.ProductCategory
+import com.sportsapp.domain.goods.entity.ProductStatus
+import com.sportsapp.infrastructure.goods.mysql.ProductJpaRepository
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired

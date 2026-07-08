@@ -1,0 +1,70 @@
+# Promtail — 컨테이너 stdout/stderr 로그 수집 → Loki (⑤ 후속: 옵저버빌리티 + 시뮬레이터 인프라 연동)
+#
+# 배경: 앱(Spring Boot 3.3.5)은 OTLP 로그 자동구성을 지원하지 않아(management.otlp.logging 부재)
+#   logback-spring.xml의 OpenTelemetryAppender가 SDK 미설치 상태로 사실상 no-op이다(로그 유실 아님 —
+#   CONSOLE appender는 항상 정상 출력). 반면 reseed·k6-runner 등 비-Spring 컨테이너는 애초에 OTLP 로그
+#   발신 경로가 없다. 이 두 경우를 모두 커버하기 위해 "컨테이너 stdout을 인프라 레벨에서 긁어 Loki로
+#   보내는" 경로를 추가한다 — 앱 코드 변경·Spring Boot 업그레이드 없이 로그 조회 공백을 해소한다.
+#
+# 해소 대상: qa/load/dashboards/simulator.json 운영 안내 패널의 Open Item —
+#   "Loki 로그 수집 에이전트가 docker 컨테이너 stdout을 아직 스크레이프하지 않음".
+#
+# 수집 방식: docker_sd_configs로 실행 중인 컨테이너를 Docker Engine API(/var/run/docker.sock)로
+#   자동 발견해 stdout/stderr를 tail한다. Loki 네이티브 push API(/loki/api/v1/push)로 전송한다
+#   (앱 OTLP 로그는 otel-collector-config.yaml의 별도 파이프라인 — 이 경로와 중복되지 않는다).
+#
+# 라벨(중요 — 키뿐 아니라 값도 trace와 통일해야 FR-11 trace→log 연동이 동작한다):
+#   compose 서비스 라벨(com.docker.compose.service)을 service_name으로 1차 승격하지만, 이 값은
+#   compose 서비스명(backend)이라 Tempo가 보내는 resource attribute `service.name`(otel-collector가
+#   전달하는 값 = OTEL_SERVICE_NAME, backend=sports-application — otel-collector-config.yaml:23,
+#   observability/README.md §3 service.name 규약)과 문자열이 다르다. datasources.yml의
+#   tracesToLogsV2(tags: service.name → service_name)는 span의 service.name 값을 그대로
+#   `{service_name="<값>"}` Loki 쿼리로 사용하므로, 키만 같고 값이 다르면(backend vs
+#   sports-application) 매칭 0건이 된다. 아래 마지막 두 relabel 규칙이 backend/web 컨테이너에
+#   한해 service_name 값을 trace 쪽 값으로 덮어써 키·값을 모두 통일한다. 그 외 컨테이너
+#   (mysql·redis·kafka 등, trace를 발신하지 않음)는 compose 서비스명을 그대로 유지한다.
+#   backend 컨테이너 로그는 CONSOLE_LOG_PATTERN의 `trace_id=xxxx` 텍스트를 그대로 담고 있어
+#   Loki 데이터소스의 derivedFields(trace_id_logfmt) 정규식이 그대로 매칭되어 log→trace 점프가 된다.
+#
+# 롤백: docker compose -f docker-compose.yml -f docker-compose.observability.yml
+#   -f docker-compose.observability-agents.yml stop promtail
+#   (Loki/Grafana/앱 무영향 — 신규 컨테이너 로그 수집만 중단되고 기존 OTLP 경로는 그대로 동작)
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  # named volume(promtail-positions, docker-compose.observability.yml)에 저장 — 컨테이너 재기동 시
+  # /tmp가 초기화되면 마지막 읽은 위치를 잃어 컨테이너 로그를 처음부터 다시 수집(중복 적재)한다.
+  filename: /data/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: docker-containers
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 15s
+    relabel_configs:
+      # 컨테이너명 선행 슬래시 제거 (/sports-backend-1 → sports-backend-1)
+      - source_labels: ["__meta_docker_container_name"]
+        regex: "/(.*)"
+        target_label: container
+      # 1차: compose 서비스 라벨 → service_name (mysql·redis·kafka 등 trace 미발신 컨테이너는 이 값을 유지)
+      - source_labels: ["__meta_docker_container_label_com_docker_compose_service"]
+        target_label: service_name
+      - source_labels: ["__meta_docker_container_label_com_docker_compose_project"]
+        target_label: compose_project
+      # 2차 override: trace를 발신하는 컨테이너만 OTEL_SERVICE_NAME(README §3 규약)과 동일한 값으로
+      # 덮어써 Tempo tracesToLogsV2 조회값(`service_name="sports-application"` 등)과 일치시킨다.
+      # regex 불일치 시 relabel 규칙은 target_label을 바꾸지 않으므로 다른 컨테이너는 1차 값이 유지된다.
+      - source_labels: ["__meta_docker_container_label_com_docker_compose_service"]
+        regex: "^backend$"
+        target_label: service_name
+        replacement: "sports-application"
+      - source_labels: ["__meta_docker_container_label_com_docker_compose_service"]
+        regex: "^web$"
+        target_label: service_name
+        replacement: "sports-web"

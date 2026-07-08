@@ -258,6 +258,122 @@ describe("Portal Facilities Route Handler", () => {
     });
   });
 
+  describe("sido payload 전달", () => {
+    it("POST 요청 본문에 sido가 있으면 BE payload에 sido가 포함된다", async () => {
+      const { cookies } = await import("next/headers");
+      vi.mocked(cookies).mockReturnValue({
+        get: vi.fn().mockReturnValue({ value: "test-token" }),
+      } as unknown as ReturnType<typeof cookies>);
+
+      mockFetch.mockResolvedValue(
+        new Response(JSON.stringify({ id: "fac-002" }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+
+      const { POST } = await import("../route");
+      const request = new NextRequest("http://localhost:3000/api/portal/facilities", {
+        method: "POST",
+        body: JSON.stringify({
+          code: "BS-01",
+          name: "해운대 풋살장",
+          gu: "해운대구",
+          sido: "26",
+          type: "OUTDOOR",
+          address: "부산광역시 해운대구",
+          location: "35.16,129.16",
+          parking: false,
+          tel: "051-1234-5678",
+          eduYn: false,
+        }),
+        headers: { "Content-Type": "application/json" },
+      });
+      await POST(request);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const [, fetchInit] = mockFetch.mock.calls[0] as [string, RequestInit];
+      const sentBody = JSON.parse(fetchInit.body as string) as Record<string, unknown>;
+      expect(sentBody["sido"]).toBe("26");
+    });
+
+    it("sido 미입력(undefined) 시 payload에 sido 없이 전달되어 서버 보간에 맡긴다", async () => {
+      const { cookies } = await import("next/headers");
+      vi.mocked(cookies).mockReturnValue({
+        get: vi.fn().mockReturnValue({ value: "test-token" }),
+      } as unknown as ReturnType<typeof cookies>);
+
+      mockFetch.mockResolvedValue(
+        new Response(JSON.stringify({ id: "fac-001" }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+
+      const { POST } = await import("../route");
+      const request = new NextRequest("http://localhost:3000/api/portal/facilities", {
+        method: "POST",
+        body: JSON.stringify({
+          code: "GN-01",
+          name: "강남 풋살장",
+          gu: "강남구",
+          type: "INDOOR",
+          address: "서울특별시 강남구",
+          location: "37.5,127.0",
+          parking: true,
+          tel: "02-1234-5678",
+          eduYn: false,
+        }),
+        headers: { "Content-Type": "application/json" },
+      });
+      await POST(request);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const [, fetchInit] = mockFetch.mock.calls[0] as [string, RequestInit];
+      const sentBody = JSON.parse(fetchInit.body as string) as Record<string, unknown>;
+      expect("sido" in sentBody).toBe(false);
+    });
+
+    it("기존 location \"lat,lng\" → lat/lng number 분해가 회귀 없이 동작한다", async () => {
+      const { cookies } = await import("next/headers");
+      vi.mocked(cookies).mockReturnValue({
+        get: vi.fn().mockReturnValue({ value: "test-token" }),
+      } as unknown as ReturnType<typeof cookies>);
+
+      mockFetch.mockResolvedValue(
+        new Response(JSON.stringify({ id: "fac-003" }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+
+      const { POST } = await import("../route");
+      const request = new NextRequest("http://localhost:3000/api/portal/facilities", {
+        method: "POST",
+        body: JSON.stringify({
+          code: "GN-02",
+          name: "강남 풋살장 2",
+          gu: "강남구",
+          sido: "11",
+          type: "INDOOR",
+          address: "서울특별시 강남구",
+          location: "37.5123, 127.0456",
+          parking: true,
+          tel: "02-1234-5678",
+          eduYn: false,
+        }),
+        headers: { "Content-Type": "application/json" },
+      });
+      await POST(request);
+
+      const [, fetchInit] = mockFetch.mock.calls[0] as [string, RequestInit];
+      const sentBody = JSON.parse(fetchInit.body as string) as Record<string, unknown>;
+      expect(sentBody["lat"]).toBe(37.5123);
+      expect(sentBody["lng"]).toBe(127.0456);
+      expect(sentBody["sido"]).toBe("11");
+    });
+  });
+
   describe("네트워크 오류 처리", () => {
     it("BE 연결 실패 시 503을 반환한다", async () => {
       const { cookies } = await import("next/headers");

@@ -51,7 +51,28 @@ harness-rules 준수·아키텍처 정합성·테스트 품질·보안을 검수
 - Entity가 getter/setter만 가진 Anemic Domain Model인가
 - Entity 내부에 `Repository`/`Gateway`/`DomainEventPublisher`가 주입되었는가
 - 비즈니스 검증/상태 전이가 Entity 외부(Service)에 흩어져 있는가
-- 다른 도메인 Entity를 직접 참조하는가 (ID Long만 허용)
+- **다른 aggregate** Entity를 직접 참조하는가 (cross-aggregate 는 FK id Long). **같은 aggregate 내부** 자식은 `@OneToMany`/`@ManyToOne`/`@OneToOne` 연관관계로 연결 OK
+
+**DDD / OO 7대 기준 (`be-implementer.md` Step 6.4 와 동일)**
+- **VO**: 통화·금액·식별자 등 값 개념이 원시 타입(String/Int)으로 흩어져 있는가 (값 동등성·불변 VO 또는 enum 으로 캡슐화 권장)
+- **Factory**: 불변식이 있는 Entity 가 `companion object create()` 팩토리 없이 외부에서 raw 생성되는가
+- **DomainEvent**: 이벤트가 커밋 전 발행되거나, Entity 적재(`registerEvent`) → DomainService `publishAll(pullDomainEvents())`(AFTER_COMMIT) 경로를 벗어났는가
+- **JPA Aggregate 매핑**: 같은 aggregate 내부 자식이 FK id 만으로 느슨하게 연결돼 객체 그래프가 끊겨 있는가 (연관관계 + `cascade=[PERSIST,MERGE]` 권장). soft-delete 코드베이스이므로 `orphanRemoval`/`CascadeType.REMOVE`(hard delete) 를 쓰지 않았는가
+- **커버리지**: 단위/레포지토리/시나리오 3계층이 모두 있는가, 동시성·멱등·보상 시나리오가 빠졌는가, detekt baseline 에 신규 위반을 억제(append)해 통과시켰는가
+
+**Aggregate 생명주기 / 고아 (`be-code-convention.md` "Aggregate 생명주기")**
+- 루트를 soft-delete/취소하는 DomainService 가 같은 트랜잭션에서 자식도 전파(soft-delete/취소)하는가 — 안 하면 자식이 `deleted_at IS NULL` 로 살아남는 고아 (Post→Comment, TicketOrder→Ticket, Event→Seat, Order→Item)
+- `softDeleteByXxxId` 같은 전파 메서드를 정의만 하고 루트 종료 경로에서 호출하지 않는 데드 메서드가 있는가
+- 루트+자식 생명주기 변경이 한 `@Transactional`(UseCase) 안에서 원자적인가
+
+**RepositoryImpl 순수성 (`be-code-convention.md` "RepositoryImpl 은 순수 영속화만")**
+- `*RepositoryImpl.kt` 가 중복 해소·`.softDelete()` 호출·상태 결정·활성마커 관리 등 비즈니스 로직을 수행하는가 (조회/위임만 해야 함 — 로직은 DomainService 로)
+
+**동시성·멱등성 (`be-code-convention.md` "동시성·멱등성 최종 방어선")**
+- UseCase 가 `when/if (payment.status)` 로 결제 결과를 동기 분기하는가 (prepare 직후 항상 READY → 완료는 웹훅/이벤트 비동기로)
+- capacity/좌석/재고 테이블에 DB unique 제약(최종 방어선)이 있는가 — 락만으로 오버부킹/이중발권을 막으려 하는가
+- `@Version` 낙관락 충돌을 재시도/도메인예외(409)로 처리하는가, 500 으로 새는가
+- `@Transactional` 안에서 외부 Gateway(PG·SMS) 호출하거나 도메인 이벤트를 커밋 전 발행하는가 (AFTER_COMMIT 아님)
 
 **네이밍 (`be-code-convention.md` "네이밍 컨벤션")**
 - Controller가 `~ApiController.kt`가 아닌가
@@ -59,9 +80,11 @@ harness-rules 준수·아키텍처 정합성·테스트 품질·보안을 검수
 - Kafka Consumer가 `~EventWorker.kt`가 아닌가
 - Repository(DB)와 Gateway(외부 시스템 호출) 구분이 잘못되었는가
 
-**DTO 흐름**
+**DTO 흐름 / OSIV (`be-code-convention.md` "@Transactional 메서드는 ... DTO 를 반환")**
 - Request(presentation) → Command(application) → Entity(domain) → Response(application) 흐름 위반
 - Controller가 Entity를 그대로 응답으로 반환하는가
+- `@Transactional` 메서드(UseCase·DomainService 불문)가 JPA Entity 를 반환하는가 → DTO/primitive/Unit 로 바꿔야 함 (트랜잭션 밖 lazy 접근 = OSIV 위반)
+- `spring.jpa.open-in-view=true` 로 lazy 문제를 가리는가 (기본 false 유지 + DTO 반환으로 해결)
 
 **테스트**
 - 신규 비즈니스 로직에 대응하는 테스트가 없는가

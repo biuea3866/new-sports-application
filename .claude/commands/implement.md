@@ -39,6 +39,7 @@ PM 요구사항
     │
     ▼
 [Step 3] 각 서브에이전트 — 컨텍스트 파악 → 인터페이스 설계 → TDD(RED→GREEN→detekt)
+    │   └ 무중단 배포: 사용자에게 보이는 신규/위험 동작은 피처 플래그 뒤에 (기본 OFF)
     │
     ▼
 [Step 4] git push / gh pr create
@@ -209,6 +210,38 @@ Wave 3: e               (단독, 1개 tool_use)
 9. git push (훅이 자동으로 테스트 + 셀프리뷰 수행)
    - 훅이 deny하면 → 지적된 Must Fix 항목 수정 후 재시도
 ```
+
+### 서브에이전트 워크트리 격리 강제 (필수)
+
+isolation 실패는 wave 병렬성을 0으로 만든다. 모든 서브에이전트 prompt에 아래 4줄을 반드시 포함한다:
+
+```
+## Worktree 격리 (위반 시 hook 차단)
+- 당신은 isolated worktree (현재 $PWD) 안에서만 작업합니다.
+- DO NOT use `cd /Users/biuea/sports-application/...` 절대 경로 — main worktree 진입 금지.
+- DO NOT use `git -C /Users/biuea/sports-application/...` — 자기 worktree 외 경로에서 git 작업 금지.
+- 모든 명령은 $PWD 또는 상대 경로 기준 (cd backend, ./gradlew test). 절대 경로는 $PWD prefix.
+```
+
+→ 다음 3개 hook 이 워크트리 격리·위임을 강제한다:
+- `agent-worktree-guard.sh` (PreToolUse Agent) — 구현 에이전트를 워크트리 격리 없이 스폰하면 **차단**. `isolation:"worktree"` 이거나 prompt 에 `.claude/worktrees/` 경로가 있어야 통과.
+- `feature-gate.sh` (PreToolUse Write/Edit) — APPROVED/IMPLEMENTING 중 **메인 워크트리에서 구현 파일 직접 작성 차단**. 구현은 워크트리 서브에이전트에 위임해야 한다. 머지 충돌 해소(MERGE_HEAD 존재) 시에만 예외.
+- `worktree-isolation-guard.sh` (PreToolUse Bash) — 워크트리 에이전트가 main 워크트리 경로로 cd/git 하면 차단.
+
+### 피처 플래그 게이팅 (무중단 배포)
+
+light 모드라도 **사용자에게 보이는 신규/위험 동작**은 피처 플래그 뒤에서 활성화한다(코드 머지 ≠ 기능 노출). 서브에이전트 prompt에 다음을 포함한다:
+
+```
+## 피처 플래그 게이팅 (무중단 배포)
+- 사용자에게 보이는 신규/위험 동작은 플래그 키(`<domain>.<feature>`) 뒤에서만 활성화. 기본값 OFF.
+- 플래그 OFF면 기존(AS-IS) 동작 유지 (회귀 0건). 평가는 서버 권위(클라 신뢰 금지).
+- 분기는 진입점 한 곳에. ON/OFF 양쪽 경로 테스트.
+- DB 변경은 expand-contract(하위호환). 파괴적 변경은 플래그 정착 후 별도 작업.
+- 단순 내부 리팩토링·버그 픽스로 외부 동작 변화가 없으면 플래그 불필요(판단 후 생략 명시).
+```
+
+> 피처 플래그 시스템이 없으면 feature-flag PRD가 정의한 잠정 토글(설정/Redis)을 사용한다. 정착 후 플래그·분기 제거를 후속 작업으로 남긴다(flag debt).
 
 ---
 

@@ -1,6 +1,6 @@
 package com.sportsapp.infrastructure.audit
 
-import com.sportsapp.domain.user.UserPrincipal
+import com.sportsapp.domain.user.vo.UserPrincipal
 import com.sportsapp.infrastructure.persistence.audit.MongoAuditorAware
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.optional.shouldBeEmpty

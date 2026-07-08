@@ -1,19 +1,19 @@
 package com.sportsapp.scenario.goods
 
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.application.goods.CreateGoodsOrderCommand
-import com.sportsapp.application.goods.CreateGoodsOrderUseCase
-import com.sportsapp.domain.goods.GoodsDomainService
-import com.sportsapp.domain.goods.OrderItemInput
-import com.sportsapp.domain.goods.Product
-import com.sportsapp.domain.goods.ProductCategory
-import com.sportsapp.domain.goods.ProductStatus
-import com.sportsapp.domain.goods.Stock
-import com.sportsapp.domain.payment.PaymentMethod
-import com.sportsapp.infrastructure.persistence.goods.GoodsOrderItemJpaRepository
-import com.sportsapp.infrastructure.persistence.goods.GoodsOrderJpaRepository
-import com.sportsapp.infrastructure.persistence.goods.ProductJpaRepository
-import com.sportsapp.infrastructure.persistence.goods.StockJpaRepository
+import com.sportsapp.application.goods.dto.CreateGoodsOrderCommand
+import com.sportsapp.application.goods.usecase.CreateGoodsOrderUseCase
+import com.sportsapp.domain.goods.service.GoodsDomainService
+import com.sportsapp.domain.goods.vo.OrderItemInput
+import com.sportsapp.domain.goods.entity.Product
+import com.sportsapp.domain.goods.vo.ProductCategory
+import com.sportsapp.domain.goods.entity.ProductStatus
+import com.sportsapp.domain.goods.entity.Stock
+import com.sportsapp.domain.payment.vo.PaymentMethod
+import com.sportsapp.infrastructure.goods.mysql.GoodsOrderItemJpaRepository
+import com.sportsapp.infrastructure.goods.mysql.GoodsOrderJpaRepository
+import com.sportsapp.infrastructure.goods.mysql.ProductJpaRepository
+import com.sportsapp.infrastructure.goods.mysql.StockJpaRepository
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.jdbc.core.JdbcTemplate
@@ -34,6 +34,14 @@ class GoodsOrderTransactionTest(
 ) : BaseIntegrationTest() {
 
     init {
+        beforeEach {
+            jdbcTemplate.execute("DELETE FROM goods_order_items")
+            jdbcTemplate.execute("DELETE FROM goods_orders")
+            jdbcTemplate.execute("DELETE FROM payments")
+            jdbcTemplate.execute("DELETE FROM stocks")
+            jdbcTemplate.execute("DELETE FROM products")
+        }
+
         afterEach {
             jdbcTemplate.execute("DELETE FROM goods_order_items")
             jdbcTemplate.execute("DELETE FROM goods_orders")

@@ -1,0 +1,69 @@
+# OTel Collector 게이트웨이 config (INFRA-03 소유)
+# 근거: TDD "시스템 역할 경계"·"인터페이스·엔드포인트 계약", ADR-002·003·005.
+# 마운트: docker-compose.observability.yml → /etc/otelcol-contrib/config.yaml
+# 이미지: otel/opentelemetry-collector-contrib:0.104.0
+#
+# 역할: 앱(sports-application)·web(sports-web)이 OTLP(4317/4318)로 발신한
+#   trace→Tempo·log→Loki·(보조)metric→Prometheus remote_write로 라우팅한다.
+#   메트릭 주 경로는 Prometheus 직접 scrape이며(ADR-002), 여기 metrics 파이프라인은
+#   FR-3 문구 충족용 보조 경로다.
+#
+# 롤백: 이 파일 revert 후 otel-collector 컨테이너 재시작.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317   # OTLP gRPC 수신 (앱 기본 발신 경로)
+      http:
+        endpoint: 0.0.0.0:4318   # OTLP HTTP 수신
+
+processors:
+  # deployment.environment·service.name resource attribute는 별도 조작 없이 그대로 통과한다.
+  # (앱이 OTEL_RESOURCE_ATTRIBUTES로 주입: deployment.environment=${APP_ENV}, service.name=sports-application / web=sports-web)
+  resource:
+    attributes:
+      # service.name 미주입 신호만 unknown_service로 채운다.
+      # action: insert 는 키가 없을 때만 삽입하므로 sports-application·sports-web 은 보존되고,
+      # service.name 미주입 trace/log/metric 도 drop 없이 통과한다(관측 유실 방지).
+      - key: service.name
+        value: unknown_service
+        action: insert
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+
+exporters:
+  # trace → Tempo (OTLP gRPC). service.name 은 Tempo에서 resource.service.name 라벨로 노출.
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+  # log → Loki 네이티브 OTLP 수신 엔드포인트. service.name → service_name 라벨로 노출.
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+  # metric(보조) → Prometheus remote_write 수신(compose 플래그 --web.enable-remote-write-receiver).
+  # resource attribute(deployment.environment·service.name)를 라벨로 승격해 env·service 구분 유지.
+  prometheusremotewrite:
+    endpoint: http://prometheus:9090/api/v1/write
+    resource_to_telemetry_conversion:
+      enabled: true
+
+service:
+  telemetry:
+    metrics:
+      # Collector self-metric 노출 — prometheus.yml 의 otel-collector 잡이 :8888 을 scrape.
+      address: 0.0.0.0:8888
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [resource, batch]
+      exporters: [otlp/tempo]
+    logs:
+      receivers: [otlp]
+      processors: [resource, batch]
+      exporters: [otlphttp/loki]
+    metrics:
+      receivers: [otlp]
+      processors: [resource, batch]
+      exporters: [prometheusremotewrite]

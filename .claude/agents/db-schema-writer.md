@@ -32,6 +32,12 @@ DDL 작성 규칙:
 - 컬럼 타입 변경 → 영향도 분석 먼저, 위험하면 사용자에게 확인 요청
 - 인덱스 추가 → `ALGORITHM=INPLACE, LOCK=NONE` 명시
 
+동시성 최종 방어선 (capacity/좌석/재고/예약류 테이블):
+- 분산락·낙관락은 보조 수단이다. **DB unique 제약을 최종 방어선으로 반드시 둔다** — 락 TTL 만료·STW 로 락이 풀려도 DB 가 오버부킹/이중발권을 막아야 한다.
+- 예: 좌석 1좌석 1발권 → `UNIQUE (event_id, seat_id, status)` 또는 활성 상태에 대한 부분 unique. 예약 capacity=1 슬롯 → 활성 예약에 대한 unique.
+- `no-db-fk` 룰은 **외래키만** 금지한다. unique/check 제약은 허용·권장.
+- 티켓에 capacity/좌석/재고 동시성이 걸려 있는데 unique 제약이 빠져 있으면 사용자에게 "락만으로는 오버부킹을 못 막는다"고 알리고 제약 추가를 제안한다.
+
 파일 명명:
 - `V{YYYYMMddHHmm}__{snake_case_설명}.sql`
 - 예: `V202505121430__add_notification_channel_column.sql`

@@ -1,0 +1,17 @@
+{
+  "name": "mock-pg",
+  "version": "1.0.0",
+  "description": "Mock PG (Payment Gateway) server for local E2E testing",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/pg.test.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

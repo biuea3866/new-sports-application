@@ -1,11 +1,11 @@
 package com.sportsapp.scenario.ticketing
 
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.domain.ticketing.Event
-import com.sportsapp.domain.ticketing.EventStatus
-import com.sportsapp.domain.ticketing.Seat
-import com.sportsapp.infrastructure.persistence.ticketing.EventJpaRepository
-import com.sportsapp.infrastructure.persistence.ticketing.SeatJpaRepository
+import com.sportsapp.domain.ticketing.entity.Event
+import com.sportsapp.domain.ticketing.entity.EventStatus
+import com.sportsapp.domain.ticketing.entity.Seat
+import com.sportsapp.infrastructure.ticketing.mysql.EventJpaRepository
+import com.sportsapp.infrastructure.ticketing.mysql.SeatJpaRepository
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import org.springframework.beans.factory.annotation.Autowired
@@ -60,11 +60,15 @@ class EventQueryScenarioTest(
                     String::class.java
                 )
 
-                Then("200 응답, 섹션 정보와 ZonedDateTime ISO 8601 형식(startsAt)이 포함된다") {
+                Then("200 응답, 섹션 정보·seats 배열·ZonedDateTime ISO 8601 형식(startsAt)이 포함된다") {
                     response.statusCode shouldBe HttpStatus.OK
                     response.body shouldContain "Open Event"
                     response.body shouldContain "sections"
                     response.body shouldContain "totalSeats"
+                    response.body shouldContain "seats"
+                    response.body shouldContain "available"
+                    response.body shouldContain "rowNo"
+                    response.body shouldContain "seatNo"
                     response.body shouldContain "2026-12-01T18:00:00"
                 }
             }

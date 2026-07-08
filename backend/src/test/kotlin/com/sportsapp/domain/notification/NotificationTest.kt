@@ -1,5 +1,10 @@
 package com.sportsapp.domain.notification
 
+import com.sportsapp.domain.notification.entity.Notification
+import com.sportsapp.domain.notification.entity.NotificationStatus
+import com.sportsapp.domain.notification.exception.InvalidNotificationStateException
+import com.sportsapp.domain.notification.vo.NotificationChannel
+import com.sportsapp.domain.notification.vo.NotificationPayload
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -94,6 +99,64 @@ class NotificationTest : BehaviorSpec({
 
             Then("[U-05] 전달된 payload 가 그대로 유지된다") {
                 notification.payload shouldBe payload
+            }
+        }
+    }
+
+    Given("QUEUED 상태의 Notification") {
+        val notification = Notification.queue(
+            userId = 1L,
+            channel = NotificationChannel.IN_APP,
+            templateId = "test",
+            payload = null,
+        )
+
+        When("markFailed 를 호출하면") {
+            notification.markFailed()
+
+            Then("status 가 FAILED 로 전이된다") {
+                notification.status shouldBe NotificationStatus.FAILED
+            }
+        }
+    }
+
+    Given("이미 FAILED 상태의 Notification") {
+        val notification = Notification(
+            userId = 1L,
+            channel = NotificationChannel.IN_APP,
+            templateId = "test",
+            payload = NotificationPayload(emptyMap()),
+            status = NotificationStatus.FAILED,
+            sentAt = null,
+            readAt = null,
+            eventId = null,
+        )
+
+        When("markFailed 를 다시 호출하면") {
+            Then("InvalidNotificationStateException 이 발생한다") {
+                shouldThrow<InvalidNotificationStateException> {
+                    notification.markFailed()
+                }
+            }
+        }
+    }
+
+    Given("NotificationStatus") {
+        When("QUEUED 에 canTransitToFailed 를 호출하면") {
+            Then("true 를 반환한다") {
+                NotificationStatus.QUEUED.canTransitToFailed() shouldBe true
+            }
+        }
+
+        When("SENT 에 canTransitToFailed 를 호출하면") {
+            Then("true 를 반환한다") {
+                NotificationStatus.SENT.canTransitToFailed() shouldBe true
+            }
+        }
+
+        When("FAILED 에 canTransitToFailed 를 호출하면") {
+            Then("false 를 반환한다") {
+                NotificationStatus.FAILED.canTransitToFailed() shouldBe false
             }
         }
     }

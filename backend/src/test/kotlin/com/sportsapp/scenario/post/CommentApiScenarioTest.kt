@@ -1,10 +1,10 @@
 package com.sportsapp.scenario.post
 
 import com.sportsapp.BaseJpaIntegrationTest
-import com.sportsapp.domain.post.Post
-import com.sportsapp.domain.post.PostType
-import com.sportsapp.infrastructure.persistence.post.CommentJpaRepository
-import com.sportsapp.infrastructure.persistence.post.PostJpaRepository
+import com.sportsapp.domain.post.entity.Post
+import com.sportsapp.domain.post.vo.PostType
+import com.sportsapp.infrastructure.post.mysql.CommentJpaRepository
+import com.sportsapp.infrastructure.post.mysql.PostJpaRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.http.MediaType

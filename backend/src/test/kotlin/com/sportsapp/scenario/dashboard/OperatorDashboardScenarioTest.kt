@@ -2,17 +2,17 @@ package com.sportsapp.scenario.dashboard
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.application.user.LoginResponse
-import com.sportsapp.domain.goods.Product
-import com.sportsapp.domain.goods.ProductCategory
-import com.sportsapp.domain.goods.ProductStatus
-import com.sportsapp.domain.goods.Stock
-import com.sportsapp.domain.ticketing.Event
-import com.sportsapp.domain.ticketing.EventStatus
-import com.sportsapp.domain.user.UserDomainService
-import com.sportsapp.infrastructure.persistence.goods.ProductJpaRepository
-import com.sportsapp.infrastructure.persistence.goods.StockJpaRepository
-import com.sportsapp.infrastructure.persistence.ticketing.EventJpaRepository
+import com.sportsapp.presentation.user.dto.response.LoginResponse
+import com.sportsapp.domain.goods.entity.Product
+import com.sportsapp.domain.goods.vo.ProductCategory
+import com.sportsapp.domain.goods.entity.ProductStatus
+import com.sportsapp.domain.goods.entity.Stock
+import com.sportsapp.domain.ticketing.entity.Event
+import com.sportsapp.domain.ticketing.entity.EventStatus
+import com.sportsapp.domain.user.service.UserDomainService
+import com.sportsapp.infrastructure.goods.mysql.ProductJpaRepository
+import com.sportsapp.infrastructure.goods.mysql.StockJpaRepository
+import com.sportsapp.infrastructure.ticketing.mysql.EventJpaRepository
 import io.kotest.matchers.shouldBe
 import org.apache.hc.client5.http.impl.classic.HttpClients
 import org.springframework.beans.factory.annotation.Autowired
@@ -139,7 +139,7 @@ class OperatorDashboardScenarioTest(
                 )
             )
 
-            stringRedisTemplate.delete("b2b:b2bDashboardSummary::${user.id}")
+            stringRedisTemplate.delete("b2b:b2bDashboardSummary:${user.id}")
 
             When("[S-04] GET /api/operator/dashboard/summary 첫 번째 호출") {
                 val accessToken = login("dashboard-multi-role@example.com", password)
@@ -172,11 +172,11 @@ class OperatorDashboardScenarioTest(
             jdbcTemplate.execute("DELETE FROM stocks WHERE product_id IN (SELECT id FROM products WHERE owner_id = ${user.id})")
             jdbcTemplate.execute("DELETE FROM products WHERE owner_id = ${user.id}")
 
-            stringRedisTemplate.delete("b2b:b2bDashboardSummary::${user.id}")
+            stringRedisTemplate.delete("b2b:b2bDashboardSummary:${user.id}")
 
             When("[S-01] 같은 userId로 2회 호출 시 두 번째는 캐시 히트") {
                 val accessToken = login("dashboard-cache@example.com", password)
-                val cacheKey = "b2b:b2bDashboardSummary::${user.id}"
+                val cacheKey = "b2b:b2bDashboardSummary:${user.id}"
 
                 val firstResponse = getDashboard(accessToken)
                 val secondResponse = getDashboard(accessToken)

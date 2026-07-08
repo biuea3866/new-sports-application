@@ -1,10 +1,11 @@
 package com.sportsapp.application.ticketing
+import com.sportsapp.application.ticketing.usecase.GetEventUseCase
 
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
-import com.sportsapp.domain.ticketing.Event
-import com.sportsapp.domain.ticketing.EventStatus
-import com.sportsapp.domain.ticketing.Seat
-import com.sportsapp.domain.ticketing.TicketingDomainService
+import com.sportsapp.domain.ticketing.entity.Event
+import com.sportsapp.domain.ticketing.entity.EventStatus
+import com.sportsapp.domain.ticketing.entity.Seat
+import com.sportsapp.domain.ticketing.service.TicketingDomainService
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -41,25 +42,33 @@ class GetEventUseCaseTest : BehaviorSpec({
 
     Given("ID=42인 Event와 섹션별 좌석이 존재할 때") {
         val event = buildEvent(42L)
-        val seats = listOf(
-            buildSeat(42L, "A", "1"),
-            buildSeat(42L, "A", "2"),
-            buildSeat(42L, "B", "1"),
+        val seat1 = buildSeat(42L, "A", "1")
+        val seat2 = buildSeat(42L, "A", "2")
+        val seat3 = buildSeat(42L, "B", "1")
+        val seatsWithAvailability = listOf(
+            seat1 to true,
+            seat2 to false,
+            seat3 to true,
         )
 
         every { ticketingDomainService.getEvent(42L) } returns event
-        every { ticketingDomainService.getSeats(42L) } returns seats
+        every { ticketingDomainService.getSeatsWithAvailability(42L) } returns seatsWithAvailability
 
         When("[U-03] getEvent(42)를 호출하면") {
             val result = getEventUseCase.execute(42L)
 
-            Then("섹션별 좌석 수가 포함된 EventDetailResponse가 반환된다") {
+            Then("섹션별 좌석 수와 개별 좌석 목록(available 포함)이 반환된다") {
                 result.id shouldBe 42L
                 result.title shouldBe "Concert 42"
                 result.startsAt shouldBe startsAt
                 result.sections.size shouldBe 2
                 result.sections.find { it.section == "A" }?.totalSeats shouldBe 2
                 result.sections.find { it.section == "B" }?.totalSeats shouldBe 1
+                result.seats.size shouldBe 3
+                result.seats.count { it.available } shouldBe 2
+                result.seats.count { !it.available } shouldBe 1
+                result.seats.find { it.seatNo == "1" && it.section == "A" }?.available shouldBe true
+                result.seats.find { it.seatNo == "2" && it.section == "A" }?.available shouldBe false
             }
         }
     }

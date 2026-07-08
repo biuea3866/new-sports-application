@@ -1,0 +1,83 @@
+# Grafana 데이터소스 프로비저닝 (INFRA-04)
+# 근거: TDD "인터페이스·엔드포인트 계약", ADR-005(env 재사용), FR-11(trace↔log↔metric 상호 연결).
+# 서비스명(prometheus/tempo/loki)은 default 네트워크 DNS로 해석된다.
+apiVersion: 1
+
+datasources:
+  # ---- Prometheus (default) — 메트릭 + exemplar → Tempo 점프 (FR-11) ----
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: POST
+      manageAlerts: false
+      # exemplar의 traceID 라벨을 Tempo 데이터소스로 연결 (metric → trace 점프)
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: tempo
+          urlDisplayLabel: "Tempo에서 trace 보기"
+
+  # ---- Tempo — trace 저장·조회. trace → log(Loki) / trace → metric(Prometheus) 연동 ----
+  - name: Tempo
+    type: tempo
+    uid: tempo
+    access: proxy
+    url: http://tempo:3200
+    editable: false
+    jsonData:
+      # trace → log (Loki) 상호 연결 (FR-11). 이 필터는 span의 service.name 값을 그대로
+      # Loki 쿼리 `{service_name="<값>"}`에 대입한다 — 값까지 일치해야 매칭된다(키만 같으면 0건).
+      # promtail-config.yaml이 backend/web 컨테이너의 service_name을 OTEL_SERVICE_NAME과
+      # 동일한 값(sports-application/sports-web, README §3 규약)으로 덮어써 이 값을 맞춘다.
+      tracesToLogsV2:
+        datasourceUid: loki
+        spanStartTimeShift: "-1h"
+        spanEndTimeShift: "1h"
+        filterByTraceID: true
+        filterBySpanID: false
+        tags:
+          - key: service.name
+            value: service_name
+      # trace → metric (Prometheus) 상호 연결
+      tracesToMetrics:
+        datasourceUid: prometheus
+        spanStartTimeShift: "-1h"
+        spanEndTimeShift: "1h"
+        tags:
+          - key: service.name
+            value: application
+      serviceMap:
+        datasourceUid: prometheus
+      nodeGraph:
+        enabled: true
+      search:
+        hide: false
+      lokiSearch:
+        datasourceUid: loki
+
+  # ---- Loki — 로그 저장·조회. derivedFields로 trace_id → Tempo 점프 (FR-11) ----
+  - name: Loki
+    type: loki
+    uid: loki
+    access: proxy
+    url: http://loki:3100
+    editable: false
+    jsonData:
+      maxLines: 1000
+      derivedFields:
+        # 로그의 trace_id 필드를 Tempo trace로 연결 (log → trace 점프)
+        - name: trace_id
+          matcherRegex: '"trace_id"\s*:\s*"(\w+)"'
+          url: "$${__value.raw}"
+          datasourceUid: tempo
+          urlDisplayLabel: "Tempo에서 trace 보기"
+        # 텍스트 로그 포맷(logfmt) 대응 — trace_id=xxxx 패턴
+        - name: trace_id_logfmt
+          matcherRegex: 'trace_id=(\w+)'
+          url: "$${__value.raw}"
+          datasourceUid: tempo
+          urlDisplayLabel: "Tempo에서 trace 보기"

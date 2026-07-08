@@ -1,0 +1,47 @@
+# Loki 단일 바이너리 로컬 config (INFRA-03 소유)
+# 근거: TDD "시스템 역할 경계"(log→Loki), ADR-003.
+# 마운트: docker-compose.observability.yml → /etc/loki/local-config.yaml, 볼륨 loki-data:/loki
+# 이미지: grafana/loki:3.1.0
+#
+# 구성: 단일 바이너리·filesystem 스토리지·inmemory ring — 로컬 최소 구성.
+#   OTLP 네이티브 수신(/otlp/v1/logs)이 기본 활성 — Collector otlphttp/loki 가 여기로 로그를 보낸다.
+#   service.name resource attribute 는 service_name 라벨로 매핑된다(TDD 계약).
+#
+# 롤백: 이 파일 revert 후 loki 컨테이너 재시작.
+
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2020-10-24
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  # OTLP 수집은 structured metadata 를 사용하므로 활성 필요.
+  allow_structured_metadata: true
+  # Grafana Logs volume 패널 지원.
+  volume_enabled: true
+
+ruler:
+  alertmanager_url: http://localhost:9093

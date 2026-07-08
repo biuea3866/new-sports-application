@@ -1,9 +1,12 @@
 package com.sportsapp.application.post
 
-import com.sportsapp.domain.post.Post
-import com.sportsapp.domain.post.PostDomainService
-import com.sportsapp.domain.post.PostSearchCriteria
-import com.sportsapp.domain.post.PostType
+import com.sportsapp.application.post.dto.PostCriteria
+import com.sportsapp.application.post.usecase.SearchPostsUseCase
+
+import com.sportsapp.domain.post.entity.Post
+import com.sportsapp.domain.post.service.PostDomainService
+import com.sportsapp.domain.post.dto.PostSearchCriteria
+import com.sportsapp.domain.post.vo.PostType
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -29,7 +32,7 @@ class SearchPostsUseCaseTest : BehaviorSpec({
         return post
     }
 
-    Given("[U-01] type/userId/keyword 복합 Criteria가 주어졌을 때") {
+    Given("type/userId/keyword 복합 Criteria가 주어졌을 때") {
         val criteriaSlot = slot<PostSearchCriteria>()
         every { postDomainService.search(capture(criteriaSlot), any()) } returns PageImpl(emptyList())
 
@@ -51,7 +54,7 @@ class SearchPostsUseCaseTest : BehaviorSpec({
         }
     }
 
-    Given("[U-01] 빈 keyword가 주어졌을 때") {
+    Given("빈 keyword가 주어졌을 때") {
         val criteriaSlot = slot<PostSearchCriteria>()
         every { postDomainService.search(capture(criteriaSlot), any()) } returns PageImpl(emptyList())
 
@@ -69,7 +72,7 @@ class SearchPostsUseCaseTest : BehaviorSpec({
         val posts = (1..3).map { buildPost(userId = it.toLong(), type = PostType.FREE) }
         every { postDomainService.search(any(), any()) } returns PageImpl(posts)
 
-        When("[U-01] type=FREE로 조회하면") {
+        When("type=FREE로 조회하면") {
             val criteria = PostCriteria(type = PostType.FREE, userId = null, keyword = null, page = 0, size = 20)
             val result = searchPostsUseCase.execute(criteria)
 
@@ -90,6 +93,27 @@ class SearchPostsUseCaseTest : BehaviorSpec({
 
             Then("Pageable의 size가 100으로 cap된다") {
                 pageableSlot.captured.pageSize shouldBe 100
+            }
+        }
+    }
+
+    Given("globalFeedOnly=false 로 요청해도") {
+        val criteriaSlot = slot<PostSearchCriteria>()
+        every { postDomainService.search(capture(criteriaSlot), any()) } returns PageImpl(emptyList())
+
+        When("execute를 호출하면") {
+            val criteria = PostCriteria(
+                type = null,
+                userId = null,
+                keyword = null,
+                globalFeedOnly = false,
+                page = 0,
+                size = 10,
+            )
+            searchPostsUseCase.execute(criteria)
+
+            Then("전역 피드이므로 globalFeedOnly 가 true 로 강제된다") {
+                criteriaSlot.captured.globalFeedOnly shouldBe true
             }
         }
     }

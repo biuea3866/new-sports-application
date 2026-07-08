@@ -1,6 +1,6 @@
 package com.sportsapp.infrastructure.security
 
-import com.sportsapp.domain.user.JwtIssuer
+import com.sportsapp.domain.user.gateway.JwtIssuer
 import io.jsonwebtoken.JwtException
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys

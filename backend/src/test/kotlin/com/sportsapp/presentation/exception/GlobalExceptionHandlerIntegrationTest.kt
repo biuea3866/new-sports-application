@@ -12,13 +12,20 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
+import org.springframework.orm.ObjectOptimisticLockingFailureException
+import org.springframework.security.test.context.support.WithMockUser
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user
 import org.springframework.test.web.servlet.MockMvc
-import org.springframework.test.web.servlet.get
-import org.springframework.test.web.servlet.post
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.testcontainers.containers.MySQLContainer
 import org.testcontainers.junit.jupiter.Container
@@ -26,11 +33,18 @@ import org.testcontainers.junit.jupiter.Container
 /**
  * S-01: 의도적 BusinessException 발생 시 Controller가 정확한 ProblemDetail + 매핑된 HTTP 상태를 반환한다.
  * S-02: RuntimeException은 500 + INTERNAL_ERROR 코드의 ProblemDetail로 변환된다.
- * S-03: @Valid 실패 시 422 + 필드별 에러 목록 포함 ProblemDetail이 반환된다.
+ * S-03: @Valid 실패 시 400 + 필드별 에러 목록 포함 ProblemDetail이 반환된다.
+ * S-04: ObjectOptimisticLockingFailureException 발생 시 409 + OPTIMISTIC_LOCK_CONFLICT 코드의 ProblemDetail이 반환된다.
+ * S-05: 등록되지 않은 일반 RuntimeException은 여전히 500 + INTERNAL_ERROR로 응답된다.
+ * [DEF-001] S-06: 무효 enum 쿼리 파라미터 전달 시 500 대신 400을 반환한다.
+ * [DEF-001] S-07: 유효 enum 쿼리 파라미터 전달 시 200을 반환한다 (회귀).
+ * [F6] S-08: 필수 @RequestParam 누락 시 500 대신 400을 반환한다.
+ * [F6] S-09: 필수 @RequestParam이 있으면 200을 반환한다 (회귀).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @Import(ExceptionTriggerController::class)
+@WithMockUser
 class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
 
     override fun extensions() = listOf(SpringExtension)
@@ -51,65 +65,214 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
     init {
         Given("ResourceNotFoundException이 발생하는 엔드포인트") {
             When("GET /test/exceptions/resource-not-found 요청 시") {
-                Then("[S-01] 404 + ProblemDetail (code=RESOURCE_NOT_FOUND) 을 반환한다") {
-                    mockMvc.get("/test/exceptions/resource-not-found") {
-                        accept(MediaType.APPLICATION_JSON)
-                    }.andExpect {
-                        status { isNotFound() }
-                        content { contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON) }
-                        jsonPath("$.status") { value(404) }
-                        jsonPath("$.properties.code") { value("RESOURCE_NOT_FOUND") }
-                        jsonPath("$.detail") { exists() }
-                        jsonPath("$.type") { exists() }
-                    }
+                Then("404 + ProblemDetail (code=RESOURCE_NOT_FOUND) 을 반환한다") {
+                    mockMvc.perform(
+                        get("/test/exceptions/resource-not-found")
+                            .with(user("testuser").roles("USER"))
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isNotFound)
+                        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                        .andExpect(jsonPath("$.status").value(404))
+                        .andExpect(jsonPath("$.properties.code").value("RESOURCE_NOT_FOUND"))
+                        .andExpect(jsonPath("$.detail").exists())
+                        .andExpect(jsonPath("$.type").exists())
                 }
             }
         }
 
         Given("BusinessRuleViolationException이 발생하는 엔드포인트") {
             When("GET /test/exceptions/business-rule-violation 요청 시") {
-                Then("[S-01] 422 + ProblemDetail (code=BUSINESS_RULE_VIOLATION) 을 반환한다") {
-                    mockMvc.get("/test/exceptions/business-rule-violation") {
-                        accept(MediaType.APPLICATION_JSON)
-                    }.andExpect {
-                        status { isUnprocessableEntity() }
-                        content { contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON) }
-                        jsonPath("$.status") { value(422) }
-                        jsonPath("$.properties.code") { value("BUSINESS_RULE_VIOLATION") }
-                    }
+                Then("422 + ProblemDetail (code=BUSINESS_RULE_VIOLATION) 을 반환한다") {
+                    mockMvc.perform(
+                        get("/test/exceptions/business-rule-violation")
+                            .with(user("testuser").roles("USER"))
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isUnprocessableEntity)
+                        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                        .andExpect(jsonPath("$.status").value(422))
+                        .andExpect(jsonPath("$.properties.code").value("BUSINESS_RULE_VIOLATION"))
                 }
             }
         }
 
         Given("알 수 없는 RuntimeException이 발생하는 엔드포인트") {
             When("GET /test/exceptions/unknown-error 요청 시") {
-                Then("[S-02] 500 + ProblemDetail (code=INTERNAL_ERROR) 을 반환한다") {
-                    mockMvc.get("/test/exceptions/unknown-error") {
-                        accept(MediaType.APPLICATION_JSON)
-                    }.andExpect {
-                        status { isInternalServerError() }
-                        content { contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON) }
-                        jsonPath("$.status") { value(500) }
-                        jsonPath("$.properties.code") { value("INTERNAL_ERROR") }
-                    }
+                Then("500 + ProblemDetail (code=INTERNAL_ERROR) 을 반환한다") {
+                    mockMvc.perform(
+                        get("/test/exceptions/unknown-error")
+                            .with(user("testuser").roles("USER"))
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isInternalServerError)
+                        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                        .andExpect(jsonPath("$.status").value(500))
+                        .andExpect(jsonPath("$.properties.code").value("INTERNAL_ERROR"))
                 }
             }
         }
 
         Given("@Valid 검증이 실패하는 요청") {
             When("POST /test/exceptions/validation 에 빈 name 으로 요청 시") {
-                Then("[S-03] 422 + fieldErrors 목록이 포함된 ProblemDetail 을 반환한다") {
-                    mockMvc.post("/test/exceptions/validation") {
-                        contentType = MediaType.APPLICATION_JSON
-                        content = """{"name": ""}"""
-                        accept(MediaType.APPLICATION_JSON)
-                    }.andExpect {
-                        status { isUnprocessableEntity() }
-                        content { contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON) }
-                        jsonPath("$.status") { value(422) }
-                        jsonPath("$.properties.fieldErrors") { exists() }
-                        jsonPath("$.properties.fieldErrors") { isArray() }
-                    }
+                Then("400 + fieldErrors 목록이 포함된 ProblemDetail 을 반환한다") {
+                    mockMvc.perform(
+                        post("/test/exceptions/validation")
+                            .with(user("testuser").roles("USER"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""{"name": ""}""")
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isBadRequest)
+                        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                        .andExpect(jsonPath("$.status").value(400))
+                        .andExpect(jsonPath("$.properties.fieldErrors").exists())
+                        .andExpect(jsonPath("$.properties.fieldErrors").isArray)
+                }
+            }
+        }
+
+        Given("ObjectOptimisticLockingFailureException이 발생하는 엔드포인트") {
+            When("GET /test/exceptions/optimistic-lock-conflict 요청 시") {
+                Then("409 + ProblemDetail (code=OPTIMISTIC_LOCK_CONFLICT) 을 반환한다") {
+                    mockMvc.perform(
+                        get("/test/exceptions/optimistic-lock-conflict")
+                            .with(user("testuser").roles("USER"))
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isConflict)
+                        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                        .andExpect(jsonPath("$.status").value(409))
+                        .andExpect(jsonPath("$.properties.code").value("OPTIMISTIC_LOCK_CONFLICT"))
+                }
+            }
+        }
+
+        Given("등록되지 않은 일반 RuntimeException이 발생하는 엔드포인트") {
+            When("GET /test/exceptions/unknown-error 요청 시") {
+                Then("낙관락 매핑 추가 후에도 여전히 500 + INTERNAL_ERROR 로 응답한다") {
+                    mockMvc.perform(
+                        get("/test/exceptions/unknown-error")
+                            .with(user("testuser").roles("USER"))
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isInternalServerError)
+                        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                        .andExpect(jsonPath("$.status").value(500))
+                        .andExpect(jsonPath("$.properties.code").value("INTERNAL_ERROR"))
+                }
+            }
+        }
+
+        Given("enum 쿼리 파라미터에 정의되지 않은 값을 전달하는 요청") {
+            When("GET /test/exceptions/enum-param?value=PAID 요청 시") {
+                Then("500 대신 400 + ProblemDetail (code=INVALID_ENUM_VALUE) 을 반환한다") {
+                    mockMvc.perform(
+                        get("/test/exceptions/enum-param?value=PAID")
+                            .with(user("testuser").roles("USER"))
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isBadRequest)
+                        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                        .andExpect(jsonPath("$.status").value(400))
+                        .andExpect(jsonPath("$.properties.code").value("INVALID_ENUM_VALUE"))
+                }
+            }
+
+            When("GET /test/exceptions/enum-param?value=INVALID_ANYTHING 요청 시") {
+                Then("임의의 무효 문자열도 400을 반환한다") {
+                    mockMvc.perform(
+                        get("/test/exceptions/enum-param?value=INVALID_ANYTHING")
+                            .with(user("testuser").roles("USER"))
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isBadRequest)
+                        .andExpect(jsonPath("$.status").value(400))
+                }
+            }
+
+            When("GET /test/exceptions/enum-param?value=COMPLETED 요청 시") {
+                Then("유효한 enum 값이면 200을 반환한다 (회귀)") {
+                    mockMvc.perform(
+                        get("/test/exceptions/enum-param?value=COMPLETED")
+                            .with(user("testuser").roles("USER"))
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isOk)
+                }
+            }
+        }
+
+        Given("요청 본문 enum 필드에 정의되지 않은 값을 전달하는 요청") {
+            When("POST /test/exceptions/enum-body 에 허용되지 않는 enum 문자열을 보내면") {
+                Then("500 대신 400 + ProblemDetail (code=MALFORMED_REQUEST_BODY) 을 반환한다") {
+                    mockMvc.perform(
+                        post("/test/exceptions/enum-body")
+                            .with(user("testuser").roles("USER"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""{"status": "PAID"}""")
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isBadRequest)
+                        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                        .andExpect(jsonPath("$.status").value(400))
+                        .andExpect(jsonPath("$.properties.code").value("MALFORMED_REQUEST_BODY"))
+                }
+            }
+
+            When("POST /test/exceptions/enum-body 에 구문이 깨진 JSON 을 보내면") {
+                Then("500 대신 400 + ProblemDetail (code=MALFORMED_REQUEST_BODY) 을 반환한다") {
+                    mockMvc.perform(
+                        post("/test/exceptions/enum-body")
+                            .with(user("testuser").roles("USER"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""{"status": "COMPLETED" """)
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isBadRequest)
+                        .andExpect(jsonPath("$.status").value(400))
+                        .andExpect(jsonPath("$.properties.code").value("MALFORMED_REQUEST_BODY"))
+                }
+            }
+
+            When("POST /test/exceptions/enum-body 에 유효한 enum 값을 보내면") {
+                Then("200을 반환한다 (회귀)") {
+                    mockMvc.perform(
+                        post("/test/exceptions/enum-body")
+                            .with(user("testuser").roles("USER"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""{"status": "COMPLETED"}""")
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isOk)
+                }
+            }
+        }
+
+        Given("필수 @RequestParam이 없는 요청") {
+            When("GET /test/exceptions/required-param 을 파라미터 없이 요청 시") {
+                Then("500 대신 400 + ProblemDetail (code=MISSING_REQUEST_PARAMETER) 을 반환한다") {
+                    mockMvc.perform(
+                        get("/test/exceptions/required-param")
+                            .with(user("testuser").roles("USER"))
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isBadRequest)
+                        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                        .andExpect(jsonPath("$.status").value(400))
+                        .andExpect(jsonPath("$.properties.code").value("MISSING_REQUEST_PARAMETER"))
+                        .andExpect(jsonPath("$.detail").value("Required request parameter is missing: category"))
+                }
+            }
+
+            When("GET /test/exceptions/required-param?category=FOOTWEAR 요청 시") {
+                Then("파라미터가 있으면 200을 반환한다 (회귀)") {
+                    mockMvc.perform(
+                        get("/test/exceptions/required-param?category=FOOTWEAR")
+                            .with(user("testuser").roles("USER"))
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isOk)
                 }
             }
         }
@@ -139,6 +302,30 @@ class ExceptionTriggerController {
     fun validateRequest(@Valid @RequestBody request: ValidatableRequest): String {
         return request.name
     }
+
+    @GetMapping("/optimistic-lock-conflict")
+    fun throwOptimisticLockConflict(): String {
+        throw ObjectOptimisticLockingFailureException("Stock", 1L)
+    }
+
+    @GetMapping("/enum-param")
+    fun receiveEnumParam(@RequestParam value: TestEnum): String {
+        return value.name
+    }
+
+    @PostMapping("/enum-body")
+    fun receiveEnumBody(@RequestBody request: EnumBodyRequest): String {
+        return request.status.name
+    }
+
+    @GetMapping("/required-param")
+    fun receiveRequiredParam(@RequestParam category: String): String {
+        return category
+    }
 }
 
+enum class TestEnum { READY, COMPLETED, CANCELLED }
+
 data class ValidatableRequest(@field:NotBlank val name: String)
+
+data class EnumBodyRequest(val status: TestEnum)
