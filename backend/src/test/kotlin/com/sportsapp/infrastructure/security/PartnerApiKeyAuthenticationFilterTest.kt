@@ -85,6 +85,7 @@ class PartnerApiKeyAuthenticationFilterTest : BehaviorSpec({
                 principal.id shouldBe 10L
                 principal.email shouldBe "partner-10@sportsapp.com"
                 principal.roles shouldBe listOf("GOODS_SELLER", "EVENT_HOST")
+                principal.partnerAuthenticated shouldBe true
                 verify(exactly = 1) { filterChain.doFilter(request, response) }
                 verify(exactly = 1) { userDomainService.findByIdWithRoles(10L) }
 
