@@ -8,12 +8,14 @@ import com.sportsapp.domain.payment.vo.OrderType
 import com.sportsapp.domain.payment.service.PaymentDomainService
 import com.sportsapp.domain.payment.vo.PaymentMethod
 import com.sportsapp.domain.payment.entity.PaymentStatus
+import com.sportsapp.domain.payment.dto.PgInitiateCommand
 import com.sportsapp.domain.payment.dto.PgInitiateResult
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
 import java.math.BigDecimal
 import org.springframework.transaction.support.TransactionTemplate
@@ -70,7 +72,8 @@ class CreateBookingUseCaseTest : BehaviorSpec({
                 currency = "KRW",
             )
         } returns 99L
-        every { paymentDomainService.initiatePg(any()) } returns pgResult
+        val pgCommandSlot = slot<PgInitiateCommand>()
+        every { paymentDomainService.initiatePg(capture(pgCommandSlot)) } returns pgResult
 
         When("execute 를 호출하면") {
             val result = useCase.execute(command)
@@ -79,6 +82,10 @@ class CreateBookingUseCaseTest : BehaviorSpec({
                 result.bookingId shouldBe 10L
                 result.paymentId shouldBe 99L
                 result.status shouldBe BookingStatus.PENDING
+            }
+
+            Then("PG 주문명은 기술 식별자가 아닌 도메인 라벨(시설 예약)이다") {
+                pgCommandSlot.captured.itemName shouldBe OrderType.BOOKING.displayName
             }
 
             Then("PG 호출(initiatePg)은 requestBooking + createPending tx 이후에 호출된다") {

@@ -2,6 +2,7 @@ package com.sportsapp.application.recruitment
 
 import com.sportsapp.application.recruitment.dto.ApplyRecruitmentCommand
 import com.sportsapp.application.recruitment.usecase.ApplyRecruitmentUseCase
+import com.sportsapp.domain.payment.dto.PgInitiateCommand
 import com.sportsapp.domain.payment.dto.PgInitiateResult
 import com.sportsapp.domain.payment.entity.PaymentStatus
 import com.sportsapp.domain.payment.service.PaymentDomainService
@@ -15,6 +16,7 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
 import java.math.BigDecimal
 import java.time.ZonedDateTime
@@ -78,7 +80,8 @@ class ApplyRecruitmentUseCaseTest : BehaviorSpec({
                 currency = "KRW",
             )
         } returns 99L
-        every { paymentDomainService.initiatePg(any()) } returns pgResult
+        val pgCommandSlot = slot<PgInitiateCommand>()
+        every { paymentDomainService.initiatePg(capture(pgCommandSlot)) } returns pgResult
 
         When("execute를 호출하면") {
             val command = ApplyRecruitmentCommand(
@@ -93,6 +96,10 @@ class ApplyRecruitmentUseCaseTest : BehaviorSpec({
                 result.status shouldBe ApplicationStatus.PENDING
                 result.paymentId shouldBe 99L
                 result.checkoutUrl shouldBe "http://checkout/recruitment"
+            }
+
+            Then("PG 주문명은 기술 식별자가 아닌 모집 제목이다") {
+                pgCommandSlot.captured.itemName shouldBe recruitment.title
             }
 
             Then("결제 개시(createPending+initiatePg)가 호출되고 confirmApplication은 호출되지 않는다") {

@@ -1,7 +1,6 @@
 package com.sportsapp.scenario.payment
 
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.domain.payment.gateway.OrderConfirmationGateway
 import com.sportsapp.domain.payment.vo.OrderType
 import com.sportsapp.domain.payment.entity.Payment
 import com.sportsapp.domain.payment.vo.PaymentMethod
@@ -15,7 +14,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
-import org.springframework.context.annotation.Primary
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.web.servlet.MockMvc
@@ -32,17 +30,6 @@ class PaymentWebhookTestConfig {
      */
     @Bean
     fun kafkaDomainEventPublisher(): KafkaDomainEventPublisher = mockk(relaxed = true)
-
-    /**
-     * OrderConfirmationGatewayImpl 대신 no-op 구현을 등록.
-     * 테스트에 실제 Booking/Goods/Ticketing 데이터가 없으므로 confirm/cancel 을 무시한다.
-     */
-    @Bean
-    @Primary
-    fun orderConfirmationGateway(): OrderConfirmationGateway = object : OrderConfirmationGateway {
-        override fun confirm(orderType: OrderType, orderId: Long, paymentId: Long) {}
-        override fun cancel(orderType: OrderType, orderId: Long, paymentId: Long) {}
-    }
 }
 
 @AutoConfigureMockMvc

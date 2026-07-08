@@ -31,7 +31,7 @@ class CreateGoodsOrderUseCase(
                 orderId = order.id,
                 amount = order.totalAmount,
                 currency = Currency.KRW.code,
-                itemName = "GOODS #${order.id}",
+                itemName = OrderType.GOODS.displayName,
                 returnUrl = "",
                 failUrl = "",
             )

@@ -6,7 +6,6 @@ import com.sportsapp.domain.payment.entity.Payment
 import com.sportsapp.domain.payment.exception.InvalidPaymentStateException
 import com.sportsapp.domain.payment.entity.PaymentStatus
 import com.sportsapp.domain.payment.event.PaymentCompletedEvent
-import com.sportsapp.domain.payment.gateway.OrderConfirmationGateway
 import com.sportsapp.domain.payment.gateway.PaymentGateway
 import com.sportsapp.domain.payment.repository.PaymentRepository
 import com.sportsapp.domain.payment.service.PaymentDomainService
@@ -35,11 +34,10 @@ class PaymentCompletedEventTest : BehaviorSpec({
             val paidAt = ZonedDateTime.now()
             payment.markCompleted(paidAt)
 
-            Then("status 가 COMPLETED 로 전이되고 PaymentCompletedEvent 가 1건 적재된다") {
+            Then("status 가 COMPLETED 로 전이되고 알림용 PaymentCompletedEvent 가 함께 적재된다") {
                 payment.status shouldBe PaymentStatus.COMPLETED
                 val events = payment.pullDomainEvents()
-                events.size shouldBe 1
-                val event = events[0] as PaymentCompletedEvent
+                val event = events.filterIsInstance<PaymentCompletedEvent>().single()
                 event.aggregateId shouldBe payment.id
                 event.topic shouldBe "payment.completed.v1"
             }

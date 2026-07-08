@@ -10,7 +10,6 @@ import com.sportsapp.domain.payment.entity.PaymentStatus
 import com.sportsapp.domain.payment.exception.NotPaymentOwnerException
 import com.sportsapp.domain.payment.exception.PaymentGatewayException
 import com.sportsapp.domain.payment.exception.PaymentNotFoundException
-import com.sportsapp.domain.payment.gateway.OrderConfirmationGateway
 import com.sportsapp.domain.payment.gateway.PaymentGateway
 import com.sportsapp.domain.payment.gateway.PgPrepareRequest
 import com.sportsapp.domain.payment.gateway.PgPrepareResult
@@ -32,7 +31,6 @@ import java.time.ZonedDateTime
 class PaymentDomainService(
     private val paymentRepository: PaymentRepository,
     private val paymentGateway: PaymentGateway,
-    private val orderConfirmationGateway: OrderConfirmationGateway,
     private val domainEventPublisher: DomainEventPublisher,
     private val transactionTemplate: TransactionTemplate,
 ) {
@@ -182,7 +180,7 @@ class PaymentDomainService(
         method = method,
         amount = amount,
         currency = currency,
-        itemName = "$orderType #$orderId",
+        itemName = orderType.displayName,
         returnUrl = "",
         failUrl = "",
     )
@@ -197,11 +195,6 @@ class PaymentDomainService(
                 if (payment.status == PaymentStatus.COMPLETED) return ConfirmWebhookResult.of(payment)
                 payment.markCompleted(ZonedDateTime.now())
                 val saved = paymentRepository.save(payment)
-                orderConfirmationGateway.confirm(
-                    orderType = saved.orderType,
-                    orderId = saved.orderId,
-                    paymentId = saved.id,
-                )
                 domainEventPublisher.publishAll(saved.pullDomainEvents())
                 ConfirmWebhookResult.of(saved)
             }
@@ -209,11 +202,7 @@ class PaymentDomainService(
                 if (payment.status == PaymentStatus.CANCELLED) return ConfirmWebhookResult.of(payment)
                 payment.markCancelled()
                 val saved = paymentRepository.save(payment)
-                orderConfirmationGateway.cancel(
-                    orderType = saved.orderType,
-                    orderId = saved.orderId,
-                    paymentId = saved.id,
-                )
+                domainEventPublisher.publishAll(saved.pullDomainEvents())
                 ConfirmWebhookResult.of(saved)
             }
             else -> {

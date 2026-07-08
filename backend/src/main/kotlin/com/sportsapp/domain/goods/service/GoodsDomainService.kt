@@ -6,6 +6,7 @@ import com.sportsapp.domain.goods.dto.PopularProductSnapshot
 import com.sportsapp.domain.goods.dto.ProductWithStock
 import com.sportsapp.domain.goods.entity.GoodsOrder
 import com.sportsapp.domain.goods.entity.GoodsOrderItem
+import com.sportsapp.domain.goods.entity.GoodsOrderStatus
 import com.sportsapp.domain.goods.entity.Product
 import com.sportsapp.domain.goods.entity.ProductStatus
 import com.sportsapp.domain.goods.entity.Stock
@@ -137,6 +138,7 @@ class GoodsDomainService(
     fun cancelPendingOrder(orderId: Long) {
         val order = goodsOrderRepository.findById(orderId)
             ?: throw GoodsOrderNotFoundException(orderId)
+        if (order.status == GoodsOrderStatus.CANCELLED) return
         order.cancel()
         goodsOrderRepository.save(order)
         val items = goodsOrderItemRepository.findByOrderId(orderId)

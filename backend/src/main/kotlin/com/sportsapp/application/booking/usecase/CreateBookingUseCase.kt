@@ -29,7 +29,7 @@ class CreateBookingUseCase(
                 orderId = bookingResult.bookingId,
                 amount = command.amount,
                 currency = command.currency,
-                itemName = "BOOKING #${bookingResult.bookingId}",
+                itemName = OrderType.BOOKING.displayName,
                 returnUrl = "",
                 failUrl = "",
             )

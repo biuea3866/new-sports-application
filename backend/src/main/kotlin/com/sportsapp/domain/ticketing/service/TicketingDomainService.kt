@@ -154,6 +154,7 @@ class TicketingDomainService(
     fun cancelOrder(orderId: Long) {
         val order = ticketOrderRepository.findById(orderId)
             ?: throw ResourceNotFoundException("TicketOrder", orderId)
+        if (order.status == OrderStatus.CANCELLED) return
         order.cancel()
         ticketOrderRepository.save(order)
         val tickets = ticketRepository.findByTicketOrderId(orderId)

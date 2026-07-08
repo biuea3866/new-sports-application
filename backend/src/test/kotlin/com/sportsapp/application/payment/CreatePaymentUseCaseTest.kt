@@ -15,6 +15,7 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import java.math.BigDecimal
 import java.time.ZonedDateTime
 
@@ -101,8 +102,9 @@ class CreatePaymentUseCaseTest : BehaviorSpec({
             )
         } returns newPaymentId
 
+        val pgCommandSlot = slot<PgInitiateCommand>()
         every {
-            paymentDomainService.initiatePg(any<PgInitiateCommand>())
+            paymentDomainService.initiatePg(capture(pgCommandSlot))
         } returns PgInitiateResult(
             paymentId = newPaymentId,
             status = PaymentStatus.READY,
@@ -118,6 +120,10 @@ class CreatePaymentUseCaseTest : BehaviorSpec({
             Then("READY 상태의 PaymentResponse 와 checkoutUrl 을 반환한다") {
                 result.status shouldBe PaymentStatus.READY
                 result.checkoutUrl shouldBe "http://localhost:9090/pg/card/checkout?tid=MOCK_CARD_abc"
+            }
+
+            Then("PG 주문명은 기술 식별자가 아닌 orderType 도메인 라벨이다") {
+                pgCommandSlot.captured.itemName shouldBe OrderType.BOOKING.displayName
             }
         }
     }

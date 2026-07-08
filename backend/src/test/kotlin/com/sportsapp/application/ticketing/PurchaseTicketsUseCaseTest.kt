@@ -17,6 +17,7 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
 import java.math.BigDecimal
 
@@ -83,7 +84,8 @@ class PurchaseTicketsUseCaseTest : BehaviorSpec({
                 currency = "KRW",
             )
         } returns 999L
-        every { paymentDomainService.initiatePg(any()) } returns pgResult
+        val pgCommandSlot = slot<PgInitiateCommand>()
+        every { paymentDomainService.initiatePg(capture(pgCommandSlot)) } returns pgResult
 
         When("execute 실행 시") {
             val result = useCase.execute(buildCommand())
@@ -91,6 +93,10 @@ class PurchaseTicketsUseCaseTest : BehaviorSpec({
             Then("PENDING 상태의 TicketOrderResponse가 반환된다") {
                 result.status shouldBe OrderStatus.PENDING
                 result.ticketOrderId shouldBe 100L
+            }
+
+            Then("PG 주문명은 기술 식별자가 아닌 도메인 라벨(티켓 예매)이다") {
+                pgCommandSlot.captured.itemName shouldBe OrderType.TICKETING.displayName
             }
 
             Then("confirmOrder가 호출되지 않는다") {

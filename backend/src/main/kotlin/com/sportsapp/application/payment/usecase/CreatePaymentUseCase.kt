@@ -30,7 +30,7 @@ class CreatePaymentUseCase(
                 orderId = command.orderId,
                 amount = command.amount,
                 currency = command.currency,
-                itemName = "${command.orderType} #${command.orderId}",
+                itemName = command.orderType.displayName,
                 returnUrl = "",
                 failUrl = "",
             )

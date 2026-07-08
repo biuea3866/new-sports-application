@@ -40,7 +40,7 @@ class PurchaseTicketsUseCase(
                 orderId = orderResult.ticketOrderId,
                 amount = totalAmount,
                 currency = command.currency,
-                itemName = "${OrderType.TICKETING} #${orderResult.ticketOrderId}",
+                itemName = OrderType.TICKETING.displayName,
                 returnUrl = "",
                 failUrl = "",
             )

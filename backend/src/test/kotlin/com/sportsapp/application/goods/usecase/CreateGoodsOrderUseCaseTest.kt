@@ -7,8 +7,10 @@ import com.sportsapp.domain.goods.entity.GoodsOrder
 import com.sportsapp.domain.goods.entity.GoodsOrderStatus
 import com.sportsapp.domain.goods.vo.OrderItemInput
 import com.sportsapp.domain.goods.exception.ProductInactiveException
+import com.sportsapp.domain.payment.dto.PgInitiateCommand
 import com.sportsapp.domain.payment.dto.PgInitiateResult
 import com.sportsapp.domain.payment.service.PaymentDomainService
+import com.sportsapp.domain.payment.vo.OrderType
 import com.sportsapp.domain.payment.vo.PaymentMethod
 import com.sportsapp.domain.payment.entity.PaymentStatus
 import io.kotest.assertions.throwables.shouldThrow
@@ -16,6 +18,7 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
 import java.math.BigDecimal
 import org.springframework.transaction.support.TransactionTemplate
@@ -81,10 +84,15 @@ class CreateGoodsOrderUseCaseTest : BehaviorSpec({
                 currency = "KRW",
             )
         } returns 10L
-        every { paymentDomainService.initiatePg(any()) } returns pgResult
+        val pgCommandSlot = slot<PgInitiateCommand>()
+        every { paymentDomainService.initiatePg(capture(pgCommandSlot)) } returns pgResult
 
         When("execute를 호출하면") {
             val result = useCase.execute(validCommand)
+
+            Then("PG 주문명은 기술 식별자가 아닌 도메인 라벨(상품 주문)이다") {
+                pgCommandSlot.captured.itemName shouldBe OrderType.GOODS.displayName
+            }
 
             Then("orderId와 paymentId가 포함된 응답이 반환된다") {
                 result.orderId shouldBe 1L

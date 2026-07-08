@@ -5,7 +5,6 @@ import com.sportsapp.domain.payment.dto.PgInitiateResult
 import com.sportsapp.domain.payment.entity.Payment
 import com.sportsapp.domain.payment.entity.PaymentStatus
 import com.sportsapp.domain.payment.event.PaymentCompletedEvent
-import com.sportsapp.domain.payment.gateway.OrderConfirmationGateway
 import com.sportsapp.domain.payment.gateway.PaymentGateway
 import com.sportsapp.domain.payment.exception.PaymentGatewayException
 import com.sportsapp.domain.payment.gateway.PgPrepareResult
@@ -33,7 +32,6 @@ class PaymentPreparePhaseTest : BehaviorSpec({
     ) = PaymentDomainService(
         paymentRepository = paymentRepository,
         paymentGateway = paymentGateway,
-        orderConfirmationGateway = mockk(relaxed = true),
         domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true),
         transactionTemplate = transactionTemplate,
     )

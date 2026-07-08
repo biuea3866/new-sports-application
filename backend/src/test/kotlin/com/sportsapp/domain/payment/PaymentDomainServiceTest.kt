@@ -5,7 +5,6 @@ import com.sportsapp.domain.payment.dto.PgInitiateResult
 import com.sportsapp.domain.payment.entity.Payment
 import com.sportsapp.domain.payment.entity.PaymentStatus
 import com.sportsapp.domain.payment.event.PaymentCompletedEvent
-import com.sportsapp.domain.payment.gateway.OrderConfirmationGateway
 import com.sportsapp.domain.payment.gateway.PaymentGateway
 import com.sportsapp.domain.payment.gateway.PgPrepareResult
 import com.sportsapp.domain.payment.repository.PaymentRepository
@@ -43,7 +42,6 @@ class PaymentDomainServiceTest : BehaviorSpec({
         val service = PaymentDomainService(
             paymentRepository = paymentRepository,
             paymentGateway = paymentGateway,
-            orderConfirmationGateway = mockk(relaxed = true),
             domainEventPublisher = mockk(relaxed = true),
             transactionTemplate = mockk(relaxed = true),
         )
@@ -85,7 +83,6 @@ class PaymentDomainServiceTest : BehaviorSpec({
         val service = PaymentDomainService(
             paymentRepository = paymentRepository,
             paymentGateway = paymentGateway,
-            orderConfirmationGateway = mockk(relaxed = true),
             domainEventPublisher = mockk(relaxed = true),
             transactionTemplate = mockk(relaxed = true),
         )
@@ -132,7 +129,6 @@ class PaymentDomainServiceTest : BehaviorSpec({
         val service = PaymentDomainService(
             paymentRepository = paymentRepository,
             paymentGateway = paymentGateway,
-            orderConfirmationGateway = mockk(relaxed = true),
             domainEventPublisher = mockk(relaxed = true),
             transactionTemplate = mockk(relaxed = true),
         )
@@ -169,7 +165,6 @@ class PaymentDomainServiceTest : BehaviorSpec({
         val service = PaymentDomainService(
             paymentRepository = paymentRepository,
             paymentGateway = paymentGateway,
-            orderConfirmationGateway = mockk(relaxed = true),
             domainEventPublisher = mockk(relaxed = true),
             transactionTemplate = mockk(relaxed = true),
         )
@@ -205,7 +200,6 @@ class PaymentDomainServiceTest : BehaviorSpec({
         val service = PaymentDomainService(
             paymentRepository = paymentRepository,
             paymentGateway = paymentGateway,
-            orderConfirmationGateway = mockk(relaxed = true),
             domainEventPublisher = mockk(relaxed = true),
             transactionTemplate = mockk(relaxed = true),
         )

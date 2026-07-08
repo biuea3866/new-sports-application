@@ -3,9 +3,9 @@ package com.sportsapp.domain.payment
 import com.sportsapp.domain.common.DomainEvent
 import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.payment.entity.Payment
-import com.sportsapp.domain.payment.entity.PaymentStatus
+import com.sportsapp.domain.payment.event.PaymentCancelledEvent
 import com.sportsapp.domain.payment.event.PaymentCompletedEvent
-import com.sportsapp.domain.payment.gateway.OrderConfirmationGateway
+import com.sportsapp.domain.payment.event.PaymentConfirmedEvent
 import com.sportsapp.domain.payment.gateway.PaymentGateway
 import com.sportsapp.domain.payment.repository.PaymentRepository
 import com.sportsapp.domain.payment.service.PaymentDomainService
@@ -14,7 +14,6 @@ import com.sportsapp.domain.payment.vo.PaymentMethod
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
-import io.mockk.justRun
 import io.mockk.mockk
 import io.mockk.verify
 import java.math.BigDecimal
@@ -51,21 +50,24 @@ class PaymentWebhookConfirmTest : BehaviorSpec({
     Given("PAYMENT_APPROVED 웹훅 수신 — 도메인 이벤트 발행 확인") {
         val paymentRepository = mockk<PaymentRepository>()
         val paymentGateway = mockk<PaymentGateway>()
-        val orderConfirmationGateway = mockk<OrderConfirmationGateway>()
         val domainEventPublisher = mockk<DomainEventPublisher>()
         val service = PaymentDomainService(
             paymentRepository = paymentRepository,
             paymentGateway = paymentGateway,
-            orderConfirmationGateway = orderConfirmationGateway,
             domainEventPublisher = domainEventPublisher,
             transactionTemplate = mockk(relaxed = true),
         )
 
-        val tid = "MOCK_CARD_u04_01"
-        val readyPayment = buildReadyPayment(tid = tid, idempotencyKey = "webhook-u04-key")
+        val tid = "MOCK_CARD_approve_events"
+        val orderId = 777L
+        val readyPayment = buildReadyPayment(
+            tid = tid,
+            idempotencyKey = "webhook-approve-events",
+            orderType = OrderType.TICKETING,
+            orderId = orderId,
+        )
         every { paymentRepository.findByPgTransactionId(tid) } returns readyPayment
         every { paymentRepository.save(any()) } answers { firstArg<Payment>().also { p -> setAuditFields(p) } }
-        justRun { orderConfirmationGateway.confirm(any(), any(), any()) }
 
         val capturedEvents = mutableListOf<DomainEvent>()
         every { domainEventPublisher.publishAll(any()) } answers {
@@ -75,12 +77,14 @@ class PaymentWebhookConfirmTest : BehaviorSpec({
         When("confirmWebhook(eventType=PAYMENT_APPROVED) 를 호출하면") {
             service.confirmWebhook(tid = tid, eventType = "PAYMENT_APPROVED")
 
-            Then("pullDomainEvents() 가 PaymentCompletedEvent 1건을 publishAll 로 전달한다") {
+            Then("알림용 완료 이벤트와 주문 확정 이벤트가 함께 발행된다") {
                 verify(exactly = 1) { domainEventPublisher.publishAll(any()) }
-                capturedEvents.size shouldBe 1
-                val event = capturedEvents[0]
-                (event is PaymentCompletedEvent) shouldBe true
-                event.topic shouldBe "payment.completed.v1"
+                capturedEvents.filterIsInstance<PaymentCompletedEvent>().size shouldBe 1
+                val confirmed = capturedEvents.filterIsInstance<PaymentConfirmedEvent>().single()
+                confirmed.topic shouldBe "payment.order-confirmed.v1"
+                confirmed.orderType shouldBe OrderType.TICKETING
+                confirmed.orderId shouldBe orderId
+                confirmed.paymentId shouldBe readyPayment.id
             }
         }
     }
@@ -88,18 +92,16 @@ class PaymentWebhookConfirmTest : BehaviorSpec({
     Given("이미 COMPLETED 인 Payment 에 PAYMENT_APPROVED 를 재수신 (멱등)") {
         val paymentRepository = mockk<PaymentRepository>()
         val paymentGateway = mockk<PaymentGateway>()
-        val orderConfirmationGateway = mockk<OrderConfirmationGateway>()
         val domainEventPublisher = mockk<DomainEventPublisher>()
         val service = PaymentDomainService(
             paymentRepository = paymentRepository,
             paymentGateway = paymentGateway,
-            orderConfirmationGateway = orderConfirmationGateway,
             domainEventPublisher = domainEventPublisher,
             transactionTemplate = mockk(relaxed = true),
         )
 
-        val tid = "MOCK_CARD_u05_01"
-        val completedPayment = buildReadyPayment(tid = tid, idempotencyKey = "webhook-u05-key")
+        val tid = "MOCK_CARD_approve_idem"
+        val completedPayment = buildReadyPayment(tid = tid, idempotencyKey = "webhook-approve-idem")
             .also { it.markCompleted(ZonedDateTime.now()) }
         every { paymentRepository.findByPgTransactionId(tid) } returns completedPayment
 
@@ -109,88 +111,51 @@ class PaymentWebhookConfirmTest : BehaviorSpec({
             Then("save 와 publishAll 이 호출되지 않는다 (멱등 early-return)") {
                 verify(exactly = 0) { paymentRepository.save(any()) }
                 verify(exactly = 0) { domainEventPublisher.publishAll(any()) }
-                verify(exactly = 0) { orderConfirmationGateway.confirm(any(), any(), any()) }
             }
         }
     }
 
-    Given("PAYMENT_APPROVED 처리 시 OrderConfirmationGateway 호출 검증") {
+    Given("PAYMENT_CANCELED 웹훅 수신 — 주문 취소 이벤트 발행 확인") {
         val paymentRepository = mockk<PaymentRepository>()
         val paymentGateway = mockk<PaymentGateway>()
-        val orderConfirmationGateway = mockk<OrderConfirmationGateway>()
         val domainEventPublisher = mockk<DomainEventPublisher>()
         val service = PaymentDomainService(
             paymentRepository = paymentRepository,
             paymentGateway = paymentGateway,
-            orderConfirmationGateway = orderConfirmationGateway,
             domainEventPublisher = domainEventPublisher,
             transactionTemplate = mockk(relaxed = true),
         )
 
-        val tid = "MOCK_CARD_u06_01"
-        val orderId = 777L
+        val tid = "MOCK_CARD_cancel_events"
+        val orderId = 300L
         val readyPayment = buildReadyPayment(
             tid = tid,
-            idempotencyKey = "webhook-u06-key",
-            orderType = OrderType.TICKETING,
+            idempotencyKey = "webhook-cancel-events",
+            orderType = OrderType.BOOKING,
             orderId = orderId,
         )
         every { paymentRepository.findByPgTransactionId(tid) } returns readyPayment
         every { paymentRepository.save(any()) } answers { firstArg<Payment>().also { p -> setAuditFields(p) } }
-        justRun { orderConfirmationGateway.confirm(any(), any(), any()) }
-        every { domainEventPublisher.publishAll(any()) } returns Unit
 
-        When("confirmWebhook(eventType=PAYMENT_APPROVED) 를 호출하면") {
-            service.confirmWebhook(tid = tid, eventType = "PAYMENT_APPROVED")
-
-            Then("OrderConfirmationGateway.confirm 이 payment.orderType 과 payment.orderId 로 1회 호출된다") {
-                verify(exactly = 1) {
-                    orderConfirmationGateway.confirm(
-                        orderType = OrderType.TICKETING,
-                        orderId = orderId,
-                        paymentId = readyPayment.id,
-                    )
-                }
-            }
+        val capturedEvents = mutableListOf<DomainEvent>()
+        every { domainEventPublisher.publishAll(any()) } answers {
+            capturedEvents.addAll(firstArg<List<DomainEvent>>())
         }
-    }
-
-    Given("PAYMENT_CANCELED 처리 시 orderConfirmationGateway.cancel 호출 확인") {
-        val paymentRepository = mockk<PaymentRepository>()
-        val paymentGateway = mockk<PaymentGateway>()
-        val orderConfirmationGateway = mockk<OrderConfirmationGateway>()
-        val domainEventPublisher = mockk<DomainEventPublisher>()
-        val service = PaymentDomainService(
-            paymentRepository = paymentRepository,
-            paymentGateway = paymentGateway,
-            orderConfirmationGateway = orderConfirmationGateway,
-            domainEventPublisher = domainEventPublisher,
-            transactionTemplate = mockk(relaxed = true),
-        )
-
-        val tid = "MOCK_CARD_u07_01"
-        val orderId = 300L
-        val readyPayment = buildReadyPayment(tid = tid, idempotencyKey = "webhook-u07-key", orderType = OrderType.BOOKING, orderId = orderId)
-        every { paymentRepository.findByPgTransactionId(tid) } returns readyPayment
-        every { paymentRepository.save(any()) } answers { firstArg<Payment>().also { p -> setAuditFields(p) } }
-        justRun { orderConfirmationGateway.cancel(any(), any(), any()) }
 
         When("confirmWebhook(eventType=PAYMENT_CANCELED) 를 호출하면") {
             service.confirmWebhook(tid = tid, eventType = "PAYMENT_CANCELED")
 
-            Then("orderConfirmationGateway.cancel 이 payment.orderType 과 orderId 로 1회 호출된다") {
-                verify(exactly = 1) {
-                    orderConfirmationGateway.cancel(
-                        orderType = OrderType.BOOKING,
-                        orderId = orderId,
-                        paymentId = readyPayment.id,
-                    )
-                }
+            Then("PaymentCancelledEvent 가 orderType/orderId/paymentId 와 함께 발행된다") {
+                verify(exactly = 1) { domainEventPublisher.publishAll(any()) }
+                val cancelled = capturedEvents.filterIsInstance<PaymentCancelledEvent>().single()
+                cancelled.topic shouldBe "payment.order-cancelled.v1"
+                cancelled.orderType shouldBe OrderType.BOOKING
+                cancelled.orderId shouldBe orderId
+                cancelled.paymentId shouldBe readyPayment.id
             }
 
-            Then("PaymentCompletedEvent 는 발행되지 않는다 (publishAll 미호출)") {
-                verify(exactly = 0) { domainEventPublisher.publishAll(any()) }
-                verify(exactly = 0) { orderConfirmationGateway.confirm(any(), any(), any()) }
+            Then("확정 이벤트(PaymentConfirmedEvent)는 발행되지 않는다") {
+                capturedEvents.filterIsInstance<PaymentConfirmedEvent>().size shouldBe 0
             }
         }
     }
