@@ -43,7 +43,7 @@ class ListCommentsUseCaseTest : BehaviorSpec({
         val post = Post.create(userId = 1L, title = "제목", content = "내용")
         val comments = (1..3).map { makeComment(post = post, userId = it.toLong(), content = "댓글 $it") }
         val commentPage = PageImpl(comments, PageRequest.of(0, 20), 3)
-        every { postDomainService.getPost(1L) } returns post
+        every { postDomainService.findPost(1L) } returns post
         every { postDomainService.listComments(postId = 1L, page = 0, size = 20) } returns commentPage
 
         When("execute를 호출하면") {
@@ -63,7 +63,7 @@ class ListCommentsUseCaseTest : BehaviorSpec({
         val (postDomainService, _, listCommentsUseCase) = newUseCase()
         val post = Post.create(userId = 1L, title = "제목", content = "내용")
         val commentPage = PageImpl(emptyList<Comment>(), PageRequest.of(0, 20), 0)
-        every { postDomainService.getPost(1L) } returns post
+        every { postDomainService.findPost(1L) } returns post
         every { postDomainService.listComments(postId = 1L, page = 0, size = 20) } returns commentPage
 
         When("execute를 호출하면") {
@@ -89,7 +89,7 @@ class ListCommentsUseCaseTest : BehaviorSpec({
             communityIsPublic = true,
         )
         val commentPage = PageImpl(emptyList<Comment>(), PageRequest.of(0, 20), 0)
-        every { postDomainService.getPost(2L) } returns post
+        every { postDomainService.findPost(2L) } returns post
         every { communityDomainService.getCommunity(10L, 9L) } returns mockk(relaxed = true)
         every { postDomainService.listComments(postId = 2L, page = 0, size = 20) } returns commentPage
 
@@ -114,12 +114,28 @@ class ListCommentsUseCaseTest : BehaviorSpec({
             authorIsHost = true,
             communityIsPublic = false,
         )
-        every { postDomainService.getPost(3L) } returns post
+        every { postDomainService.findPost(3L) } returns post
         every { communityDomainService.getCommunity(20L, 9L) } throws NotCommunityMemberException(20L, 9L)
 
         Then("NotCommunityMemberException 을 던진다") {
             shouldThrow<NotCommunityMemberException> {
                 listCommentsUseCase.execute(postId = 3L, requesterId = 9L, page = 0, size = 20)
+            }
+        }
+    }
+
+    Given("소프트 삭제되었거나 존재하지 않는 Post의 댓글을 조회하면") {
+        val (postDomainService, communityDomainService, listCommentsUseCase) = newUseCase()
+        val commentPage = PageImpl(emptyList<Comment>(), PageRequest.of(0, 20), 0)
+        every { postDomainService.findPost(4L) } returns null
+        every { postDomainService.listComments(postId = 4L, page = 0, size = 20) } returns commentPage
+
+        When("execute를 호출하면") {
+            val result = listCommentsUseCase.execute(postId = 4L, requesterId = 9L, page = 0, size = 20)
+
+            Then("community 가시성 재판정을 건너뛰고 댓글 목록을 그대로 반환한다") {
+                result.totalElements shouldBe 0
+                verify(exactly = 0) { communityDomainService.getCommunity(any(), any()) }
             }
         }
     }
