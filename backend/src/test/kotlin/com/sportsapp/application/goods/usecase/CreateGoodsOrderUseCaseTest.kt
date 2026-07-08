@@ -10,7 +10,7 @@ import com.sportsapp.domain.goods.exception.ProductInactiveException
 import com.sportsapp.domain.payment.dto.PgInitiateCommand
 import com.sportsapp.domain.payment.dto.PgInitiateResult
 import com.sportsapp.domain.payment.service.PaymentDomainService
-import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.payment.vo.PaymentMethod
 import com.sportsapp.domain.payment.entity.PaymentStatus
 import io.kotest.assertions.throwables.shouldThrow

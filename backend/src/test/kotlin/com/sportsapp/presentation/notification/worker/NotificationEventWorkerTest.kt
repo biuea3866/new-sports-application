@@ -5,7 +5,7 @@ import com.sportsapp.application.notification.usecase.EnqueueNotificationUseCase
 import com.sportsapp.domain.booking.event.BookingEvent
 import com.sportsapp.domain.notification.vo.NotificationChannel
 import com.sportsapp.domain.payment.event.PaymentEvent
-import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.ticketing.event.TicketEvent
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder

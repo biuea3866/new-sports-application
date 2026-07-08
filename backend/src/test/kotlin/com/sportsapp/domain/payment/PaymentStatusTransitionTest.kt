@@ -4,7 +4,7 @@ import com.sportsapp.domain.payment.entity.Payment
 import com.sportsapp.domain.payment.entity.PaymentStatus
 import com.sportsapp.domain.payment.exception.InvalidFailureReasonException
 import com.sportsapp.domain.payment.exception.InvalidPaymentStateException
-import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.payment.vo.PaymentMethod
 import com.sportsapp.domain.payment.vo.toPgProviderName
 import io.kotest.assertions.throwables.shouldThrow

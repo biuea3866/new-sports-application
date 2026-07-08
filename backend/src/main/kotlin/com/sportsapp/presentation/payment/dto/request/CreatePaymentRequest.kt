@@ -1,7 +1,7 @@
 package com.sportsapp.presentation.payment.dto.request
 
 import com.sportsapp.application.payment.dto.CreatePaymentCommand
-import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.payment.vo.PaymentMethod
 import jakarta.validation.constraints.DecimalMin
 import jakarta.validation.constraints.NotBlank

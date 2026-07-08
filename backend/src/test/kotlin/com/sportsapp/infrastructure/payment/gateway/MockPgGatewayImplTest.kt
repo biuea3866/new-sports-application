@@ -1,6 +1,6 @@
 package com.sportsapp.infrastructure.payment.gateway
 
-import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.payment.gateway.PaymentGateway
 import com.sportsapp.domain.payment.exception.PaymentGatewayException
 import com.sportsapp.domain.payment.vo.PaymentMethod

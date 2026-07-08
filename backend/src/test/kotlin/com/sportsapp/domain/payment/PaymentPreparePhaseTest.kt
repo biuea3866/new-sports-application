@@ -9,7 +9,7 @@ import com.sportsapp.domain.payment.exception.PaymentGatewayException
 import com.sportsapp.domain.payment.gateway.PgPrepareResult
 import com.sportsapp.domain.payment.repository.PaymentRepository
 import com.sportsapp.domain.payment.service.PaymentDomainService
-import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.payment.vo.PaymentMethod
 
 import com.sportsapp.domain.common.DomainEventPublisher

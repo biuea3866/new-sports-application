@@ -1,7 +1,7 @@
 package com.sportsapp.infrastructure.payment.mysql
 
 import com.sportsapp.BaseJpaIntegrationTest
-import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.payment.entity.Payment
 import com.sportsapp.domain.payment.vo.PaymentMethod
 import io.kotest.assertions.throwables.shouldThrow

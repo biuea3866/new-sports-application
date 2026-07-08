@@ -4,7 +4,7 @@ import com.sportsapp.application.recruitment.dto.ApplyRecruitmentCommand
 import com.sportsapp.application.recruitment.dto.ApplyRecruitmentResult
 import com.sportsapp.domain.payment.dto.PgInitiateCommand
 import com.sportsapp.domain.payment.service.PaymentDomainService
-import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.recruitment.entity.Recruitment
 import com.sportsapp.domain.recruitment.service.RecruitmentDomainService
 import java.util.UUID
