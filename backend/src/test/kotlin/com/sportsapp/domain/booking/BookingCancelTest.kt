@@ -14,7 +14,7 @@ class BookingCancelTest : BehaviorSpec({
     Given("CONFIRMED 상태의 Booking") {
         val booking = Booking.createPending(userId = 1L, slotId = 10L)
         booking.confirm(paymentId = 100L)
-        booking.pullDomainEvents() // BookingConfirmedEvent를 소비하여 cancel 이벤트만 검증
+        booking.pullDomainEvents() // BookingEvent.Confirmed를 소비하여 cancel 이벤트만 검증
 
         When("소유자가 취소를 요청하면") {
             booking.cancel(cancelledByUserId = 1L, reason = "일정 변경")

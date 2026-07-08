@@ -48,11 +48,18 @@ sealed class PaymentEvent(
 ) {
     abstract val eventType: String
 
-    /** 결제가 확정(승인)되었다는 과거형 사실. 각 주문 컨텍스트가 자기 주문을 확정한다. */
+    /**
+     * 결제가 확정(승인)되었다는 과거형 사실. 각 주문 컨텍스트가 자기 주문을 확정한다.
+     *
+     * 알림 컨텍스트가 별도 조회 없이 결제 완료 알림을 만들 수 있도록 수신자([recipientUserId])와
+     * 결제 금액([amount])을 payload 에 함께 담는다.
+     */
     class Confirmed(
         paymentId: Long,
         orderType: OrderType,
         orderId: Long,
+        val recipientUserId: Long,
+        val amount: Long,
         eventId: String = UUID.randomUUID().toString(),
         occurredAt: ZonedDateTime = ZonedDateTime.now(ZoneOffset.UTC),
     ) : PaymentEvent(paymentId, orderType, orderId, eventId, occurredAt) {

@@ -16,7 +16,7 @@ import com.sportsapp.domain.booking.entity.BookingStatus
 import com.sportsapp.domain.booking.service.BookingDomainService
 import com.sportsapp.domain.booking.repository.BookingRepository
 import com.sportsapp.domain.booking.repository.SlotRepository
-import com.sportsapp.domain.booking.event.BookingConfirmedEvent
+import com.sportsapp.domain.booking.event.BookingEvent
 import com.sportsapp.domain.booking.event.BookingRefundRequestedEvent
 
 class BookingConfirmDomainServiceTest : BehaviorSpec({
@@ -39,11 +39,12 @@ class BookingConfirmDomainServiceTest : BehaviorSpec({
         When("confirmBooking을 호출하면") {
             service.confirmBooking(bookingId = 1L, paymentId = 999L)
 
-            Then("BookingConfirmedEvent가 publishAll에 전달된다") {
+            Then("BookingEvent.Confirmed가 publishAll에 전달된다") {
                 val events = capturedEvents.captured
                 events.size shouldBe 1
-                val confirmedEvent = events[0].shouldBeInstanceOf<BookingConfirmedEvent>()
+                val confirmedEvent = events[0].shouldBeInstanceOf<BookingEvent.Confirmed>()
                 confirmedEvent.paymentId shouldBe 999L
+                confirmedEvent.recipientUserId shouldBe 1L
             }
         }
     }

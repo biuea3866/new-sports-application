@@ -4,7 +4,6 @@ import com.sportsapp.domain.payment.dto.PgInitiateCommand
 import com.sportsapp.domain.payment.dto.PgInitiateResult
 import com.sportsapp.domain.payment.entity.Payment
 import com.sportsapp.domain.payment.entity.PaymentStatus
-import com.sportsapp.domain.payment.event.PaymentCompletedEvent
 import com.sportsapp.domain.payment.gateway.PaymentGateway
 import com.sportsapp.domain.payment.gateway.PgPrepareResult
 import com.sportsapp.domain.payment.repository.PaymentRepository

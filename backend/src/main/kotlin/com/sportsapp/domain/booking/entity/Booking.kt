@@ -1,7 +1,7 @@
 package com.sportsapp.domain.booking.entity
 
 import com.sportsapp.domain.booking.event.BookingCancelledEvent
-import com.sportsapp.domain.booking.event.BookingConfirmedEvent
+import com.sportsapp.domain.booking.event.BookingEvent
 import com.sportsapp.domain.booking.exception.InvalidBookingStateException
 import com.sportsapp.domain.booking.exception.RefundBookingException
 import com.sportsapp.domain.booking.exception.RefundPolicyViolationException
@@ -70,7 +70,9 @@ class Booking(
         }
         this.status = BookingStatus.CONFIRMED
         this.paymentId = paymentId
-        registerEvent(BookingConfirmedEvent(bookingId = id, paymentId = paymentId))
+        registerEvent(
+            BookingEvent.Confirmed(bookingId = id, paymentId = paymentId, recipientUserId = userId)
+        )
     }
 
     fun cancel() {

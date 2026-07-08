@@ -12,7 +12,7 @@ import com.sportsapp.domain.ticketing.entity.OrderStatus
 import com.sportsapp.domain.ticketing.entity.Seat
 import com.sportsapp.domain.ticketing.entity.Ticket
 import com.sportsapp.domain.ticketing.entity.TicketOrder
-import com.sportsapp.domain.ticketing.event.TicketIssuedEvent
+import com.sportsapp.domain.ticketing.event.TicketEvent
 import com.sportsapp.domain.ticketing.exception.LockExpiredException
 import com.sportsapp.domain.ticketing.exception.MalformedLockIdException
 import com.sportsapp.domain.ticketing.exception.SeatAlreadyLockedException
@@ -147,7 +147,15 @@ class TicketingDomainService(
         }
         order.confirm(paymentId, order.lockedSeatIds)
         ticketOrderRepository.save(order)
-        domainEventPublisher.publish(TicketIssuedEvent(ticketOrderId = order.id))
+        val event = eventRepository.findById(order.lockedEventId)
+            ?: throw ResourceNotFoundException("Event", order.lockedEventId)
+        domainEventPublisher.publish(
+            TicketEvent.Issued(
+                ticketOrderId = order.id,
+                recipientUserId = order.userId,
+                eventTitle = event.title,
+            )
+        )
         return TicketOrderResult.of(order)
     }
 
