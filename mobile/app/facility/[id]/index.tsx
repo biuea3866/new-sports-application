@@ -5,6 +5,10 @@
  * FE-15: 시/도 표시(구 위) + 대기질 카드(FE-12 훅·FE-13 컴포넌트) 통합.
  * 시설 미존재(에러 아님, data undefined) empty 분기 추가.
  * 좌표(lat/lng)가 없으면(레거시 데이터 방어) 대기질 카드는 렌더하지 않는다.
+ *
+ * FE-28(A-F1): 시설상품(program) 목록 섹션 추가 — `facility.program.enabled` 플래그
+ * ON일 때만 `usePrograms(facilityId)`로 조회해 렌더한다(design-fe-app.md "텍스트
+ * 와이어프레임" A-F1, "화면별 4상태 표"). 카드 탭 시 `/booking/new?programId=`(A-F2)로 이동한다.
  */
 import {
   View,
@@ -17,7 +21,11 @@ import {
 import { useLocalSearchParams, router } from 'expo-router';
 import { useFacilityDetail } from '../../../lib/useFacility';
 import { useAirQuality } from '../../../lib/useAirQuality';
+import { usePrograms } from '../../../lib/useProgram';
+import { isFeatureEnabled } from '../../../lib/feature-flags';
 import { AirQualityCard, type AirQualityCardStatus } from '../../../components/AirQualityCard';
+import { ProgramCard } from '../../../components/facility/ProgramCard';
+import { EmptyState, ErrorView, LoadingView, ThemedText } from '../../../components/ui';
 import type { FacilityResponse, FacilityType } from '../../../api/types';
 
 const TYPE_LABEL: Record<FacilityType, string> = {
@@ -64,6 +72,14 @@ export default function FacilityDetailScreen() {
     : airQuality.isLoading
       ? 'loading'
       : 'success';
+
+  const isProgramSectionEnabled = isFeatureEnabled('facility.program.enabled');
+  const {
+    data: programs,
+    isLoading: isProgramsLoading,
+    isError: isProgramsError,
+    refetch: refetchPrograms,
+  } = usePrograms(isProgramSectionEnabled ? facilityId : '');
 
   const isEmpty = !isLoading && !isError && data === undefined;
 
@@ -136,6 +152,37 @@ export default function FacilityDetailScreen() {
             {hasCoordinates && (
               <View style={styles.airQualitySection}>
                 <AirQualityCard status={airQualityStatus} data={airQuality.data ?? null} />
+              </View>
+            )}
+            {isProgramSectionEnabled && (
+              <View style={styles.programSection}>
+                <ThemedText
+                  variant="primary"
+                  style={styles.programSectionTitle}
+                  accessibilityRole="header"
+                >
+                  시설상품
+                </ThemedText>
+                {isProgramsLoading ? (
+                  <LoadingView variant="skeleton" skeletonCount={2} />
+                ) : isProgramsError ? (
+                  <ErrorView
+                    message="시설상품을 불러오지 못했습니다."
+                    onRetry={() => void refetchPrograms()}
+                  />
+                ) : (programs ?? []).length === 0 ? (
+                  <EmptyState message="등록된 상품이 없어요" />
+                ) : (
+                  (programs ?? []).map((program) => (
+                    <ProgramCard
+                      key={program.id}
+                      program={program}
+                      onPress={() =>
+                        router.push(`/booking/new?facilityId=${facilityId}&programId=${program.id}`)
+                      }
+                    />
+                  ))
+                )}
               </View>
             )}
           </ScrollView>
@@ -211,6 +258,14 @@ const styles = StyleSheet.create({
   },
   airQualitySection: {
     marginTop: 16,
+  },
+  programSection: {
+    marginTop: 20,
+  },
+  programSectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 12,
   },
   bookingButtonContainer: {
     padding: 16,

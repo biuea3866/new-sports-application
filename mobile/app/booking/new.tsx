@@ -1,14 +1,20 @@
 /**
  * 예약 신청 화면 — MO-04
- * Query: ?facilityId=
+ * Query: ?facilityId=&programId=
  *
- * 1. GET /facilities/{facilityId}/slots 슬롯 목록 조회
+ * 1. GET /facilities/{facilityId}/slots 슬롯 목록 조회 (programId 지정 시 해당 program 회차만)
  * 2. 슬롯 선택 + 결제수단 선택
  * 3. POST /bookings → 응답 bookingId 수신
  * 4. /payment?orderType=BOOKING&orderId={bookingId}&amount={amount}&method={method} 진입
  *
- * NOTE: SlotResponse에 price 필드가 없어 amount는 10000(원) 고정.
- * Slot에 price가 추가되면 해당 값으로 교체.
+ * NOTE: SlotResponse에 price 필드가 없어 일반 예약(programId 미지정)은 amount 10000(원)
+ * 고정을 유지한다(design-fe-app.md "확인 필요" — Slot에 price가 추가되면 교체).
+ *
+ * FE-28(A-F2): programId 지정 시 program.price를 결제 금액으로 사용한다
+ * (design-fe-app.md "결제 흐름 재사용 결정" 인접 근거, "API 연동 표" A-F2). program 가격을
+ * 아직 확보하지 못했으면(목록 로딩 중이거나 매칭 실패) 예약 버튼을 비활성화해, 잘못된
+ * 고정 금액으로 결제가 개시되지 않도록 막는다. programId가 없으면 기존 흐름을 그대로
+ * 유지한다(하위호환).
  *
  * 대기질 경고·확인 게이트 (FE-16, 근거: design-fe-app.md FR-13/FR-14)
  * - 시설 좌표(GET /facilities/{id})로 대기질(FE-12)을 조회해 BAD 이상이면
@@ -32,6 +38,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSlots, useCreateBooking } from '../../lib/useBooking';
 import { useFacilityDetail } from '../../lib/useFacility';
 import { useAirQuality } from '../../lib/useAirQuality';
+import { usePrograms } from '../../lib/useProgram';
 import { AirQualityWarning } from '../../components/AirQualityWarning';
 import { isBadOrWorse } from '../../lib/air-quality-format';
 import type { PaymentMethod, SlotResponse } from '../../api/types';
@@ -77,12 +84,30 @@ function SlotItem({ slot, isSelected, onSelect }: SlotItemProps) {
 }
 
 export default function BookingNewScreen() {
-  const { facilityId } = useLocalSearchParams<{ facilityId: string }>();
+  const { facilityId, programId } = useLocalSearchParams<{
+    facilityId: string;
+    programId?: string;
+  }>();
   const router = useRouter();
 
   const resolvedFacilityId = facilityId ?? '';
-  const { data: slots, isLoading, isError } = useSlots(resolvedFacilityId);
+  const resolvedProgramId =
+    typeof programId === 'string' && programId.length > 0 ? Number(programId) : undefined;
+  const isProgramBooking = resolvedProgramId !== undefined && !Number.isNaN(resolvedProgramId);
+
+  const { data: slots, isLoading, isError } = useSlots(resolvedFacilityId, resolvedProgramId);
   const { mutate: createBooking, isPending } = useCreateBooking();
+
+  // program 예약(A-F2)은 program.price를 결제 금액으로 쓴다. usePrograms(facilityId) 전체
+  // 목록에서 programId로 매칭한다(program 단건 조회 API가 없어 목록 조회를 재사용한다).
+  const { data: programs, isLoading: isProgramsLoading } = usePrograms(
+    isProgramBooking ? resolvedFacilityId : ''
+  );
+  const selectedProgram = isProgramBooking
+    ? programs?.find((program) => program.id === resolvedProgramId)
+    : undefined;
+  const isProgramPriceReady = !isProgramBooking || selectedProgram !== undefined;
+  const bookingAmount = isProgramBooking ? (selectedProgram?.price ?? 0) : BOOKING_AMOUNT;
 
   const { data: facility } = useFacilityDetail(resolvedFacilityId);
   const facilityLat = facility?.lat ?? null;
@@ -104,6 +129,11 @@ export default function BookingNewScreen() {
       return;
     }
 
+    if (!isProgramPriceReady) {
+      Alert.alert('안내', '상품 가격을 확인하는 중입니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+
     if (needsAirQualityConfirmation && !isAirQualityConfirmed) {
       setIsAirQualityConfirmed(true);
       return;
@@ -113,13 +143,13 @@ export default function BookingNewScreen() {
       {
         slotId: selectedSlotId,
         paymentMethod: selectedMethod,
-        amount: BOOKING_AMOUNT,
+        amount: bookingAmount,
         currency: 'KRW',
       },
       {
         onSuccess: (result) => {
           router.push(
-            `/payment?orderType=BOOKING&orderId=${result.bookingId}&amount=${BOOKING_AMOUNT}&method=${selectedMethod}`
+            `/payment?orderType=BOOKING&orderId=${result.bookingId}&amount=${bookingAmount}&method=${selectedMethod}`
           );
         },
         onError: () => {
@@ -158,12 +188,15 @@ export default function BookingNewScreen() {
   }
 
   const availableSlots = slots ?? [];
-  const bookButtonLabel =
-    needsAirQualityConfirmation && !isAirQualityConfirmed
+  const isProgramPricePending = isProgramBooking && !isProgramPriceReady && isProgramsLoading;
+  const bookButtonLabel = isProgramPricePending
+    ? '가격 확인 중'
+    : needsAirQualityConfirmation && !isAirQualityConfirmed
       ? '확인하고 예약'
       : isPending
         ? '예약 중...'
         : '예약 진행';
+  const isBookDisabled = selectedSlotId === null || isPending || !isProgramPriceReady;
 
   return (
     <View style={styles.container} accessible={false} accessibilityLabel="예약 신청 화면">
@@ -220,15 +253,12 @@ export default function BookingNewScreen() {
       </View>
 
       <TouchableOpacity
-        style={[
-          styles.bookButton,
-          (selectedSlotId === null || isPending) && styles.bookButtonDisabled,
-        ]}
+        style={[styles.bookButton, isBookDisabled && styles.bookButtonDisabled]}
         onPress={handleBook}
-        disabled={selectedSlotId === null || isPending}
+        disabled={isBookDisabled}
         accessibilityRole="button"
         accessibilityLabel={bookButtonLabel}
-        accessibilityState={{ disabled: selectedSlotId === null || isPending }}
+        accessibilityState={{ disabled: isBookDisabled }}
       >
         <Text style={styles.bookButtonText}>{bookButtonLabel}</Text>
       </TouchableOpacity>
