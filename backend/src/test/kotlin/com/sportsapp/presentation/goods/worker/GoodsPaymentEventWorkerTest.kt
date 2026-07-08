@@ -3,7 +3,7 @@ package com.sportsapp.presentation.goods.worker
 import com.sportsapp.application.goods.usecase.CancelGoodsPaymentUseCase
 import com.sportsapp.application.goods.usecase.ConfirmGoodsPaymentUseCase
 import com.sportsapp.domain.payment.event.PaymentEvent
-import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.common.order.OrderType
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.justRun
 import io.mockk.mockk

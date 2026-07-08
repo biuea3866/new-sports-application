@@ -1,6 +1,6 @@
 package com.sportsapp.application.ticketing.usecase
 
-import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.payment.service.PaymentDomainService
 import com.sportsapp.domain.payment.dto.PgInitiateCommand
 import com.sportsapp.application.ticketing.dto.PurchaseTicketsCommand

@@ -8,7 +8,7 @@ import com.sportsapp.domain.goods.entity.GoodsOrderStatus
 import com.sportsapp.domain.goods.service.GoodsDomainService
 import com.sportsapp.domain.payment.dto.PgInitiateCommand
 import com.sportsapp.domain.payment.service.PaymentDomainService
-import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.common.order.OrderType
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 

@@ -1,6 +1,6 @@
 package com.sportsapp.domain.payment.gateway
 
-import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.common.order.OrderType
 import java.math.BigDecimal
 
 data class PgPrepareRequest(

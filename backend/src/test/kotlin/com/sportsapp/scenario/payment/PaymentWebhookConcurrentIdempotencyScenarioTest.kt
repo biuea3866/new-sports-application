@@ -3,7 +3,7 @@ package com.sportsapp.scenario.payment
 import com.sportsapp.BaseJpaIntegrationTest
 import com.sportsapp.application.payment.dto.ConfirmPaymentWebhookCommand
 import com.sportsapp.application.payment.usecase.ConfirmPaymentWebhookUseCase
-import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.payment.entity.Payment
 import com.sportsapp.domain.payment.vo.PaymentMethod
 import com.sportsapp.domain.payment.repository.PaymentRepository

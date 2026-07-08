@@ -2,7 +2,7 @@ package com.sportsapp.domain.payment.dto
 
 import com.sportsapp.domain.payment.entity.Payment
 import com.sportsapp.domain.payment.entity.PaymentStatus
-import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.payment.vo.PaymentMethod
 import java.math.BigDecimal
 import java.time.ZonedDateTime

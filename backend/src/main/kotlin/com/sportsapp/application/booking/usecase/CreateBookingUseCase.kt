@@ -4,7 +4,7 @@ import com.sportsapp.application.booking.dto.CreateBookingCommand
 import com.sportsapp.application.booking.dto.CreateBookingResult
 import com.sportsapp.domain.booking.dto.BookingResult
 import com.sportsapp.domain.booking.service.BookingDomainService
-import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.payment.service.PaymentDomainService
 import com.sportsapp.domain.payment.dto.PgInitiateCommand
 import org.springframework.stereotype.Service

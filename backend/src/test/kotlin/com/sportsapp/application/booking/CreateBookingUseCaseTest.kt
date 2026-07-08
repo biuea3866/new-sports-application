@@ -4,7 +4,7 @@ import com.sportsapp.domain.booking.service.BookingDomainService
 import com.sportsapp.domain.booking.dto.BookingResult
 import com.sportsapp.domain.booking.entity.BookingStatus
 import com.sportsapp.domain.booking.exception.SlotBusyException
-import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.payment.service.PaymentDomainService
 import com.sportsapp.domain.payment.vo.PaymentMethod
 import com.sportsapp.domain.payment.entity.PaymentStatus

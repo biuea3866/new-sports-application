@@ -7,7 +7,7 @@ import com.sportsapp.domain.payment.event.PaymentEvent
 import com.sportsapp.domain.payment.gateway.PaymentGateway
 import com.sportsapp.domain.payment.repository.PaymentRepository
 import com.sportsapp.domain.payment.service.PaymentDomainService
-import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.payment.vo.PaymentMethod
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe

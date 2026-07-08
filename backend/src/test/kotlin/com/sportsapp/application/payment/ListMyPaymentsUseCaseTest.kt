@@ -2,7 +2,7 @@ package com.sportsapp.application.payment
 import com.sportsapp.application.payment.dto.PaymentCriteria
 import com.sportsapp.application.payment.usecase.ListMyPaymentsUseCase
 
-import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.payment.entity.Payment
 import com.sportsapp.domain.payment.service.PaymentDomainService
 import com.sportsapp.domain.payment.vo.PaymentMethod

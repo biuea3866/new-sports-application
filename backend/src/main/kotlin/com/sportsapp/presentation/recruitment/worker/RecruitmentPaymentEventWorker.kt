@@ -3,7 +3,7 @@ package com.sportsapp.presentation.recruitment.worker
 import com.sportsapp.application.recruitment.usecase.CancelRecruitmentPaymentUseCase
 import com.sportsapp.application.recruitment.usecase.ConfirmRecruitmentPaymentUseCase
 import com.sportsapp.domain.payment.event.PaymentEvent
-import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.common.order.OrderType
 import org.springframework.kafka.annotation.KafkaListener
 import org.springframework.stereotype.Component
 

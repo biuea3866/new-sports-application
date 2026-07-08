@@ -5,7 +5,7 @@ import com.sportsapp.domain.common.JpaAuditingBase
 import com.sportsapp.domain.payment.event.PaymentEvent
 import com.sportsapp.domain.payment.exception.InvalidFailureReasonException
 import com.sportsapp.domain.payment.exception.InvalidPaymentStateException
-import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.payment.vo.PaymentMethod
 import jakarta.persistence.Column
 import jakarta.persistence.Entity

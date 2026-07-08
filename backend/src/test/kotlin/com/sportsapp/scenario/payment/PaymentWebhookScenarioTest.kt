@@ -1,7 +1,7 @@
 package com.sportsapp.scenario.payment
 
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.domain.payment.vo.OrderType
+import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.payment.entity.Payment
 import com.sportsapp.domain.payment.vo.PaymentMethod
 import com.sportsapp.domain.payment.repository.PaymentRepository
