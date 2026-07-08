@@ -82,6 +82,10 @@ class PostDomainService(
         postRepository.findById(postId)
             ?: throw ResourceNotFoundException("Post", postId)
 
+    // 없거나 소프트 삭제된 Post 는 null. Post 존재를 강제하지 않아야 하는 조회 경로
+    // (listComments 는 Post 삭제 여부를 검증하지 않는다)의 가시성 재판정에 사용한다.
+    fun findPost(postId: Long): Post? = postRepository.findById(postId)
+
     fun search(criteria: PostSearchCriteria, pageable: Pageable): Page<Post> =
         postCustomRepository.findByCriteria(criteria, pageable)
 
