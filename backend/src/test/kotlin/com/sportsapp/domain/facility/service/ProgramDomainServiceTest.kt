@@ -6,6 +6,7 @@ import com.sportsapp.domain.facility.entity.Program
 import com.sportsapp.domain.facility.exception.FacilityNotFoundException
 import com.sportsapp.domain.facility.exception.UnauthorizedProgramAccessException
 import com.sportsapp.domain.facility.repository.FacilityRepository
+import com.sportsapp.domain.facility.repository.ProgramCustomRepository
 import com.sportsapp.domain.facility.repository.ProgramRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
@@ -15,15 +16,20 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import java.math.BigDecimal
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.geo.Point
 
 class ProgramDomainServiceTest : BehaviorSpec({
 
     val programRepository = mockk<ProgramRepository>()
     val facilityRepository = mockk<FacilityRepository>()
+    val programCustomRepository = mockk<ProgramCustomRepository>()
     val programDomainService = ProgramDomainService(
         programRepository = programRepository,
         facilityRepository = facilityRepository,
+        programCustomRepository = programCustomRepository,
     )
 
     fun facility(id: String = "FAC-01", ownerUserId: Long? = 1L) = Facility(
@@ -169,6 +175,31 @@ class ProgramDomainServiceTest : BehaviorSpec({
                 shouldThrow<ResourceNotFoundException> {
                     programDomainService.getOwnedProgram(1L, 999L)
                 }
+            }
+        }
+    }
+
+    Given("catalog 통합 검색을 요청하는 경우") {
+        val program = Program.create(
+            facilityId = "FAC-CATALOG-01",
+            ownerUserId = 1L,
+            name = "요가 클래스",
+            description = null,
+            price = BigDecimal("30000"),
+            capacity = 5,
+            durationMinutes = 50,
+        )
+        val pageable = PageRequest.of(0, 20)
+        val page: Page<Program> = PageImpl(listOf(program), pageable, 1)
+        every { programCustomRepository.searchForCatalog("요가", pageable) } returns page
+
+        When("searchForCatalog 를 호출하면") {
+            val result = programDomainService.searchForCatalog("요가", pageable)
+
+            Then("ProgramCustomRepository 조회 결과를 그대로 반환한다") {
+                result.totalElements shouldBe 1
+                result.content[0].name shouldBe "요가 클래스"
+                verify { programCustomRepository.searchForCatalog("요가", pageable) }
             }
         }
     }
