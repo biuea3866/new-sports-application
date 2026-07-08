@@ -7,6 +7,7 @@ import com.sportsapp.domain.ticketing.entity.QSeat.seat
 import com.sportsapp.domain.ticketing.entity.QTicket.ticket
 import com.sportsapp.domain.ticketing.entity.QTicketOrder.ticketOrder
 import com.sportsapp.domain.ticketing.repository.TicketOrderCustomRepository
+import com.sportsapp.domain.ticketing.dto.TicketOrderWithEventTitle
 import com.sportsapp.domain.ticketing.dto.TicketSalesSummary
 import com.sportsapp.domain.ticketing.entity.TicketStatus
 import jakarta.persistence.EntityManager
@@ -93,4 +94,24 @@ class TicketOrderCustomRepositoryImpl : TicketOrderCustomRepository {
                         ticket.createdAt.loe(to),
                     )
                     .fetchOne() ?: 0L
+
+    override fun findBy(userId: Long): List<TicketOrderWithEventTitle> =
+        queryFactory
+            .select(ticketOrder.id, ticketOrder.status, event.title, event.deletedAt)
+            .from(ticketOrder)
+            .leftJoin(event).on(event.id.eq(ticketOrder.lockedEventId))
+            .where(
+                ticketOrder.userId.eq(userId),
+                ticketOrder.deletedAt.isNull,
+            )
+            .fetch()
+            .map { tuple ->
+                val eventTitle = tuple.get(event.title)
+                val eventDeletedAt = tuple.get(event.deletedAt)
+                TicketOrderWithEventTitle(
+                    ticketOrderId = requireNotNull(tuple.get(ticketOrder.id)) { "ticketOrder.id must not be null" },
+                    status = requireNotNull(tuple.get(ticketOrder.status)) { "ticketOrder.status must not be null" },
+                    eventTitle = if (eventTitle == null || eventDeletedAt != null) "" else eventTitle,
+                )
+            }
 }

@@ -51,6 +51,7 @@ class EventCustomRepositoryImpl(
         criteria.status?.let { predicate.and(event.status.eq(it)) }
         criteria.startsAtFrom?.let { predicate.and(event.startsAt.goe(it)) }
         criteria.startsAtTo?.let { predicate.and(event.startsAt.loe(it)) }
+        criteria.keyword?.takeIf { it.isNotBlank() }?.let { predicate.and(event.title.contains(it)) }
         return predicate
     }
 

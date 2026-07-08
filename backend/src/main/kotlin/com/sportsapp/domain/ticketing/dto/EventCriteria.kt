@@ -7,4 +7,5 @@ data class EventCriteria(
     val status: EventStatus?,
     val startsAtFrom: ZonedDateTime?,
     val startsAtTo: ZonedDateTime?,
+    val keyword: String? = null,
 )

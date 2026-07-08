@@ -1,5 +1,6 @@
 package com.sportsapp.domain.ticketing.repository
 
+import com.sportsapp.domain.ticketing.dto.TicketOrderWithEventTitle
 import com.sportsapp.domain.ticketing.dto.TicketSalesSummary
 import java.time.ZonedDateTime
 
@@ -16,4 +17,6 @@ interface TicketOrderCustomRepository {
         from: ZonedDateTime,
         to: ZonedDateTime,
     ): Long
+
+    fun findBy(userId: Long): List<TicketOrderWithEventTitle>
 }
