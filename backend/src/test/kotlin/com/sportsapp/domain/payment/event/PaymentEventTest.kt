@@ -33,15 +33,23 @@ class PaymentEventTest : BehaviorSpec({
     ).also { it.markReady("tid-$orderId", "card", "http://checkout") }
 
     Given("PaymentEvent.Confirmed 인스턴스") {
-        val event = PaymentEvent.Confirmed(paymentId = 42L, orderType = OrderType.BOOKING, orderId = 300L)
+        val event = PaymentEvent.Confirmed(
+            paymentId = 42L,
+            orderType = OrderType.BOOKING,
+            orderId = 300L,
+            recipientUserId = 900L,
+            amount = 30000L,
+        )
 
         When("topic 과 필드를 확인하면") {
-            Then("단일 토픽과 orderType/orderId/paymentId 를 노출한다") {
+            Then("단일 토픽과 orderType/orderId/paymentId/수신자/금액 을 노출한다") {
                 event.topic shouldBe "event.payment.payment.v1"
                 event.aggregateId shouldBe 42L
                 event.paymentId shouldBe 42L
                 event.orderType shouldBe OrderType.BOOKING
                 event.orderId shouldBe 300L
+                event.recipientUserId shouldBe 900L
+                event.amount shouldBe 30000L
                 event.eventType shouldBe "CONFIRMED"
             }
         }
@@ -63,7 +71,13 @@ class PaymentEventTest : BehaviorSpec({
     }
 
     Given("PaymentEvent.Confirmed 를 JSON 으로 직렬화한 뒤 sealed 베이스로 역직렬화하면") {
-        val original = PaymentEvent.Confirmed(paymentId = 11L, orderType = OrderType.TICKETING, orderId = 111L)
+        val original = PaymentEvent.Confirmed(
+            paymentId = 11L,
+            orderType = OrderType.TICKETING,
+            orderId = 111L,
+            recipientUserId = 903L,
+            amount = 12000L,
+        )
         val json = kafkaObjectMapper.writeValueAsString(original)
 
         When("eventType 판별자로 하위 타입을 결정하면") {
@@ -74,6 +88,8 @@ class PaymentEventTest : BehaviorSpec({
                 restored.paymentId shouldBe 11L
                 restored.orderType shouldBe OrderType.TICKETING
                 restored.orderId shouldBe 111L
+                restored.recipientUserId shouldBe 903L
+                restored.amount shouldBe 12000L
                 restored.eventId shouldBe original.eventId
             }
         }
@@ -102,14 +118,16 @@ class PaymentEventTest : BehaviorSpec({
         When("markCompleted 를 호출하면") {
             payment.markCompleted(ZonedDateTime.now())
 
-            Then("알림용 PaymentCompletedEvent 와 주문 확정용 PaymentEvent.Confirmed 가 함께 적재된다") {
+            Then("주문 확정용 PaymentEvent.Confirmed 1건만 적재되고 수신자/금액을 담는다") {
                 payment.status shouldBe PaymentStatus.COMPLETED
                 val events = payment.pullDomainEvents()
-                events.filterIsInstance<PaymentCompletedEvent>().size shouldBe 1
+                events.size shouldBe 1
                 val confirmed = events.filterIsInstance<PaymentEvent.Confirmed>().single()
                 confirmed.orderType shouldBe OrderType.TICKETING
                 confirmed.orderId shouldBe 555L
                 confirmed.paymentId shouldBe payment.id
+                confirmed.recipientUserId shouldBe payment.userId
+                confirmed.amount shouldBe 10000L
             }
         }
     }

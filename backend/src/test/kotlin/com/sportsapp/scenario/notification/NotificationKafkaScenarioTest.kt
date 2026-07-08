@@ -1,8 +1,9 @@
 package com.sportsapp.scenario.notification
 
 import com.sportsapp.TestJpaGatewayStubConfig
+import com.sportsapp.domain.payment.event.PaymentEvent
+import com.sportsapp.domain.payment.vo.OrderType
 import com.sportsapp.infrastructure.notification.mysql.NotificationJpaRepository
-import com.sportsapp.presentation.notification.worker.PaymentCompletedEvent
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import org.apache.kafka.clients.producer.ProducerConfig
@@ -65,29 +66,40 @@ class NotificationKafkaScenarioTest(
                 ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to bootstrapServers,
                 ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to StringSerializer::class.java,
                 ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG to JsonSerializer::class.java,
-                JsonSerializer.ADD_TYPE_INFO_HEADERS to true,
+                // 프로덕션 프로듀서(KafkaProducerConfig, ADD_TYPE_INFO_HEADERS=false)와 동일하게 맞춰,
+                // 타입 헤더 없이 payload 의 eventType 판별자로 다형 역직렬화되는 실제 경로를 E2E 로 검증한다.
+                JsonSerializer.ADD_TYPE_INFO_HEADERS to false,
             )
             return KafkaTemplate(DefaultKafkaProducerFactory(producerProps))
         }
     }
 
     init {
-        Given("[S-01] payment.completed.v1 토픽에 PaymentCompletedEvent 를 발행했을 때") {
-            val paymentId = "payment-scenario-${System.nanoTime()}"
+        Given("[S-01] event.payment.payment.v1 토픽에 PaymentEvent.Confirmed 를 발행했을 때") {
+            val eventId = "payment-scenario-${System.nanoTime()}"
             val userId = 9001L
-            val kafkaTemplate = buildKafkaTemplate<PaymentCompletedEvent>(kafkaContainer.bootstrapServers)
+            val confirmed = PaymentEvent.Confirmed(
+                paymentId = 42L,
+                orderType = OrderType.BOOKING,
+                orderId = 300L,
+                recipientUserId = userId,
+                amount = 30000L,
+                eventId = eventId,
+            )
+            val kafkaTemplate = buildKafkaTemplate<PaymentEvent>(kafkaContainer.bootstrapServers)
 
-            When("payment.completed.v1 에 이벤트를 발행하면") {
+            When("event.payment.payment.v1 에 이벤트를 발행하면") {
                 kafkaTemplate.send(
-                    "payment.completed.v1",
-                    PaymentCompletedEvent(paymentId = paymentId, userId = userId, amount = 30000L),
+                    PaymentEvent.TOPIC,
+                    confirmed.aggregateId.toString(),
+                    confirmed,
                 ).get()
 
-                Then("[S-01] 5초 내 알림 row 1건이 notifications 테이블에 적재된다") {
+                Then("[S-01] 5초 내 결제 완료 알림 row 1건이 notifications 테이블에 적재된다") {
                     var found = false
                     val deadline = System.currentTimeMillis() + 10_000L
                     while (System.currentTimeMillis() < deadline) {
-                        val rows = notificationJpaRepository.findByEventId(paymentId)
+                        val rows = notificationJpaRepository.findByEventId(eventId)
                         if (rows != null) {
                             found = true
                             break
@@ -99,23 +111,32 @@ class NotificationKafkaScenarioTest(
             }
         }
 
-        Given("[S-02] 동일 payment.completed.v1 이벤트를 2회 발행했을 때 (멱등성)") {
-            val paymentId = "payment-idempotent-${System.nanoTime()}"
+        Given("[S-02] 동일 PaymentEvent.Confirmed 를 2회 발행했을 때 (멱등성)") {
+            val eventId = "payment-idempotent-${System.nanoTime()}"
             val userId = 9002L
-            val kafkaTemplate = buildKafkaTemplate<PaymentCompletedEvent>(kafkaContainer.bootstrapServers)
+            val confirmed = PaymentEvent.Confirmed(
+                paymentId = 43L,
+                orderType = OrderType.BOOKING,
+                orderId = 301L,
+                recipientUserId = userId,
+                amount = 5000L,
+                eventId = eventId,
+            )
+            val kafkaTemplate = buildKafkaTemplate<PaymentEvent>(kafkaContainer.bootstrapServers)
 
-            When("동일 paymentId 로 이벤트를 2회 발행하면") {
+            When("동일 eventId 로 이벤트를 2회 발행하면") {
                 repeat(2) {
                     kafkaTemplate.send(
-                        "payment.completed.v1",
-                        PaymentCompletedEvent(paymentId = paymentId, userId = userId, amount = 5000L),
+                        PaymentEvent.TOPIC,
+                        confirmed.aggregateId.toString(),
+                        confirmed,
                     ).get()
                 }
 
                 Then("[S-02] 알림 row 는 1건만 적재된다") {
                     TimeUnit.SECONDS.sleep(5)
                     val count = notificationJpaRepository.findAll()
-                        .count { it.eventId == paymentId }
+                        .count { it.eventId == eventId }
                     count shouldBe 1
                 }
             }

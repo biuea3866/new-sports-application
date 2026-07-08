@@ -1,13 +1,17 @@
 package com.sportsapp.domain.ticketing
 import com.sportsapp.domain.ticketing.dto.TicketOrderResult
+import com.sportsapp.domain.ticketing.entity.Event
 import com.sportsapp.domain.ticketing.entity.TicketStatus
 import com.sportsapp.domain.ticketing.entity.OrderStatus
 import com.sportsapp.domain.ticketing.entity.TicketOrder
+import com.sportsapp.domain.ticketing.event.TicketEvent
+import com.sportsapp.domain.ticketing.repository.EventRepository
 import com.sportsapp.domain.ticketing.repository.TicketRepository
 import com.sportsapp.domain.ticketing.repository.TicketOrderRepository
 import com.sportsapp.domain.ticketing.gateway.SeatLockStore
 import com.sportsapp.domain.ticketing.service.TicketingDomainService
 
+import com.sportsapp.domain.common.DomainEvent
 import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import com.sportsapp.domain.ticketing.exception.MalformedLockIdException
@@ -18,6 +22,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import java.time.ZonedDateTime
 
 class TicketingDomainServiceOrderTest : BehaviorSpec({
 
@@ -26,8 +31,9 @@ class TicketingDomainServiceOrderTest : BehaviorSpec({
         ticketOrderRepository: TicketOrderRepository = mockk(relaxed = true),
         ticketRepository: TicketRepository = mockk(relaxed = true),
         domainEventPublisher: DomainEventPublisher = mockk(relaxed = true),
+        eventRepository: EventRepository = mockk(relaxed = true),
     ) = TicketingDomainService(
-        eventRepository = mockk(relaxed = true),
+        eventRepository = eventRepository,
         seatRepository = mockk(relaxed = true),
         eventCustomRepository = mockk(relaxed = true),
         seatCustomRepository = mockk(relaxed = true),
@@ -73,10 +79,12 @@ class TicketingDomainServiceOrderTest : BehaviorSpec({
         val ticketOrderRepository = mockk<TicketOrderRepository>()
         val ticketRepository = mockk<TicketRepository>()
         val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
+        val eventRepository = mockk<EventRepository>()
         val service = buildService(
             ticketOrderRepository = ticketOrderRepository,
             ticketRepository = ticketRepository,
             domainEventPublisher = domainEventPublisher,
+            eventRepository = eventRepository,
         )
 
         val pendingOrder = TicketOrder(
@@ -88,6 +96,11 @@ class TicketingDomainServiceOrderTest : BehaviorSpec({
         )
         every { ticketOrderRepository.findById(100L) } returns pendingOrder
         every { ticketOrderRepository.save(any()) } returns pendingOrder
+        every { eventRepository.findById(1L) } returns
+            Event.create("월드컵 결승", "상암 월드컵 경기장", ZonedDateTime.now(), 3L)
+
+        val publishedSlot = slot<DomainEvent>()
+        every { domainEventPublisher.publish(capture(publishedSlot)) } answers { Unit }
 
         When("confirmOrder(100L, 999L)를 호출하면") {
             val result: TicketOrderResult = service.confirmOrder(100L, 999L)
@@ -95,6 +108,12 @@ class TicketingDomainServiceOrderTest : BehaviorSpec({
             Then("TicketOrderResult가 반환되고 status가 CONFIRMED이다") {
                 result.shouldBeInstanceOf<TicketOrderResult>()
                 result.status shouldBe OrderStatus.CONFIRMED
+            }
+
+            Then("수신자와 이벤트 제목을 담은 TicketEvent.Issued가 발행된다") {
+                val published = publishedSlot.captured.shouldBeInstanceOf<TicketEvent.Issued>()
+                published.recipientUserId shouldBe 7L
+                published.eventTitle shouldBe "월드컵 결승"
             }
         }
     }

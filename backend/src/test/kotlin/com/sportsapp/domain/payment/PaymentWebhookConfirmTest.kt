@@ -3,7 +3,6 @@ package com.sportsapp.domain.payment
 import com.sportsapp.domain.common.DomainEvent
 import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.payment.entity.Payment
-import com.sportsapp.domain.payment.event.PaymentCompletedEvent
 import com.sportsapp.domain.payment.event.PaymentEvent
 import com.sportsapp.domain.payment.gateway.PaymentGateway
 import com.sportsapp.domain.payment.repository.PaymentRepository
@@ -76,14 +75,14 @@ class PaymentWebhookConfirmTest : BehaviorSpec({
         When("confirmWebhook(eventType=PAYMENT_APPROVED) 를 호출하면") {
             service.confirmWebhook(tid = tid, eventType = "PAYMENT_APPROVED")
 
-            Then("알림용 완료 이벤트와 주문 확정 이벤트가 함께 발행된다") {
+            Then("주문 확정 이벤트가 단일 토픽으로 발행된다") {
                 verify(exactly = 1) { domainEventPublisher.publishAll(any()) }
-                capturedEvents.filterIsInstance<PaymentCompletedEvent>().size shouldBe 1
                 val confirmed = capturedEvents.filterIsInstance<PaymentEvent.Confirmed>().single()
                 confirmed.topic shouldBe "event.payment.payment.v1"
                 confirmed.orderType shouldBe OrderType.TICKETING
                 confirmed.orderId shouldBe orderId
                 confirmed.paymentId shouldBe readyPayment.id
+                confirmed.recipientUserId shouldBe readyPayment.userId
             }
         }
     }

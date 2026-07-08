@@ -19,7 +19,7 @@ class GoodsPaymentEventWorkerTest : BehaviorSpec({
 
     Given("결제 이벤트 워커") {
         When("GOODS 확정 이벤트를 수신하면") {
-            worker.consume(PaymentEvent.Confirmed(paymentId = 200L, orderType = OrderType.GOODS, orderId = 20L))
+            worker.consume(PaymentEvent.Confirmed(paymentId = 200L, orderType = OrderType.GOODS, orderId = 20L, recipientUserId = 1L, amount = 0L))
 
             Then("자기 확정 UseCase 에 위임한다") {
                 verify(exactly = 1) { confirmUseCase.execute(20L, 200L) }
@@ -35,7 +35,7 @@ class GoodsPaymentEventWorkerTest : BehaviorSpec({
         }
 
         When("다른 타입(BOOKING) 확정 이벤트를 수신하면") {
-            worker.consume(PaymentEvent.Confirmed(paymentId = 100L, orderType = OrderType.BOOKING, orderId = 10L))
+            worker.consume(PaymentEvent.Confirmed(paymentId = 100L, orderType = OrderType.BOOKING, orderId = 10L, recipientUserId = 1L, amount = 0L))
 
             Then("무시하고 어떤 UseCase 도 호출하지 않는다") {
                 verify(exactly = 0) { confirmUseCase.execute(10L, 100L) }

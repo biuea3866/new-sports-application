@@ -8,7 +8,7 @@ import java.time.ZonedDateTime
 import com.sportsapp.domain.booking.entity.Booking
 import com.sportsapp.domain.booking.entity.BookingStatus
 import com.sportsapp.domain.booking.entity.Slot
-import com.sportsapp.domain.booking.event.BookingConfirmedEvent
+import com.sportsapp.domain.booking.event.BookingEvent
 import com.sportsapp.domain.booking.exception.InvalidBookingStateException
 import com.sportsapp.domain.booking.exception.InvalidSlotException
 import com.sportsapp.domain.booking.exception.RefundBookingException
@@ -45,10 +45,11 @@ class BookingTest : BehaviorSpec({
         When("pullDomainEvents를 호출하면") {
             val events = booking.pullDomainEvents()
 
-            Then("BookingConfirmedEvent가 1건 적재되어 있다") {
+            Then("BookingEvent.Confirmed가 1건 적재되어 있다") {
                 events.size shouldBe 1
-                val event = events[0] as BookingConfirmedEvent
+                val event = events[0] as BookingEvent.Confirmed
                 event.paymentId shouldBe 777L
+                event.recipientUserId shouldBe 1L
             }
         }
 

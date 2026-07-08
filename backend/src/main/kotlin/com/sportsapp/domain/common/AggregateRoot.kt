@@ -11,7 +11,7 @@ package com.sportsapp.domain.common
  * class Booking(...) : AggregateRoot() {
  *     fun confirm() {
  *         status = BookingStatus.CONFIRMED
- *         registerEvent(BookingConfirmedEvent(aggregateId = id))
+ *         registerEvent(BookingEvent.Confirmed(bookingId = id, paymentId = paymentId, recipientUserId = userId))
  *     }
  * }
  *
