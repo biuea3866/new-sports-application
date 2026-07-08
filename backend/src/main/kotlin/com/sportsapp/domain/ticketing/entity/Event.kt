@@ -1,6 +1,7 @@
 package com.sportsapp.domain.ticketing.entity
 
 import com.sportsapp.domain.common.JpaAuditingBase
+import com.sportsapp.domain.ticketing.exception.DuplicateSeatException
 import com.sportsapp.domain.ticketing.exception.EventOwnershipException
 import com.sportsapp.domain.ticketing.exception.InvalidEventStateException
 import com.sportsapp.domain.ticketing.exception.TooManySeatsException
@@ -58,6 +59,12 @@ class Event(
         fun validateSeatLimit(seatSpecs: List<*>) {
             if (seatSpecs.size > MAX_SEATS_PER_EVENT) {
                 throw TooManySeatsException(seatSpecs.size, MAX_SEATS_PER_EVENT)
+            }
+        }
+
+        fun <T> validateNoDuplicateSeats(seatSpecs: List<T>, keySelector: (T) -> Any) {
+            if (seatSpecs.distinctBy(keySelector).size != seatSpecs.size) {
+                throw DuplicateSeatException()
             }
         }
     }

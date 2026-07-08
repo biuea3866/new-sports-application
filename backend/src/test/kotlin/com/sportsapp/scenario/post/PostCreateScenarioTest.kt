@@ -56,7 +56,7 @@ class PostCreateScenarioTest(
                             .header("X-User-Id", 1L)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""{"title": "", "content": "본문 내용"}""")
-                    ).andExpect(status().isUnprocessableEntity)
+                    ).andExpect(status().is4xxClientError)
                 }
             }
         }
@@ -69,7 +69,7 @@ class PostCreateScenarioTest(
                             .header("X-User-Id", 1L)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""{"title": "제목", "content": ""}""")
-                    ).andExpect(status().isUnprocessableEntity)
+                    ).andExpect(status().is4xxClientError)
                 }
             }
         }

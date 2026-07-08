@@ -61,6 +61,7 @@ class TicketingDomainService(
         ownerUserId: Long,
     ): Event {
         Event.validateSeatLimit(seats)
+        Event.validateNoDuplicateSeats(seats) { Triple(it.section, it.rowNo, it.seatNo) }
         val event = eventRepository.save(Event.create(title, venue, startsAt, ownerUserId))
         val seatList = seats.map { spec ->
             Seat(
