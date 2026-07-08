@@ -14,6 +14,7 @@ import com.sportsapp.domain.booking.entity.Booking
 import com.sportsapp.domain.booking.entity.BookingStatus
 import com.sportsapp.domain.booking.entity.Slot
 import com.sportsapp.domain.booking.service.BookingDomainService
+import com.sportsapp.domain.booking.repository.BookingOrderQueryRepository
 import com.sportsapp.domain.booking.repository.BookingRepository
 import com.sportsapp.domain.booking.repository.SlotRepository
 import com.sportsapp.domain.booking.dto.BookingResult
@@ -26,12 +27,14 @@ class BookingDomainServiceLockTest : BehaviorSpec({
     val slotRepository = mockk<SlotRepository>()
     val distributedLock = mockk<DistributedLock>()
     val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
+    val bookingOrderQueryRepository = mockk<BookingOrderQueryRepository>()
 
     val service = BookingDomainService(
         bookingRepository,
         slotRepository,
         distributedLock,
         domainEventPublisher,
+        bookingOrderQueryRepository,
     )
 
     Given("[U-01] tryLock이 false를 반환하는 상황") {

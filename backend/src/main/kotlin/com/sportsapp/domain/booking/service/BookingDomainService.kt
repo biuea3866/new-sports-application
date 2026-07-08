@@ -1,5 +1,6 @@
 package com.sportsapp.domain.booking.service
 
+import com.sportsapp.domain.booking.dto.BookingOrderItem
 import com.sportsapp.domain.booking.dto.BookingResult
 import com.sportsapp.domain.booking.dto.FacilityKpiSummary
 import com.sportsapp.domain.booking.entity.Booking
@@ -9,6 +10,7 @@ import com.sportsapp.domain.booking.event.BookingRequestedEvent
 import com.sportsapp.domain.booking.exception.SlotBusyException
 import com.sportsapp.domain.booking.exception.SlotFullException
 import com.sportsapp.domain.booking.exception.UnauthorizedBookingAccessException
+import com.sportsapp.domain.booking.repository.BookingOrderQueryRepository
 import com.sportsapp.domain.booking.repository.BookingRepository
 import com.sportsapp.domain.booking.repository.SlotRepository
 import com.sportsapp.domain.common.DistributedLock
@@ -37,6 +39,7 @@ class BookingDomainService(
     private val slotRepository: SlotRepository,
     private val distributedLock: DistributedLock,
     private val domainEventPublisher: DomainEventPublisher,
+    private val bookingOrderQueryRepository: BookingOrderQueryRepository,
 ) {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun requestBooking(userId: Long, slotId: Long): BookingResult {
@@ -131,6 +134,13 @@ class BookingDomainService(
 
     fun findMyBookings(userId: Long, status: BookingStatus?, pageable: Pageable): Page<Booking> =
         bookingRepository.findPageByUserId(userId, status, pageable)
+
+    /**
+     * order 통합 조회(BE-08)가 소비하는 사용자별 주문(라벨 title 포함) 조회.
+     * orderType=BOOKING 매핑은 order 파사드가 담당한다.
+     */
+    fun findOrderHistory(userId: Long): List<BookingOrderItem> =
+        bookingOrderQueryRepository.findByUserId(userId)
 
     /**
      * 시설 KPI를 집계합니다.

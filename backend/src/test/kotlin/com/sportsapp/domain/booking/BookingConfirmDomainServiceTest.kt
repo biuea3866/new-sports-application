@@ -14,6 +14,7 @@ import java.math.BigDecimal
 import com.sportsapp.domain.booking.entity.Booking
 import com.sportsapp.domain.booking.entity.BookingStatus
 import com.sportsapp.domain.booking.service.BookingDomainService
+import com.sportsapp.domain.booking.repository.BookingOrderQueryRepository
 import com.sportsapp.domain.booking.repository.BookingRepository
 import com.sportsapp.domain.booking.repository.SlotRepository
 import com.sportsapp.domain.booking.event.BookingEvent
@@ -27,7 +28,8 @@ class BookingConfirmDomainServiceTest : BehaviorSpec({
         val bookingRepository = mockk<BookingRepository>()
         val slotRepository = mockk<SlotRepository>()
         val eventPublisher = mockk<DomainEventPublisher>(relaxed = true)
-        val service = BookingDomainService(bookingRepository, slotRepository, distributedLock, eventPublisher)
+        val bookingOrderQueryRepository = mockk<BookingOrderQueryRepository>()
+        val service = BookingDomainService(bookingRepository, slotRepository, distributedLock, eventPublisher, bookingOrderQueryRepository)
 
         val booking = Booking.createPending(userId = 1L, slotId = 10L)
         every { bookingRepository.findById(1L) } returns booking
@@ -53,7 +55,8 @@ class BookingConfirmDomainServiceTest : BehaviorSpec({
         val bookingRepository = mockk<BookingRepository>()
         val slotRepository = mockk<SlotRepository>()
         val eventPublisher = mockk<DomainEventPublisher>(relaxed = true)
-        val service = BookingDomainService(bookingRepository, slotRepository, distributedLock, eventPublisher)
+        val bookingOrderQueryRepository = mockk<BookingOrderQueryRepository>()
+        val service = BookingDomainService(bookingRepository, slotRepository, distributedLock, eventPublisher, bookingOrderQueryRepository)
 
         val booking = Booking.createPending(userId = 1L, slotId = 10L)
         booking.confirm(paymentId = 100L)
@@ -76,7 +79,8 @@ class BookingConfirmDomainServiceTest : BehaviorSpec({
         val bookingRepository = mockk<BookingRepository>()
         val slotRepository = mockk<SlotRepository>()
         val eventPublisher = mockk<DomainEventPublisher>(relaxed = true)
-        val service = BookingDomainService(bookingRepository, slotRepository, distributedLock, eventPublisher)
+        val bookingOrderQueryRepository = mockk<BookingOrderQueryRepository>()
+        val service = BookingDomainService(bookingRepository, slotRepository, distributedLock, eventPublisher, bookingOrderQueryRepository)
 
         val booking = Booking.createPending(userId = 1L, slotId = 10L)
         booking.confirm(paymentId = 50L)
