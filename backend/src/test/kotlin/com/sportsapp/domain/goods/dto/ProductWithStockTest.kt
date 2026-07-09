@@ -1,5 +1,6 @@
 package com.sportsapp.domain.goods.dto
 
+import com.sportsapp.domain.goods.vo.SellerType
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import com.sportsapp.domain.goods.entity.Product
 import com.sportsapp.domain.goods.exception.LimitedDropQuantityExceedsStockException
@@ -23,6 +24,7 @@ class ProductWithStockTest : BehaviorSpec({
             description = "설명",
             imageUrl = "https://image",
             ownerUserId = OWNER_USER_ID,
+            sellerType = SellerType.B2C,
         )
         return ProductWithStock(product = product, stockQuantity = stockQuantity)
     }

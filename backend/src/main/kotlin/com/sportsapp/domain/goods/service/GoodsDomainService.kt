@@ -1,7 +1,9 @@
 package com.sportsapp.domain.goods.service
 
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
+import com.sportsapp.domain.common.security.AuthChannelResolver
 import com.sportsapp.domain.goods.dto.GoodsKpiSummary
+import com.sportsapp.domain.goods.dto.GoodsOrderWithTitle
 import com.sportsapp.domain.goods.dto.PopularProductSnapshot
 import com.sportsapp.domain.goods.dto.ProductWithStock
 import com.sportsapp.domain.goods.entity.GoodsOrder
@@ -22,6 +24,7 @@ import com.sportsapp.domain.goods.repository.ProductRepository
 import com.sportsapp.domain.goods.repository.StockRepository
 import com.sportsapp.domain.goods.vo.OrderItemInput
 import com.sportsapp.domain.goods.vo.ProductCategory
+import com.sportsapp.domain.goods.vo.SellerType
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.ZonedDateTime
@@ -41,15 +44,21 @@ class GoodsDomainService(
     private val goodsOrderItemRepository: GoodsOrderItemRepository,
     private val goodsOrderCustomRepository: GoodsOrderCustomRepository,
     private val limitedDropRepository: LimitedDropRepository,
+    private val authChannelResolver: AuthChannelResolver,
 ) {
+    /**
+     * catalog 통합검색(BE-07 예정)이 재사용하는 조회 — [sellerType]은 옵션 필터(B2B 브랜드 상품만
+     * 보고 싶을 때), status=ACTIVE는 항상 강제한다(비활성 상품은 공개 검색 대상이 아니다).
+     */
     fun search(
         category: ProductCategory?,
         keyword: String?,
         priceMin: BigDecimal?,
         priceMax: BigDecimal?,
+        sellerType: SellerType?,
         pageable: Pageable,
     ): Page<ProductWithStock> {
-        val page = productCustomRepository.search(category, keyword, priceMin, priceMax, pageable)
+        val page = productCustomRepository.search(category, keyword, priceMin, priceMax, sellerType, pageable)
         return enrichWithLimitedDropId(page)
     }
 
@@ -170,6 +179,18 @@ class GoodsDomainService(
     fun listMyOrders(userId: Long, pageable: Pageable): Page<GoodsOrder> =
         goodsOrderRepository.findByUserId(userId, pageable)
 
+    /**
+     * order 통합조회(BE-08 예정)가 재사용하는 조회 — 대표 상품명(다건 시 "외 N건")을 조인해
+     * 함께 반환한다(TDD "주문 표시명 확보 방식", GoodsOrder→Product는 동일 goods 컨텍스트).
+     */
+    fun listMyOrdersWithTitle(userId: Long, pageable: Pageable): Page<GoodsOrderWithTitle> =
+        goodsOrderCustomRepository.findBy(userId, pageable)
+
+    /**
+     * sellerType은 등록 시점 인증 채널로 자동 판별한다(TDD "방안 3", 상태 전이표 — 이후 불변).
+     * [command]에 실린 값이 있어도 이 판별을 우회하지 않는다(no-external-state-check) — 판별
+     * 로직 자체를 domain에 두어 호출부가 값을 조작해 정책을 우회할 여지를 없앤다.
+     */
     fun createProduct(
         name: String,
         category: ProductCategory,
@@ -178,6 +199,7 @@ class GoodsDomainService(
         imageUrl: String,
         ownerUserId: Long,
     ): Pair<Product, Stock> {
+        val sellerType = SellerType.fromPartnerAuthenticated(authChannelResolver.isPartnerAuthenticated())
         val product = productRepository.save(
             Product.create(
                 name = name,
@@ -186,6 +208,7 @@ class GoodsDomainService(
                 description = description,
                 imageUrl = imageUrl,
                 ownerUserId = ownerUserId,
+                sellerType = sellerType,
             )
         )
         val stock = stockRepository.save(Stock(productId = product.id, quantity = 0))

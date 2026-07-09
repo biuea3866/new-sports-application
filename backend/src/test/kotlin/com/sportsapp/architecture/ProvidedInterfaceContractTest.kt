@@ -7,6 +7,7 @@ import com.sportsapp.application.ticketing.dto.CreateMyEventResult
 import com.sportsapp.application.ticketing.usecase.CreateMyEventUseCase
 import com.sportsapp.domain.common.security.OwnershipGuard
 import com.sportsapp.domain.goods.dto.ProductWithStock
+import com.sportsapp.domain.goods.vo.SellerType
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldContain
@@ -44,6 +45,12 @@ class ProvidedInterfaceContractTest : FunSpec({
         val ownerUserIdProperty = CreateMyEventCommand::class.memberProperties.single { it.name == "ownerUserId" }
 
         ownerUserIdProperty.returnType.classifier shouldBe Long::class
+    }
+
+    test("CreateMyProductCommand에 sellerType: SellerType 필드가 존재한다 (ADR-003 v2 계약 진화 — BE-03)") {
+        val sellerTypeProperty = CreateMyProductCommand::class.memberProperties.single { it.name == "sellerType" }
+
+        sellerTypeProperty.returnType.classifier shouldBe SellerType::class
     }
 
     test("CreateMyProductUseCase가 OwnershipGuard에 의존한다 (SecurityContext 소유자 해석 경로 보증)") {

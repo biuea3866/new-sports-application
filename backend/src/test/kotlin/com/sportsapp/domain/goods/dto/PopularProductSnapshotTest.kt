@@ -1,5 +1,6 @@
 package com.sportsapp.domain.goods.dto
 
+import com.sportsapp.domain.goods.vo.SellerType
 import com.sportsapp.domain.goods.entity.Product
 import com.sportsapp.domain.goods.vo.ProductCategory
 import io.kotest.assertions.throwables.shouldNotThrowAny
@@ -25,6 +26,7 @@ class PopularProductSnapshotTest : BehaviorSpec({
             description = "설명",
             imageUrl = "placeholder",
             ownerUserId = OWNER_USER_ID,
+            sellerType = SellerType.B2C,
         )
         val field = Product::class.java.getDeclaredField("imageUrl")
         field.isAccessible = true
@@ -51,6 +53,7 @@ class PopularProductSnapshotTest : BehaviorSpec({
             description = "설명",
             imageUrl = "https://image.example.com/popular.png",
             ownerUserId = OWNER_USER_ID,
+            sellerType = SellerType.B2C,
         )
 
         When("PopularProductSnapshot으로 매핑하면") {

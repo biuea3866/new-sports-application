@@ -6,6 +6,7 @@ import com.sportsapp.domain.goods.entity.Product
 import com.sportsapp.domain.goods.vo.ProductCategory
 import com.sportsapp.domain.goods.entity.ProductStatus
 import com.sportsapp.domain.goods.entity.Stock
+import com.sportsapp.domain.goods.vo.SellerType
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.springframework.beans.factory.annotation.Autowired
@@ -26,7 +27,14 @@ class ProductCustomRepositoryImplTest(
         jdbcTemplate.execute("TRUNCATE TABLE products")
     }
 
-    private fun saveShoeWithStock(name: String, price: BigDecimal, quantity: Int, ownerId: Long = 1L): Product {
+    private fun saveShoeWithStock(
+        name: String,
+        price: BigDecimal,
+        quantity: Int,
+        ownerId: Long = 1L,
+        status: ProductStatus = ProductStatus.ACTIVE,
+        sellerType: SellerType = SellerType.B2C,
+    ): Product {
         val product = productJpaRepository.save(
             Product(
                 name = name,
@@ -34,7 +42,8 @@ class ProductCustomRepositoryImplTest(
                 price = price,
                 description = "설명",
                 imageUrl = "https://example.com/img.jpg",
-                status = ProductStatus.ACTIVE,
+                status = status,
+                sellerType = sellerType,
                 ownerId = ownerId,
             )
         )
@@ -68,6 +77,7 @@ class ProductCustomRepositoryImplTest(
                         keyword = "러닝",
                         priceMin = null,
                         priceMax = null,
+                        sellerType = null,
                         pageable = PageRequest.of(0, 20),
                     )
                     result.totalElements shouldBe 2
@@ -88,6 +98,7 @@ class ProductCustomRepositoryImplTest(
                         keyword = null,
                         priceMin = BigDecimal("50000"),
                         priceMax = BigDecimal("100000"),
+                        sellerType = null,
                         pageable = PageRequest.of(0, 20),
                     )
                     result.totalElements shouldBe 1
@@ -108,6 +119,7 @@ class ProductCustomRepositoryImplTest(
                         keyword = null,
                         priceMin = null,
                         priceMax = null,
+                        sellerType = null,
                         pageable = PageRequest.of(0, 20),
                     )
                     result.totalElements shouldBe 2
@@ -130,6 +142,7 @@ class ProductCustomRepositoryImplTest(
                         keyword = null,
                         priceMin = null,
                         priceMax = null,
+                        sellerType = null,
                         pageable = PageRequest.of(0, 20, Sort.by("price")),
                     )
                     result.totalElements shouldBe 2
@@ -151,11 +164,54 @@ class ProductCustomRepositoryImplTest(
                         keyword = null,
                         priceMin = null,
                         priceMax = null,
+                        sellerType = null,
                         pageable = PageRequest.of(0, 1),
                     )
                     result.totalElements shouldBe 2
                     result.content.size shouldBe 1
                     result.totalPages shouldBe 2
+                }
+            }
+        }
+
+        Given("ACTIVE·INACTIVE 상품이 섞여 있는 상황") {
+            resetData()
+            saveShoeWithStock("활성 러닝화", BigDecimal("89000"), 5, status = ProductStatus.ACTIVE)
+            saveShoeWithStock("비활성 러닝화", BigDecimal("99000"), 3, status = ProductStatus.INACTIVE)
+
+            When("search를 호출하면") {
+                Then("ACTIVE 상품만 포함되고 INACTIVE는 제외된다(상태 보호)") {
+                    val result = productCustomRepository.search(
+                        category = null,
+                        keyword = null,
+                        priceMin = null,
+                        priceMax = null,
+                        sellerType = null,
+                        pageable = PageRequest.of(0, 20),
+                    )
+                    result.totalElements shouldBe 1
+                    result.content[0].product.name shouldBe "활성 러닝화"
+                }
+            }
+        }
+
+        Given("B2C·B2B 상품이 섞여 있는 상황") {
+            resetData()
+            saveShoeWithStock("중고 러닝화", BigDecimal("40000"), 5, sellerType = SellerType.B2C)
+            saveShoeWithStock("브랜드 러닝화", BigDecimal("120000"), 10, sellerType = SellerType.B2B)
+
+            When("sellerType=B2B 필터로 search를 호출하면") {
+                Then("브랜드(B2B) 상품만 반환된다") {
+                    val result = productCustomRepository.search(
+                        category = null,
+                        keyword = null,
+                        priceMin = null,
+                        priceMax = null,
+                        sellerType = SellerType.B2B,
+                        pageable = PageRequest.of(0, 20),
+                    )
+                    result.totalElements shouldBe 1
+                    result.content[0].product.name shouldBe "브랜드 러닝화"
                 }
             }
         }

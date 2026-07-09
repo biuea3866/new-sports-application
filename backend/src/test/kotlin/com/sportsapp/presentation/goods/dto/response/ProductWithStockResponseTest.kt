@@ -1,5 +1,6 @@
 package com.sportsapp.presentation.goods.dto.response
 
+import com.sportsapp.domain.goods.vo.SellerType
 import com.sportsapp.domain.goods.dto.ProductWithStock
 import com.sportsapp.domain.goods.entity.Product
 import com.sportsapp.domain.goods.entity.ProductStatus
@@ -26,6 +27,7 @@ class ProductWithStockResponseTest : FunSpec({
             description = "설명",
             imageUrl = "https://example.com/shoes.jpg",
             ownerUserId = OWNER_USER_ID,
+            sellerType = SellerType.B2C,
         )
         product.activate()
         val productWithStock = ProductWithStock(product = product, stockQuantity = 5)
@@ -48,6 +50,7 @@ class ProductWithStockResponseTest : FunSpec({
             description = "설명",
             imageUrl = "placeholder",
             ownerUserId = OWNER_USER_ID,
+            sellerType = SellerType.B2C,
         )
         val imageUrlField = Product::class.java.getDeclaredField("imageUrl")
         imageUrlField.isAccessible = true
@@ -66,6 +69,7 @@ class ProductWithStockResponseTest : FunSpec({
             description = "설명",
             imageUrl = "https://image.example.com/a.png",
             ownerUserId = OWNER_USER_ID,
+            sellerType = SellerType.B2C,
         )
         val productWithStock = ProductWithStock(product = product, stockQuantity = 5)
 

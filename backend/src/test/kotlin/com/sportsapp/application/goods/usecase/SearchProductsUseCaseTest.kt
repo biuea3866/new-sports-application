@@ -58,6 +58,7 @@ class SearchProductsUseCaseTest : BehaviorSpec({
                 keyword = "러닝",
                 priceMin = BigDecimal("10000"),
                 priceMax = BigDecimal("50000"),
+                sellerType = null,
                 pageable = pageable,
             )
         } returns emptyPage
@@ -72,6 +73,7 @@ class SearchProductsUseCaseTest : BehaviorSpec({
                         keyword = "러닝",
                         priceMin = BigDecimal("10000"),
                         priceMax = BigDecimal("50000"),
+                        sellerType = null,
                         pageable = pageable,
                     )
                 }

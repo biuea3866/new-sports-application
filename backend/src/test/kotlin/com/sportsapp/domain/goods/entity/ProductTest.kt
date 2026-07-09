@@ -6,6 +6,7 @@ import io.kotest.matchers.shouldBe
 import java.math.BigDecimal
 import com.sportsapp.domain.goods.entity.ProductStatus
 import com.sportsapp.domain.goods.vo.ProductCategory
+import com.sportsapp.domain.goods.vo.SellerType
 import com.sportsapp.domain.goods.exception.ProductInactiveException
 
 class ProductTest : BehaviorSpec({
@@ -19,6 +20,7 @@ class ProductTest : BehaviorSpec({
                 description = "고급 테니스 라켓",
                 imageUrl = "https://example.com/racket.jpg",
                 ownerUserId = 42L,
+                sellerType = SellerType.B2C,
             )
             Then("[U-01] ownerId가 전달된 값으로 설정된다") {
                 product.ownerId shouldBe 42L
@@ -38,8 +40,39 @@ class ProductTest : BehaviorSpec({
                         description = "desc",
                         imageUrl = "https://example.com/racket.jpg",
                         ownerUserId = 0L,
+                        sellerType = SellerType.B2C,
                     )
                 }
+            }
+        }
+
+        When("sellerType=B2B를 전달하면") {
+            val product = Product.create(
+                name = "브랜드 라켓",
+                category = ProductCategory.EQUIPMENT,
+                price = BigDecimal("50000"),
+                description = "브랜드 공식 라켓",
+                imageUrl = "https://example.com/racket.jpg",
+                ownerUserId = 42L,
+                sellerType = SellerType.B2B,
+            )
+            Then("sellerType이 B2B로 설정된다") {
+                product.sellerType shouldBe SellerType.B2B
+            }
+        }
+
+        When("sellerType=B2C를 전달하면") {
+            val product = Product.create(
+                name = "중고 라켓",
+                category = ProductCategory.EQUIPMENT,
+                price = BigDecimal("30000"),
+                description = "중고 라켓",
+                imageUrl = "https://example.com/racket.jpg",
+                ownerUserId = 42L,
+                sellerType = SellerType.B2C,
+            )
+            Then("sellerType이 B2C로 설정된다") {
+                product.sellerType shouldBe SellerType.B2C
             }
         }
     }

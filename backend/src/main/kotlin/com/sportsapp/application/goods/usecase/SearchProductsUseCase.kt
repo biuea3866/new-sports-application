@@ -21,6 +21,7 @@ class SearchProductsUseCase(
             keyword = criteria.keyword,
             priceMin = criteria.priceMin,
             priceMax = criteria.priceMax,
+            sellerType = null,
             pageable = pageable,
         )
     }

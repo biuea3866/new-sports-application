@@ -1,5 +1,6 @@
 package com.sportsapp.domain.goods.service
 
+import com.sportsapp.domain.goods.vo.SellerType
 import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.common.exceptions.RedisLockException
 import com.sportsapp.domain.goods.dto.LimitedDropStats
@@ -415,6 +416,7 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
             description = "설명",
             imageUrl = "https://image",
             ownerUserId = OWNER_USER_ID,
+            sellerType = SellerType.B2C,
         )
         val productWithStock = ProductWithStock(product = product, stockQuantity = 50)
         val savedDropSlot = slot<LimitedDrop>()
@@ -461,6 +463,7 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
             description = "설명",
             imageUrl = "https://image",
             ownerUserId = OWNER_USER_ID,
+            sellerType = SellerType.B2C,
         )
         val productWithStock = ProductWithStock(product = product, stockQuantity = 10)
 
@@ -498,6 +501,7 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
             description = "설명",
             imageUrl = "https://image",
             ownerUserId = OWNER_USER_ID,
+            sellerType = SellerType.B2C,
         )
         val productWithStock = ProductWithStock(product = product, stockQuantity = 100)
 
@@ -555,6 +559,7 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
             description = "설명",
             imageUrl = "https://image",
             ownerUserId = OWNER_USER_ID,
+            sellerType = SellerType.B2C,
         )
         val productWithStock = ProductWithStock(product = product, stockQuantity = 42)
 
@@ -661,6 +666,7 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
             description = "설명",
             imageUrl = "https://image",
             ownerUserId = OWNER_USER_ID,
+            sellerType = SellerType.B2C,
         )
         val eventsSlot = slot<List<com.sportsapp.domain.common.DomainEvent>>()
 
@@ -696,6 +702,7 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
             description = "설명",
             imageUrl = "https://image",
             ownerUserId = OWNER_USER_ID,
+            sellerType = SellerType.B2C,
         )
 
         every { limitedDropRepository.findById(DROP_ID) } returns drop
@@ -734,6 +741,7 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
             description = "설명",
             imageUrl = "https://image",
             ownerUserId = OWNER_USER_ID,
+            sellerType = SellerType.B2C,
         )
 
         every { limitedDropRepository.findAllActive() } returns listOf(firstDrop, secondDrop)
@@ -792,6 +800,7 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
             description = "설명",
             imageUrl = "https://image",
             ownerUserId = OWNER_USER_ID,
+            sellerType = SellerType.B2C,
         )
 
         every { limitedDropRepository.findAllActive() } returns listOf(firstDrop, secondDrop)

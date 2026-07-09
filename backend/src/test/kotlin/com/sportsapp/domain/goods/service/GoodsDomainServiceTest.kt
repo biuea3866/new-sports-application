@@ -28,6 +28,8 @@ import com.sportsapp.domain.goods.exception.OutOfStockException
 import com.sportsapp.domain.goods.exception.EmptyOrderException
 import com.sportsapp.domain.goods.exception.ProductInactiveException
 import com.sportsapp.domain.goods.vo.OrderItemInput
+import com.sportsapp.domain.goods.vo.SellerType
+import com.sportsapp.domain.common.security.AuthChannelResolver
 import java.time.ZonedDateTime
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
@@ -50,6 +52,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
     val goodsOrderItemRepository = mockk<GoodsOrderItemRepository>()
     val goodsOrderCustomRepository = mockk<GoodsOrderCustomRepository>()
     val limitedDropRepository = mockk<LimitedDropRepository>()
+    val authChannelResolver = mockk<AuthChannelResolver>()
     val service = GoodsDomainService(
         productRepository = productRepository,
         stockRepository = stockRepository,
@@ -59,6 +62,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
         goodsOrderItemRepository = goodsOrderItemRepository,
         goodsOrderCustomRepository = goodsOrderCustomRepository,
         limitedDropRepository = limitedDropRepository,
+        authChannelResolver = authChannelResolver,
     )
 
     Given("재고가 충분한 Product가 존재할 때") {
@@ -296,14 +300,14 @@ class GoodsDomainServiceTest : BehaviorSpec({
         )
 
         every {
-            productCustomRepository.search(null, null, null, null, pageable)
+            productCustomRepository.search(null, null, null, null, null, pageable)
         } returns page
         every {
             limitedDropRepository.findOpenByProductIds(listOf(productWithDrop.id, productWithoutDrop.id))
         } returns listOf(openDrop)
 
         When("search를 호출하면") {
-            val result = service.search(null, null, null, null, pageable)
+            val result = service.search(null, null, null, null, null, pageable)
 
             Then("활성 회차가 있는 상품만 limitedDropId가 채워진다") {
                 result.content[0].limitedDropId shouldBe openDrop.id
@@ -355,7 +359,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
         )
 
         every {
-            productCustomRepository.search(null, null, null, null, pageable)
+            productCustomRepository.search(null, null, null, null, null, pageable)
         } returns page
         every {
             limitedDropRepository.findOpenByProductIds(listOf(product.id))
@@ -363,7 +367,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
         } returns listOf(olderDrop, newerDrop)
 
         When("search를 호출하면") {
-            val result = service.search(null, null, null, null, pageable)
+            val result = service.search(null, null, null, null, null, pageable)
 
             Then("openAt이 가장 최신인 회차의 dropId가 채워진다(단건 조회의 OrderByOpenAtDesc와 동일 기준)") {
                 result.content[0].limitedDropId shouldBe newerDrop.id
@@ -385,20 +389,85 @@ class GoodsDomainServiceTest : BehaviorSpec({
             goodsOrderItemRepository = goodsOrderItemRepository,
             goodsOrderCustomRepository = goodsOrderCustomRepository,
             limitedDropRepository = isolatedLimitedDropRepository,
+            authChannelResolver = authChannelResolver,
         )
         val pageable = PageRequest.of(0, 20)
         val emptyPage = PageImpl<ProductWithStock>(emptyList(), pageable, 0)
 
         every {
-            isolatedProductCustomRepository.search(null, null, null, null, pageable)
+            isolatedProductCustomRepository.search(null, null, null, null, null, pageable)
         } returns emptyPage
 
         When("search를 호출하면") {
-            val result = isolatedService.search(null, null, null, null, pageable)
+            val result = isolatedService.search(null, null, null, null, null, pageable)
 
             Then("LimitedDropRepository를 호출하지 않고 빈 페이지를 반환한다") {
                 result.content shouldBe emptyList()
                 verify(exactly = 0) { isolatedLimitedDropRepository.findOpenByProductIds(any()) }
+            }
+        }
+    }
+
+    Given("파트너 API Key 인증을 경유한 등록 요청 상황") {
+        every { authChannelResolver.isPartnerAuthenticated() } returns true
+        val savedProductSlot = io.mockk.slot<Product>()
+        every { productRepository.save(capture(savedProductSlot)) } answers { savedProductSlot.captured }
+        every { stockRepository.save(any()) } answers { firstArg<Stock>() }
+
+        When("createProduct를 호출하면") {
+            val (product, _) = service.createProduct(
+                name = "브랜드 정품 저지",
+                category = ProductCategory.APPAREL,
+                price = BigDecimal("89000"),
+                description = "설명",
+                imageUrl = "https://example.com/jersey.jpg",
+                ownerUserId = 100L,
+            )
+
+            Then("sellerType이 B2B로 저장된다") {
+                product.sellerType shouldBe SellerType.B2B
+                verify(exactly = 1) { authChannelResolver.isPartnerAuthenticated() }
+            }
+        }
+    }
+
+    Given("일반 JWT 인증으로 온 등록 요청 상황") {
+        every { authChannelResolver.isPartnerAuthenticated() } returns false
+        val savedProductSlot = io.mockk.slot<Product>()
+        every { productRepository.save(capture(savedProductSlot)) } answers { savedProductSlot.captured }
+        every { stockRepository.save(any()) } answers { firstArg<Stock>() }
+
+        When("createProduct를 호출하면") {
+            val (product, _) = service.createProduct(
+                name = "중고 러닝화",
+                category = ProductCategory.FOOTWEAR,
+                price = BigDecimal("15000"),
+                description = "설명",
+                imageUrl = "https://example.com/shoes.jpg",
+                ownerUserId = 100L,
+            )
+
+            Then("sellerType이 B2C로 저장된다") {
+                product.sellerType shouldBe SellerType.B2C
+            }
+        }
+    }
+
+    Given("사용자의 GoodsOrder 통합조회(title 조인) 상황") {
+        val userId = 50L
+        val pageable = PageRequest.of(0, 20)
+        val order = GoodsOrder.create(userId = userId, totalAmount = BigDecimal("30000"))
+        val withTitle = com.sportsapp.domain.goods.dto.GoodsOrderWithTitle(order = order, title = "나이키 러닝화")
+        val page = PageImpl(listOf(withTitle), pageable, 1)
+
+        every { goodsOrderCustomRepository.findBy(userId, pageable) } returns page
+
+        When("listMyOrdersWithTitle을 호출하면") {
+            val result = service.listMyOrdersWithTitle(userId, pageable)
+
+            Then("GoodsOrderCustomRepository.findBy 결과를 그대로 반환한다") {
+                result.content[0].title shouldBe "나이키 러닝화"
+                verify(exactly = 1) { goodsOrderCustomRepository.findBy(userId, pageable) }
             }
         }
     }
