@@ -14,6 +14,7 @@ import com.sportsapp.domain.ticketing.entity.Event
 import com.sportsapp.domain.ticketing.service.TicketingDomainService
 import java.util.concurrent.Callable
 import java.util.concurrent.Future
+import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 import org.slf4j.LoggerFactory
@@ -50,7 +51,7 @@ class CatalogCompositionService(
         val pageable = criteria.toDomainPageable()
         val outcomes = fetchDomains(criteria, pageable)
         val items = outcomes.flatMap { it.items }
-        val failedDomains = outcomes.filter { it.failed }.map { it.domainName }
+        val failedDomains = outcomes.filter { it.failed }.flatMap { coveredItemTypesFor(it.domainName, criteria.itemType) }
         return CatalogSearchResponse(
             items = mergeAndPaginate(items, criteria),
             page = criteria.page,
@@ -60,11 +61,25 @@ class CatalogCompositionService(
     }
 
     private fun fetchDomains(criteria: CatalogSearchCriteria, pageable: Pageable): List<DomainOutcome> {
-        val futuresByDomain = resolveDomains(criteria.itemType).associateWith { domainName ->
-            catalogSearchExecutor.submit(Callable { fetchItems(domainName, criteria, pageable) })
+        val submissions = resolveDomains(criteria.itemType).map { domainName ->
+            domainName to submitTask(domainName, criteria, pageable)
         }
-        return futuresByDomain.map { (domainName, future) -> awaitOutcome(domainName, future) }
+        return submissions.map { (domainName, future) ->
+            if (future == null) DomainOutcome(domainName, emptyList(), failed = true) else awaitOutcome(domainName, future)
+        }
     }
+
+    /**
+     * bounded executor 포화 시 `submit()` 자체가 [RejectedExecutionException]을 동기적으로 던질 수
+     * 있다(FR-11) — 여기서 흡수하지 않으면 그 도메인뿐 아니라 요청 전체가 500이 된다.
+     */
+    private fun submitTask(domainName: String, criteria: CatalogSearchCriteria, pageable: Pageable): Future<List<CatalogItem>>? =
+        try {
+            catalogSearchExecutor.submit(Callable { fetchItems(domainName, criteria, pageable) })
+        } catch (exception: RejectedExecutionException) {
+            logger.warn("catalog domain fetch rejected: domain={}", domainName, exception)
+            null
+        }
 
     private fun resolveDomains(itemType: CatalogItemType?): List<String> = when (itemType) {
         null -> listOf(DOMAIN_GOODS, DOMAIN_FACILITY, DOMAIN_RECRUITMENT, DOMAIN_TICKETING)
@@ -72,6 +87,23 @@ class CatalogCompositionService(
         CatalogItemType.TICKET -> listOf(DOMAIN_TICKETING)
         CatalogItemType.PROGRAM -> listOf(DOMAIN_FACILITY)
         CatalogItemType.RECRUITMENT -> listOf(DOMAIN_RECRUITMENT)
+    }
+
+    /**
+     * 실패한 도메인이 담당하던 [CatalogItemType]들을 [CatalogSearchResponse.failedDomains]에 얹기
+     * 위한 역매핑. goods는 PRODUCT/LIMITED_DROP 둘을 겸하므로(FR-4) itemType 필터가 없으면 둘 다,
+     * 필터가 있으면 그 필터 하나만 담아 FE 배너가 요청하지 않은 유형까지 실패로 표시하지 않게 한다.
+     */
+    private fun coveredItemTypesFor(domainName: String, itemType: CatalogItemType?): List<CatalogItemType> = when (domainName) {
+        DOMAIN_GOODS -> when (itemType) {
+            null -> listOf(CatalogItemType.PRODUCT, CatalogItemType.LIMITED_DROP)
+            CatalogItemType.PRODUCT, CatalogItemType.LIMITED_DROP -> listOf(itemType)
+            else -> emptyList()
+        }
+        DOMAIN_FACILITY -> listOf(CatalogItemType.PROGRAM)
+        DOMAIN_RECRUITMENT -> listOf(CatalogItemType.RECRUITMENT)
+        DOMAIN_TICKETING -> listOf(CatalogItemType.TICKET)
+        else -> emptyList()
     }
 
     private fun fetchItems(domainName: String, criteria: CatalogSearchCriteria, pageable: Pageable): List<CatalogItem> =
@@ -118,18 +150,26 @@ class CatalogCompositionService(
     private data class DomainOutcome(val domainName: String, val items: List<CatalogItem>, val failed: Boolean)
 }
 
+/**
+ * LIMITED_DROP 분기의 status는 Product.status(ACTIVE/INACTIVE)가 아니라
+ * [com.sportsapp.domain.goods.entity.LimitedDrop.effectiveStatus]가 파생한
+ * SCHEDULED/OPEN/SOLD_OUT/CLOSED를 노출한다 — 품절 한정판을 ACTIVE로 오노출하지 않기 위함이다.
+ * `limitedDropId`가 채워지는 시점([GoodsDomainService.enrichWithLimitedDropId])에 항상
+ * `limitedDropStatus`도 함께 채워지므로 `requireNotNull`로 그 불변식을 강제한다.
+ */
 private fun ProductWithStock.toCatalogItem(): CatalogItem {
     val isLimitedDrop = limitedDropId != null
     val itemType = if (isLimitedDrop) CatalogItemType.LIMITED_DROP else CatalogItemType.PRODUCT
     val sourceId = if (isLimitedDrop) requireNotNull(limitedDropId) else product.id
     val detailPath = if (isLimitedDrop) "/limited-drops/$limitedDropId" else "/products/${product.id}"
+    val status = if (isLimitedDrop) requireNotNull(limitedDropStatus).name else product.status.name
     return CatalogItem(
         itemType = itemType,
         sourceId = sourceId,
         title = product.name,
         price = product.price,
         sellerType = product.sellerType,
-        status = product.status.name,
+        status = status,
         detailPath = detailPath,
         createdAt = product.createdAt,
     )

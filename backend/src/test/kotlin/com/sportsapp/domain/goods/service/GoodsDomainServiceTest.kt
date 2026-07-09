@@ -53,6 +53,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
     val goodsOrderCustomRepository = mockk<GoodsOrderCustomRepository>()
     val limitedDropRepository = mockk<LimitedDropRepository>()
     val authChannelResolver = mockk<AuthChannelResolver>()
+    val dropReservationStore = mockk<com.sportsapp.domain.goods.gateway.DropReservationStore>()
     val service = GoodsDomainService(
         productRepository = productRepository,
         stockRepository = stockRepository,
@@ -63,6 +64,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
         goodsOrderCustomRepository = goodsOrderCustomRepository,
         limitedDropRepository = limitedDropRepository,
         authChannelResolver = authChannelResolver,
+        dropReservationStore = dropReservationStore,
     )
 
     Given("재고가 충분한 Product가 존재할 때") {
@@ -305,13 +307,16 @@ class GoodsDomainServiceTest : BehaviorSpec({
         every {
             limitedDropRepository.findOpenByProductIds(listOf(productWithDrop.id, productWithoutDrop.id))
         } returns listOf(openDrop)
+        every { dropReservationStore.remaining(openDrop.id) } returns 5
 
         When("search를 호출하면") {
             val result = service.search(null, null, null, null, null, pageable)
 
-            Then("활성 회차가 있는 상품만 limitedDropId가 채워진다") {
+            Then("활성 회차가 있는 상품만 limitedDropId·limitedDropStatus가 채워진다") {
                 result.content[0].limitedDropId shouldBe openDrop.id
+                result.content[0].limitedDropStatus shouldBe com.sportsapp.domain.goods.entity.LimitedDropStatus.OPEN
                 result.content[1].limitedDropId shouldBe null
+                result.content[1].limitedDropStatus shouldBe null
             }
         }
     }
@@ -365,12 +370,14 @@ class GoodsDomainServiceTest : BehaviorSpec({
             limitedDropRepository.findOpenByProductIds(listOf(product.id))
             // 배치 조회 결과 순서가 openAt 오름차순으로 오더라도 결과가 바뀌면 안 된다.
         } returns listOf(olderDrop, newerDrop)
+        every { dropReservationStore.remaining(newerDrop.id) } returns 3
 
         When("search를 호출하면") {
             val result = service.search(null, null, null, null, null, pageable)
 
             Then("openAt이 가장 최신인 회차의 dropId가 채워진다(단건 조회의 OrderByOpenAtDesc와 동일 기준)") {
                 result.content[0].limitedDropId shouldBe newerDrop.id
+                verify(exactly = 0) { dropReservationStore.remaining(olderDrop.id) }
             }
         }
     }
@@ -390,6 +397,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
             goodsOrderCustomRepository = goodsOrderCustomRepository,
             limitedDropRepository = isolatedLimitedDropRepository,
             authChannelResolver = authChannelResolver,
+            dropReservationStore = dropReservationStore,
         )
         val pageable = PageRequest.of(0, 20)
         val emptyPage = PageImpl<ProductWithStock>(emptyList(), pageable, 0)

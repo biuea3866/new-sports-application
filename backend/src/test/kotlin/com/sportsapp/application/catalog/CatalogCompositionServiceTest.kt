@@ -5,6 +5,7 @@ import com.sportsapp.application.catalog.dto.CatalogSearchCriteria
 import com.sportsapp.domain.facility.entity.Program
 import com.sportsapp.domain.facility.service.ProgramDomainService
 import com.sportsapp.domain.goods.dto.ProductWithStock
+import com.sportsapp.domain.goods.entity.LimitedDropStatus
 import com.sportsapp.domain.goods.entity.Product
 import com.sportsapp.domain.goods.entity.ProductStatus
 import com.sportsapp.domain.goods.service.GoodsDomainService
@@ -24,6 +25,9 @@ import io.mockk.mockk
 import io.mockk.verify
 import java.math.BigDecimal
 import java.time.ZonedDateTime
+import java.util.concurrent.Callable
+import java.util.concurrent.RejectedExecutionException
+import org.springframework.core.task.AsyncTaskExecutor
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
@@ -92,7 +96,7 @@ class CatalogCompositionServiceTest : BehaviorSpec({
         programDomainService: ProgramDomainService = mockk(),
         recruitmentDomainService: RecruitmentDomainService = mockk(),
         ticketingDomainService: TicketingDomainService = mockk(),
-        executor: ThreadPoolTaskExecutor = testExecutor(),
+        executor: AsyncTaskExecutor = testExecutor(),
     ) = CatalogCompositionService(
         goodsDomainService = goodsDomainService,
         programDomainService = programDomainService,
@@ -114,7 +118,12 @@ class CatalogCompositionServiceTest : BehaviorSpec({
         every { goodsDomainService.search(any(), any(), any(), any(), any(), any()) } returns PageImpl(
             listOf(
                 ProductWithStock(product = product, stockQuantity = 10, limitedDropId = null),
-                ProductWithStock(product = limitedDropProduct, stockQuantity = 3, limitedDropId = 99L),
+                ProductWithStock(
+                    product = limitedDropProduct,
+                    stockQuantity = 3,
+                    limitedDropId = 99L,
+                    limitedDropStatus = LimitedDropStatus.OPEN,
+                ),
             ),
         )
         val programDomainService = mockk<ProgramDomainService>()
@@ -299,7 +308,7 @@ class CatalogCompositionServiceTest : BehaviorSpec({
                     CatalogItemType.RECRUITMENT,
                     CatalogItemType.TICKET,
                 )
-                response.failedDomains shouldBe listOf("facility")
+                response.failedDomains shouldBe listOf(CatalogItemType.PROGRAM)
             }
         }
     }
@@ -359,12 +368,21 @@ class CatalogCompositionServiceTest : BehaviorSpec({
         }
     }
 
-    Given("goods 조회 결과에 한정판 회차가 연결된 상품이 포함된 상황") {
+    Given("goods 조회 결과에 판매중인 한정판 회차가 연결된 상품이 포함된 상황") {
         val limitedDropProduct = mockProduct(60L, "한정판 스니커즈", BigDecimal("150000"), SellerType.B2C, now)
         val goodsDomainService = mockk<GoodsDomainService>()
         every {
             goodsDomainService.search(any(), any(), any(), any(), any(), any())
-        } returns PageImpl(listOf(ProductWithStock(product = limitedDropProduct, stockQuantity = 2, limitedDropId = 777L)))
+        } returns PageImpl(
+            listOf(
+                ProductWithStock(
+                    product = limitedDropProduct,
+                    stockQuantity = 2,
+                    limitedDropId = 777L,
+                    limitedDropStatus = LimitedDropStatus.OPEN,
+                ),
+            ),
+        )
         val programDomainService = mockk<ProgramDomainService>()
         val recruitmentDomainService = mockk<RecruitmentDomainService>()
         val ticketingDomainService = mockk<TicketingDomainService>()
@@ -381,11 +399,183 @@ class CatalogCompositionServiceTest : BehaviorSpec({
                 CatalogSearchCriteria(keyword = null, itemType = CatalogItemType.LIMITED_DROP, sellerType = null, page = 0, size = 20),
             )
 
-            Then("limitedDropId를 sourceId로 하는 LIMITED_DROP 항목으로 분기된다") {
+            Then("limitedDropId를 sourceId로 하는 LIMITED_DROP 항목으로 분기되고 status가 OPEN으로 노출된다") {
                 val item = response.items.single()
                 item.itemType shouldBe CatalogItemType.LIMITED_DROP
                 item.sourceId shouldBe 777L
                 item.detailPath shouldBe "/limited-drops/777"
+                item.status shouldBe "OPEN"
+            }
+        }
+    }
+
+    Given("goods 조회 결과에 품절(SOLD_OUT)된 한정판 회차가 연결된 상품이 포함된 상황") {
+        val soldOutProduct = mockProduct(61L, "품절 한정판", BigDecimal("200000"), SellerType.B2C, now)
+        val goodsDomainService = mockk<GoodsDomainService>()
+        every {
+            goodsDomainService.search(any(), any(), any(), any(), any(), any())
+        } returns PageImpl(
+            listOf(
+                ProductWithStock(
+                    product = soldOutProduct,
+                    stockQuantity = 0,
+                    limitedDropId = 888L,
+                    limitedDropStatus = LimitedDropStatus.SOLD_OUT,
+                ),
+            ),
+        )
+        val programDomainService = mockk<ProgramDomainService>()
+        val recruitmentDomainService = mockk<RecruitmentDomainService>()
+        val ticketingDomainService = mockk<TicketingDomainService>()
+
+        val service = buildService(
+            goodsDomainService = goodsDomainService,
+            programDomainService = programDomainService,
+            recruitmentDomainService = recruitmentDomainService,
+            ticketingDomainService = ticketingDomainService,
+        )
+
+        When("itemType=LIMITED_DROP으로 검색을 실행하면") {
+            val response = service.search(
+                CatalogSearchCriteria(keyword = null, itemType = CatalogItemType.LIMITED_DROP, sellerType = null, page = 0, size = 20),
+            )
+
+            Then("품절된 한정판의 status가 SOLD_OUT으로 노출되어 ACTIVE와 구분된다") {
+                response.items.single().status shouldBe "SOLD_OUT"
+            }
+        }
+    }
+
+    Given("itemType 필터 없이 전체 검색 중 goods 도메인이 300ms를 초과해 지연되는 상황") {
+        val program = mockProgram(70L, "필라테스 클래스", BigDecimal("40000"), now)
+        val goodsDomainService = mockk<GoodsDomainService>()
+        every {
+            goodsDomainService.search(any(), any(), any(), any(), any(), any())
+        } answers {
+            Thread.sleep(500)
+            emptyPage()
+        }
+        val programDomainService = mockk<ProgramDomainService>()
+        every { programDomainService.searchForCatalog(any(), any()) } returns PageImpl(listOf(program))
+        val recruitmentDomainService = mockk<RecruitmentDomainService>()
+        every { recruitmentDomainService.searchOpenRecruitments(any(), any()) } returns emptyPage()
+        val ticketingDomainService = mockk<TicketingDomainService>()
+        every { ticketingDomainService.searchOpenEvents(any(), any()) } returns emptyPage()
+
+        val service = buildService(
+            goodsDomainService = goodsDomainService,
+            programDomainService = programDomainService,
+            recruitmentDomainService = recruitmentDomainService,
+            ticketingDomainService = ticketingDomainService,
+        )
+
+        When("전체 검색을 실행하면") {
+            val response = service.search(
+                CatalogSearchCriteria(keyword = null, itemType = null, sellerType = null, page = 0, size = 20),
+            )
+
+            Then("goods가 커버하는 PRODUCT·LIMITED_DROP 둘 다 failedDomains에 포함된다") {
+                response.failedDomains shouldContainExactlyInAnyOrder listOf(
+                    CatalogItemType.PRODUCT,
+                    CatalogItemType.LIMITED_DROP,
+                )
+            }
+        }
+    }
+
+    Given("itemType=PRODUCT로 필터링한 검색 중 goods 도메인이 300ms를 초과해 지연되는 상황") {
+        val goodsDomainService = mockk<GoodsDomainService>()
+        every {
+            goodsDomainService.search(any(), any(), any(), any(), any(), any())
+        } answers {
+            Thread.sleep(500)
+            emptyPage()
+        }
+        val programDomainService = mockk<ProgramDomainService>()
+        val recruitmentDomainService = mockk<RecruitmentDomainService>()
+        val ticketingDomainService = mockk<TicketingDomainService>()
+
+        val service = buildService(
+            goodsDomainService = goodsDomainService,
+            programDomainService = programDomainService,
+            recruitmentDomainService = recruitmentDomainService,
+            ticketingDomainService = ticketingDomainService,
+        )
+
+        When("itemType=PRODUCT로 검색을 실행하면") {
+            val response = service.search(
+                CatalogSearchCriteria(keyword = null, itemType = CatalogItemType.PRODUCT, sellerType = null, page = 0, size = 20),
+            )
+
+            Then("failedDomains에는 요청된 PRODUCT만 포함되고 LIMITED_DROP은 포함되지 않는다") {
+                response.failedDomains shouldBe listOf(CatalogItemType.PRODUCT)
+            }
+        }
+    }
+
+    Given("itemType=LIMITED_DROP으로 필터링한 검색 중 goods 도메인이 300ms를 초과해 지연되는 상황") {
+        val goodsDomainService = mockk<GoodsDomainService>()
+        every {
+            goodsDomainService.search(any(), any(), any(), any(), any(), any())
+        } answers {
+            Thread.sleep(500)
+            emptyPage()
+        }
+        val programDomainService = mockk<ProgramDomainService>()
+        val recruitmentDomainService = mockk<RecruitmentDomainService>()
+        val ticketingDomainService = mockk<TicketingDomainService>()
+
+        val service = buildService(
+            goodsDomainService = goodsDomainService,
+            programDomainService = programDomainService,
+            recruitmentDomainService = recruitmentDomainService,
+            ticketingDomainService = ticketingDomainService,
+        )
+
+        When("itemType=LIMITED_DROP으로 검색을 실행하면") {
+            val response = service.search(
+                CatalogSearchCriteria(keyword = null, itemType = CatalogItemType.LIMITED_DROP, sellerType = null, page = 0, size = 20),
+            )
+
+            Then("failedDomains에는 요청된 LIMITED_DROP만 포함되고 PRODUCT는 포함되지 않는다") {
+                response.failedDomains shouldBe listOf(CatalogItemType.LIMITED_DROP)
+            }
+        }
+    }
+
+    Given("bounded executor가 포화되어 4개 도메인 submit이 모두 즉시 거부되는 상황") {
+        val goodsDomainService = mockk<GoodsDomainService>()
+        val programDomainService = mockk<ProgramDomainService>()
+        val recruitmentDomainService = mockk<RecruitmentDomainService>()
+        val ticketingDomainService = mockk<TicketingDomainService>()
+
+        val rejectingExecutor = mockk<AsyncTaskExecutor>()
+        every {
+            rejectingExecutor.submit(any<Callable<*>>())
+        } throws RejectedExecutionException("catalog-search-executor saturated")
+
+        val service = buildService(
+            goodsDomainService = goodsDomainService,
+            programDomainService = programDomainService,
+            recruitmentDomainService = recruitmentDomainService,
+            ticketingDomainService = ticketingDomainService,
+            executor = rejectingExecutor,
+        )
+
+        When("전체 검색을 실행하면") {
+            val response = service.search(
+                CatalogSearchCriteria(keyword = null, itemType = null, sellerType = null, page = 0, size = 20),
+            )
+
+            Then("RejectedExecutionException을 전파하지 않고 5개 유형 전부 failedDomains로 처리된다") {
+                response.items.shouldBeEmpty()
+                response.failedDomains shouldContainExactlyInAnyOrder listOf(
+                    CatalogItemType.PRODUCT,
+                    CatalogItemType.LIMITED_DROP,
+                    CatalogItemType.PROGRAM,
+                    CatalogItemType.RECRUITMENT,
+                    CatalogItemType.TICKET,
+                )
             }
         }
     }

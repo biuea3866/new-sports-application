@@ -12,8 +12,10 @@ import com.sportsapp.domain.goods.entity.GoodsOrderStatus
 import com.sportsapp.domain.goods.entity.Product
 import com.sportsapp.domain.goods.entity.ProductStatus
 import com.sportsapp.domain.goods.entity.Stock
+import com.sportsapp.domain.goods.entity.LimitedDrop
 import com.sportsapp.domain.goods.exception.EmptyOrderException
 import com.sportsapp.domain.goods.exception.GoodsOrderNotFoundException
+import com.sportsapp.domain.goods.gateway.DropReservationStore
 import com.sportsapp.domain.goods.repository.GoodsOrderCustomRepository
 import com.sportsapp.domain.goods.repository.GoodsOrderItemRepository
 import com.sportsapp.domain.goods.repository.GoodsOrderRepository
@@ -45,6 +47,7 @@ class GoodsDomainService(
     private val goodsOrderCustomRepository: GoodsOrderCustomRepository,
     private val limitedDropRepository: LimitedDropRepository,
     private val authChannelResolver: AuthChannelResolver,
+    private val dropReservationStore: DropReservationStore,
 ) {
     /**
      * catalog 통합검색(BE-07 예정)이 재사용하는 조회 — [sellerType]은 옵션 필터(B2B 브랜드 상품만
@@ -63,23 +66,33 @@ class GoodsDomainService(
     }
 
     /**
-     * `/products` 목록 응답의 한정판 진입점 배너용 — 페이지 내 상품 id를 한 번에 모아
-     * [LimitedDropRepository.findOpenByProductIds]로 배치 조회한다(N+1 방지).
+     * `/products` 목록 응답·catalog 통합검색(BE-07)의 한정판 진입점 배너용 — 페이지 내 상품 id를
+     * 한 번에 모아 [LimitedDropRepository.findOpenByProductIds]로 배치 조회한다(N+1 방지).
      *
      * 한 상품에 활성 회차가 2건 이상이면 openAt이 가장 최신인 회차를 선택한다 —
      * 단건 조회 경로([LimitedDropRepository.findOpenByProductId]의
      * `OrderByOpenAtDesc`)와 선택 기준을 일치시켜, 목록과 상세의 limitedDropId가
      * 달라지지 않게 한다(코드 리뷰 p3).
+     *
+     * [limitedDropStatus]도 함께 채운다 — [DropReservationStore.remaining]으로 잔여 수량을 조회해
+     * [LimitedDrop.effectiveStatus]로 파생한다. catalog 통합검색이 품절(SOLD_OUT) 회차를 ACTIVE로
+     * 오노출하지 않기 위해 필요하다(코드 리뷰 p2).
      */
     private fun enrichWithLimitedDropId(page: Page<ProductWithStock>): Page<ProductWithStock> {
         if (page.content.isEmpty()) return page
         val productIds = page.content.map { it.product.id }
-        val dropIdByProductId = limitedDropRepository.findOpenByProductIds(productIds)
+        val dropByProductId = limitedDropRepository.findOpenByProductIds(productIds)
             .sortedByDescending { it.openAt }
             .distinctBy { it.productId }
-            .associateBy({ it.productId }, { it.id })
-        val enrichedContent = page.content.map { it.copy(limitedDropId = dropIdByProductId[it.product.id]) }
+            .associateBy { it.productId }
+        val enrichedContent = page.content.map { productWithStock -> enrichWithLimitedDrop(productWithStock, dropByProductId) }
         return PageImpl(enrichedContent, page.pageable, page.totalElements)
+    }
+
+    private fun enrichWithLimitedDrop(productWithStock: ProductWithStock, dropByProductId: Map<Long, LimitedDrop>): ProductWithStock {
+        val drop = dropByProductId[productWithStock.product.id] ?: return productWithStock
+        val remaining = dropReservationStore.remaining(drop.id)
+        return productWithStock.copy(limitedDropId = drop.id, limitedDropStatus = drop.effectiveStatus(remaining))
     }
 
     fun deductStock(productId: Long, quantity: Int) {
