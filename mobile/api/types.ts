@@ -70,17 +70,28 @@ export interface ProductDetailResponse {
 }
 
 // --- Booking ---
-export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
+// BE `domain/booking/entity/BookingStatus.kt` 실측 — 'COMPLETED'는 BE에 존재하지 않아 제거.
+export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'EXPIRED' | 'REFUNDED';
 
-export type PaymentStatus = 'PENDING' | 'PAID' | 'REFUNDED' | 'FAILED';
+// BE `domain/payment/entity/PaymentStatus.kt` 실측 — 'PAID'는 BE에 없다(BE는 'COMPLETED').
+// 'READY'·'CANCELLED' 추가.
+export type PaymentStatus = 'PENDING' | 'READY' | 'COMPLETED' | 'CANCELLED' | 'FAILED' | 'REFUNDED';
 
+/**
+ * `GET /bookings/{id}`(상세) · `POST /bookings/{id}/cancel` 공용 응답 —
+ * `presentation/booking/dto/response/BookingResponse.kt`를 그대로 반영한다.
+ * facilityId·title은 상세 조회(Slot 조인) 경로에서만 채워지고, cancel 경로는 null이다
+ * (Option A+, BE `feat/booking-order-detail-enrich`).
+ */
 export interface BookingResponse {
   id: number;
   slotId: number;
+  facilityId: string | null;
   userId: number;
   status: BookingStatus;
   paymentId: number | null;
   paymentStatus: PaymentStatus | null;
+  title: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -257,6 +268,21 @@ export interface TicketOrderResponse {
   status: TicketOrderStatus;
 }
 
+/**
+ * `GET /ticket-orders/{id}` 실제 응답 — 백엔드
+ * `application/ticketing/dto/TicketOrderDetailResponse.kt`를 그대로 반영한다(Option A+,
+ * BE `feat/ticket-order-detail-enrich`). `POST /ticket-orders`(구매) 응답인 위
+ * `TicketOrderResponse`와는 다른 별도 DTO — eventId·eventTitle·paymentId·createdAt이 추가된다.
+ */
+export interface TicketOrderDetailResponse {
+  ticketOrderId: number;
+  status: TicketOrderStatus;
+  eventId: number;
+  eventTitle: string;
+  paymentId: number | null;
+  createdAt: string; // ISO 8601
+}
+
 export interface ListEventsResponse {
   content: EventResponse[];
   totalElements: number;
@@ -408,13 +434,9 @@ export interface UpdateCartItemRequest {
 }
 
 // --- GoodsOrder ---
-export type GoodsOrderStatus =
-  | 'PENDING'
-  | 'PAID'
-  | 'PREPARING'
-  | 'SHIPPED'
-  | 'DELIVERED'
-  | 'CANCELLED';
+// BE `domain/goods/entity/GoodsOrderStatus.kt` 실측 — 'PAID'·'PREPARING'은 BE에 없다
+// (BE는 결제완료를 'CONFIRMED'로 표현).
+export type GoodsOrderStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'SHIPPED' | 'DELIVERED';
 
 export interface GoodsOrderItemResponse {
   productId: number;
@@ -431,6 +453,33 @@ export interface GoodsOrderResponse {
   items: GoodsOrderItemResponse[];
   totalAmount: string;
   createdAt: string; // ISO 8601
+}
+
+/**
+ * `GET /goods-orders/{orderId}` 실제 응답 — 백엔드
+ * `presentation/goods/dto/response/GoodsOrderResponse.kt`를 그대로 반영한다(Option A+,
+ * BE `feat/goods-order-detail-enrich`). 위 `GoodsOrderResponse`(주문 목록 화면이 참조하는
+ * 기존 타입)와는 item 필드가 달라(id 있음·productName 없음) 혼용하지 않도록 별도 타입으로
+ * 둔다 — 주문상세(Option A) 전용. title(대표 상품명)·createdAt이 추가로 채워진다.
+ */
+export interface GoodsOrderDetailItemResponse {
+  id: number;
+  productId: number;
+  quantity: number;
+  unitPrice: string; // BigDecimal → string
+  subtotal: string; // BigDecimal → string
+}
+
+export interface GoodsOrderDetailResponse {
+  id: number;
+  userId: number | null;
+  status: GoodsOrderStatus | null;
+  totalAmount: string; // BigDecimal → string
+  paymentId: number | null;
+  paymentStatus: PaymentStatus | null;
+  title: string | null;
+  createdAt: string | null; // ISO 8601 — ofCreated 경로는 null
+  items: GoodsOrderDetailItemResponse[];
 }
 
 export interface GoodsOrderListResponse {

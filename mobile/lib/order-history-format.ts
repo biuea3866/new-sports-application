@@ -20,6 +20,11 @@ export const ORDER_TYPE_LABEL: Record<OrderType, string> = {
  * 원본 도메인 status enum name → 한글 라벨. 4개 주문 도메인(BookingStatus·OrderStatus·
  * GoodsOrderStatus·ApplicationStatus)의 합집합을 다룬다. 매핑에 없는 값은 원본 문자열
  * 그대로 노출한다(안전한 fallback — 신규 status 추가 시 화면이 깨지지 않음).
+ *
+ * PAID/PREPARING/COMPLETED — 주문상세(Option A, `app/orders/[orderType]/[id].tsx`)가
+ * 원본 도메인의 raw status(BookingStatus.COMPLETED, GoodsOrderStatus.PAID/PREPARING)를
+ * 그대로 표시할 때 쓰는 라벨. `/api/orders` 통합 조회는 정규화된 값(CONFIRMED 등)만
+ * 내려주므로 목록 화면(OrderHistoryItemCard)에는 영향 없는 additive 확장이다.
  */
 export const ORDER_HISTORY_STATUS_LABEL: Record<string, string> = {
   PENDING: '대기',
@@ -29,6 +34,9 @@ export const ORDER_HISTORY_STATUS_LABEL: Record<string, string> = {
   REFUNDED: '환불',
   SHIPPED: '배송중',
   DELIVERED: '배송완료',
+  PAID: '결제완료',
+  PREPARING: '준비중',
+  COMPLETED: '완료',
 };
 
 /** status name을 한글 라벨로 변환한다. 매핑에 없으면 원본 문자열을 그대로 반환한다. */

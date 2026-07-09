@@ -13,10 +13,11 @@ import { useState } from 'react';
 import { useMyGoodsOrdersQuery } from '../../lib/useGoodsOrders';
 import type { GoodsOrderResponse, GoodsOrderStatus } from '../../api/types';
 
+// BE `domain/goods/entity/GoodsOrderStatus.kt` 실측 재동기화 — 'PAID'·'PREPARING'은
+// BE에 없다(결제완료는 'CONFIRMED').
 const STATUS_LABEL: Record<GoodsOrderStatus, string> = {
   PENDING: '결제 대기',
-  PAID: '결제 완료',
-  PREPARING: '준비 중',
+  CONFIRMED: '결제 완료',
   SHIPPED: '배송 중',
   DELIVERED: '배송 완료',
   CANCELLED: '취소됨',

@@ -70,7 +70,16 @@ export const ROUTES = {
     purchase: (id: string) => `/limited-drop/${id}/purchase` as const,
   },
 
+  // 모집(recruitment) — `app/recruitments/[id].tsx` 실제 라우트와 일치.
+  recruitment: {
+    detail: (id: string) => `/recruitments/${id}` as const,
+  },
+
   // 통합 상품 검색(FE-09) / 통합 주문 내역(FE-10) — FE-11 와이어업
   catalog: '/catalog',
   orders: '/orders',
+
+  // 주문 상세(Option A) — 통합 주문내역 항목 탭 시 "주문 자신"의 상세로 이동한다.
+  // `orderType`은 `api/order-history-types.ts`의 `OrderType`.
+  orderDetail: (orderType: string, id: string) => `/orders/${orderType}/${id}` as const,
 } as const;

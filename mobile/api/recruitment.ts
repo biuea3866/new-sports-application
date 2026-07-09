@@ -50,6 +50,29 @@ export interface ApplicationResponse {
   appliedAt: string;
 }
 
+/**
+ * `GET /applications/{id}` 응답 — 신청 상세(단건). 주문상세(Option A+) 화면 전용 계약.
+ * BE `application/recruitment/dto/ApplicationDetailResponse.kt`를 그대로 반영한다(origin/main
+ * 머지 완료). 필드명은 `id`가 아니라 `applicationId`로 명명된 별도 계약이다
+ * (`ApplicationResponse`와 혼용하지 않는다). `feeAmount`는 BigDecimal이라 항상 non-null이다
+ * (무료 모집이면 0).
+ */
+export interface ApplicationDetailResponse {
+  applicationId: number;
+  recruitmentId: number;
+  recruitmentTitle: string;
+  status: ApplicationStatus;
+  feeAmount: number;
+  paymentId: number | null;
+  createdAt: string; // ISO-8601
+}
+
+/** `GET /applications/{id}` — 신청 상세(단건). 주문상세(Option A) 화면이 사용한다. */
+export async function getApplicationDetail(id: number): Promise<ApplicationDetailResponse> {
+  const res = await getBeClient().get<ApplicationDetailResponse>(`/applications/${id}`);
+  return res.data;
+}
+
 /** `POST /recruitments/{id}/applications` 요청 본문. */
 export interface ApplyRecruitmentRequest {
   paymentMethod: PaymentMethod;

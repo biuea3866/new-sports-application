@@ -8,6 +8,7 @@ import { getBeClient } from './be-client';
 import type {
   PurchaseTicketOrderRequest,
   SelectSeatsResponse,
+  TicketOrderDetailResponse,
   TicketOrderResponse,
 } from './types';
 
@@ -56,5 +57,17 @@ export async function purchaseTicketOrder(
   const res = await getBeClient().post<TicketOrderResponse>('/ticket-orders', body, {
     headers: { 'Idempotency-Key': key },
   });
+  return res.data;
+}
+
+/**
+ * 티켓 주문 상세 조회
+ * GET /ticket-orders/{id}
+ * 주문상세(Option A+) 화면이 사용한다. 응답은 `TicketOrderDetailResponse`
+ * (ticketOrderId·status·eventId·eventTitle·paymentId·createdAt) —
+ * 구매 응답(`TicketOrderResponse`)과는 별도 DTO다(BE `feat/ticket-order-detail-enrich`).
+ */
+export async function getTicketOrderDetail(id: number): Promise<TicketOrderDetailResponse> {
+  const res = await getBeClient().get<TicketOrderDetailResponse>(`/ticket-orders/${id}`);
   return res.data;
 }

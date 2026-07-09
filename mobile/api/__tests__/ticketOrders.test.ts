@@ -5,15 +5,27 @@
  * U-04: POST /ticket-orders 는 Idempotency-Key 헤더를 자동 생성하여 전송한다
  * U-05: POST /events/{id}/seats/select 실패(409) 시 에러를 발생시킨다
  * U-06: selectSeats 성공 후 purchaseTicketOrder 실패 시 releaseSeats를 호출할 수 있다 (재시도 경로 검증)
+ * U-07: getTicketOrderDetail은 GET /ticket-orders/{id}로 상세(eventId·eventTitle·paymentId·createdAt 포함)를 반환한다(주문상세 Option A+)
  */
 import MockAdapter from 'axios-mock-adapter';
 import { createBeClient } from '../be-client';
-import type { SelectSeatsResponse, TicketOrderResponse } from '../types';
+import { getTicketOrderDetail } from '../ticketOrders';
+import type { SelectSeatsResponse, TicketOrderDetailResponse, TicketOrderResponse } from '../types';
+
+jest.mock('../be-client', () => {
+  const actual = jest.requireActual<typeof import('../be-client')>('../be-client');
+  return { ...actual, getBeClient: jest.fn() };
+});
+
+import { getBeClient } from '../be-client';
+
+const getBeClientMock = getBeClient as jest.MockedFunction<typeof getBeClient>;
 
 describe('TicketOrders API', () => {
   const client = createBeClient('http://localhost:8080');
   const mock = new MockAdapter(client);
 
+  beforeEach(() => getBeClientMock.mockReturnValue(client));
   afterEach(() => mock.reset());
 
   const mockSelectResponse: SelectSeatsResponse = {
@@ -111,6 +123,35 @@ describe('TicketOrders API', () => {
       // release 호출 가능 — 204 반환
       const releaseRes = await client.post('/events/1/seats/release', { seatIds: [10, 11] });
       expect(releaseRes.status).toBe(204);
+    });
+  });
+
+  describe('U-07: getTicketOrderDetail', () => {
+    const mockDetail: TicketOrderDetailResponse = {
+      ticketOrderId: 12,
+      status: 'CONFIRMED',
+      eventId: 77,
+      eventTitle: '2026 서울 마라톤',
+      paymentId: 500,
+      createdAt: '2026-07-05T10:00:00.000Z',
+    };
+
+    it('GET /ticket-orders/12 호출 시 eventId·eventTitle을 포함한 상세를 반환한다', async () => {
+      mock.onGet('/ticket-orders/12').reply(200, mockDetail);
+
+      const res = await getTicketOrderDetail(12);
+
+      expect(res.ticketOrderId).toBe(12);
+      expect(res.status).toBe('CONFIRMED');
+      expect(res.eventId).toBe(77);
+      expect(res.eventTitle).toBe('2026 서울 마라톤');
+      expect(res.paymentId).toBe(500);
+    });
+
+    it('존재하지 않는 주문(404)은 예외로 전파된다', async () => {
+      mock.onGet('/ticket-orders/999').reply(404, { message: 'Not found' });
+
+      await expect(getTicketOrderDetail(999)).rejects.toThrow();
     });
   });
 });

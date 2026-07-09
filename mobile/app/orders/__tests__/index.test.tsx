@@ -168,7 +168,7 @@ describe('OrderHistoryScreen', () => {
     );
   });
 
-  it('항목을 탭하면 원본 상세 경로로 이동한다', () => {
+  it('항목을 탭하면 주문 상세 경로로 이동한다(Option A — 주문 자신 상세)', () => {
     const response: OrderHistoryResponse = {
       items: [makeItem({ orderType: 'BOOKING', sourceId: 77, title: '강남 풋살장 예약' })],
       page: 0,
@@ -180,7 +180,7 @@ describe('OrderHistoryScreen', () => {
     render(<OrderHistoryScreen />);
     fireEvent.press(screen.getByTestId('order-history-item-card-BOOKING-77'));
 
-    expect(router.push).toHaveBeenCalledWith('/facility/77');
+    expect(router.push).toHaveBeenCalledWith('/orders/BOOKING/77');
   });
 
   it('다크 모드에서도 하드코딩 색 없이 정상 렌더된다', () => {

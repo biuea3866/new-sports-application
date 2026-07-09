@@ -9,6 +9,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createGoodsOrder, getGoodsOrderDetail, getMyGoodsOrders } from '../api/goodsOrders';
 import type {
   CreateGoodsOrderRequest,
+  GoodsOrderDetailResponse,
   GoodsOrderListResponse,
   GoodsOrderResponse,
 } from '../api/types';
@@ -23,7 +24,7 @@ export function useMyGoodsOrdersQuery(page = 0, size = 20) {
 }
 
 export function useGoodsOrderDetailQuery(id: number) {
-  return useQuery<GoodsOrderResponse, Error>({
+  return useQuery<GoodsOrderDetailResponse, Error>({
     queryKey: [...GOODS_ORDERS_QUERY_KEY, id],
     queryFn: () => getGoodsOrderDetail(id),
     enabled: id > 0,

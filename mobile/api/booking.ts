@@ -18,6 +18,12 @@ export async function listMyBookings(page = 0, size = 20): Promise<ListBookingsR
   return res.data;
 }
 
+/** `GET /bookings/{id}` — 예약 상세(단건). 주문상세(Option A) 화면이 사용한다. */
+export async function getBookingDetail(id: number): Promise<BookingResponse> {
+  const res = await getBeClient().get<BookingResponse>(`/bookings/${id}`);
+  return res.data;
+}
+
 export async function cancelBooking(
   id: number,
   body: CancelBookingRequest = {}

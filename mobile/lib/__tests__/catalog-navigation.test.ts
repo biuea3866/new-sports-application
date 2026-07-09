@@ -33,20 +33,22 @@ describe('resolveCatalogRoute', () => {
 });
 
 describe('resolveOrderRoute', () => {
-  it('BOOKING + sourceId를 시설 상세 경로로 매핑한다', () => {
-    expect(resolveOrderRoute('BOOKING', 11)).toBe('/facility/11');
+  // Option A(BE-08 확정): sourceId는 주문 자신의 PK다 — 참조 아이템이 아니라
+  // "주문 자신 상세"(app/orders/[orderType]/[id].tsx)로 이동한다.
+  it('BOOKING + sourceId를 주문 상세 경로로 매핑한다', () => {
+    expect(resolveOrderRoute('BOOKING', 11)).toBe('/orders/BOOKING/11');
   });
 
-  it('TICKETING + sourceId를 이벤트 상세 경로로 매핑한다', () => {
-    expect(resolveOrderRoute('TICKETING', 22)).toBe('/event/22');
+  it('TICKETING + sourceId를 주문 상세 경로로 매핑한다', () => {
+    expect(resolveOrderRoute('TICKETING', 22)).toBe('/orders/TICKETING/22');
   });
 
-  it('GOODS + sourceId를 상품 상세 경로로 매핑한다', () => {
-    expect(resolveOrderRoute('GOODS', 33)).toBe('/product/33');
+  it('GOODS + sourceId를 주문 상세 경로로 매핑한다', () => {
+    expect(resolveOrderRoute('GOODS', 33)).toBe('/orders/GOODS/33');
   });
 
-  it('RECRUITMENT + sourceId를 모집 상세 경로로 매핑한다', () => {
-    expect(resolveOrderRoute('RECRUITMENT', 44)).toBe('/recruitments/44');
+  it('RECRUITMENT + sourceId를 주문 상세 경로로 매핑한다', () => {
+    expect(resolveOrderRoute('RECRUITMENT', 44)).toBe('/orders/RECRUITMENT/44');
   });
 
   it('알 수 없는 orderType이면 null을 반환한다', () => {
