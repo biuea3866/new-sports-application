@@ -14,6 +14,7 @@ const ENV_KEYS = [
   'EXPO_PUBLIC_COMMUNITY_BOOKING_ENABLED',
   'EXPO_PUBLIC_CATALOG_ENABLED',
   'EXPO_PUBLIC_ORDERS_UNIFIED_ENABLED',
+  'EXPO_PUBLIC_VIRTUAL_QUEUE_ENABLED',
 ] as const;
 
 function clearFlagEnv() {
@@ -141,5 +142,29 @@ describe('isFeatureEnabled — 통합 검색·통합 주문 내역 진입점 플
     process.env.EXPO_PUBLIC_ORDERS_UNIFIED_ENABLED = 'true';
 
     expect(isFeatureEnabled('orders.unified.enabled')).toBe(true);
+  });
+});
+
+describe('isFeatureEnabled — 가상 대기열 진입 플래그 (FE-02, design-fe-app.md "Release Scenario")', () => {
+  afterEach(() => {
+    clearFlagEnv();
+  });
+
+  it('virtual-queue.enabled는 환경변수 미설정 시 기본 OFF다(BE 플래그와 lockstep 전제)', () => {
+    clearFlagEnv();
+
+    expect(isFeatureEnabled('virtual-queue.enabled')).toBe(false);
+  });
+
+  it("virtual-queue.enabled는 환경변수가 'true'일 때만 ON이다", () => {
+    process.env.EXPO_PUBLIC_VIRTUAL_QUEUE_ENABLED = 'true';
+
+    expect(isFeatureEnabled('virtual-queue.enabled')).toBe(true);
+  });
+
+  it("virtual-queue.enabled는 'true' 이외 값이면 OFF다", () => {
+    process.env.EXPO_PUBLIC_VIRTUAL_QUEUE_ENABLED = 'yes';
+
+    expect(isFeatureEnabled('virtual-queue.enabled')).toBe(false);
   });
 });
