@@ -16,6 +16,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.core.task.AsyncTaskExecutor
 import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
@@ -36,7 +37,7 @@ class OrderCompositionService(
     private val goodsDomainService: GoodsDomainService,
     private val ticketingDomainService: TicketingDomainService,
     private val recruitmentDomainService: RecruitmentDomainService,
-    private val orderHistoryExecutor: AsyncTaskExecutor,
+    @Qualifier("orderHistoryExecutor") private val orderHistoryExecutor: AsyncTaskExecutor,
 ) {
     fun history(userId: Long, criteria: OrderHistoryCriteria): OrderHistoryResponse {
         val outcomes = fanOutDomainQueries(userId, criteria)
@@ -56,10 +57,8 @@ class OrderCompositionService(
 
     private fun fanOutDomainQueries(userId: Long, criteria: OrderHistoryCriteria): Map<OrderType, List<OrderHistoryItem>?> {
         val windowSize = (criteria.page + 1) * criteria.size
-        val futures = buildTasks(userId, windowSize).mapValues { (_, task) ->
-            CompletableFuture.supplyAsync(task, orderHistoryExecutor)
-        }
-        return futures.mapValues { (orderType, future) -> awaitOrNull(orderType, future) }
+        val submissions = buildTasks(userId, windowSize).mapValues { (orderType, task) -> trySubmit(orderType, task) }
+        return submissions.mapValues { (orderType, future) -> future?.let { awaitOrNull(orderType, it) } }
     }
 
     private fun buildTasks(userId: Long, windowSize: Int): Map<OrderType, () -> List<OrderHistoryItem>> = mapOf(
@@ -71,6 +70,20 @@ class OrderCompositionService(
         OrderType.TICKETING to { ticketingDomainService.listTicketOrdersBy(userId).map { it.toOrderHistoryItem() } },
         OrderType.RECRUITMENT to { recruitmentDomainService.listApplicationsWithTitleBy(userId).map { it.toOrderHistoryItem() } },
     )
+
+    /**
+     * `CompletableFuture.supplyAsync(task, executor)`는 내부에서 `executor.execute(...)`를
+     * 제출 시점에 동기 호출한다 — bounded `orderHistoryExecutor`가 포화(코어+큐 가득) 상태면
+     * `RejectedExecutionException`이 이 호출에서 즉시 던져진다. 이를 [awaitOrNull]과 동일하게
+     * 해당 도메인만 실패 처리(failedDomains)해 나머지 도메인 응답까지 500으로 막지 않는다(FR-11).
+     */
+    private fun trySubmit(orderType: OrderType, task: () -> List<OrderHistoryItem>): CompletableFuture<List<OrderHistoryItem>>? =
+        try {
+            CompletableFuture.supplyAsync(task, orderHistoryExecutor)
+        } catch (exception: Exception) {
+            logger.warn("order history domain query submission rejected: domain={}", orderType, exception)
+            null
+        }
 
     private fun awaitOrNull(orderType: OrderType, future: CompletableFuture<List<OrderHistoryItem>>): List<OrderHistoryItem>? =
         try {

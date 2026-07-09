@@ -19,9 +19,12 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.inspectors.forAll
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import org.springframework.core.task.AsyncTaskExecutor
+import org.springframework.core.task.TaskRejectedException
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
@@ -34,6 +37,22 @@ private val executor = ThreadPoolTaskExecutor().apply {
     maxPoolSize = 4
     setThreadNamePrefix("order-history-test-")
     initialize()
+}
+
+/**
+ * 첫 제출만 동기 실행으로 통과시키고, 이후 제출은 `TaskRejectedException`을 동기로 던지는
+ * fake executor — bounded executor 포화 시나리오를 실 스레드풀 타이밍 레이스 없이 재현한다.
+ */
+private class SaturatedAfterFirstSubmissionExecutor : AsyncTaskExecutor {
+    private var submissionCount = 0
+
+    override fun execute(task: Runnable) {
+        submissionCount += 1
+        if (submissionCount > 1) {
+            throw TaskRejectedException("order-history-test: simulated executor saturation")
+        }
+        task.run()
+    }
 }
 
 private fun goodsOrderMock(
@@ -186,6 +205,53 @@ class OrderCompositionServiceTest : BehaviorSpec({
             Then("나머지 3개 도메인 결과를 반환하고 goods를 failedDomains에 표기한다 (FR-11)") {
                 result.failedDomains shouldContainExactly listOf(OrderType.GOODS)
                 result.items.map { it.orderType }.toSet() shouldBe setOf(OrderType.BOOKING, OrderType.TICKETING, OrderType.RECRUITMENT)
+            }
+        }
+    }
+
+    Given("orderHistoryExecutor가 포화 상태(코어+큐 가득)일 때") {
+        val userId = 8L
+        val bookingDomainService = mockk<BookingDomainService>()
+        val goodsDomainService = mockk<GoodsDomainService>()
+        val ticketingDomainService = mockk<TicketingDomainService>()
+        val recruitmentDomainService = mockk<RecruitmentDomainService>()
+        val now = ZonedDateTime.of(2026, 6, 1, 9, 0, 0, 0, ZoneOffset.UTC)
+
+        every { bookingDomainService.findOrderHistory(userId) } returns listOf(
+            BookingOrderItem(bookingId = 14L, slotId = 104L, userId = userId, status = BookingStatus.CONFIRMED, paymentId = 5L, title = "예약", createdAt = now),
+        )
+        every { goodsDomainService.listMyOrdersWithTitle(userId, any()) } returns PageImpl(
+            listOf(GoodsOrderWithTitle(order = goodsOrderMock(23L, GoodsOrderStatus.CONFIRMED, 6L, now), title = "상품")),
+            PageRequest.of(0, 20), 1L,
+        )
+        every { ticketingDomainService.listTicketOrdersBy(userId) } returns listOf(
+            TicketOrderWithEventTitle(ticketOrderId = 34L, status = OrderStatus.CONFIRMED, eventTitle = "티켓", paymentId = 7L, createdAt = now),
+        )
+        every { recruitmentDomainService.listApplicationsWithTitleBy(userId) } returns listOf(
+            ApplicationWithRecruitmentTitle(applicationId = 44L, status = ApplicationStatus.CONFIRMED, recruitmentTitle = "모집", paymentId = 8L, createdAt = now),
+        )
+
+        // 실 ThreadPoolTaskExecutor의 코어/큐 크기로 포화를 재현하면 소비 스레드와 제출 스레드 간
+        // 타이밍 레이스(큐가 비워지는 순간 뒤이은 제출이 다시 성공)로 결과가 비결정적이다. 대신
+        // 첫 제출만 통과시키고 이후는 `TaskRejectedException`을 동기로 던지는 결정적 fake executor를
+        // 써서, `CompletableFuture.supplyAsync`가 `executor.execute()`를 제출 시점에 동기 호출한다는
+        // 실제 결함 조건(코디네이터 지적)을 타이밍 무관하게 재현한다.
+        val saturatedExecutor = SaturatedAfterFirstSubmissionExecutor()
+
+        val service = OrderCompositionService(
+            bookingDomainService = bookingDomainService,
+            goodsDomainService = goodsDomainService,
+            ticketingDomainService = ticketingDomainService,
+            recruitmentDomainService = recruitmentDomainService,
+            orderHistoryExecutor = saturatedExecutor,
+        )
+
+        When("history(userId, 조건 없음)를 호출하면") {
+            val result = service.history(userId, emptyCriteria())
+
+            Then("제출이 거부된 도메인은 failedDomains로 빠지고 나머지는 500 없이 정상 응답한다 (executor 포화, FR-11)") {
+                result.failedDomains shouldContainExactlyInAnyOrder listOf(OrderType.GOODS, OrderType.TICKETING, OrderType.RECRUITMENT)
+                result.items.map { it.orderType } shouldContainExactly listOf(OrderType.BOOKING)
             }
         }
     }
