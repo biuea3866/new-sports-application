@@ -4,6 +4,7 @@ import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import com.sportsapp.domain.ticketing.dto.EventSalesInfo
 import com.sportsapp.domain.ticketing.dto.TicketKpiSummary
+import com.sportsapp.domain.ticketing.dto.TicketOrderDetail
 import com.sportsapp.domain.ticketing.dto.TicketOrderResult
 import com.sportsapp.domain.ticketing.dto.TicketOrderWithEventTitle
 import com.sportsapp.domain.ticketing.dto.TicketSalesSummary
@@ -136,6 +137,21 @@ class TicketingDomainService(
     fun getTicketOrder(ticketOrderId: Long): TicketOrder =
         ticketOrderRepository.findById(ticketOrderId)
             ?: throw ResourceNotFoundException("TicketOrder", ticketOrderId)
+
+    // 단건 상세 조회용 — TicketOrder에 이벤트명·이벤트id를 조합한 표시용 프로젝션.
+    // 참조 Event가 없거나 삭제된 경우 eventTitle은 빈 문자열로 방어한다 (listTicketOrdersBy와 동일 정책).
+    fun getTicketOrderDetail(ticketOrderId: Long): TicketOrderDetail {
+        val order = getTicketOrder(ticketOrderId)
+        val event = eventRepository.findById(order.lockedEventId)
+        return TicketOrderDetail(
+            ticketOrderId = order.id,
+            status = order.status,
+            eventId = order.lockedEventId,
+            eventTitle = event?.title.orEmpty(),
+            paymentId = order.paymentId,
+            createdAt = order.createdAt,
+        )
+    }
 
     @Transactional
     fun createPendingOrder(lockId: String, userId: Long): TicketOrderResult {

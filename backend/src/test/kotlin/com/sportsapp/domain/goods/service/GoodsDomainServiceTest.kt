@@ -480,6 +480,88 @@ class GoodsDomainServiceTest : BehaviorSpec({
         }
     }
 
+    Given("본인 소유 GoodsOrder가 존재하는 상황(주문 상세 조회)") {
+        val userId = 70L
+        val order = forceId(GoodsOrder.create(userId = userId, totalAmount = BigDecimal("89000")), 900L)
+        val item = GoodsOrderItem(orderId = 900L, productId = 1L, quantity = 1, unitPrice = BigDecimal("89000"))
+
+        every { goodsOrderRepository.findById(900L) } returns order
+        every { goodsOrderItemRepository.findByOrderId(900L) } returns listOf(item)
+        every { goodsOrderCustomRepository.findTitleFor(900L) } returns "나이키 러닝화"
+
+        When("getOrder를 호출하면") {
+            val result = service.getOrder(userId, 900L)
+
+            Then("주문·항목·대표 상품명(title)이 함께 채워진 GoodsOrderDetail을 반환한다") {
+                result.order shouldBe order
+                result.items shouldBe listOf(item)
+                result.title shouldBe "나이키 러닝화"
+                verify(exactly = 1) { goodsOrderCustomRepository.findTitleFor(900L) }
+            }
+        }
+    }
+
+    Given("존재하지 않는 GoodsOrder를 조회하는 상황") {
+        // 이 Given 전용 fresh mock — 스펙 전체가 공유하는 top-level goodsOrderCustomRepository는
+        // 다른 Given의 호출 이력과 섞여 verify(exactly = 0)이 오염될 수 있다.
+        val isolatedGoodsOrderRepository = mockk<GoodsOrderRepository>()
+        val isolatedGoodsOrderCustomRepository = mockk<GoodsOrderCustomRepository>()
+        val isolatedService = GoodsDomainService(
+            productRepository = productRepository,
+            stockRepository = stockRepository,
+            productCustomRepository = productCustomRepository,
+            popularProductsCache = popularProductsCache,
+            goodsOrderRepository = isolatedGoodsOrderRepository,
+            goodsOrderItemRepository = goodsOrderItemRepository,
+            goodsOrderCustomRepository = isolatedGoodsOrderCustomRepository,
+            limitedDropRepository = limitedDropRepository,
+            authChannelResolver = authChannelResolver,
+            dropReservationStore = dropReservationStore,
+        )
+        every { isolatedGoodsOrderRepository.findById(901L) } returns null
+
+        When("getOrder를 호출하면") {
+            Then("GoodsOrderNotFoundException을 던지고 title 조회는 호출하지 않는다") {
+                shouldThrow<com.sportsapp.domain.goods.exception.GoodsOrderNotFoundException> {
+                    isolatedService.getOrder(70L, 901L)
+                }
+                verify(exactly = 0) { isolatedGoodsOrderCustomRepository.findTitleFor(any()) }
+            }
+        }
+    }
+
+    Given("타인 소유 GoodsOrder를 조회하는 상황") {
+        // 이 Given 전용 fresh mock — 위와 동일한 이유로 격리한다.
+        val isolatedGoodsOrderRepository = mockk<GoodsOrderRepository>()
+        val isolatedGoodsOrderCustomRepository = mockk<GoodsOrderCustomRepository>()
+        val isolatedService = GoodsDomainService(
+            productRepository = productRepository,
+            stockRepository = stockRepository,
+            productCustomRepository = productCustomRepository,
+            popularProductsCache = popularProductsCache,
+            goodsOrderRepository = isolatedGoodsOrderRepository,
+            goodsOrderItemRepository = goodsOrderItemRepository,
+            goodsOrderCustomRepository = isolatedGoodsOrderCustomRepository,
+            limitedDropRepository = limitedDropRepository,
+            authChannelResolver = authChannelResolver,
+            dropReservationStore = dropReservationStore,
+        )
+        val ownerUserId = 70L
+        val requesterUserId = 71L
+        val order = forceId(GoodsOrder.create(userId = ownerUserId, totalAmount = BigDecimal("89000")), 902L)
+
+        every { isolatedGoodsOrderRepository.findById(902L) } returns order
+
+        When("getOrder를 호출하면") {
+            Then("NotGoodsOrderOwnerException을 던지고 title 조회는 호출하지 않는다") {
+                shouldThrow<com.sportsapp.domain.goods.exception.NotGoodsOrderOwnerException> {
+                    isolatedService.getOrder(requesterUserId, 902L)
+                }
+                verify(exactly = 0) { isolatedGoodsOrderCustomRepository.findTitleFor(any()) }
+            }
+        }
+    }
+
     Given("seller_type이 NULL인 Product가 3건 존재하는 상태") {
         every { productRepository.countBySellerTypeIsNull() } returns 3L
 

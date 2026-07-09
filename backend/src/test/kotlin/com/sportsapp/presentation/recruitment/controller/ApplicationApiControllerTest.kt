@@ -1,9 +1,13 @@
 package com.sportsapp.presentation.recruitment.controller
 
+import com.sportsapp.application.recruitment.dto.ApplicationDetailResponse
 import com.sportsapp.application.recruitment.dto.ApplicationResponse
 import com.sportsapp.application.recruitment.dto.CancelApplicationCommand
 import com.sportsapp.application.recruitment.usecase.CancelApplicationUseCase
+import com.sportsapp.application.recruitment.usecase.GetApplicationDetailUseCase
 import com.sportsapp.application.recruitment.usecase.ListMyApplicationsUseCase
+import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
+import com.sportsapp.domain.recruitment.dto.ApplicationDetail
 import com.sportsapp.domain.recruitment.entity.ApplicationStatus
 import com.sportsapp.domain.recruitment.exception.ApplicationCancellationClosedException
 import com.sportsapp.domain.recruitment.exception.UnauthorizedApplicationAccessException
@@ -11,6 +15,8 @@ import com.sportsapp.presentation.exception.GlobalExceptionHandler
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every
 import io.mockk.mockk
+import java.math.BigDecimal
+import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
@@ -25,10 +31,12 @@ class ApplicationApiControllerTest : BehaviorSpec({
     fun buildMockMvc(
         listMyApplicationsUseCase: ListMyApplicationsUseCase = mockk(),
         cancelApplicationUseCase: CancelApplicationUseCase = mockk(),
+        getApplicationDetailUseCase: GetApplicationDetailUseCase = mockk(),
     ) = MockMvcBuilders.standaloneSetup(
         ApplicationApiController(
             listMyApplicationsUseCase = listMyApplicationsUseCase,
             cancelApplicationUseCase = cancelApplicationUseCase,
+            getApplicationDetailUseCase = getApplicationDetailUseCase,
         ),
     ).setControllerAdvice(GlobalExceptionHandler()).build()
 
@@ -120,6 +128,72 @@ class ApplicationApiControllerTest : BehaviorSpec({
             Then("422를 반환한다") {
                 result.andExpect(status().isUnprocessableEntity)
                     .andExpect(jsonPath("$.code").value("APPLICATION_CANCELLATION_CLOSED"))
+            }
+        }
+    }
+
+    Given("본인 소유의 신청 상세 조회 요청") {
+        val getApplicationDetailUseCase = mockk<GetApplicationDetailUseCase>()
+        every {
+            getApplicationDetailUseCase.execute(applicationId = 11L, requesterUserId = TEST_USER_ID)
+        } returns ApplicationDetailResponse.of(
+            ApplicationDetail(
+                applicationId = 11L,
+                recruitmentId = 1L,
+                recruitmentTitle = "주말 축구 모임",
+                status = ApplicationStatus.CONFIRMED,
+                feeAmount = BigDecimal("10000"),
+                paymentId = 701L,
+                createdAt = ZonedDateTime.of(2026, 6, 2, 9, 0, 0, 0, ZoneOffset.UTC),
+            ),
+        )
+        val mockMvc = buildMockMvc(getApplicationDetailUseCase = getApplicationDetailUseCase)
+
+        When("GET /applications/11 요청 시") {
+            val result = mockMvc.perform(get("/applications/11").header("X-User-Id", TEST_USER_ID))
+
+            Then("200과 함께 모집명·참가비를 포함한 상세를 반환한다") {
+                result.andExpect(status().isOk)
+                    .andExpect(jsonPath("$.applicationId").value(11))
+                    .andExpect(jsonPath("$.recruitmentId").value(1))
+                    .andExpect(jsonPath("$.recruitmentTitle").value("주말 축구 모임"))
+                    .andExpect(jsonPath("$.status").value("CONFIRMED"))
+                    .andExpect(jsonPath("$.feeAmount").value(10000))
+                    .andExpect(jsonPath("$.paymentId").value(701))
+            }
+        }
+    }
+
+    Given("본인 소유가 아닌 신청 상세 조회 요청") {
+        val getApplicationDetailUseCase = mockk<GetApplicationDetailUseCase>()
+        every {
+            getApplicationDetailUseCase.execute(applicationId = 11L, requesterUserId = 999L)
+        } throws UnauthorizedApplicationAccessException(11L)
+        val mockMvc = buildMockMvc(getApplicationDetailUseCase = getApplicationDetailUseCase)
+
+        When("GET /applications/11 요청 시") {
+            val result = mockMvc.perform(get("/applications/11").header("X-User-Id", 999L))
+
+            Then("403을 반환한다") {
+                result.andExpect(status().isForbidden)
+                    .andExpect(jsonPath("$.code").value("APPLICATION_ACCESS_DENIED"))
+            }
+        }
+    }
+
+    Given("존재하지 않는 신청 상세 조회 요청") {
+        val getApplicationDetailUseCase = mockk<GetApplicationDetailUseCase>()
+        every {
+            getApplicationDetailUseCase.execute(applicationId = 404L, requesterUserId = TEST_USER_ID)
+        } throws ResourceNotFoundException("Application", 404L)
+        val mockMvc = buildMockMvc(getApplicationDetailUseCase = getApplicationDetailUseCase)
+
+        When("GET /applications/404 요청 시") {
+            val result = mockMvc.perform(get("/applications/404").header("X-User-Id", TEST_USER_ID))
+
+            Then("404를 반환한다") {
+                result.andExpect(status().isNotFound)
+                    .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"))
             }
         }
     }

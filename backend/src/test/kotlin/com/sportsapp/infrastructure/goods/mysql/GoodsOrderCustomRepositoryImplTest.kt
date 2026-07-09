@@ -127,5 +127,49 @@ class GoodsOrderCustomRepositoryImplTest(
                 }
             }
         }
+
+        Given("단일 상품 1건으로 구성된 주문 상세를 조회하는 상황") {
+            resetData()
+            val product = saveProduct("나이키 러닝화")
+            val order = goodsOrderJpaRepository.save(GoodsOrder.create(userId = 30L, totalAmount = BigDecimal("89000")))
+            goodsOrderItemJpaRepository.save(
+                GoodsOrderItem(orderId = order.id, productId = product.id, quantity = 1, unitPrice = BigDecimal("89000"))
+            )
+
+            When("findTitleFor(orderId)를 호출하면") {
+                Then("findBy와 동일한 buildTitle 로직으로 상품명 그대로 반환한다") {
+                    goodsOrderCustomRepository.findTitleFor(order.id) shouldBe "나이키 러닝화"
+                }
+            }
+        }
+
+        Given("서로 다른 상품 2건으로 구성된 주문 상세를 조회하는 상황") {
+            resetData()
+            val product1 = saveProduct("나이키 러닝화")
+            val product2 = saveProduct("아디다스 반바지")
+            val order = goodsOrderJpaRepository.save(GoodsOrder.create(userId = 31L, totalAmount = BigDecimal("124000")))
+            goodsOrderItemJpaRepository.saveAll(
+                listOf(
+                    GoodsOrderItem(orderId = order.id, productId = product1.id, quantity = 1, unitPrice = BigDecimal("89000")),
+                    GoodsOrderItem(orderId = order.id, productId = product2.id, quantity = 1, unitPrice = BigDecimal("35000")),
+                )
+            )
+
+            When("findTitleFor(orderId)를 호출하면") {
+                Then("대표 상품명 + 외 N건으로 title이 구성된다") {
+                    goodsOrderCustomRepository.findTitleFor(order.id) shouldBe "나이키 러닝화 외 1건"
+                }
+            }
+        }
+
+        Given("존재하지 않는 orderId로 주문 상세를 조회하는 상황(엣지)") {
+            resetData()
+
+            When("findTitleFor(orderId)를 호출하면") {
+                Then("빈 title로 방어 반환한다") {
+                    goodsOrderCustomRepository.findTitleFor(999999L) shouldBe ""
+                }
+            }
+        }
     }
 }

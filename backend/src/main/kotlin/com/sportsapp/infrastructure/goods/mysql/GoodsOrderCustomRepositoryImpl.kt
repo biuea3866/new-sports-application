@@ -60,6 +60,13 @@ class GoodsOrderCustomRepositoryImpl(
             .fetch()
             .groupBy { it.get(goodsOrderItem.orderId) as Long }
 
+    /**
+     * 주문 상세(단건)용 — [findBy]와 동일한 [fetchItemsByOrderId]·[buildTitle]을 재사용해
+     * 리스트·상세의 title 조합 방식을 일치시킨다(TDD "주문 표시명 확보 방식").
+     */
+    override fun findTitleFor(orderId: Long): String =
+        buildTitle(fetchItemsByOrderId(listOf(orderId))[orderId].orEmpty())
+
     /** 대표 항목의 상품명이 없으면(삭제·부재) 빈 title로 방어 반환한다(엣지). */
     private fun buildTitle(items: List<Tuple>): String {
         if (items.isEmpty()) return ""

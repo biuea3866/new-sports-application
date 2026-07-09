@@ -13,10 +13,10 @@ class GetBookingUseCase(
 ) {
     @Transactional(readOnly = true)
     fun execute(requesterId: Long, bookingId: Long): GetBookingResult {
-        val booking = bookingDomainService.getBooking(requesterId, bookingId)
-        val paymentStatus = booking.paymentId?.let {
+        val detail = bookingDomainService.getBookingDetail(requesterId, bookingId)
+        val paymentStatus = detail.paymentId?.let {
             paymentDomainService.findStatuses(listOf(it))[it]
         }
-        return GetBookingResult.of(booking, paymentStatus)
+        return GetBookingResult.of(detail, paymentStatus)
     }
 }
