@@ -12,6 +12,23 @@ services:
     environment:
       APP_ENV: prod
 
+  # redis maxmemory override (INFRA-01) — 근거: 20260709-redis-contract.md §4-1~4-3
+  #   base(docker-compose.yml)의 256mb는 로컬 dev 규모 기준이며, prod엔 지금까지 override가 없어 그대로 상속돼왔다.
+  #   가상 대기열 NFR(최대 10만 동시 수용)의 실측 사이징(§4-2, 대상 2개 동시 최대치 ~60MB, 여유 3개 ~90MB)을
+  #   기존 게이트/락/세션 키에 얹으면 256mb 상한이 빠듯해 마케팅 피크에 OOM(noeviction 하에서는 evict가 아니라
+  #   신규 쓰기 실패)으로 대기열 자신이 fail-open되는 자기잠식 위험이 있다. command 전체를 override(compose는
+  #   command를 병합이 아니라 치환)하되 maxmemory만 512mb로 상향하고, 나머지(특히 maxmemory-policy=noeviction)는
+  #   base와 동일하게 유지한다 — 완화 시 오버셀 게이트 키(remaining/buyer, seat:lock)가 evict 대상이 되어
+  #   오버셀 위험이 새로 생기므로 정책 변경 금지.
+  # 롤백: 이 redis 섹션을 제거하면 base 256mb/noeviction으로 즉시 복귀.
+  redis:
+    command: >
+      redis-server
+      --maxmemory 512mb
+      --maxmemory-policy noeviction
+      --save ""
+      --appendonly no
+
   minio:
     ports:
       - "19000:9000"
