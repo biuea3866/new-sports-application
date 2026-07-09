@@ -54,6 +54,16 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  batch:
+    jdbc:
+      # BE-11: src/test/resources/application.yml 은 클래스패스 application.yml 을 완전히 대체한다
+      # (src/main 값이 테스트에 병합되지 않음, 실측 확인) — main과 동일하게 idempotent 초기화 사용.
+      initialize-schema: never
+    job:
+      # BE-11: 테스트에서도 부팅 시 자동 실행 금지. 값이 없으면(matchIfMissing=true)
+      # JobLauncherApplicationRunner 가 빈 파라미터로 전체 Job을 자동 실행해 테스트를 오염시킨다
+      # (실측 확인 — Job: [...] launched with the following parameters: [{}]).
+      enabled: false
   mail:
     host: localhost
     port: 1025

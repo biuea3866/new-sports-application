@@ -280,6 +280,9 @@ class GoodsDomainService(
     fun listMyProducts(ownerUserId: Long, pageable: Pageable): Page<ProductWithStock> =
         productCustomRepository.findByOwnerId(ownerUserId, pageable)
 
+    /** BE-11 배치 백필 검증 스텝이 호출 — seller_type NULL 잔여 건수. */
+    fun countProductsMissingSellerType(): Long = productRepository.countBySellerTypeIsNull()
+
     fun countActiveProductsByOwnerId(ownerId: Long): Long =
         productRepository.countByOwnerIdAndStatus(ownerId, ProductStatus.ACTIVE)
 
