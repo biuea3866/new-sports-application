@@ -40,8 +40,8 @@ class GoodsOrderApiController(
         @RequestHeader("X-User-Id") userId: Long,
         @PathVariable orderId: Long,
     ): ResponseEntity<GoodsOrderResponse> {
-        val (order, items) = getGoodsOrderUseCase.execute(userId, orderId)
-        return ResponseEntity.ok(GoodsOrderResponse.of(order, items))
+        val detail = getGoodsOrderUseCase.execute(userId, orderId)
+        return ResponseEntity.ok(GoodsOrderResponse.of(detail))
     }
 
     @GetMapping("/me")

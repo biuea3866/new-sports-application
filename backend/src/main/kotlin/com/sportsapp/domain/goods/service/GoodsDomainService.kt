@@ -3,6 +3,7 @@ package com.sportsapp.domain.goods.service
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import com.sportsapp.domain.common.security.AuthChannelResolver
 import com.sportsapp.domain.goods.dto.GoodsKpiSummary
+import com.sportsapp.domain.goods.dto.GoodsOrderDetail
 import com.sportsapp.domain.goods.dto.GoodsOrderWithTitle
 import com.sportsapp.domain.goods.dto.PopularProductSnapshot
 import com.sportsapp.domain.goods.dto.ProductWithStock
@@ -181,12 +182,17 @@ class GoodsDomainService(
         return goodsOrderRepository.save(order)
     }
 
-    fun getOrder(userId: Long, orderId: Long): Pair<GoodsOrder, List<GoodsOrderItem>> {
+    /**
+     * 주문 상세 조회 — 통합 주문내역 리스트([listMyOrdersWithTitle])와 동일한 대표 상품명(title)을
+     * 함께 반환해 상세가 리스트보다 빈약해지는 역전을 막는다(Option A+).
+     */
+    fun getOrder(userId: Long, orderId: Long): GoodsOrderDetail {
         val order = goodsOrderRepository.findById(orderId)
             ?: throw GoodsOrderNotFoundException(orderId)
         order.requireOwnedBy(userId)
         val items = goodsOrderItemRepository.findByOrderId(orderId)
-        return order to items
+        val title = goodsOrderCustomRepository.findTitleFor(orderId)
+        return GoodsOrderDetail(order = order, items = items, title = title)
     }
 
     fun listMyOrders(userId: Long, pageable: Pageable): Page<GoodsOrder> =
