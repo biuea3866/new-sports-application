@@ -3,17 +3,22 @@ package com.sportsapp.domain.recruitment.service
 import com.sportsapp.domain.common.DistributedLock
 import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
+import com.sportsapp.domain.recruitment.dto.ApplicationWithRecruitmentTitle
 import com.sportsapp.domain.recruitment.entity.Application
 import com.sportsapp.domain.recruitment.entity.Recruitment
 import com.sportsapp.domain.recruitment.exception.RecruitmentBusyException
 import com.sportsapp.domain.recruitment.exception.RecruitmentFullException
 import com.sportsapp.domain.recruitment.policy.CancellationPolicy
+import com.sportsapp.domain.recruitment.repository.ApplicationCustomRepository
 import com.sportsapp.domain.recruitment.repository.ApplicationRepository
+import com.sportsapp.domain.recruitment.repository.RecruitmentCustomRepository
 import com.sportsapp.domain.recruitment.repository.RecruitmentRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
 import java.time.ZonedDateTime
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
@@ -32,6 +37,8 @@ class RecruitmentDomainService(
     private val distributedLock: DistributedLock,
     private val cancellationPolicy: CancellationPolicy,
     private val domainEventPublisher: DomainEventPublisher,
+    private val recruitmentCustomRepository: RecruitmentCustomRepository,
+    private val applicationCustomRepository: ApplicationCustomRepository,
 ) {
 
     fun create(
@@ -174,4 +181,12 @@ class RecruitmentDomainService(
 
     fun findApplicationsBy(applicantUserId: Long): List<Application> =
         applicationRepository.findByApplicantUserId(applicantUserId)
+
+    // catalog 통합검색용 — status=OPEN 고정 + keyword 부분 일치. CLOSED/CANCELLED는 결과에서 제외한다.
+    fun searchOpenRecruitments(keyword: String?, pageable: Pageable): Page<Recruitment> =
+        recruitmentCustomRepository.searchOpen(keyword, pageable)
+
+    // order 통합조회용 — Application에 모집명(title)을 조인한 표시용 프로젝션.
+    fun listApplicationsWithTitleBy(applicantUserId: Long): List<ApplicationWithRecruitmentTitle> =
+        applicationCustomRepository.findBy(applicantUserId)
 }

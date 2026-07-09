@@ -42,6 +42,8 @@ class RecruitmentQueryDomainServiceTest : BehaviorSpec({
         distributedLock,
         cancellationPolicy,
         domainEventPublisher,
+        mockk(relaxed = true),
+        mockk(relaxed = true),
     )
 
     Given("특정 신청자 명의의 신청이 2건, 타인 신청이 1건 있는 상황") {
