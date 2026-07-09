@@ -23,3 +23,19 @@ describe('ROUTES.catalog / ROUTES.orders', () => {
     expect(ROUTES.orders).toBe('/orders');
   });
 });
+
+describe('ROUTES.queue', () => {
+  it("waiting('limited-drop', '42')가 한정판 대기실 경로 문자열을 생성한다", () => {
+    expect(ROUTES.queue.waiting('limited-drop', '42')).toBe('/queue/limited-drop/42');
+  });
+
+  it("waiting('ticketing-event', '7')가 티케팅 이벤트 대기실 경로 문자열을 생성한다", () => {
+    expect(ROUTES.queue.waiting('ticketing-event', '7')).toBe('/queue/ticketing-event/7');
+  });
+
+  it('targetId에 특수문자가 포함돼도 그대로 경로에 치환한다', () => {
+    expect(ROUTES.queue.waiting('limited-drop', 'abc-123_XYZ')).toBe(
+      '/queue/limited-drop/abc-123_XYZ'
+    );
+  });
+});
