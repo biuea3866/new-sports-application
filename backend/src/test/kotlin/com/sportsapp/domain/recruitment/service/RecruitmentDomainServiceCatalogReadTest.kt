@@ -99,7 +99,13 @@ class RecruitmentDomainServiceCatalogReadTest : BehaviorSpec({
         val applicationCustomRepository = mockk<ApplicationCustomRepository>()
         val service = buildService(applicationCustomRepository = applicationCustomRepository)
         val expected = listOf(
-            ApplicationWithRecruitmentTitle(applicationId = 1L, status = ApplicationStatus.CONFIRMED, recruitmentTitle = "주말 축구 모임"),
+            ApplicationWithRecruitmentTitle(
+                applicationId = 1L,
+                status = ApplicationStatus.CONFIRMED,
+                recruitmentTitle = "주말 축구 모임",
+                paymentId = 701L,
+                createdAt = ZonedDateTime.of(2026, 6, 2, 9, 0, 0, 0, ZoneOffset.UTC),
+            ),
         )
         every { applicationCustomRepository.findBy(9L) } returns expected
 

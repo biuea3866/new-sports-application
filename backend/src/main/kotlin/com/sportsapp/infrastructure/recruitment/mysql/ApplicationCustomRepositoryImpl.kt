@@ -20,7 +20,14 @@ class ApplicationCustomRepositoryImpl : ApplicationCustomRepository {
 
     override fun findBy(applicantUserId: Long): List<ApplicationWithRecruitmentTitle> =
         queryFactory
-            .select(application.id, application.status, recruitment.title, recruitment.deletedAt)
+            .select(
+                application.id,
+                application.status,
+                application.paymentId,
+                application.createdAt,
+                recruitment.title,
+                recruitment.deletedAt,
+            )
             .from(application)
             .leftJoin(recruitment).on(recruitment.id.eq(application.recruitmentId))
             .where(application.applicantUserId.eq(applicantUserId))
@@ -33,6 +40,8 @@ class ApplicationCustomRepositoryImpl : ApplicationCustomRepository {
                     applicationId = requireNotNull(tuple.get(application.id)) { "application.id must not be null" },
                     status = requireNotNull(tuple.get(application.status)) { "application.status must not be null" },
                     recruitmentTitle = if (recruitmentTitle == null || recruitmentDeletedAt != null) "" else recruitmentTitle,
+                    paymentId = tuple.get(application.paymentId),
+                    createdAt = requireNotNull(tuple.get(application.createdAt)) { "application.createdAt must not be null" },
                 )
             }
 }

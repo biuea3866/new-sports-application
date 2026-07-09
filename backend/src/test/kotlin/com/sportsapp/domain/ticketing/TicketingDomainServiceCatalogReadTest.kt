@@ -96,7 +96,13 @@ class TicketingDomainServiceCatalogReadTest : BehaviorSpec({
         val ticketOrderCustomRepository = mockk<TicketOrderCustomRepository>()
         val service = buildService(ticketOrderCustomRepository = ticketOrderCustomRepository)
         val expected = listOf(
-            TicketOrderWithEventTitle(ticketOrderId = 1L, status = OrderStatus.CONFIRMED, eventTitle = "Concert Dec"),
+            TicketOrderWithEventTitle(
+                ticketOrderId = 1L,
+                status = OrderStatus.CONFIRMED,
+                eventTitle = "Concert Dec",
+                paymentId = 501L,
+                createdAt = ZonedDateTime.of(2026, 6, 1, 10, 0, 0, 0, ZoneOffset.UTC),
+            ),
         )
         every { ticketOrderCustomRepository.findBy(9L) } returns expected
 

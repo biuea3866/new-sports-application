@@ -97,7 +97,14 @@ class TicketOrderCustomRepositoryImpl : TicketOrderCustomRepository {
 
     override fun findBy(userId: Long): List<TicketOrderWithEventTitle> =
         queryFactory
-            .select(ticketOrder.id, ticketOrder.status, event.title, event.deletedAt)
+            .select(
+                ticketOrder.id,
+                ticketOrder.status,
+                ticketOrder.paymentId,
+                ticketOrder.createdAt,
+                event.title,
+                event.deletedAt,
+            )
             .from(ticketOrder)
             .leftJoin(event).on(event.id.eq(ticketOrder.lockedEventId))
             .where(
@@ -112,6 +119,8 @@ class TicketOrderCustomRepositoryImpl : TicketOrderCustomRepository {
                     ticketOrderId = requireNotNull(tuple.get(ticketOrder.id)) { "ticketOrder.id must not be null" },
                     status = requireNotNull(tuple.get(ticketOrder.status)) { "ticketOrder.status must not be null" },
                     eventTitle = if (eventTitle == null || eventDeletedAt != null) "" else eventTitle,
+                    paymentId = tuple.get(ticketOrder.paymentId),
+                    createdAt = requireNotNull(tuple.get(ticketOrder.createdAt)) { "ticketOrder.createdAt must not be null" },
                 )
             }
 }
