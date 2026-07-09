@@ -14,6 +14,8 @@ class ProductRepositoryImpl(
 
     override fun save(product: Product): Product = productJpaRepository.save(product)
 
+    override fun saveAll(products: List<Product>): List<Product> = productJpaRepository.saveAll(products)
+
     override fun findById(id: Long): Product? = productJpaRepository.findByIdOrNull(id)
 
     override fun findByIdAndDeletedAtIsNull(id: Long): Product? =
@@ -27,4 +29,6 @@ class ProductRepositoryImpl(
 
     override fun countByOwnerIdAndStatus(ownerId: Long, status: ProductStatus): Long =
         productJpaRepository.countByOwnerIdAndStatusAndDeletedAtIsNull(ownerId, status)
+
+    override fun countBySellerTypeIsNull(): Long = productJpaRepository.countBySellerTypeIsNull()
 }

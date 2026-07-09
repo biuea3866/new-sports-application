@@ -167,4 +167,44 @@ class ProductTest : BehaviorSpec({
             }
         }
     }
+
+    Given("sellerType이 null인 백필 대상 Product") {
+        val product = Product(
+            name = "구형 상품",
+            category = ProductCategory.EQUIPMENT,
+            price = BigDecimal("10000"),
+            description = "백필 전 상품",
+            imageUrl = "https://example.com/legacy.jpg",
+            status = ProductStatus.ACTIVE,
+            sellerType = null,
+            ownerId = 1L,
+        )
+
+        When("assignDefaultSellerTypeIfMissing을 호출하면") {
+            product.assignDefaultSellerTypeIfMissing()
+            Then("sellerType이 B2C로 채워진다") {
+                product.sellerType shouldBe SellerType.B2C
+            }
+        }
+    }
+
+    Given("sellerType이 이미 B2B로 설정된 Product") {
+        val product = Product(
+            name = "브랜드 상품",
+            category = ProductCategory.EQUIPMENT,
+            price = BigDecimal("10000"),
+            description = "듀얼라이트로 채워진 상품",
+            imageUrl = "https://example.com/brand.jpg",
+            status = ProductStatus.ACTIVE,
+            sellerType = SellerType.B2B,
+            ownerId = 1L,
+        )
+
+        When("assignDefaultSellerTypeIfMissing을 호출하면") {
+            product.assignDefaultSellerTypeIfMissing()
+            Then("기존 값(B2B)을 덮어쓰지 않는다 (멱등, no-op)") {
+                product.sellerType shouldBe SellerType.B2B
+            }
+        }
+    }
 })
