@@ -433,6 +433,31 @@ export interface GoodsOrderResponse {
   createdAt: string; // ISO 8601
 }
 
+/**
+ * `GET /goods-orders/{orderId}` 실제 응답 — 백엔드
+ * `presentation/goods/dto/response/GoodsOrderResponse.kt`를 그대로 반영한다.
+ * 위 `GoodsOrderResponse`(주문 목록 화면이 참조하는 기존 타입)와는 필드가 달라
+ * (createdAt 없음, paymentId/paymentStatus 있음, item에 productName 없음) 혼용하지 않도록
+ * 별도 타입으로 둔다 — 주문상세(Option A) 전용.
+ */
+export interface GoodsOrderDetailItemResponse {
+  id: number;
+  productId: number;
+  quantity: number;
+  unitPrice: string; // BigDecimal → string
+  subtotal: string; // BigDecimal → string
+}
+
+export interface GoodsOrderDetailResponse {
+  id: number;
+  userId: number | null;
+  status: GoodsOrderStatus | null;
+  totalAmount: string; // BigDecimal → string
+  paymentId: number | null;
+  paymentStatus: PaymentStatus | null;
+  items: GoodsOrderDetailItemResponse[];
+}
+
 export interface GoodsOrderListResponse {
   content: GoodsOrderResponse[];
   totalElements: number;

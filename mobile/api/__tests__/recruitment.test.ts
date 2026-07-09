@@ -9,6 +9,7 @@
  * U-08: listMyApplications는 GET /applications로 본인 신청 목록을 반환한다
  * U-09: cancelApplication은 POST /applications/{id}/cancel을 호출한다
  * U-10: 정원초과(409)·권한없음(403)·마감후(422) 에러가 예외로 전파된다
+ * U-11: getApplicationDetail은 GET /applications/{id}로 신청 상세를 반환한다(주문상세 Option A)
  */
 import MockAdapter from 'axios-mock-adapter';
 import { createBeClient } from '../be-client';
@@ -17,12 +18,14 @@ import {
   cancelApplication,
   cancelRecruitment,
   createRecruitment,
+  getApplicationDetail,
   getRecruitment,
   listApplications,
   listMyApplications,
   listRecruitments,
 } from '../recruitment';
 import type {
+  ApplicationDetailResponse,
   ApplicationResponse,
   ApplyRecruitmentRequest,
   ApplyRecruitmentResult,
@@ -285,5 +288,31 @@ describe('U-09: cancelApplication', () => {
     mock.onPost('/applications/100/cancel').reply(422, { message: 'Application deadline passed' });
 
     await expect(cancelApplication(100)).rejects.toThrow();
+  });
+});
+
+describe('U-11: getApplicationDetail', () => {
+  it('GET /applications/100 호출 시 신청 상세(모집명 포함)를 반환한다', async () => {
+    const detail: ApplicationDetailResponse = {
+      applicationId: 100,
+      recruitmentId: 1,
+      title: '주말 축구 3명 모집',
+      status: 'CONFIRMED',
+      feeAmount: 5000,
+      paymentId: 200,
+      createdAt: '2026-07-08T00:00:00Z',
+    };
+    mock.onGet('/applications/100').reply(200, detail);
+
+    const res = await getApplicationDetail(100);
+
+    expect(res.title).toBe('주말 축구 3명 모집');
+    expect(res.recruitmentId).toBe(1);
+  });
+
+  it('신설 전(main 미머지) 404는 예외로 전파된다 — API 미연동 상태', async () => {
+    mock.onGet('/applications/999').reply(404, { message: 'Not found' });
+
+    await expect(getApplicationDetail(999)).rejects.toThrow();
   });
 });

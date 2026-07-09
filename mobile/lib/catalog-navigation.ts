@@ -44,19 +44,21 @@ export function resolveCatalogRoute(itemType: CatalogItemType, sourceId: number)
 }
 
 /**
- * 통합 주문내역 항목(orderType) + sourceId를 원본 상세 경로로 매핑한다.
+ * 통합 주문내역 항목(orderType) + sourceId를 "주문 자신"의 상세 경로로 매핑한다(Option A).
+ *
+ * `OrderHistoryItem.sourceId`/`detailPath`는 BE-08 확정(Option A)에 따라 주문 자신의
+ * 도메인 PK(Booking.id/GoodsOrder.id/TicketOrder.id/Application.id)를 가리킨다 — 참조
+ * 아이템(시설·상품·이벤트·모집) PK가 아니다. 따라서 이 함수는 `app/orders/[orderType]/[id].tsx`
+ * (주문 자신 상세 화면)로 이동시킨다. 참조 아이템 상세로의 이동은 그 화면의 "원본 보기"가 담당한다.
  * 매핑 불가(알 수 없는 판별자)면 null을 반환한다 — 호출부는 이동을 무시해야 한다.
  */
 export function resolveOrderRoute(orderType: OrderType, sourceId: number): string | null {
   switch (orderType) {
     case 'BOOKING':
-      return ROUTES.facility.detail(String(sourceId));
     case 'TICKETING':
-      return ROUTES.event.detail(String(sourceId));
     case 'GOODS':
-      return ROUTES.product.detail(String(sourceId));
     case 'RECRUITMENT':
-      return recruitmentDetailPath(sourceId);
+      return ROUTES.orderDetail(orderType, String(sourceId));
     default:
       return null;
   }

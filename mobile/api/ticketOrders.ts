@@ -58,3 +58,15 @@ export async function purchaseTicketOrder(
   });
   return res.data;
 }
+
+/**
+ * 티켓 주문 상세 조회
+ * GET /ticket-orders/{id}
+ * 주문상세(Option A) 화면이 사용한다. 응답은 `TicketOrderResponse`(ticketOrderId·status)로,
+ * paymentId·createdAt·eventId는 백엔드 계약(`application/ticketing/dto/TicketOrderResponse.kt`)에
+ * 없어 제공되지 않는다 — 화면은 이 제약을 감안해 표시한다.
+ */
+export async function getTicketOrderDetail(id: number): Promise<TicketOrderResponse> {
+  const res = await getBeClient().get<TicketOrderResponse>(`/ticket-orders/${id}`);
+  return res.data;
+}
