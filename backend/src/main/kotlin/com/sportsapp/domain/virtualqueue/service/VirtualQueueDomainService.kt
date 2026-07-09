@@ -7,16 +7,12 @@ import com.sportsapp.domain.virtualqueue.exception.QueueEntryNotFoundException
 import com.sportsapp.domain.virtualqueue.exception.QueueFullException
 import com.sportsapp.domain.virtualqueue.gateway.EntryTokenIssuer
 import com.sportsapp.domain.virtualqueue.gateway.VirtualQueueStore
-import com.sportsapp.domain.virtualqueue.vo.EntryToken
 import com.sportsapp.domain.virtualqueue.vo.QueuePosition
 import com.sportsapp.domain.virtualqueue.vo.QueueStatus
 import com.sportsapp.domain.virtualqueue.vo.QueueTarget
-import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.dao.DataAccessException
 import org.springframework.stereotype.Service
-
-private const val REDIS_DEGRADED_COUNTER = "virtual_queue.redis_degraded"
 
 /**
  * 가상 대기열 진입·상태조회·이탈 오케스트레이션 (BE-04).
@@ -25,17 +21,24 @@ private const val REDIS_DEGRADED_COUNTER = "virtual_queue.redis_degraded"
  * 주입한다 — infrastructure 미참조. 플래그 분기·admission 판정·fail-open 전부 이 서비스가
  * 캡슐화하며, UseCase(후행 티켓)는 이 서비스의 메서드 하나만 호출한다.
  *
- * fail-open(Redis 장애) 시 폴백 토큰은 [EntryTokenIssuer.issueIfAbsent]가 아니라
- * [EntryTokenIssuer.mintStateless]로 발급한다 — `issueIfAbsent`의 멱등 마커(`SET NX`)가 Redis
- * 의존이라 장애 상황에서 재실패하기 때문이다(redis-contract §0-3). 안전 근거는 Redis 게이트가
- * 아니라 MySQL 최종 정합 방어(`Stock.@Version`·유니크 제약, §0-4)다.
+ * 대기 없이 즉시 통과(직접 입장)하는 두 경로 — 플래그 OFF, Redis 장애 fail-open — 모두
+ * [EntryTokenIssuer.mintStateless]로 발급한다(`issueIfAbsent`는 쓰지 않는다). 플래그 OFF 경로는
+ * 인터셉터가 애초에 토큰 검증을 스킵하므로 `issueIfAbsent`의 멱등 마커(`SET NX`, Redis 의존)가
+ * 불필요하고, Redis가 죽은 상태에서 호출하면 `DataAccessException`이 그대로 전파돼 5xx가 된다.
+ * fail-open 경로 역시 같은 이유(`issueIfAbsent`가 Redis 장애로 재실패)로 mintStateless를 쓴다
+ * (redis-contract §0-3). 안전 근거는 Redis 게이트가 아니라 MySQL 최종 정합 방어
+ * (`Stock.@Version`·유니크 제약, §0-4)다.
+ *
+ * Redis 장애(`DataAccessException`) 관측(`virtual_queue.redis_degraded`)은 infra
+ * (`VirtualQueueStoreImpl.executeTracked`) 한 곳에서만 수행한다 — 이 서비스가 같은 예외를 다시
+ * 세면 단일 장애가 두 번 집계돼 알람 임계가 왜곡된다. 이 서비스는 fail-open 분기(폴백 호출)만
+ * 담당하고 계측 책임은 갖지 않는다.
  */
 @Service
 class VirtualQueueDomainService(
     private val virtualQueueStore: VirtualQueueStore,
     private val entryTokenIssuer: EntryTokenIssuer,
     private val featureFlagEvaluator: FeatureFlagEvaluator,
-    private val meterRegistry: MeterRegistry,
     @Value("\${virtual-queue.max-capacity:100000}") private val maxCapacity: Int,
     @Value("\${virtual-queue.admission.batch-size:100}") private val batchSize: Int,
     @Value("\${virtual-queue.admission.tick-seconds:2}") private val tickSeconds: Int,
@@ -43,12 +46,11 @@ class VirtualQueueDomainService(
 
     /** 대기열 진입. 플래그 OFF면 대기 없이 즉시 통과, ON이면 멱등 진입 + 포화 거부(FR-7). */
     fun enter(target: QueueTarget, userId: Long): QueueStatus {
-        if (!isQueueEnabled(userId)) return directEntry(target, userId, viaFailOpen = false)
+        if (!isQueueEnabled(userId)) return directEntry(target, userId)
         return try {
             enterQueue(target, userId)
         } catch (exception: DataAccessException) {
-            recordRedisDegraded()
-            directEntry(target, userId, viaFailOpen = true)
+            directEntry(target, userId)
         }
     }
 
@@ -57,8 +59,7 @@ class VirtualQueueDomainService(
         try {
             pollStatus(target, userId)
         } catch (exception: DataAccessException) {
-            recordRedisDegraded()
-            directEntry(target, userId, viaFailOpen = true)
+            directEntry(target, userId)
         }
 
     /** 명시적 이탈. */
@@ -102,19 +103,11 @@ class VirtualQueueDomainService(
     }
 
     /**
-     * 대기 없이 즉시 통과. [viaFailOpen]이 true면 Redis 장애 폴백이라 [EntryTokenIssuer.mintStateless]
-     * (Redis 미접근)를, false면 플래그 OFF 정상 경로라 [EntryTokenIssuer.issueIfAbsent](멱등 마커)를 쓴다.
+     * 대기 없이 즉시 통과 — 플래그 OFF·fail-open 공통 경로. [EntryTokenIssuer.mintStateless]로만
+     * 발급해 이 경로에서 Redis에 접근하지 않는다(클래스 문서 참조).
      */
-    private fun directEntry(target: QueueTarget, userId: Long, viaFailOpen: Boolean): QueueStatus {
-        val entryToken = issueDirectEntryToken(target, userId, viaFailOpen)
+    private fun directEntry(target: QueueTarget, userId: Long): QueueStatus {
+        val entryToken = entryTokenIssuer.mintStateless(target, userId)
         return QueueStatus.directEntry(entryToken)
-    }
-
-    private fun issueDirectEntryToken(target: QueueTarget, userId: Long, viaFailOpen: Boolean): EntryToken =
-        if (viaFailOpen) entryTokenIssuer.mintStateless(target, userId)
-        else entryTokenIssuer.issueIfAbsent(target, userId)
-
-    private fun recordRedisDegraded() {
-        meterRegistry.counter(REDIS_DEGRADED_COUNTER).increment()
     }
 }

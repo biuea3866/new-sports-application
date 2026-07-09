@@ -14,7 +14,6 @@ import com.sportsapp.domain.virtualqueue.vo.QueueTargetType
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -36,12 +35,10 @@ class VirtualQueueDomainServiceTest : BehaviorSpec({
         virtualQueueStore: VirtualQueueStore = mockk(),
         entryTokenIssuer: EntryTokenIssuer = mockk(),
         featureFlagEvaluator: FeatureFlagEvaluator = mockk(),
-        meterRegistry: SimpleMeterRegistry = SimpleMeterRegistry(),
     ) = VirtualQueueDomainService(
         virtualQueueStore = virtualQueueStore,
         entryTokenIssuer = entryTokenIssuer,
         featureFlagEvaluator = featureFlagEvaluator,
-        meterRegistry = meterRegistry,
         maxCapacity = MAX_CAPACITY,
         batchSize = BATCH_SIZE,
         tickSeconds = TICK_SECONDS,
@@ -84,16 +81,47 @@ class VirtualQueueDomainServiceTest : BehaviorSpec({
         val issuedToken = token()
 
         every { featureFlagEvaluator.isEnabled(VirtualQueueFeatureFlagKeys.ENABLED, FeatureContext.of(USER_ID), false) } returns false
-        every { entryTokenIssuer.issueIfAbsent(target, USER_ID) } returns issuedToken
+        every { entryTokenIssuer.mintStateless(target, USER_ID) } returns issuedToken
 
         When("enter를 호출하면") {
             val result = service.enter(target, USER_ID)
 
-            Then("대기 없이 DIRECT_ADMITTED(토큰 포함)를 반환한다") {
+            Then("Redis에 접근하지 않는 mintStateless로 발급해 DIRECT_ADMITTED(토큰 포함)를 반환한다 (플래그 OFF 경로는 인터셉터 검증 대상이 아니라 멱등 마커가 불필요)") {
                 result.state shouldBe QueueEntryState.DIRECT_ADMITTED
                 result.entryToken shouldBe issuedToken
                 result.position shouldBe null
                 verify(exactly = 0) { virtualQueueStore.enterIfAbsent(any(), any(), any()) }
+                verify(exactly = 1) { entryTokenIssuer.mintStateless(target, USER_ID) }
+                verify(exactly = 0) { entryTokenIssuer.issueIfAbsent(any(), any()) }
+            }
+        }
+    }
+
+    Given("플래그 OFF 상태에서 Redis가 다운된 상황에서") {
+        val virtualQueueStore = mockk<VirtualQueueStore>()
+        val entryTokenIssuer = mockk<EntryTokenIssuer>()
+        val featureFlagEvaluator = mockk<FeatureFlagEvaluator>()
+        val service = buildService(
+            virtualQueueStore = virtualQueueStore,
+            entryTokenIssuer = entryTokenIssuer,
+            featureFlagEvaluator = featureFlagEvaluator,
+        )
+        val statelessToken = token("stateless-token-off")
+
+        every { featureFlagEvaluator.isEnabled(VirtualQueueFeatureFlagKeys.ENABLED, FeatureContext.of(USER_ID), false) } returns false
+        // issueIfAbsent는 Redis SET NX를 타므로 Redis 다운 시 예외를 던진다 — OFF 경로가 이 메서드를
+        // 호출하면 5xx가 된다. mintStateless는 Redis에 접근하지 않아 다운 상황에서도 안전하다.
+        every { entryTokenIssuer.issueIfAbsent(target, USER_ID) } throws DataAccessResourceFailureException("redis down")
+        every { entryTokenIssuer.mintStateless(target, USER_ID) } returns statelessToken
+
+        When("enter를 호출하면") {
+            val result = service.enter(target, USER_ID)
+
+            Then("예외 전파 없이 mintStateless로 DIRECT_ADMITTED를 반환한다 (5xx 방지)") {
+                result.state shouldBe QueueEntryState.DIRECT_ADMITTED
+                result.entryToken shouldBe statelessToken
+                verify(exactly = 1) { entryTokenIssuer.mintStateless(target, USER_ID) }
+                verify(exactly = 0) { entryTokenIssuer.issueIfAbsent(any(), any()) }
             }
         }
     }
@@ -227,12 +255,10 @@ class VirtualQueueDomainServiceTest : BehaviorSpec({
         val virtualQueueStore = mockk<VirtualQueueStore>()
         val entryTokenIssuer = mockk<EntryTokenIssuer>()
         val featureFlagEvaluator = mockk<FeatureFlagEvaluator>()
-        val meterRegistry = SimpleMeterRegistry()
         val service = buildService(
             virtualQueueStore = virtualQueueStore,
             entryTokenIssuer = entryTokenIssuer,
             featureFlagEvaluator = featureFlagEvaluator,
-            meterRegistry = meterRegistry,
         )
         val statelessToken = token("stateless-token")
 
@@ -243,12 +269,13 @@ class VirtualQueueDomainServiceTest : BehaviorSpec({
         When("enter를 호출하면") {
             val result = service.enter(target, USER_ID)
 
-            Then("mintStateless로 토큰을 발급해 directEntry 폴백하고 redis_degraded를 증가시킨다 (fail-open, §0-3)") {
+            // redis_degraded 카운터는 infra(VirtualQueueStoreImpl.executeTracked)에서만 증가시킨다 —
+            // 도메인 서비스가 같은 예외를 다시 세면 단일 장애가 두 번 집계된다 (p3).
+            Then("mintStateless로 토큰을 발급해 directEntry로 폴백한다 (fail-open, §0-3)") {
                 result.state shouldBe QueueEntryState.DIRECT_ADMITTED
                 result.entryToken shouldBe statelessToken
                 verify(exactly = 1) { entryTokenIssuer.mintStateless(target, USER_ID) }
                 verify(exactly = 0) { entryTokenIssuer.issueIfAbsent(any(), any()) }
-                meterRegistry.counter("virtual_queue.redis_degraded").count() shouldBe 1.0
             }
         }
     }
@@ -256,11 +283,9 @@ class VirtualQueueDomainServiceTest : BehaviorSpec({
     Given("status 조회 도중 Redis 장애(DataAccessException)가 발생한 상황에서") {
         val virtualQueueStore = mockk<VirtualQueueStore>()
         val entryTokenIssuer = mockk<EntryTokenIssuer>()
-        val meterRegistry = SimpleMeterRegistry()
         val service = buildService(
             virtualQueueStore = virtualQueueStore,
             entryTokenIssuer = entryTokenIssuer,
-            meterRegistry = meterRegistry,
         )
         val statelessToken = token("stateless-token-2")
 
@@ -270,11 +295,10 @@ class VirtualQueueDomainServiceTest : BehaviorSpec({
         When("status를 호출하면") {
             val result = service.status(target, USER_ID)
 
-            Then("mintStateless로 토큰을 발급해 directEntry 폴백하고 redis_degraded를 증가시킨다 (fail-open, §0-3)") {
+            Then("mintStateless로 토큰을 발급해 directEntry로 폴백한다 (fail-open, §0-3)") {
                 result.state shouldBe QueueEntryState.DIRECT_ADMITTED
                 result.entryToken shouldBe statelessToken
                 verify(exactly = 1) { entryTokenIssuer.mintStateless(target, USER_ID) }
-                meterRegistry.counter("virtual_queue.redis_degraded").count() shouldBe 1.0
             }
         }
     }
