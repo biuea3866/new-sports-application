@@ -4,8 +4,10 @@ import com.sportsapp.domain.common.DistributedLock
 import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import com.sportsapp.domain.recruitment.entity.Application
+import com.sportsapp.domain.recruitment.entity.ApplicationStatus
 import com.sportsapp.domain.recruitment.entity.Recruitment
 import com.sportsapp.domain.recruitment.exception.NotRecruiterException
+import com.sportsapp.domain.recruitment.exception.UnauthorizedApplicationAccessException
 import com.sportsapp.domain.recruitment.policy.CancellationPolicy
 import com.sportsapp.domain.recruitment.repository.ApplicationRepository
 import com.sportsapp.domain.recruitment.repository.RecruitmentRepository
@@ -16,6 +18,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import java.math.BigDecimal
+import java.time.ZoneOffset
 import java.time.ZonedDateTime
 
 private fun openRecruitment(recruiterUserId: Long = 1L): Recruitment = Recruitment.create(
@@ -128,6 +131,75 @@ class RecruitmentQueryDomainServiceTest : BehaviorSpec({
             Then("ResourceNotFoundException을 던진다") {
                 shouldThrow<ResourceNotFoundException> {
                     service.getApplicationById(404L)
+                }
+            }
+        }
+    }
+
+    Given("본인 소유의 신청과 그 신청이 속한 모집이 존재하는 상황") {
+        // Application.createdAt은 JPA @CreatedDate(lateinit) — 실제 영속화 전에는 접근 시 예외가 나므로
+        // ApplicationDetail이 참조하는 필드를 relaxed mockk로 스텁한다 (ListMyApplicationsUseCaseTest와 동일 패턴).
+        val application = mockk<Application>(relaxed = true)
+        every { application.id } returns 11L
+        every { application.recruitmentId } returns 1L
+        every { application.applicantUserId } returns 100L
+        every { application.status } returns ApplicationStatus.CONFIRMED
+        every { application.paymentId } returns 701L
+        every { application.createdAt } returns ZonedDateTime.of(2026, 6, 2, 9, 0, 0, 0, ZoneOffset.UTC)
+        every { applicationRepository.findById(11L) } returns application
+
+        val recruitment = openRecruitment(recruiterUserId = 5L)
+        every { recruitmentRepository.findById(1L) } returns recruitment
+
+        When("getApplicationDetailBy(applicationId=11, requesterUserId=100)를 호출하면") {
+            val result = service.getApplicationDetailBy(applicationId = 11L, requesterUserId = 100L)
+
+            Then("모집명·참가비를 조인한 상세를 반환한다") {
+                result.applicationId shouldBe 11L
+                result.recruitmentId shouldBe recruitment.id
+                result.recruitmentTitle shouldBe recruitment.title
+                result.status shouldBe ApplicationStatus.CONFIRMED
+                result.feeAmount shouldBe recruitment.feeAmount
+                result.paymentId shouldBe 701L
+                result.createdAt shouldBe ZonedDateTime.of(2026, 6, 2, 9, 0, 0, 0, ZoneOffset.UTC)
+            }
+        }
+    }
+
+    Given("본인 소유가 아닌 신청 상세 조회") {
+        val application = Application.create(recruitmentId = 1L, applicantUserId = 100L)
+        every { applicationRepository.findById(11L) } returns application
+
+        When("getApplicationDetailBy(applicationId=11, requesterUserId=999)를 호출하면") {
+            Then("UnauthorizedApplicationAccessException을 던진다") {
+                shouldThrow<UnauthorizedApplicationAccessException> {
+                    service.getApplicationDetailBy(applicationId = 11L, requesterUserId = 999L)
+                }
+            }
+        }
+    }
+
+    Given("존재하지 않는 신청 상세 조회") {
+        every { applicationRepository.findById(404L) } returns null
+
+        When("getApplicationDetailBy를 호출하면") {
+            Then("ResourceNotFoundException을 던진다") {
+                shouldThrow<ResourceNotFoundException> {
+                    service.getApplicationDetailBy(applicationId = 404L, requesterUserId = 100L)
+                }
+            }
+        }
+    }
+
+    Given("신청은 있으나 참조 모집이 존재하지 않는 상황") {
+        val application = Application.create(recruitmentId = 404L, applicantUserId = 100L)
+        every { applicationRepository.findById(11L) } returns application
+        every { recruitmentRepository.findById(404L) } returns null
+
+        When("getApplicationDetailBy(applicationId=11, requesterUserId=100)를 호출하면") {
+            Then("ResourceNotFoundException을 던진다") {
+                shouldThrow<ResourceNotFoundException> {
+                    service.getApplicationDetailBy(applicationId = 11L, requesterUserId = 100L)
                 }
             }
         }
