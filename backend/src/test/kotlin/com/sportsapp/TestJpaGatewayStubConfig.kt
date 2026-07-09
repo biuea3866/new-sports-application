@@ -3,9 +3,13 @@ package com.sportsapp
 import com.sportsapp.domain.booking.dto.FacilitySchedule
 import com.sportsapp.domain.booking.gateway.FacilityOwnershipGateway
 import com.sportsapp.domain.booking.gateway.FacilityScheduleGateway
+import com.sportsapp.domain.facility.service.ProgramDomainService
+import io.mockk.every
+import io.mockk.mockk
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Profile
+import org.springframework.data.domain.Page
 
 /**
  * test-jpa 프로파일 전용 게이트웨이 스텁.
@@ -29,5 +33,14 @@ class TestJpaGatewayStubConfig {
     @Profile("test-jpa")
     fun facilityScheduleGateway(): FacilityScheduleGateway = object : FacilityScheduleGateway {
         override fun findSchedulableFacilities(): List<FacilitySchedule> = emptyList()
+    }
+
+    // BE-07 catalog 파사드(CatalogCompositionService)가 프로파일 무관 빈으로
+    // ProgramDomainService(@Profile("!test-jpa"))를 주입받으므로, test-jpa 풀부팅을 위해
+    // no-op 스텁을 제공한다 (facility catalog는 JPA-only 테스트에서 빈 결과).
+    @Bean
+    @Profile("test-jpa")
+    fun programDomainService(): ProgramDomainService = mockk(relaxed = true) {
+        every { searchForCatalog(any(), any()) } returns Page.empty()
     }
 }
