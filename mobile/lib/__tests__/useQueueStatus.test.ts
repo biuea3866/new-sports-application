@@ -55,7 +55,7 @@ describe('useQueueStatus', () => {
     jest.useRealTimers();
   });
 
-  it('[U-01] enabled true일 때 3초 간격으로 재조회한다', async () => {
+  it('enabled true일 때 3초 간격으로 재조회한다', async () => {
     jest.useFakeTimers();
     getQueueStatusMock.mockResolvedValue({ outcome: 'OK', data: waitingEntry });
     const { wrapper, queryClient } = createWrapper();
@@ -75,7 +75,7 @@ describe('useQueueStatus', () => {
     queryClient.clear();
   });
 
-  it('[U-02] 404(NOT_IN_QUEUE) 응답을 결과 데이터로 그대로 노출한다', async () => {
+  it('404(NOT_IN_QUEUE) 응답을 결과 데이터로 그대로 노출한다', async () => {
     getQueueStatusMock.mockResolvedValue({ outcome: 'NOT_IN_QUEUE' });
     const { wrapper, queryClient } = createWrapper();
 
@@ -92,7 +92,7 @@ describe('useQueueStatus', () => {
     queryClient.clear();
   });
 
-  it('[U-03] WAITING 응답의 position/aheadCount/etaSeconds를 그대로 반환한다', async () => {
+  it('WAITING 응답의 position/aheadCount/etaSeconds를 그대로 반환한다', async () => {
     getQueueStatusMock.mockResolvedValue({ outcome: 'OK', data: waitingEntry });
     const { wrapper, queryClient } = createWrapper();
 
@@ -108,7 +108,7 @@ describe('useQueueStatus', () => {
     queryClient.clear();
   });
 
-  it('[U-04] ADMITTED 응답을 그대로 노출한다(상위 뷰모델의 입장 감지 근거)', async () => {
+  it('ADMITTED 응답을 그대로 노출한다(상위 뷰모델의 입장 감지 근거)', async () => {
     getQueueStatusMock.mockResolvedValue({ outcome: 'OK', data: admittedEntry });
     const { wrapper, queryClient } = createWrapper();
 
@@ -127,7 +127,7 @@ describe('useQueueStatus', () => {
     queryClient.clear();
   });
 
-  it('[U-05] enabled false면 폴링하지 않는다', async () => {
+  it('enabled false면 폴링하지 않는다', async () => {
     jest.useFakeTimers();
     getQueueStatusMock.mockResolvedValue({ outcome: 'OK', data: waitingEntry });
     const { wrapper, queryClient } = createWrapper();
@@ -148,7 +148,7 @@ describe('useQueueStatus', () => {
     queryClient.clear();
   });
 
-  it('[U-06] 5xx 3회 연속 실패 시 폴링을 중단한다', async () => {
+  it('5xx 3회 연속 실패 시 폴링을 중단한다', async () => {
     jest.useFakeTimers();
     getQueueStatusMock.mockRejectedValue(new Error('Internal Server Error'));
     const { wrapper, queryClient } = createWrapper();
@@ -174,13 +174,13 @@ describe('useQueueStatus', () => {
 });
 
 describe('getQueueStatusRefetchIntervalMs', () => {
-  it('[U-07] 연속 실패 횟수가 3 미만이면 3000ms를 반환한다', () => {
+  it('연속 실패 횟수가 3 미만이면 3000ms를 반환한다', () => {
     expect(getQueueStatusRefetchIntervalMs(0)).toBe(3000);
     expect(getQueueStatusRefetchIntervalMs(1)).toBe(3000);
     expect(getQueueStatusRefetchIntervalMs(2)).toBe(3000);
   });
 
-  it('[U-07] 연속 실패 횟수가 3 이상이면 false를 반환한다', () => {
+  it('연속 실패 횟수가 3 이상이면 false를 반환한다', () => {
     expect(getQueueStatusRefetchIntervalMs(3)).toBe(false);
     expect(getQueueStatusRefetchIntervalMs(4)).toBe(false);
   });
