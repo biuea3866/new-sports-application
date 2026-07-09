@@ -178,6 +178,9 @@ limited-drop:
 virtual-queue:
   # 대상별 최대 동시 대기 인원(FR-7 포화 판정 기준). enter.lua가 ZCARD>=maxCapacity면 -1(포화) 거부.
   max-capacity: ${VIRTUAL_QUEUE_MAX_CAPACITY:100000}
+  # waiting/heartbeat/seq 슬라이딩 TTL(초, redis-contract §1 — 30분). VirtualQueueStoreImpl(BE-02)이
+  # enter/admit/evict/touchHeartbeat 호출마다 이 값으로 PEXPIRE를 갱신한다.
+  sliding-ttl-seconds: ${VIRTUAL_QUEUE_SLIDING_TTL_SECONDS:1800}
   admission:
     # 2초당 100명(NFR) — AdmissionPumpScheduler(후행 티켓)가 admit.lua 호출 시 사용할 배치 크기·주기.
     batch-size: ${VIRTUAL_QUEUE_BATCH_SIZE:100}

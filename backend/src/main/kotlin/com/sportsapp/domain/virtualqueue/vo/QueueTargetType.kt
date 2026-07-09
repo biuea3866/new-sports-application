@@ -9,4 +9,15 @@ package com.sportsapp.domain.virtualqueue.vo
 enum class QueueTargetType(val slug: String) {
     LIMITED_DROP("limited-drop"),
     TICKETING_EVENT("ticketing-event"),
+    ;
+
+    companion object {
+        /**
+         * [slug]로부터 역변환한다 — `queue:active` Set member(`{slug}:{targetId}`) 파싱 전용
+         * (`QueueTarget.fromActiveMember`, `VirtualQueueStoreImpl.activeTargets`).
+         */
+        fun fromSlug(slug: String): QueueTargetType =
+            values().firstOrNull { it.slug == slug }
+                ?: throw IllegalArgumentException("Unknown QueueTargetType slug: $slug")
+    }
 }
