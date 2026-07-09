@@ -82,4 +82,10 @@ export const ROUTES = {
   // 주문 상세(Option A) — 통합 주문내역 항목 탭 시 "주문 자신"의 상세로 이동한다.
   // `orderType`은 `api/order-history-types.ts`의 `OrderType`.
   orderDetail: (orderType: string, id: string) => `/orders/${orderType}/${id}` as const,
+
+  // 가상 대기열 대기실(FE-04) — `type`은 BE 계약과 일치하는 `limited-drop` | `ticketing-event`.
+  // 후행 진입점 와이어업 티켓(FE-07·08·09)은 이 빌더로만 이동한다.
+  queue: {
+    waiting: (type: string, targetId: string) => `/queue/${type}/${targetId}` as const,
+  },
 } as const;
