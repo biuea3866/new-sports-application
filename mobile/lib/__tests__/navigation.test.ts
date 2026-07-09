@@ -13,3 +13,13 @@ describe('ROUTES.limitedDrop', () => {
     expect(ROUTES.limitedDrop.purchase('5')).toBe('/limited-drop/5/purchase');
   });
 });
+
+describe('ROUTES.catalog / ROUTES.orders', () => {
+  it('catalog가 통합 검색 경로 문자열을 반환한다', () => {
+    expect(ROUTES.catalog).toBe('/catalog');
+  });
+
+  it('orders가 통합 주문 내역 경로 문자열을 반환한다', () => {
+    expect(ROUTES.orders).toBe('/orders');
+  });
+});

@@ -12,6 +12,8 @@ const ENV_KEYS = [
   'EXPO_PUBLIC_FACILITY_PROGRAM_ENABLED',
   'EXPO_PUBLIC_COMMUNITY_POST_ENABLED',
   'EXPO_PUBLIC_COMMUNITY_BOOKING_ENABLED',
+  'EXPO_PUBLIC_CATALOG_ENABLED',
+  'EXPO_PUBLIC_ORDERS_UNIFIED_ENABLED',
 ] as const;
 
 function clearFlagEnv() {
@@ -106,5 +108,38 @@ describe('isFeatureEnabled — 모집·시설상품·모임게시판·소모임�
     process.env.EXPO_PUBLIC_COMMUNITY_BOOKING_ENABLED = 'true';
 
     expect(isFeatureEnabled('community.booking.enabled')).toBe(true);
+  });
+});
+
+describe('isFeatureEnabled — 통합 검색·통합 주문 내역 진입점 플래그', () => {
+  afterEach(() => {
+    clearFlagEnv();
+  });
+
+  it.each([
+    ['catalog.enabled', 'EXPO_PUBLIC_CATALOG_ENABLED'],
+    ['orders.unified.enabled', 'EXPO_PUBLIC_ORDERS_UNIFIED_ENABLED'],
+  ] as const)('%s는 환경변수 미설정 시 기본 OFF다(BE 파사드 API 준비 전 숨김)', (flag, _envKey) => {
+    clearFlagEnv();
+
+    expect(isFeatureEnabled(flag)).toBe(false);
+  });
+
+  it("catalog.enabled는 환경변수가 'true'일 때만 ON이다", () => {
+    process.env.EXPO_PUBLIC_CATALOG_ENABLED = 'true';
+
+    expect(isFeatureEnabled('catalog.enabled')).toBe(true);
+  });
+
+  it("catalog.enabled는 'true' 이외 값이면 OFF다", () => {
+    process.env.EXPO_PUBLIC_CATALOG_ENABLED = 'yes';
+
+    expect(isFeatureEnabled('catalog.enabled')).toBe(false);
+  });
+
+  it("orders.unified.enabled는 환경변수가 'true'일 때만 ON이다", () => {
+    process.env.EXPO_PUBLIC_ORDERS_UNIFIED_ENABLED = 'true';
+
+    expect(isFeatureEnabled('orders.unified.enabled')).toBe(true);
   });
 });
