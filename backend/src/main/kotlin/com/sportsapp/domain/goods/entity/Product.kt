@@ -78,6 +78,16 @@ class Product(
         if (ownerId != ownerUserId) throw ResourceNotFoundException("Product", id)
     }
 
+    /**
+     * BE-11 배치 백필 전용 — 기존 데이터 정책(전량 B2C)에 따라 미확정 상태(null)만 채운다.
+     * 이미 값이 있는 행(B2C/B2B 무관, 듀얼라이트로 채워진 신규 상품 포함)은 그대로 둔다
+     * (no-op) — 재실행해도 안전한 멱등 연산이며, 신규 등록([create])의 판별 결과를 덮어쓰지 않는다.
+     */
+    fun assignDefaultSellerTypeIfMissing() {
+        if (sellerType != null) return
+        sellerType = SellerType.B2C
+    }
+
     fun update(
         name: String?,
         category: ProductCategory?,

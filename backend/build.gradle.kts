@@ -54,6 +54,11 @@ dependencies {
     implementation("org.springframework.retry:spring-retry")
     implementation("org.springframework:spring-aspects")
 
+    // Spring Batch (BE-11: products.seller_type 청크 백필 — Flyway 인라인 대량 DML 금지 원칙에 따라
+    // 애플리케이션 배치가 기존 NULL 행을 청크 단위 커밋으로 채운다. 사용자 지정 도구.)
+    implementation("org.springframework.boot:spring-boot-starter-batch")
+    testImplementation("org.springframework.batch:spring-batch-test")
+
     // JWT
     implementation("io.jsonwebtoken:jjwt-api:0.12.6")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")

@@ -480,6 +480,19 @@ class GoodsDomainServiceTest : BehaviorSpec({
         }
     }
 
+    Given("seller_type이 NULL인 Product가 3건 존재하는 상태") {
+        every { productRepository.countBySellerTypeIsNull() } returns 3L
+
+        When("countProductsMissingSellerType을 호출하면") {
+            val result = service.countProductsMissingSellerType()
+
+            Then("ProductRepository.countBySellerTypeIsNull 결과를 그대로 반환한다") {
+                result shouldBe 3L
+                verify(exactly = 1) { productRepository.countBySellerTypeIsNull() }
+            }
+        }
+    }
+
     // @Transactional은 UseCase 레이어에서만 선언한다(DomainService 메서드에는 선언하지 않음).
     Given("GoodsDomainService 메서드 시그니처") {
         When("public 메서드 어노테이션을 검사하면") {

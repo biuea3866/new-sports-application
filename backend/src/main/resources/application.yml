@@ -66,6 +66,18 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  batch:
+    jdbc:
+      # Boot 기본 always/embedded는 부적합(always는 재기동·다중 테스트 컨텍스트에서 스키마 스크립트를
+      # 무조건 재실행해 "Table already exists"로 실패, embedded는 MySQL 비-임베디드라 아예 미실행).
+      # BatchMetadataSchemaInitializer(존재 확인 후 생성, idempotent)가 대신 담당한다 — never로 비활성화.
+      initialize-schema: never
+    job:
+      # BE-11: 부팅 시 자동 실행 금지(대량 백필 사고 방지, 즉시 롤백 지점). 1회성 운영 실행은
+      # SPRING_BATCH_JOB_ENABLED=true + SPRING_BATCH_JOB_NAME=sellerTypeBackfillJob 로 명시 기동 후
+      # 완료되면 다시 false로 되돌린다.
+      enabled: ${SPRING_BATCH_JOB_ENABLED:false}
+      name: ${SPRING_BATCH_JOB_NAME:}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
@@ -106,6 +118,13 @@ partner:
     # B2B 파트너 API Key 인증 필터 게이트. expand-contract 배포: 코드 배포 시 false로 시작해
     # 관리 API로 테스트 파트너 등록·회귀 확인 후 PARTNER_AUTH_ENABLED=true로 전환한다.
     enabled: ${PARTNER_AUTH_ENABLED:false}
+
+goods:
+  batch:
+    seller-type-backfill:
+      # BE-11: products.seller_type 백필 청크 크기(500~1000 권장, 티켓 기준). 테스트는
+      # 이 값을 작게 override해 다중 청크 커밋(commitCount>1)을 빠르게 검증한다.
+      chunk-size: ${GOODS_SELLER_TYPE_BACKFILL_CHUNK_SIZE:500}
 
 chat:
   realtime:
