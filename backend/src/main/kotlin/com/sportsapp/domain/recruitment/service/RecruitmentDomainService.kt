@@ -3,6 +3,7 @@ package com.sportsapp.domain.recruitment.service
 import com.sportsapp.domain.common.DistributedLock
 import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
+import com.sportsapp.domain.recruitment.dto.ApplicationDetail
 import com.sportsapp.domain.recruitment.dto.ApplicationWithRecruitmentTitle
 import com.sportsapp.domain.recruitment.entity.Application
 import com.sportsapp.domain.recruitment.entity.Recruitment
@@ -168,6 +169,24 @@ class RecruitmentDomainService(
     fun getApplicationById(applicationId: Long): Application =
         applicationRepository.findById(applicationId)
             ?: throw ResourceNotFoundException("Application", applicationId)
+
+    // 주문상세(order-detail) 단건 조회용 — 본인 소유 검증 + 모집명·참가비 조인.
+    fun getApplicationDetailBy(applicationId: Long, requesterUserId: Long): ApplicationDetail {
+        val application = applicationRepository.findById(applicationId)
+            ?: throw ResourceNotFoundException("Application", applicationId)
+        application.requireOwnedBy(requesterUserId)
+        val recruitment = recruitmentRepository.findById(application.recruitmentId)
+            ?: throw ResourceNotFoundException("Recruitment", application.recruitmentId)
+        return ApplicationDetail(
+            applicationId = application.id,
+            recruitmentId = recruitment.id,
+            recruitmentTitle = recruitment.title,
+            status = application.status,
+            feeAmount = recruitment.feeAmount,
+            paymentId = application.paymentId,
+            createdAt = application.createdAt,
+        )
+    }
 
     fun listRecruitments(communityId: Long?): List<Recruitment> =
         recruitmentRepository.findAll(communityId)
