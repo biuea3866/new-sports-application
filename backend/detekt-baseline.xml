@@ -37,6 +37,7 @@
     <ID>TooManyFunctions:McpAuditLogJpaRepositoryImpl.kt$McpAuditLogJpaRepositoryImpl : McpAuditLogQueryDslRepository</ID>
     <ID>TooManyFunctions:PaymentDomainService.kt$PaymentDomainService</ID>
     <ID>TooManyFunctions:TicketingDomainService.kt$TicketingDomainService</ID>
+    <ID>TooManyFunctions:VirtualQueueStore.kt$VirtualQueueStore</ID>
     <ID>UnusedParameter:GlobalExceptionHandler.kt$GlobalExceptionHandler$exception: ConstraintViolationException</ID>
   </CurrentIssues>
 </SmellBaseline>
