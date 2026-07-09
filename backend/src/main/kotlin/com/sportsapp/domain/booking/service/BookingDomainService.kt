@@ -1,5 +1,6 @@
 package com.sportsapp.domain.booking.service
 
+import com.sportsapp.domain.booking.dto.BookingDetail
 import com.sportsapp.domain.booking.dto.BookingOrderItem
 import com.sportsapp.domain.booking.dto.BookingResult
 import com.sportsapp.domain.booking.dto.FacilityKpiSummary
@@ -180,6 +181,16 @@ class BookingDomainService(
         if (booking.userId == requesterId) return booking
         // TODO(AUTH-05): Facility.ownerId 조회로 FACILITY_OWNER 권한 분기 추가
         throw UnauthorizedBookingAccessException(bookingId)
+    }
+
+    /**
+     * 단건 조회(GET /bookings/{id})가 소비하는 booking + slot 조인 상세.
+     * Slot도 booking 컨텍스트 자기 aggregate이므로 조인해도 도메인 교차가 아니다.
+     */
+    fun getBookingDetail(requesterId: Long, bookingId: Long): BookingDetail {
+        val booking = getBooking(requesterId, bookingId)
+        val slot = slotRepository.findById(booking.slotId)
+        return BookingDetail.of(booking, slot)
     }
 
     fun refundBooking(bookingId: Long, callerUserId: Long, refundAmount: BigDecimal, reason: String): Booking {

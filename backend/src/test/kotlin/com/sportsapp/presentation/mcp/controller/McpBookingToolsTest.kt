@@ -26,10 +26,12 @@ class McpBookingToolsTest : BehaviorSpec({
         val bookingResult = GetBookingResult(
             id = 1L,
             slotId = 100L,
+            facilityId = null,
             userId = 42L,
             status = BookingStatus.CONFIRMED,
             paymentId = 200L,
             paymentStatus = null,
+            title = null,
             createdAt = ZonedDateTime.now(),
             updatedAt = ZonedDateTime.now(),
         )
