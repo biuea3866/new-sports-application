@@ -39,6 +39,7 @@ web/.swc/
 web/next-env.d.ts
 
 # ===== mobile/ React Native + Expo =====
+mobile/node_modules
 mobile/node_modules/
 mobile/.expo/
 mobile/.expo-shared/
