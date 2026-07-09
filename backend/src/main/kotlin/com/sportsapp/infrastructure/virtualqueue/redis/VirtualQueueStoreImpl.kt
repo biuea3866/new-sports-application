@@ -24,6 +24,13 @@ import org.springframework.stereotype.Component
  * 슬라이딩 갱신한다. 폴링 사용자는 `enter`를 재호출하지 않으므로, 여기서 waiting을 갱신하지 않으면
  * 신규 진입 없이 폴링만 지속하는 대상의 waiting 키가 30분 뒤 만료되어 대량 무의도 소멸이 발생한다.
  *
+ * **touchHeartbeat 불변식(코드 리뷰 p1 — seq 키 재발)**: waiting·heartbeat뿐 아니라 seq 키의 TTL도
+ * 함께 슬라이딩 갱신한다. seq를 살리는 유일 경로가 `enter.lua`뿐이면, 판매 시작 후 신규 진입이
+ * 멈추고 폴링만 지속되는 드레인 국면(예: 10만÷50TPS≈33분 > 30분 sliding TTL)에서 seq가 만료된다.
+ * 그 순간 `admit.lua`의 `GET seq or '0'` → 0 → `admitted_count = min(count+batch, 0) = 0`으로
+ * 고수위가 0으로 리셋되어 admission이 붕괴한다(redis-contract §1 seq 행 — TTL은 waiting과 동일해야
+ * 하므로 갱신 트리거도 waiting과 동일하게 touchHeartbeat에서 함께 슬라이딩한다).
+ *
  * Redis 인프라 장애(`DataAccessException`)는 여기서 삼키지 않고 그대로 전파한다 — 호출부
  * (`VirtualQueueDomainService`/`AdmissionDomainService`)가 fail-open 폴백을 판단한다. 이 지점에서는
  * [REDIS_DEGRADED_COUNTER] 카운터만 증가시킨다.
@@ -87,6 +94,7 @@ class VirtualQueueStoreImpl(
         redisTemplate.opsForZSet().add(target.heartbeatKey(), userId.toString(), nowEpochMs().toDouble())
         redisTemplate.expire(target.waitingKey(), slidingTtl)
         redisTemplate.expire(target.heartbeatKey(), slidingTtl)
+        redisTemplate.expire(target.seqKey(), slidingTtl)
         Unit
     }
 

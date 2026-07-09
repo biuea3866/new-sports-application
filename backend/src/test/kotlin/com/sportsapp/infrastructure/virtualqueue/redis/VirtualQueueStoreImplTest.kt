@@ -207,6 +207,25 @@ class VirtualQueueStoreImplTest @Autowired constructor(
         }
     }
 
+    Given("seq 키의 TTL이 곧 만료될 만큼 짧게 설정된 상태에서 (판매 시작 후 신규 진입 없이 폴링만 지속하는 드레인 국면)") {
+        val target = QueueTarget(QueueTargetType.LIMITED_DROP, 3011L)
+        cleanup(target, 940002L)
+        val store = buildStore(slidingTtlSeconds = 1800)
+        store.enterIfAbsent(target, 940002L, maxCapacity = 100)
+        // 드레인 국면(신규 enter 없음)을 재현하기 위해 seq 키 TTL을 인위적으로 1초로 축소한다.
+        redisTemplate.expire(target.seqKey(), Duration.ofSeconds(1))
+
+        When("touchHeartbeat을 반복 호출하면") {
+            store.touchHeartbeat(target, 940002L)
+
+            Then("seq 키의 TTL도 waiting·heartbeat과 동일하게 sliding TTL(1800초)로 갱신되어 만료되지 않는다") {
+                val seqTtl = redisTemplate.getExpire(target.seqKey(), TimeUnit.SECONDS)
+                seqTtl shouldBeGreaterThan 1700L
+                seqTtl shouldBeLessThanOrEqual 1800L
+            }
+        }
+    }
+
     Given("waiting 키가 손상되어 Redis가 WRONGTYPE 오류를 반환하는 상황") {
         val target = QueueTarget(QueueTargetType.LIMITED_DROP, 3009L)
         cleanup(target)
