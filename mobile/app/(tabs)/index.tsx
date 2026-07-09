@@ -1,11 +1,18 @@
 /**
- * 홈 화면 — 다가오는 경기 + 상품 추천.
+ * 홈 화면 — 다가오는 경기 + 상품 추천 + 통합 검색 진입점(FE-11).
  * GET /events, GET /products를 호출해 요약을 보여준다.
+ *
+ * 통합 검색 진입점은 `catalog.enabled` 플래그로 게이팅한다(BE 파사드 API 준비 전 숨김,
+ * `20260708-상품주문-공유상위컨텍스트-design-fe-app.md` "Release Scenario").
  */
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { getBeClient } from '../../api/be-client';
+import { ListItem } from '../../components/ui';
+import { isFeatureEnabled } from '../../lib/feature-flags';
+import { ROUTES } from '../../lib/navigation';
 
 interface EventItem {
   id: number;
@@ -42,13 +49,21 @@ function formatDate(iso: string): string {
 }
 
 export default function HomeScreen() {
+  const router = useRouter();
   const events = useQuery({ queryKey: ['home-events'], queryFn: fetchEvents });
   const products = useQuery({ queryKey: ['home-products'], queryFn: fetchProducts });
+  const isCatalogEnabled = isFeatureEnabled('catalog.enabled');
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.appTitle}>Sports App</Text>
       <Text style={styles.appSubtitle}>생활 체육 예약 플랫폼</Text>
+
+      {isCatalogEnabled ? (
+        <View style={styles.entryPoint}>
+          <ListItem title="통합 검색" onPress={() => router.push(ROUTES.catalog)} />
+        </View>
+      ) : null}
 
       <Text style={styles.sectionTitle}>다가오는 경기</Text>
       {events.isLoading ? (
@@ -92,6 +107,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  entryPoint: { marginBottom: 8 },
   container: { flex: 1, backgroundColor: '#fff' },
   content: { padding: 20, paddingTop: 56 },
   appTitle: { fontSize: 26, fontWeight: 'bold', color: '#1C1C1E' },

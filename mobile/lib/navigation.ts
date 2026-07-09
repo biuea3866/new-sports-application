@@ -69,4 +69,8 @@ export const ROUTES = {
     detail: (id: string) => `/limited-drop/${id}` as const,
     purchase: (id: string) => `/limited-drop/${id}/purchase` as const,
   },
+
+  // 통합 상품 검색(FE-09) / 통합 주문 내역(FE-10) — FE-11 와이어업
+  catalog: '/catalog',
+  orders: '/orders',
 } as const;

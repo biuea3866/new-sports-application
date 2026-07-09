@@ -1,10 +1,16 @@
 /**
- * 마이페이지 탭 — 로그인한 사용자 정보 + 로그아웃.
+ * 마이페이지 탭 — 로그인한 사용자 정보 + 로그아웃 + 내 주문 내역(통합) 진입점(FE-11).
  * accessToken(JWT)에서 email/roles를 디코딩해 표시한다.
+ *
+ * 내 주문 내역 진입점은 `orders.unified.enabled` 플래그로 게이팅한다(BE 파사드 API 준비 전
+ * 숨김, `20260708-상품주문-공유상위컨텍스트-design-fe-app.md` "Release Scenario").
  */
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../lib/auth';
+import { ListItem } from '../../components/ui';
+import { isFeatureEnabled } from '../../lib/feature-flags';
+import { ROUTES } from '../../lib/navigation';
 
 interface JwtPayload {
   sub?: string;
@@ -31,6 +37,7 @@ export default function MeScreen() {
   const router = useRouter();
   const accessToken = useAuthStore((s) => s.accessToken);
   const logout = useAuthStore((s) => s.logout);
+  const isOrdersUnifiedEnabled = isFeatureEnabled('orders.unified.enabled');
 
   const payload = decodeJwt(accessToken);
 
@@ -56,6 +63,12 @@ export default function MeScreen() {
         </Text>
       </View>
 
+      {isOrdersUnifiedEnabled ? (
+        <View style={styles.entryPoint}>
+          <ListItem title="내 주문 내역" onPress={() => router.push(ROUTES.orders)} />
+        </View>
+      ) : null}
+
       <Pressable
         style={styles.logoutButton}
         onPress={() => void handleLogout()}
@@ -69,6 +82,7 @@ export default function MeScreen() {
 }
 
 const styles = StyleSheet.create({
+  entryPoint: { marginBottom: 16 },
   container: { flex: 1, backgroundColor: '#fff', padding: 24, paddingTop: 64 },
   title: { fontSize: 28, fontWeight: 'bold', color: '#1C1C1E', marginBottom: 24 },
   card: {

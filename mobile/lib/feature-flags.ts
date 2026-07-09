@@ -17,6 +17,9 @@
  *   community.booking.enabled: 기본 false — BE `@ConditionalOnProperty`(동일 property key)
  *   기본값(matchIfMissing=false)과 정합한 점진 공개 전제. BE 플래그 순서(community.booking →
  *   program → recruitment)와 축 단위로 맞춰 ON 전환한다.
+ * - catalog.enabled / orders.unified.enabled: 기본 false — BE 파사드 API(`/api/catalog`·
+ *   `/api/orders`) 배포 전에는 진입점을 숨긴다(`20260708-상품주문-공유상위컨텍스트-design-fe-app.md`
+ *   "Release Scenario — 기능 플래그·점진 공개", FE-11).
  *
  * 이 플래그를 실제로 소비하는 화면/훅은 각 소유 티켓이 이 함수를 호출해 게이팅한다 — 이
  * 파일은 값 정의만 소유한다(FE-15 선례 계승).
@@ -36,7 +39,9 @@ export type DomainFeatureFlag =
   | 'recruitment.enabled'
   | 'facility.program.enabled'
   | 'community.post.enabled'
-  | 'community.booking.enabled';
+  | 'community.booking.enabled'
+  | 'catalog.enabled'
+  | 'orders.unified.enabled';
 
 export type FeatureFlag = ChatFeatureFlag | DomainFeatureFlag;
 
@@ -72,6 +77,14 @@ const FEATURE_FLAG_DEFINITIONS: Record<FeatureFlag, FeatureFlagDefinition> = {
   },
   'community.booking.enabled': {
     envKey: 'EXPO_PUBLIC_COMMUNITY_BOOKING_ENABLED',
+    defaultWhenUnset: false,
+  },
+  'catalog.enabled': {
+    envKey: 'EXPO_PUBLIC_CATALOG_ENABLED',
+    defaultWhenUnset: false,
+  },
+  'orders.unified.enabled': {
+    envKey: 'EXPO_PUBLIC_ORDERS_UNIFIED_ENABLED',
     defaultWhenUnset: false,
   },
 };
