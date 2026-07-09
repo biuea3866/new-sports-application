@@ -145,7 +145,7 @@ describe('isFeatureEnabled — 통합 검색·통합 주문 내역 진입점 플
   });
 });
 
-describe('isFeatureEnabled — 가상 대기열 진입 플래그 (FE-02, design-fe-app.md "Release Scenario")', () => {
+describe('isFeatureEnabled — 가상 대기열 진입 플래그 (design-fe-app.md "Release Scenario")', () => {
   afterEach(() => {
     clearFlagEnv();
   });
