@@ -15,3 +15,8 @@ export function isForbiddenError(error: Error | null | undefined): boolean {
 export function isNotFoundError(error: Error | null | undefined): boolean {
   return axios.isAxiosError(error) && error.response?.status === 404;
 }
+
+/** 응답 status가 401(Unauthorized)인 axios 에러인지 판별한다. */
+export function isUnauthorizedError(error: Error | null | undefined): boolean {
+  return axios.isAxiosError(error) && error.response?.status === 401;
+}
