@@ -31,7 +31,9 @@ class ApplicationApiController(
     ): ResponseEntity<List<ApplicationResponse>> =
         ResponseEntity.ok(listMyApplicationsUseCase.execute(userId))
 
-    // 통합 주문내역(RECRUITMENT 탭) → 주문상세 이동 대상. 본인 소유 검증은 UseCase → DomainService로 위임.
+    // Option A(주문 상세 화면 신설, 사용자 확정 2026-07-09) — 통합 주문내역의 RECRUITMENT 주문상세
+    // 화면이 호출하는 단건 조회. 근거: `20260708-상품주문-공유상위컨텍스트-tdd.md` v1.3
+    // "주문 항목 탭 네비게이션 결정" 절. 본인 소유 검증은 UseCase → DomainService로 위임.
     @GetMapping("/{id}")
     fun detail(
         @RequestHeader("X-User-Id") userId: Long,
