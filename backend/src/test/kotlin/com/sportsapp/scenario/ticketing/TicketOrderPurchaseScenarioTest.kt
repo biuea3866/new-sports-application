@@ -172,11 +172,15 @@ class TicketOrderPurchaseScenarioTest(
             When("GET /ticket-orders/{id} 를 호출하면") {
                 val getResult = mockMvc.get("/ticket-orders/$ticketOrderId").andReturn()
 
-                Then("200 OK + status=PENDING이 반환된다") {
+                Then("200 OK + status=PENDING과 이벤트명·이벤트id·생성일시가 반환된다") {
                     postResult.response.status shouldBe 202
                     getResult.response.status shouldBe 200
-                    getResult.response.contentAsString.contains("PENDING") shouldBe true
-                    getResult.response.contentAsString.contains(ticketOrderId.toString()) shouldBe true
+                    val body = getResult.response.contentAsString
+                    body.contains("PENDING") shouldBe true
+                    body.contains(ticketOrderId.toString()) shouldBe true
+                    body.contains("Polling Test Concert") shouldBe true
+                    body.contains("\"eventId\":${event.id}") shouldBe true
+                    body.contains("createdAt") shouldBe true
                 }
             }
         }

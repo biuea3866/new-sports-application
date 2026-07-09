@@ -3,6 +3,7 @@ package com.sportsapp.presentation.ticketing.controller
 import com.sportsapp.application.ticketing.usecase.GetTicketOrderUseCase
 import com.sportsapp.application.ticketing.dto.PurchaseTicketsCommand
 import com.sportsapp.application.ticketing.usecase.PurchaseTicketsUseCase
+import com.sportsapp.application.ticketing.dto.TicketOrderDetailResponse
 import com.sportsapp.application.ticketing.dto.TicketOrderResponse
 import com.sportsapp.domain.payment.exception.MissingIdempotencyKeyException
 import com.sportsapp.presentation.ticketing.dto.request.PurchaseTicketOrderRequest
@@ -43,5 +44,5 @@ class TicketOrderApiController(
     @GetMapping("/{id}")
     fun getTicketOrder(
         @PathVariable id: Long,
-    ): TicketOrderResponse = getTicketOrderUseCase.execute(id)
+    ): TicketOrderDetailResponse = getTicketOrderUseCase.execute(id)
 }
