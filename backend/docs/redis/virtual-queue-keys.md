@@ -29,8 +29,8 @@
 
 | 키 패턴 | 자료구조 | TTL | 무효화 트리거 | 근거 |
 |---|---|---|---|---|
-| `queue:{type}:{id}:waiting` | Sorted Set (score=**진입 시퀀스**, member=userId) | 1,800,000ms(30분) **sliding** — `enter`/`admit`/`evict`/`touchHeartbeat` 호출마다 `PEXPIRE` 갱신 | admission 시 `leave`로 `ZREM`, 이탈 sweep 시 `evict.lua`로 `ZREM` | `ZRANK`(표시용 aheadCount)·`ZSCORE`(admission 판정, 고정값). 시퀀스 score가 순번의 진실원 — 진입 시각(ms)이 아니라 `INCR` 채번이라 동시각 다건 진입의 score 동률(FIFO 붕괴)을 원천 차단 |
-| `queue:{type}:{id}:heartbeat` | Sorted Set (score=마지막 폴링 epoch ms) | waiting과 동일(30분 sliding, 동시 갱신) | `leave`/`evict.lua`로 `ZREM` | 이탈 판정(60초 미갱신) 전용. waiting과 score 의미가 달라 분리 |
+| `queue:{type}:{id}:waiting` | Sorted Set (score=**진입 시퀀스**, member=userId) | 1,800,000ms(30분) **sliding** — `enter`/`touchHeartbeat` 시에만 `PEXPIRE` 갱신 (`admit`은 waiting 미접근, `evict`은 `ZREM`만 하고 TTL 미갱신) | admission 시 `leave`로 `ZREM`, 이탈 sweep 시 `evict.lua`로 `ZREM` | `ZRANK`(표시용 aheadCount)·`ZSCORE`(admission 판정, 고정값). 시퀀스 score가 순번의 진실원 — 진입 시각(ms)이 아니라 `INCR` 채번이라 동시각 다건 진입의 score 동률(FIFO 붕괴)을 원천 차단 |
+| `queue:{type}:{id}:heartbeat` | Sorted Set (score=마지막 폴링 epoch ms) | waiting과 동일(30분 sliding, `enter`/`touchHeartbeat` 시 갱신) | `leave`/`evict.lua`로 `ZREM` | 이탈 판정(60초 미갱신) 전용. waiting과 score 의미가 달라 분리 |
 | `queue:{type}:{id}:admitted_count` | String (정수, 클러스터 admission 고수위) | waiting과 동일(30분 sliding, `admit.lua`가 매 틱 `PEXPIRE`) | 없음(단조 전진). 대상 비활성 시 TTL 자연 만료 | 다중 인스턴스 admission 합계의 단일 진실원(인스턴스 로컬 카운터 금지) |
 | `queue:{type}:{id}:seq` | String (정수, `INCR` 시퀀스 생성기 겸 `seenTotal` 상한) | waiting과 동일(30분 sliding) | 없음(단조 증가) | 진입 시 고정 순번의 원천이자 `admit.lua`의 전진 상한(`seenTotal`) — 두 역할을 한 키로 통일 |
 | `queue:{type}:{id}:token:{userId}` | String (HMAC 토큰 raw, 멱등+재사용 마커) | 300초 고정(토큰 TTL=좌석 락 TTL 정합) | 발급 시 `SET NX`, 구매 성공 시 best-effort 소진 표시 | 토큰 이중 발급 방지 + best-effort 1회성 마커 |
