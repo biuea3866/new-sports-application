@@ -1,5 +1,5 @@
 /**
- * U-01: getGoodsOrderDetail은 GET /goods-orders/{id}로 주문 상세를 반환한다(주문상세 Option A)
+ * U-01: getGoodsOrderDetail은 GET /goods-orders/{id}로 주문 상세(title·createdAt 포함)를 반환한다(주문상세 Option A+)
  * U-02: 응답에 paymentId·paymentStatus가 포함되고 items에 productName이 없다(백엔드 실제 계약)
  * U-03: 존재하지 않는 주문(404)은 예외로 전파된다
  */
@@ -27,20 +27,24 @@ describe('goodsOrders API — getGoodsOrderDetail', () => {
   const mockDetail: GoodsOrderDetailResponse = {
     id: 5,
     userId: 1,
-    status: 'PAID',
+    status: 'CONFIRMED',
     totalAmount: '10000',
     paymentId: 300,
-    paymentStatus: 'PAID',
+    paymentStatus: 'COMPLETED',
+    title: '요가매트 프리미엄',
+    createdAt: '2026-07-05T10:00:00.000Z',
     items: [{ id: 1, productId: 88, quantity: 1, unitPrice: '10000', subtotal: '10000' }],
   };
 
   describe('U-01', () => {
-    it('GET /goods-orders/5 호출 시 주문 상세를 반환한다', async () => {
+    it('GET /goods-orders/5 호출 시 주문 상세(title·createdAt 포함)를 반환한다', async () => {
       mock.onGet('/goods-orders/5').reply(200, mockDetail);
 
       const res = await getGoodsOrderDetail(5);
 
       expect(res.id).toBe(5);
+      expect(res.title).toBe('요가매트 프리미엄');
+      expect(res.createdAt).toBe('2026-07-05T10:00:00.000Z');
       expect(res.items).toHaveLength(1);
     });
   });
@@ -52,7 +56,7 @@ describe('goodsOrders API — getGoodsOrderDetail', () => {
       const res = await getGoodsOrderDetail(5);
 
       expect(res.paymentId).toBe(300);
-      expect(res.paymentStatus).toBe('PAID');
+      expect(res.paymentStatus).toBe('COMPLETED');
       expect(res.items[0]).not.toHaveProperty('productName');
     });
   });

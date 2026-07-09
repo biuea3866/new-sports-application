@@ -18,10 +18,12 @@ describe('Booking API', () => {
   const mockBooking: BookingResponse = {
     id: 10,
     slotId: 1,
+    facilityId: null,
     userId: 42,
     status: 'CONFIRMED',
     paymentId: null,
     paymentStatus: null,
+    title: null,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
   };

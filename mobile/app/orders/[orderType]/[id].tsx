@@ -1,9 +1,11 @@
 /**
- * 주문 상세 화면(Option A) — `/orders/[orderType]/[id]`
+ * 주문 상세 화면(Option A+) — `/orders/[orderType]/[id]`
  *
  * 근거: 통합 주문내역(BE-08)이 `OrderHistoryItem.sourceId`/`detailPath`를 "주문 자신"의
  * 도메인 PK/경로로 확정(Option A)함에 따라, 통합 주문내역(`app/orders/index.tsx`) 항목
- * 탭 시 이 화면으로 이동한다(`lib/catalog-navigation.ts#resolveOrderRoute`).
+ * 탭 시 이 화면으로 이동한다(`lib/catalog-navigation.ts#resolveOrderRoute`). BE 4종
+ * 주문상세 응답 보강(Option A+)이 origin/main에 머지되어 4개 도메인 모두 제목·주문 일시·
+ * 원본 참조 PK를 제공한다.
  *
  * orderType(BOOKING/GOODS/TICKETING/RECRUITMENT) 4종을 단일 화면 + 분기로 처리한다.
  * 4개 도메인의 실제 GET 상세 응답은 필드 구성이 서로 달라(백엔드 소스 대조 결과 —
@@ -82,6 +84,7 @@ export default function OrderDetailScreen() {
   const { data, isLoading, isError, refetch } = useOrderDetail(orderType, isInputValid ? id : 0);
 
   const viewModel = isInputValid && data ? toViewModel(id, data) : null;
+  const originRoute = viewModel?.originRoute ?? null;
 
   const handleOriginPress = (route: string) => {
     router.push(route);
@@ -156,12 +159,12 @@ export default function OrderDetailScreen() {
             </View>
           ) : null}
 
-          {viewModel.originRoute !== null ? (
+          {originRoute !== null ? (
             <View style={styles.originAction}>
               <Button
                 label={ORIGIN_LABEL}
                 variant="surface"
-                onPress={() => handleOriginPress(viewModel.originRoute as string)}
+                onPress={() => handleOriginPress(originRoute)}
               />
             </View>
           ) : null}

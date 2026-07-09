@@ -11,7 +11,7 @@ import { useOrderDetail } from '../useOrderDetail';
 import type {
   BookingResponse,
   GoodsOrderDetailResponse,
-  TicketOrderResponse,
+  TicketOrderDetailResponse,
 } from '../../api/types';
 import type { ApplicationDetailResponse } from '../../api/recruitment';
 
@@ -58,10 +58,12 @@ describe('useOrderDetail', () => {
     const booking: BookingResponse = {
       id: 42,
       slotId: 7,
+      facilityId: '9',
       userId: 1,
       status: 'CONFIRMED',
       paymentId: 900,
-      paymentStatus: 'PAID',
+      paymentStatus: 'COMPLETED',
+      title: '강남 풋살장 예약',
       createdAt: '2026-07-05T10:00:00.000Z',
       updatedAt: '2026-07-05T10:00:00.000Z',
     };
@@ -80,10 +82,12 @@ describe('useOrderDetail', () => {
     const goodsOrder: GoodsOrderDetailResponse = {
       id: 5,
       userId: 1,
-      status: 'PAID',
+      status: 'CONFIRMED',
       totalAmount: '10000',
       paymentId: 300,
-      paymentStatus: 'PAID',
+      paymentStatus: 'COMPLETED',
+      title: '요가매트 프리미엄',
+      createdAt: '2026-07-05T10:00:00.000Z',
       items: [],
     };
     getGoodsOrderDetailMock.mockResolvedValue(goodsOrder);
@@ -97,7 +101,14 @@ describe('useOrderDetail', () => {
   });
 
   it('TICKETING이면 getTicketOrderDetail을 호출하고 결과를 반환한다', async () => {
-    const ticketOrder: TicketOrderResponse = { ticketOrderId: 12, status: 'CONFIRMED' };
+    const ticketOrder: TicketOrderDetailResponse = {
+      ticketOrderId: 12,
+      status: 'CONFIRMED',
+      eventId: 77,
+      eventTitle: '2026 서울 마라톤',
+      paymentId: 500,
+      createdAt: '2026-07-05T10:00:00.000Z',
+    };
     getTicketOrderDetailMock.mockResolvedValue(ticketOrder);
     const { wrapper } = createWrapper();
 
@@ -112,7 +123,7 @@ describe('useOrderDetail', () => {
     const application: ApplicationDetailResponse = {
       applicationId: 100,
       recruitmentId: 9,
-      title: '주말 축구 3명 모집',
+      recruitmentTitle: '주말 축구 3명 모집',
       status: 'CONFIRMED',
       feeAmount: 5000,
       paymentId: 200,

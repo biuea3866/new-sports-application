@@ -1,5 +1,5 @@
 /**
- * U-01: getBookingDetail은 GET /bookings/{id}로 예약 상세를 반환한다(주문상세 Option A)
+ * U-01: getBookingDetail은 GET /bookings/{id}로 예약 상세(facilityId·title 포함)를 반환한다(주문상세 Option A+)
  * U-02: 존재하지 않는 예약(404)은 예외로 전파된다
  */
 import MockAdapter from 'axios-mock-adapter';
@@ -26,22 +26,26 @@ describe('booking API — getBookingDetail', () => {
   const mockBooking: BookingResponse = {
     id: 42,
     slotId: 7,
+    facilityId: '9',
     userId: 1,
     status: 'CONFIRMED',
     paymentId: 900,
-    paymentStatus: 'PAID',
+    paymentStatus: 'COMPLETED',
+    title: '강남 풋살장 예약',
     createdAt: '2026-07-05T10:00:00.000Z',
     updatedAt: '2026-07-05T10:00:00.000Z',
   };
 
   describe('U-01', () => {
-    it('GET /bookings/42 호출 시 예약 상세를 반환한다', async () => {
+    it('GET /bookings/42 호출 시 예약 상세(facilityId·title 포함)를 반환한다', async () => {
       mock.onGet('/bookings/42').reply(200, mockBooking);
 
       const res = await getBookingDetail(42);
 
       expect(res.id).toBe(42);
       expect(res.slotId).toBe(7);
+      expect(res.facilityId).toBe('9');
+      expect(res.title).toBe('강남 풋살장 예약');
       expect(res.paymentId).toBe(900);
     });
   });

@@ -51,17 +51,18 @@ export interface ApplicationResponse {
 }
 
 /**
- * `GET /applications/{id}` 응답 — 신청 상세(단건). 주문상세(Option A) 화면 전용 계약.
- * BE `feat/recruitment-application-detail-endpoint`에서 동시 신설 중이며, 이 worktree의
- * `main` 기준에는 아직 없다(신설 완료 전까지 404 — "API 미연동"). 필드명은 `id`가 아니라
- * `applicationId`로 명명된 별도 계약이다(`ApplicationResponse`와 혼용하지 않는다).
+ * `GET /applications/{id}` 응답 — 신청 상세(단건). 주문상세(Option A+) 화면 전용 계약.
+ * BE `application/recruitment/dto/ApplicationDetailResponse.kt`를 그대로 반영한다(origin/main
+ * 머지 완료). 필드명은 `id`가 아니라 `applicationId`로 명명된 별도 계약이다
+ * (`ApplicationResponse`와 혼용하지 않는다). `feeAmount`는 BigDecimal이라 항상 non-null이다
+ * (무료 모집이면 0).
  */
 export interface ApplicationDetailResponse {
   applicationId: number;
   recruitmentId: number;
-  title: string; // 모집명
+  recruitmentTitle: string;
   status: ApplicationStatus;
-  feeAmount: number | null;
+  feeAmount: number;
   paymentId: number | null;
   createdAt: string; // ISO-8601
 }

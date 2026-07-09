@@ -70,6 +70,11 @@ export const ROUTES = {
     purchase: (id: string) => `/limited-drop/${id}/purchase` as const,
   },
 
+  // 모집(recruitment) — `app/recruitments/[id].tsx` 실제 라우트와 일치.
+  recruitment: {
+    detail: (id: string) => `/recruitments/${id}` as const,
+  },
+
   // 통합 상품 검색(FE-09) / 통합 주문 내역(FE-10) — FE-11 와이어업
   catalog: '/catalog',
   orders: '/orders',

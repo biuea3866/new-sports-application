@@ -1,5 +1,5 @@
 /**
- * useOrderDetail — 통합 주문내역 항목 탭 → 주문 상세(Option A, `app/orders/[orderType]/[id].tsx`)
+ * useOrderDetail — 통합 주문내역 항목 탭 → 주문 상세(Option A+, `app/orders/[orderType]/[id].tsx`)
  * 화면이 쓰는 TanStack Query 훅.
  *
  * orderType별로 서로 다른 BE 엔드포인트/응답 타입을 호출해야 하므로(booking/goods-orders/
@@ -16,13 +16,17 @@ import { getGoodsOrderDetail } from '../api/goodsOrders';
 import { getTicketOrderDetail } from '../api/ticketOrders';
 import { getApplicationDetail } from '../api/recruitment';
 import type { ApplicationDetailResponse } from '../api/recruitment';
-import type { BookingResponse, GoodsOrderDetailResponse, TicketOrderResponse } from '../api/types';
+import type {
+  BookingResponse,
+  GoodsOrderDetailResponse,
+  TicketOrderDetailResponse,
+} from '../api/types';
 import type { OrderType } from '../api/order-history-types';
 
 export type OrderDetailQueryResult =
   | { orderType: 'BOOKING'; data: BookingResponse }
   | { orderType: 'GOODS'; data: GoodsOrderDetailResponse }
-  | { orderType: 'TICKETING'; data: TicketOrderResponse }
+  | { orderType: 'TICKETING'; data: TicketOrderDetailResponse }
   | { orderType: 'RECRUITMENT'; data: ApplicationDetailResponse };
 
 export function orderDetailQueryKey(orderType: OrderType, id: number) {

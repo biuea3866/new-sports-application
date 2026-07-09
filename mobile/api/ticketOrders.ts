@@ -8,6 +8,7 @@ import { getBeClient } from './be-client';
 import type {
   PurchaseTicketOrderRequest,
   SelectSeatsResponse,
+  TicketOrderDetailResponse,
   TicketOrderResponse,
 } from './types';
 
@@ -62,11 +63,11 @@ export async function purchaseTicketOrder(
 /**
  * 티켓 주문 상세 조회
  * GET /ticket-orders/{id}
- * 주문상세(Option A) 화면이 사용한다. 응답은 `TicketOrderResponse`(ticketOrderId·status)로,
- * paymentId·createdAt·eventId는 백엔드 계약(`application/ticketing/dto/TicketOrderResponse.kt`)에
- * 없어 제공되지 않는다 — 화면은 이 제약을 감안해 표시한다.
+ * 주문상세(Option A+) 화면이 사용한다. 응답은 `TicketOrderDetailResponse`
+ * (ticketOrderId·status·eventId·eventTitle·paymentId·createdAt) —
+ * 구매 응답(`TicketOrderResponse`)과는 별도 DTO다(BE `feat/ticket-order-detail-enrich`).
  */
-export async function getTicketOrderDetail(id: number): Promise<TicketOrderResponse> {
-  const res = await getBeClient().get<TicketOrderResponse>(`/ticket-orders/${id}`);
+export async function getTicketOrderDetail(id: number): Promise<TicketOrderDetailResponse> {
+  const res = await getBeClient().get<TicketOrderDetailResponse>(`/ticket-orders/${id}`);
   return res.data;
 }
