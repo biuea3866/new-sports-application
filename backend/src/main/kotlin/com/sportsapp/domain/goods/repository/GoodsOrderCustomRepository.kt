@@ -13,4 +13,7 @@ interface GoodsOrderCustomRepository {
 
     /** order 통합조회(BE-08 예정)용 — 대표 상품명(title) 조인 읽기(BE-03). */
     fun findBy(userId: Long, pageable: Pageable): Page<GoodsOrderWithTitle>
+
+    /** 주문 상세(단건)용 — [findBy]와 동일한 buildTitle 로직으로 대표 상품명을 조회한다. */
+    fun findTitleFor(orderId: Long): String
 }
