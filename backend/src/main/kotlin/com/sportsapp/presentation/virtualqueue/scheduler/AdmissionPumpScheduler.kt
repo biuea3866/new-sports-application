@@ -32,7 +32,7 @@ import org.springframework.stereotype.Component
  * try-catch로 보호한다 — 다음 틱에 그 대상만 재시도된다.
  *
  * 롤백: 운영 킬 스위치([IsAdmissionPumpEnabledUseCase] → `FeatureFlagEvaluator` 런타임 조회,
- * `virtual-queue.admission.enabled`)를 OFF로 활성화하면 배치 실행 자체를 재기동 없이 즉시
+ * `virtualqueue.admission.enabled`)를 OFF로 활성화하면 배치 실행 자체를 재기동 없이 즉시
  * 중단할 수 있다(no-conditional-on-property — 부팅 고정 `@Value` 토글 아님).
  */
 @Component
@@ -53,7 +53,7 @@ class AdmissionPumpScheduler(
     @Scheduled(fixedDelayString = "#{\${virtual-queue.admission.tick-seconds:2} * 1000}")
     fun pump() {
         if (!isAdmissionPumpEnabledUseCase.execute()) {
-            log.info("AdmissionPumpScheduler: disabled by virtual-queue.admission.enabled feature flag, skipping")
+            log.info("AdmissionPumpScheduler: disabled by virtualqueue.admission.enabled feature flag, skipping")
             return
         }
         listActiveQueueTargetsUseCase.execute().forEach(::pumpTarget)

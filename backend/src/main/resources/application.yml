@@ -172,7 +172,7 @@ limited-drop:
     enabled: ${LIMITED_DROP_REDIS_GATE_ENABLED:true}
 
 # 가상 대기열(Virtual Queue) — BE-01 계약 상수. 대기열 경유 자체는 여기의 enabled 플래그가 아니라
-# FeatureFlagEvaluator 런타임 조회(virtual-queue.enabled, VirtualQueueFeatureFlagKeys)로 토글한다
+# FeatureFlagEvaluator 런타임 조회(virtualqueue.enabled, VirtualQueueFeatureFlagKeys)로 토글한다
 # (no-conditional-on-property — 부팅 토글 아님, 3초 무중단 롤백). 아래는 admission·이탈·토큰의
 # 물리 파라미터 상수다. 값 정의는 backend/docs/redis/virtual-queue-keys.md 계약과 정합해야 한다.
 virtual-queue:
@@ -186,7 +186,7 @@ virtual-queue:
     batch-size: ${VIRTUAL_QUEUE_BATCH_SIZE:100}
     tick-seconds: ${VIRTUAL_QUEUE_TICK_SECONDS:2}
     # 운영 킬 스위치 — 여기의 yml 프로퍼티가 아니라 FeatureFlagEvaluator 런타임 조회
-    # (virtual-queue.admission.enabled, VirtualQueueFeatureFlagKeys.ADMISSION_ENABLED)로 토글한다
+    # (virtualqueue.admission.enabled, VirtualQueueFeatureFlagKeys.ADMISSION_ENABLED)로 토글한다
     # (no-conditional-on-property). 정의되지 않은 키는 default=true(활성)로 평가되고, 관리 플래그를
     # ARCHIVED가 아닌 OFF로 활성화하면 매 틱(2초) 재기동 없이 즉시 반영된다(배포 없는 즉시 롤백).
   heartbeat:

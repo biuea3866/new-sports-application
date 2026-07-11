@@ -26,12 +26,13 @@ private const val TYPE_SLUG = "limited-drop"
 /**
  * `VirtualQueueApiController` — API 계약(TDD "FE/외부 계약 — API 명세" §1~4) 매핑 검증(BE-08).
  *
- * `virtual-queue.enabled` 플래그를 `beforeSpec`에서 MySQL에 직접 seed 한다 — `FeatureFlag.create`의
- * `FLAG_KEY_PATTERN`(`^[a-z0-9]+(\.[a-z0-9-]+)*$`)이 첫 세그먼트 하이픈(`virtual-queue`)을 허용하지
- * 않아 엔티티 팩토리로는 이 키를 생성할 수 없다(featureflag 도메인의 기존 결함, BE-08 범위 밖) —
- * `jdbcTemplate` 직접 INSERT로 우회한다. Admission Pump는 `virtual-queue.admission.enabled`를
- * seed하지 않아 default(false)로 항상 스킵되므로, admittedCount는 테스트 동안 0으로 고정되고
- * WAITING 상태가 안정적으로 유지된다.
+ * `virtualqueue.enabled` 플래그를 `beforeSpec`에서 MySQL에 직접 seed 한다. 이 키는
+ * `FeatureFlag.create`의 `FLAG_KEY_PATTERN`(`^[a-z0-9]+(\.[a-z0-9-]+)*$`)을 준수해 관리 API
+ * (`CreateFeatureFlagUseCase`)로도 생성 가능하지만(과거 `virtual-queue.enabled`는 첫 세그먼트
+ * 하이픈으로 검증 실패 — 교정 완료), 테스트에서는 상태를 명시 seed하기 위해 `jdbcTemplate`
+ * 직접 INSERT를 유지한다. Admission Pump는 `virtualqueue.admission.enabled`를 seed하지 않아
+ * default(false)로 항상 스킵되므로, admittedCount는 테스트 동안 0으로 고정되고 WAITING 상태가
+ * 안정적으로 유지된다.
  */
 @AutoConfigureMockMvc
 class VirtualQueueApiControllerTest(

@@ -24,7 +24,7 @@ import org.springframework.web.servlet.HandlerInterceptor
  * `EntryTokenGuard`·`FeatureFlagEvaluator`(둘 다 domain.common)만 의존한다 — goods/ticketing
  * 도메인 패키지를 참조하지 않는다(TDD "시스템 역할 경계", 교차 도메인 결합 금지).
  *
- * 플래그(`virtual-queue.enabled`) OFF면 검증을 스킵해 기존 직접 구매 경로를 그대로 허용한다
+ * 플래그(`virtualqueue.enabled`) OFF면 검증을 스킵해 기존 직접 구매 경로를 그대로 허용한다
  * (FR-9). ON이면 `X-Entry-Token` 헤더를 [EntryTokenGuard.verify]로 검증하고, 실패(부재·위조·
  * 만료·`X-User-Id` 헤더 부재) 시 [QueueBypassDeniedException](403)을 던지며
  * [BYPASS_ATTEMPT_COUNTER]를 증가시킨다.
