@@ -1,5 +1,8 @@
 package com.sportsapp.domain.virtualqueue.service
 
+import com.sportsapp.domain.common.FeatureContext
+import com.sportsapp.domain.common.FeatureFlagEvaluator
+import com.sportsapp.domain.virtualqueue.VirtualQueueFeatureFlagKeys
 import com.sportsapp.domain.virtualqueue.dto.AdmissionBatchResult
 import com.sportsapp.domain.virtualqueue.gateway.VirtualQueueStore
 import com.sportsapp.domain.virtualqueue.vo.QueueTarget
@@ -16,10 +19,21 @@ import org.springframework.stereotype.Service
 @Service
 class AdmissionDomainService(
     private val virtualQueueStore: VirtualQueueStore,
+    private val featureFlagEvaluator: FeatureFlagEvaluator,
 ) {
 
+    /** `queue:active` 전체 조회 — 스케줄러(`AdmissionPumpScheduler`)가 순회할 활성 대상 목록. */
+    fun activeTargets(): Set<QueueTarget> = virtualQueueStore.activeTargets()
+
     /**
-     * ⓪ seq-존재 가드(BE-07 인프라 리뷰 p4): seq 키가 만료된 죽은 대상이면 `advanceAdmission`을
+     * Admission Pump 운영 킬 스위치 판정 — 매 틱 런타임 조회(no-conditional-on-property).
+     * 정의되지 않은 키·ARCHIVED 플래그는 [FeatureFlagEvaluator] 계약대로 기본값(true, 활성)을 반환한다.
+     */
+    fun isPumpEnabled(): Boolean =
+        featureFlagEvaluator.isEnabled(VirtualQueueFeatureFlagKeys.ADMISSION_ENABLED, FeatureContext.anonymous(), true)
+
+    /**
+     * ⓪ seq-존재 가드: seq 키가 만료된 죽은 대상이면 `advanceAdmission`을
      * 호출하지 않고 `queue:active`에서 제거만 한 뒤 즉시 반환한다 — seq 만료 후 `admit.lua`가 돌면
      * `admitted_count = min(count+batch, 0) = 0`으로 고수위가 역행/붕괴하기 때문이다(폴링이 지속되는
      * 한 seq는 생존하므로, 이 가드는 폴링·이탈 모두 끊긴 대상만 정리한다).

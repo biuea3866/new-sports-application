@@ -1,5 +1,8 @@
 package com.sportsapp.domain.virtualqueue.service
 
+import com.sportsapp.domain.common.FeatureContext
+import com.sportsapp.domain.common.FeatureFlagEvaluator
+import com.sportsapp.domain.virtualqueue.VirtualQueueFeatureFlagKeys
 import com.sportsapp.domain.virtualqueue.gateway.VirtualQueueStore
 import com.sportsapp.domain.virtualqueue.vo.QueueTarget
 import com.sportsapp.domain.virtualqueue.vo.QueueTargetType
@@ -22,7 +25,8 @@ import java.time.ZonedDateTime
 class AdmissionDomainServiceTest : BehaviorSpec({
 
     val virtualQueueStore = mockk<VirtualQueueStore>()
-    val service = AdmissionDomainService(virtualQueueStore)
+    val featureFlagEvaluator = mockk<FeatureFlagEvaluator>()
+    val service = AdmissionDomainService(virtualQueueStore, featureFlagEvaluator)
     val target = QueueTarget(QueueTargetType.LIMITED_DROP, 1L)
 
     Given("배치 admission 전진 대상과 이탈 대상이 함께 있는 큐") {
@@ -82,7 +86,7 @@ class AdmissionDomainServiceTest : BehaviorSpec({
         }
     }
 
-    Given("seq 키가 만료된(죽은) 대상 — 폴링·이탈 모두 끊긴 상태 (BE-07 seq-존재 가드)") {
+    Given("seq 키가 만료된(죽은) 대상 — 폴링·이탈 모두 끊긴 상태 (seq-존재 가드)") {
         val deadTarget = QueueTarget(QueueTargetType.LIMITED_DROP, 2L)
         every { virtualQueueStore.seqExists(deadTarget) } returns false
         every { virtualQueueStore.deactivate(deadTarget) } just runs
@@ -97,6 +101,51 @@ class AdmissionDomainServiceTest : BehaviorSpec({
                 verify(exactly = 1) { virtualQueueStore.deactivate(deadTarget) }
                 verify(exactly = 0) { virtualQueueStore.advanceAdmission(deadTarget, any()) }
                 verify(exactly = 0) { virtualQueueStore.sweepStale(deadTarget, any(), any()) }
+            }
+        }
+    }
+
+    Given("활성 대상이 2건 등록된 queue:active") {
+        val activeTargets = setOf(
+            QueueTarget(QueueTargetType.LIMITED_DROP, 10L),
+            QueueTarget(QueueTargetType.TICKETING_EVENT, 20L),
+        )
+        every { virtualQueueStore.activeTargets() } returns activeTargets
+
+        When("activeTargets를 호출하면") {
+            val result = service.activeTargets()
+
+            Then("VirtualQueueStore.activeTargets 결과를 그대로 반환한다") {
+                result shouldBe activeTargets
+                verify(exactly = 1) { virtualQueueStore.activeTargets() }
+            }
+        }
+    }
+
+    Given("Admission Pump 킬 스위치 플래그가 ON으로 평가되는 상태에서") {
+        every {
+            featureFlagEvaluator.isEnabled(VirtualQueueFeatureFlagKeys.ADMISSION_ENABLED, FeatureContext.anonymous(), true)
+        } returns true
+
+        When("isPumpEnabled를 호출하면") {
+            val result = service.isPumpEnabled()
+
+            Then("true를 반환한다") {
+                result shouldBe true
+            }
+        }
+    }
+
+    Given("Admission Pump 킬 스위치 플래그가 OFF로 평가되는 상태에서 (운영 킬 스위치)") {
+        every {
+            featureFlagEvaluator.isEnabled(VirtualQueueFeatureFlagKeys.ADMISSION_ENABLED, FeatureContext.anonymous(), true)
+        } returns false
+
+        When("isPumpEnabled를 호출하면") {
+            val result = service.isPumpEnabled()
+
+            Then("false를 반환한다") {
+                result shouldBe false
             }
         }
     }

@@ -272,7 +272,7 @@ class VirtualQueueStoreImplTest @Autowired constructor(
         }
     }
 
-    Given("queue:active에 등록된 대상을 deactivate로 정리할 때 (BE-07 seq-존재 가드)") {
+    Given("queue:active에 등록된 대상을 deactivate로 정리할 때 (seq-존재 가드)") {
         val target = QueueTarget(QueueTargetType.TICKETING_EVENT, 3014L)
         cleanup(target)
         val store = buildStore()

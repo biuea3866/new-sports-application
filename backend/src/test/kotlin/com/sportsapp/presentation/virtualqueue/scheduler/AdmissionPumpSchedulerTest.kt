@@ -1,9 +1,10 @@
 package com.sportsapp.presentation.virtualqueue.scheduler
 
 import com.sportsapp.SharedTestContainers
+import com.sportsapp.application.virtualqueue.usecase.IsAdmissionPumpEnabledUseCase
+import com.sportsapp.application.virtualqueue.usecase.ListActiveQueueTargetsUseCase
 import com.sportsapp.application.virtualqueue.usecase.RunAdmissionBatchUseCase
 import com.sportsapp.domain.virtualqueue.dto.AdmissionBatchResult
-import com.sportsapp.domain.virtualqueue.gateway.VirtualQueueStore
 import com.sportsapp.domain.virtualqueue.vo.QueueTarget
 import com.sportsapp.domain.virtualqueue.vo.QueueTargetType
 import com.sportsapp.infrastructure.lock.RedisDistributedLock
@@ -31,8 +32,8 @@ import org.springframework.test.context.support.TestPropertySourceUtils
  * `AdmissionPumpScheduler` — 실 Redis(Testcontainers) 분산 락 기반 클러스터 단일 전진 검증(BE-07).
  *
  * `RedisDistributedLockConcurrencyTest`의 경량 SpringBootTest(Redis 전용) 패턴을 따른다.
- * `VirtualQueueStore`·`RunAdmissionBatchUseCase`는 Mock — 검증 대상은 "락 획득 여부에 따른 위임 분기"와
- * "동시 pump에도 정확히 1회만 실행"이다.
+ * `ListActiveQueueTargetsUseCase`·`IsAdmissionPumpEnabledUseCase`·`RunAdmissionBatchUseCase`는
+ * Mock — 검증 대상은 "락 획득 여부에 따른 위임 분기"와 "동시 pump에도 정확히 1회만 실행"이다.
  */
 @SpringBootTest(classes = [AdmissionPumpSchedulerTest.TestApp::class])
 @ContextConfiguration(initializers = [AdmissionPumpSchedulerTest.RedisInitializer::class])
@@ -53,13 +54,15 @@ class AdmissionPumpSchedulerTest @Autowired constructor(
         runAdmissionBatchUseCase: RunAdmissionBatchUseCase,
         admissionEnabled: Boolean = true,
     ): AdmissionPumpScheduler {
-        val store = mockk<VirtualQueueStore>()
-        every { store.activeTargets() } returns activeTargets
+        val listActiveQueueTargetsUseCase = mockk<ListActiveQueueTargetsUseCase>()
+        every { listActiveQueueTargetsUseCase.execute() } returns activeTargets
+        val isAdmissionPumpEnabledUseCase = mockk<IsAdmissionPumpEnabledUseCase>()
+        every { isAdmissionPumpEnabledUseCase.execute() } returns admissionEnabled
         return AdmissionPumpScheduler(
-            virtualQueueStore = store,
+            listActiveQueueTargetsUseCase = listActiveQueueTargetsUseCase,
+            isAdmissionPumpEnabledUseCase = isAdmissionPumpEnabledUseCase,
             distributedLock = RedisDistributedLock(redisTemplate),
             runAdmissionBatchUseCase = runAdmissionBatchUseCase,
-            admissionEnabled = admissionEnabled,
             batchSize = 100,
             staleSeconds = 60,
             maxEvictPerTick = 500,
@@ -98,7 +101,7 @@ class AdmissionPumpSchedulerTest @Autowired constructor(
         }
     }
 
-    Given("virtual-queue.admission.enabled=false (운영 킬 스위치)인 상태에서") {
+    Given("Admission Pump 킬 스위치 플래그가 OFF로 판정되는 상태에서 (운영 킬 스위치)") {
         val target = QueueTarget(QueueTargetType.LIMITED_DROP, 9003L)
         redisTemplate.delete(target.admissionLockKey())
         val useCase = mockk<RunAdmissionBatchUseCase>()
@@ -171,8 +174,9 @@ class AdmissionPumpSchedulerTest @Autowired constructor(
     }
 }) {
     // 명시적으로 컴포넌트 스캔을 하지 않는다 — 같은 패키지의 실제 `AdmissionPumpScheduler`
-    // `@Component`가 스캔되면 이 경량 테스트 컨텍스트에 없는 실 빈(VirtualQueueStore·DistributedLock·
-    // RunAdmissionBatchUseCase)을 요구해 기동이 실패한다. 검증 대상은 수동 생성한 인스턴스다.
+    // `@Component`가 스캔되면 이 경량 테스트 컨텍스트에 없는 실 빈(ListActiveQueueTargetsUseCase·
+    // IsAdmissionPumpEnabledUseCase·DistributedLock·RunAdmissionBatchUseCase)을 요구해 기동이
+    // 실패한다. 검증 대상은 수동 생성한 인스턴스다.
     @SpringBootConfiguration
     @EnableAutoConfiguration
     class TestApp
