@@ -169,10 +169,10 @@ class VirtualQueueEndToEndScenarioTest(
         }
 
         suspend fun ensureQueueFlagOn(accessToken: String) =
-            setGlobalToggleFlag(accessToken, VirtualQueueFeatureFlagKeys.ENABLED, "가상 대기열 경유 여부(BE-11 E2E)", enabled = true, default = false)
+            setGlobalToggleFlag(accessToken, VirtualQueueFeatureFlagKeys.ENABLED, "가상 대기열 경유 여부", enabled = true, default = false)
 
         suspend fun ensureQueueFlagOff(accessToken: String) =
-            setGlobalToggleFlag(accessToken, VirtualQueueFeatureFlagKeys.ENABLED, "가상 대기열 경유 여부(BE-11 E2E)", enabled = false, default = false)
+            setGlobalToggleFlag(accessToken, VirtualQueueFeatureFlagKeys.ENABLED, "가상 대기열 경유 여부", enabled = false, default = false)
 
         /**
          * 배경 `AdmissionPumpScheduler`(`@Scheduled`, 2초 주기)를 이 스펙 전체에서 no-op으로 만든다.
@@ -185,7 +185,7 @@ class VirtualQueueEndToEndScenarioTest(
             setGlobalToggleFlag(
                 accessToken,
                 VirtualQueueFeatureFlagKeys.ADMISSION_ENABLED,
-                "Admission Pump 운영 킬 스위치(BE-11 E2E 결정성 확보)",
+                "Admission Pump 운영 킬 스위치",
                 enabled = false,
                 default = true,
             )
@@ -305,11 +305,11 @@ class VirtualQueueEndToEndScenarioTest(
 
         // ---- 시나리오 ---------------------------------------------------------------------
 
-        Given("virtualqueue.enabled 플래그가 명시적으로 OFF(archive)로 전환된 상태에서") {
+        Given("virtualqueue.enabled 플래그가 명시적으로 OFF(GlobalToggle)로 전환된 상태에서") {
             val accessToken = loginAsAdmin("vq-flag-off-admin@example.com")
 
             When("대기열 진입 없이 바로 한정판 구매를 시도하면") {
-                Then("대기열을 거치지 않고 즉시 구매가 통과한다(FR-9)") {
+                Then("대기열을 거치지 않고 즉시 구매가 통과한다") {
                     ensureQueueFlagOff(accessToken)
 
                     val productId = createProductWithStock(quantity = 5)
@@ -380,7 +380,7 @@ class VirtualQueueEndToEndScenarioTest(
             val accessToken = loginAsAdmin("vq-bypass-admin@example.com")
 
             When("X-Entry-Token 없이 한정판 구매 API를 직접 호출하면") {
-                Then("403 QUEUE_BYPASS_DENIED로 거부된다(FR-5)") {
+                Then("403 QUEUE_BYPASS_DENIED로 거부된다") {
                     ensureQueueFlagOn(accessToken)
 
                     val productId = createProductWithStock(quantity = 5)
@@ -396,7 +396,7 @@ class VirtualQueueEndToEndScenarioTest(
             }
 
             When("위조된 X-Entry-Token으로 좌석 선택 API를 직접 호출하면") {
-                Then("403 QUEUE_BYPASS_DENIED로 거부된다(FR-5)") {
+                Then("403 QUEUE_BYPASS_DENIED로 거부된다") {
                     ensureQueueFlagOn(accessToken)
 
                     val (eventId, seatId) = createEventWithSeat(seatCode = "A2")
@@ -415,7 +415,7 @@ class VirtualQueueEndToEndScenarioTest(
             val targetId = 8_400_001L
 
             When("대기열에 동일 userId로 두 번 연속 진입하면") {
-                Then("두 번째 진입은 새 순번 없이 기존 position을 그대로 반환한다(FR-2)") {
+                Then("두 번째 진입은 새 순번 없이 기존 position을 그대로 반환한다") {
                     ensureQueueFlagOn(accessToken)
                     cleanupTarget(QueueTargetType.LIMITED_DROP, targetId)
 
@@ -442,7 +442,7 @@ class VirtualQueueEndToEndScenarioTest(
             val targetId = 8_500_001L
 
             When("배치 admission(batchSize=100)이 1틱 전진하고 admitted 100명이 poll로 leave된 뒤 101번째 사용자가 poll하면") {
-                Then("101번째는 rank 붕괴에도 불구하고 여전히 WAITING이다(§0-1 연쇄 admission 회귀)") {
+                Then("101번째는 rank 붕괴에도 불구하고 여전히 WAITING이다(연쇄 admission 회귀)") {
                     ensureQueueFlagOn(accessToken)
                     cleanupTarget(QueueTargetType.LIMITED_DROP, targetId)
 
@@ -481,7 +481,7 @@ class VirtualQueueEndToEndScenarioTest(
             val targetId = 8_600_001L
 
             When("배치 틱(evict.lua, staleSeconds=60)이 실행되면") {
-                Then("이탈 방출되어 조회 시 404를 반환하고 뒤 사용자의 aheadCount가 전진한다(FR-8)") {
+                Then("이탈 방출되어 조회 시 404를 반환하고 뒤 사용자의 aheadCount가 전진한다") {
                     ensureQueueFlagOn(accessToken)
                     cleanupTarget(QueueTargetType.LIMITED_DROP, targetId)
 
@@ -510,7 +510,7 @@ class VirtualQueueEndToEndScenarioTest(
             val targetId = 8_700_001L
 
             When("신규 사용자가 진입을 시도하면") {
-                Then("429 QUEUE_FULL로 거부된다(FR-7)") {
+                Then("429 QUEUE_FULL로 거부된다") {
                     ensureQueueFlagOn(accessToken)
                     cleanupTarget(QueueTargetType.LIMITED_DROP, targetId)
 
@@ -541,7 +541,7 @@ class VirtualQueueEndToEndScenarioTest(
             val accessToken = loginAsAdmin("vq-failopen-admin@example.com")
 
             When("waiting ZSET 키 타입이 손상된 상태(WRONGTYPE)에서 대기열 진입을 시도하면") {
-                Then("Redis 예외 없이 대기 없이 즉시 통과(DIRECT_ADMITTED)하고 입장 토큰을 무상태로 받는다(fail-open, §0-3)") {
+                Then("Redis 예외 없이 대기 없이 즉시 통과(DIRECT_ADMITTED)하고 입장 토큰을 무상태로 받는다(fail-open)") {
                     ensureQueueFlagOn(accessToken)
 
                     val productId = createProductWithStock(quantity = 3)

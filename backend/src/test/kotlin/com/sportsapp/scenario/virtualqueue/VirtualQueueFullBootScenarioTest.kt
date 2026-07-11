@@ -12,7 +12,6 @@ import com.sportsapp.presentation.virtualqueue.controller.VirtualQueueApiControl
 import com.sportsapp.presentation.virtualqueue.interceptor.EntryTokenGateInterceptor
 import com.sportsapp.presentation.virtualqueue.scheduler.AdmissionPumpScheduler
 import io.kotest.matchers.nulls.shouldNotBeNull
-import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.context.ApplicationContext
@@ -82,10 +81,8 @@ class VirtualQueueFullBootScenarioTest(
         Given("신규 대기열 조회 라우트가 배선된 상태에서") {
             When("아직 아무도 진입하지 않은 대상의 통계를 조회하면") {
                 Then("GET /virtual-queues/{type}/{targetId}/stats가 200과 0건 통계를 반환한다") {
-                    val result = mockMvc.perform(get("/virtual-queues/limited-drop/9999999/stats"))
+                    mockMvc.perform(get("/virtual-queues/limited-drop/9999999/stats"))
                         .andExpect(status().isOk)
-                        .andReturn()
-                    result.response.status shouldBe 200
                 }
             }
         }
