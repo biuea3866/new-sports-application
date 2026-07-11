@@ -15,7 +15,10 @@ import { ROUTES } from '../navigation';
 import type { QueueEnterResult, QueueStatusResult, QueueTargetType } from '../../api/virtualQueue';
 
 jest.mock('../useEnterQueue', () => ({ useEnterQueue: jest.fn() }));
-jest.mock('../useQueueStatus', () => ({ useQueueStatus: jest.fn() }));
+jest.mock('../useQueueStatus', () => {
+  const actual = jest.requireActual('../useQueueStatus');
+  return { ...actual, useQueueStatus: jest.fn() };
+});
 jest.mock('../../api/goods', () => ({ useCurrentUserId: jest.fn(() => 7) }));
 jest.mock('../../api/virtualQueue', () => {
   const actual = jest.requireActual('../../api/virtualQueue');
@@ -45,11 +48,16 @@ function mockEnterQueueReturn(
 
 function mockQueueStatusReturn(
   refetch: jest.Mock,
-  overrides: Partial<{ data: QueueStatusResult; isError: boolean }>
+  overrides: Partial<{
+    data: QueueStatusResult;
+    isError: boolean;
+    consecutiveFailureCount: number;
+  }>
 ) {
   useQueueStatusMock.mockReturnValue({
     data: undefined,
     isError: false,
+    consecutiveFailureCount: 0,
     refetch,
     ...overrides,
   } as unknown as ReturnType<typeof useQueueStatus>);
@@ -307,7 +315,7 @@ describe('useWaitingRoom', () => {
     expect(enterMutateMock).toHaveBeenCalledTimes(2);
   });
 
-  it('폴링 5xx 실패 시 error 상태를 노출하고, 재시도는 상태를 재조회한다', async () => {
+  it('폴링이 연속 3회 실패해야 error 상태로 전이하고(그 전 1~2회는 waiting 유지), 재시도는 상태를 재조회한다', async () => {
     const { result, rerender } = renderWaitingRoom('limited-drop', 42);
 
     mockEnterQueueReturn(enterMutateMock, {
@@ -326,7 +334,29 @@ describe('useWaitingRoom', () => {
     forceRerender(rerender);
     await waitFor(() => expect(result.current.phase).toBe('waiting'));
 
-    mockQueueStatusReturn(statusRefetchMock, { data: undefined, isError: true });
+    // 1~2회 연속 실패는 관용 — error로 전이하지 않고 waiting을 유지한다(자동 폴링 계속).
+    mockQueueStatusReturn(statusRefetchMock, {
+      data: undefined,
+      isError: true,
+      consecutiveFailureCount: 1,
+    });
+    forceRerender(rerender);
+    expect(result.current.phase).toBe('waiting');
+
+    mockQueueStatusReturn(statusRefetchMock, {
+      data: undefined,
+      isError: true,
+      consecutiveFailureCount: 2,
+    });
+    forceRerender(rerender);
+    expect(result.current.phase).toBe('waiting');
+
+    // 연속 3회째(MAX_CONSECUTIVE_QUEUE_STATUS_FAILURES)에 도달하면 error로 전이한다.
+    mockQueueStatusReturn(statusRefetchMock, {
+      data: undefined,
+      isError: true,
+      consecutiveFailureCount: 3,
+    });
     forceRerender(rerender);
 
     await waitFor(() => expect(result.current.phase).toBe('error'));
@@ -339,6 +369,72 @@ describe('useWaitingRoom', () => {
     });
     expect(statusRefetchMock).toHaveBeenCalledTimes(1);
     expect(enterMutateMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('폴링이 1회 성공한 뒤 지속 실패해도(직전 성공 data 보존) 연속 3회에 도달하면 stale 순번 프리즈 없이 error로 전이한다', async () => {
+    const { result, rerender } = renderWaitingRoom('limited-drop', 42);
+
+    mockEnterQueueReturn(enterMutateMock, {
+      data: {
+        outcome: 'ENTERED',
+        data: {
+          status: 'WAITING',
+          position: 10,
+          aheadCount: 9,
+          etaSeconds: 60,
+          entryToken: null,
+          tokenExpiresAt: null,
+        },
+      },
+    });
+    forceRerender(rerender);
+    await waitFor(() => expect(result.current.phase).toBe('waiting'));
+
+    const lastSuccessfulStatus: QueueStatusResult = {
+      outcome: 'OK',
+      data: {
+        status: 'WAITING',
+        position: 8,
+        aheadCount: 7,
+        etaSeconds: 50,
+        entryToken: null,
+        tokenExpiresAt: null,
+      },
+    };
+    mockQueueStatusReturn(statusRefetchMock, { data: lastSuccessfulStatus });
+    forceRerender(rerender);
+    await waitFor(() => {
+      if (result.current.phase !== 'waiting') throw new Error('not waiting yet');
+      expect(result.current.position).toBe(8);
+    });
+
+    // TanStack Query는 성공 이후의 실패에서도 직전 성공 data를 보존한다(isError=true여도
+    // data는 stale 값 그대로 남는다). 연속 실패 1~2회는 여전히 waiting(직전 순번 8)을 유지해야 한다.
+    mockQueueStatusReturn(statusRefetchMock, {
+      data: lastSuccessfulStatus,
+      isError: true,
+      consecutiveFailureCount: 1,
+    });
+    forceRerender(rerender);
+    expect(result.current.phase).toBe('waiting');
+
+    mockQueueStatusReturn(statusRefetchMock, {
+      data: lastSuccessfulStatus,
+      isError: true,
+      consecutiveFailureCount: 2,
+    });
+    forceRerender(rerender);
+    expect(result.current.phase).toBe('waiting');
+
+    // 연속 3회째에 도달하면 data가 여전히(stale) 남아있어도 error로 전이한다 — 프리즈 방지.
+    mockQueueStatusReturn(statusRefetchMock, {
+      data: lastSuccessfulStatus,
+      isError: true,
+      consecutiveFailureCount: 3,
+    });
+    forceRerender(rerender);
+
+    await waitFor(() => expect(result.current.phase).toBe('error'));
   });
 
   it('enter 단계 5xx 실패 시 error 상태를 노출하고, 재시도는 재-enter한다', async () => {

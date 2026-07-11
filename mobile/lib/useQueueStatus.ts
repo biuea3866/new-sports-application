@@ -15,33 +15,52 @@
  *   TanStack의 `query.state.fetchFailureCount`는 새 폴링이 시작될 때마다 0으로 리셋되는 "단일
  *   fetch 내부 재시도 횟수"라 폴링 사이클을 넘어 누적되지 않는다 — 그래서 "연속 폴링 실패 횟수"는
  *   이 훅이 직접(ref) 세어 `refetchInterval`에 전달한다.
+ * - **`consecutiveFailureCount`를 반환값에 노출한다.** TanStack Query는 최초 성공 이후의
+ *   백그라운드 실패에서도 직전 성공 `data`를 보존한다(`status`는 `'error'`로 전환되지만
+ *   `data`는 stale 값 그대로) — 그래서 상위 뷰모델이 `data` 유무만으로 성공/실패를 가르면
+ *   지속 실패를 "그대로 성공"으로 오판한다. 뷰모델은 이 카운트가 `MAX_CONSECUTIVE_QUEUE_STATUS_FAILURES`에
+ *   도달했는지로 error 전이를 판단해야 한다(design-fe-app.md "5xx→error(3회 후 중단)").
  */
 import { useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import type { UseQueryResult } from '@tanstack/react-query';
 
 import { getQueueStatus } from '../api/virtualQueue';
 import type { QueueStatusResult, QueueTargetType } from '../api/virtualQueue';
 
 const POLL_INTERVAL_MS = 3 * 1000;
-const MAX_CONSECUTIVE_FAILURES = 3;
+
+/**
+ * 연속 폴링 실패 허용 횟수 — 이 값에 도달하면 ① `refetchInterval`이 자동 재조회를 멈추고
+ * ② 상위 뷰모델(`useWaitingRoom`)이 error phase로 전이한다. 두 판단이 반드시 같은 값을 써야
+ * "폴링은 멈췄는데 화면은 waiting에 프리즈" 같은 불일치가 생기지 않는다.
+ */
+export const MAX_CONSECUTIVE_QUEUE_STATUS_FAILURES = 3;
 
 /**
  * 직전까지의 연속 실패 횟수로부터 다음 폴링 간격을 결정한다.
  * 연속 3회 실패하면 더 이상 스스로 재조회하지 않는다(false) — 수동 재시도만 남는다.
  */
 export function getQueueStatusRefetchIntervalMs(consecutiveFailureCount: number): number | false {
-  return consecutiveFailureCount >= MAX_CONSECUTIVE_FAILURES ? false : POLL_INTERVAL_MS;
+  return consecutiveFailureCount >= MAX_CONSECUTIVE_QUEUE_STATUS_FAILURES
+    ? false
+    : POLL_INTERVAL_MS;
 }
+
+export type QueueStatusQueryResult = UseQueryResult<QueueStatusResult, Error> & {
+  /** 마지막 성공 이후 연속 실패 횟수. 성공 시 0으로 리셋된다. */
+  consecutiveFailureCount: number;
+};
 
 export function useQueueStatus(
   type: QueueTargetType,
   targetId: number,
   userId: number,
   enabled: boolean
-) {
+): QueueStatusQueryResult {
   const consecutiveFailureCountRef = useRef(0);
 
-  return useQuery<QueueStatusResult, Error>({
+  const query = useQuery<QueueStatusResult, Error>({
     queryKey: ['virtualQueue', type, targetId],
     queryFn: async () => {
       try {
@@ -59,4 +78,6 @@ export function useQueueStatus(
     retry: false,
     refetchInterval: () => getQueueStatusRefetchIntervalMs(consecutiveFailureCountRef.current),
   });
+
+  return { ...query, consecutiveFailureCount: consecutiveFailureCountRef.current };
 }

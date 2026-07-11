@@ -17,6 +17,12 @@
  *   5xx/네트워크 오류 → error(진입 단계 오류는 재-enter, 폴링 단계 오류는 상태 재조회로 재시도).
  * - internalPhase는 useState로 관리해, retry로 재진입해도(과거 NOT_IN_QUEUE/FULL 캐시에 갇히지 않고)
  *   새 enter 응답이 오면 즉시 다음 상태로 전이한다.
+ * - **폴링 실패 전이는 `statusQuery.consecutiveFailureCount`로 판단한다.** TanStack Query는
+ *   최초 성공 이후의 백그라운드 실패에서도 직전 성공 `data`를 보존하므로(`useQueueStatus` 주석
+ *   참조), `data` 존재 여부만으로 성공/실패를 가르면 지속 실패를 놓친다(stale 순번에 프리즈).
+ *   `MAX_CONSECUTIVE_QUEUE_STATUS_FAILURES`(3) 도달 시에만 error phase로 전이해, 폴링이
+ *   스스로 멈추는 시점(`useQueueStatus#getQueueStatusRefetchIntervalMs`)과 정합을 맞춘다
+ *   (design-fe-app.md "5xx→error(3회 후 중단)").
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
@@ -26,7 +32,7 @@ import { leaveQueue } from '../api/virtualQueue';
 import type { QueueEntryResponse, QueueTargetType } from '../api/virtualQueue';
 import { useEntryTokenStore } from './entryTokenStore';
 import { useEnterQueue } from './useEnterQueue';
-import { useQueueStatus } from './useQueueStatus';
+import { MAX_CONSECUTIVE_QUEUE_STATUS_FAILURES, useQueueStatus } from './useQueueStatus';
 import { ROUTES } from './navigation';
 import {
   computeProgressRatio,
@@ -50,9 +56,25 @@ export type WaitingRoomPhase =
   | { phase: 'full'; retry: () => void; leave: () => void }
   | { phase: 'error'; retry: () => void; leave: () => void };
 
+/**
+ * 'waiting' phase 렌더에 실제로 쓰이는 필드만 담은 스냅샷.
+ * 서버 응답(QueueEntryResponse) 전체를 복사 보관하지 않는다(no-global-by-default 확장 —
+ * 지역 useState도 서버 데이터를 필요 이상으로 복제하지 않는다). status/entryToken/tokenExpiresAt은
+ * 전이 시점(isAdmittedEntry/handleAdmission)에만 쓰이고 phase 판별자로 남길 필요가 없다.
+ */
+interface WaitingEntrySnapshot {
+  position: number | null;
+  aheadCount: number | null;
+  etaSeconds: number | null;
+}
+
+function toWaitingEntrySnapshot(entry: QueueEntryResponse): WaitingEntrySnapshot {
+  return { position: entry.position, aheadCount: entry.aheadCount, etaSeconds: entry.etaSeconds };
+}
+
 type InternalPhase =
   | { kind: 'loading' }
-  | { kind: 'waiting'; entry: QueueEntryResponse }
+  | { kind: 'waiting'; entry: WaitingEntrySnapshot }
   | { kind: 'admitted' }
   | { kind: 'empty' }
   | { kind: 'full' }
@@ -133,31 +155,46 @@ export function useWaitingRoom(type: QueueTargetType, targetId: number): Waiting
       return;
     }
     trackInitialAheadCount(entry.aheadCount);
-    setInternalPhase({ kind: 'waiting', entry });
+    setInternalPhase({ kind: 'waiting', entry: toWaitingEntrySnapshot(entry) });
   }, [enterMutation.data, enterMutation.isError, handleAdmission, trackInitialAheadCount]);
 
   // 폴링(heartbeat) 응답 → 내부 상태 전이
+  //
+  // isError를 data 존재 여부보다 먼저 판단한다 — TanStack Query는 최초 성공 이후의 실패에서도
+  // 직전 성공 data를 보존하므로(`useQueueStatus` 주석), data 우선으로 분기하면 지속 실패를
+  // stale data로 계속 "성공"처럼 처리해 화면이 순번에 프리즈된다. 연속 실패가
+  // MAX_CONSECUTIVE_QUEUE_STATUS_FAILURES(3)에 도달하기 전에는(일시 오류 관용) 아무 것도 하지
+  // 않고 현재 phase(직전에 확인된 순번)를 유지한다 — 3회 도달 시에만 error로 전이한다.
   useEffect(() => {
-    if (statusQuery.data) {
-      if (statusQuery.data.outcome === 'NOT_IN_QUEUE') {
-        setInternalPhase({ kind: 'empty' });
-        return;
+    if (statusQuery.isError) {
+      if (statusQuery.consecutiveFailureCount >= MAX_CONSECUTIVE_QUEUE_STATUS_FAILURES) {
+        setInternalPhase((current) =>
+          current.kind === 'waiting' ? { kind: 'error', source: 'status' } : current
+        );
       }
-      const entry = statusQuery.data.data;
-      if (isAdmittedEntry(entry)) {
-        handleAdmission(entry);
-        return;
-      }
-      trackInitialAheadCount(entry.aheadCount);
-      setInternalPhase({ kind: 'waiting', entry });
       return;
     }
-    if (statusQuery.isError) {
-      setInternalPhase((current) =>
-        current.kind === 'waiting' ? { kind: 'error', source: 'status' } : current
-      );
+    if (!statusQuery.data) {
+      return;
     }
-  }, [statusQuery.data, statusQuery.isError, handleAdmission, trackInitialAheadCount]);
+    if (statusQuery.data.outcome === 'NOT_IN_QUEUE') {
+      setInternalPhase({ kind: 'empty' });
+      return;
+    }
+    const entry = statusQuery.data.data;
+    if (isAdmittedEntry(entry)) {
+      handleAdmission(entry);
+      return;
+    }
+    trackInitialAheadCount(entry.aheadCount);
+    setInternalPhase({ kind: 'waiting', entry: toWaitingEntrySnapshot(entry) });
+  }, [
+    statusQuery.data,
+    statusQuery.isError,
+    statusQuery.consecutiveFailureCount,
+    handleAdmission,
+    trackInitialAheadCount,
+  ]);
 
   const retryEnter = useCallback(() => {
     enterMutation.mutate();
