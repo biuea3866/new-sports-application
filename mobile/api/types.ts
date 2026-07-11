@@ -549,9 +549,14 @@ export interface LimitedDropPurchaseResponse {
 }
 
 export interface LimitedDropApiErrorBody {
+  /** 과거 형태(top-level) 폴백 — 실 BE 응답은 properties.code를 사용한다 */
   code?: string;
   message?: string;
   openAt?: string; // 425 TooEarly 응답에 포함
+  /** Spring ProblemDetail의 code는 여기(중첩)에 직렬화된다 (setProperty("code", ...)) */
+  properties?: {
+    code?: string;
+  };
 }
 
 /**
@@ -561,7 +566,8 @@ export interface LimitedDropApiErrorBody {
  * - SOLD_OUT / CLOSED: 409 — 소진 또는 회차 종료
  *   (에러 바디 code가 LIMITED_DROP_CLOSED면 CLOSED, 그 외(LIMITED_DROP_SOLD_OUT 포함·없음)는 SOLD_OUT)
  * - THROTTLED: 429 — 완충 초과
- * - LIMIT_EXCEEDED: 403 — 1인 한도 초과
+ * - LIMIT_EXCEEDED: 403 — 1인 한도 초과 (에러 바디 code가 QUEUE_BYPASS_DENIED가 아닌 그 외/없음)
+ * - BYPASS_DENIED: 403 — 에러 바디 code가 QUEUE_BYPASS_DENIED(가상 대기열 입장 토큰 없음/만료·미경유 구매 차단)
  */
 export type LimitedDropPurchaseResult =
   | { outcome: 'ADMITTED'; data: LimitedDropPurchaseResponse }
@@ -569,4 +575,5 @@ export type LimitedDropPurchaseResult =
   | { outcome: 'SOLD_OUT' }
   | { outcome: 'CLOSED' }
   | { outcome: 'THROTTLED' }
-  | { outcome: 'LIMIT_EXCEEDED' };
+  | { outcome: 'LIMIT_EXCEEDED' }
+  | { outcome: 'BYPASS_DENIED' };

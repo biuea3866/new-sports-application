@@ -4,6 +4,10 @@
  * BE API 계약(TDD "API 계약"): GET /limited-drops/{dropId}, POST /limited-drops/{dropId}/orders
  * 구매 실패(425/409/429/403)는 정상 실패 경로이므로 예외를 던지지 않고
  * LimitedDropPurchaseResult 판별 유니온으로 반환한다. 5xx·네트워크 오류는 그대로 전파한다.
+ *
+ * FE-08: 가상 대기열 경유 구매는 `entryToken`(대기실에서 발급된 입장 토큰)이 있으면
+ * `X-Entry-Token` 헤더를 부착한다(경로·body 불변). 토큰 없이 대기열을 우회한 구매는
+ * BE가 403 code=QUEUE_BYPASS_DENIED로 거부하며 BYPASS_DENIED outcome으로 매핑한다.
  */
 import { AxiosError } from 'axios';
 
@@ -19,6 +23,8 @@ import type {
 export interface PurchaseLimitedDropOptions {
   userId: number;
   idempotencyKey: string;
+  /** 대기실에서 발급된 가상 대기열 입장 토큰. 있으면 X-Entry-Token 헤더로 부착한다(FE-08). */
+  entryToken?: string;
 }
 
 export async function getLimitedDrop(dropId: number): Promise<LimitedDropResponse> {
@@ -39,6 +45,7 @@ export async function purchaseLimitedDrop(
         headers: {
           'X-User-Id': String(options.userId),
           'Idempotency-Key': options.idempotencyKey,
+          ...(options.entryToken ? { 'X-Entry-Token': options.entryToken } : {}),
         },
       }
     );
@@ -48,12 +55,24 @@ export async function purchaseLimitedDrop(
   }
 }
 
+/**
+ * BE는 에러를 Spring ProblemDetail로 내리며, code는 최상위가 아니라
+ * `properties.code`에 중첩 직렬화된다 (ProblemDetailBuilder.build의 setProperty("code", ...),
+ * spring.mvc.problemdetails.enabled 미설정으로 unwrap되지 않음 — 전 BE 통합 테스트가
+ * `$.properties.code`로 검증). 중첩 값을 우선 읽고, 과거 형태(top-level code) 응답도
+ * 방어적으로 폴백 처리한다.
+ */
+function extractProblemCode(data: LimitedDropApiErrorBody | undefined): string | undefined {
+  return data?.properties?.code ?? data?.code;
+}
+
 function mapPurchaseFailure(error: unknown): LimitedDropPurchaseResult {
   if (!(error instanceof AxiosError) || !error.response) {
     throw error;
   }
 
   const errorBody = error.response.data as LimitedDropApiErrorBody | undefined;
+  const code = extractProblemCode(errorBody);
 
   switch (error.response.status) {
     case 425:
@@ -62,13 +81,13 @@ function mapPurchaseFailure(error: unknown): LimitedDropPurchaseResult {
       // BE ProblemDetail의 실제 code 값은 LIMITED_DROP_CLOSED / LIMITED_DROP_SOLD_OUT이다
       // (GlobalExceptionHandler + LimitedDropClosedException/LimitedDropSoldOutException 참고).
       // code가 없거나 다른 값이면 SOLD_OUT으로 기본 처리한다.
-      return errorBody?.code === 'LIMITED_DROP_CLOSED'
-        ? { outcome: 'CLOSED' }
-        : { outcome: 'SOLD_OUT' };
+      return code === 'LIMITED_DROP_CLOSED' ? { outcome: 'CLOSED' } : { outcome: 'SOLD_OUT' };
     case 429:
       return { outcome: 'THROTTLED' };
     case 403:
-      return { outcome: 'LIMIT_EXCEEDED' };
+      return code === 'QUEUE_BYPASS_DENIED'
+        ? { outcome: 'BYPASS_DENIED' }
+        : { outcome: 'LIMIT_EXCEEDED' };
     default:
       throw error;
   }

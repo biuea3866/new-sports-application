@@ -19,8 +19,12 @@ jest.mock('../../../../lib/useLimitedDrop', () => ({
 jest.mock('../../../../lib/useCountdown', () => ({
   useCountdown: jest.fn(),
 }));
+jest.mock('../../../../lib/feature-flags', () => ({
+  isFeatureEnabled: jest.fn(),
+}));
 
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { isFeatureEnabled } from '../../../../lib/feature-flags';
 import { useCountdown } from '../../../../lib/useCountdown';
 import { useLimitedDrop } from '../../../../lib/useLimitedDrop';
 
@@ -29,6 +33,8 @@ const useCountdownMock = useCountdown as jest.MockedFunction<typeof useCountdown
 const useLocalSearchParamsMock = useLocalSearchParams as jest.MockedFunction<
   typeof useLocalSearchParams
 >;
+const useRouterMock = useRouter as jest.MockedFunction<typeof useRouter>;
+const isFeatureEnabledMock = isFeatureEnabled as jest.MockedFunction<typeof isFeatureEnabled>;
 
 const baseDrop: LimitedDropResponse = {
   dropId: 1,
@@ -54,10 +60,19 @@ function mockUseLimitedDropReturn(overrides: Partial<ReturnType<typeof useLimite
 }
 
 describe('LimitedDropDetailScreen', () => {
+  let pushMock: jest.Mock;
+
   beforeEach(() => {
     mockUseColorScheme.mockReturnValue('light');
     useLocalSearchParamsMock.mockReturnValue({ id: '1' });
     useCountdownMock.mockReturnValue({ remainingMs: 5000, isOpen: false });
+    isFeatureEnabledMock.mockReturnValue(false);
+    pushMock = jest.fn();
+    useRouterMock.mockReturnValue({
+      push: pushMock,
+      replace: jest.fn(),
+      back: jest.fn(),
+    } as unknown as ReturnType<typeof useRouter>);
   });
 
   afterEach(() => {
@@ -172,5 +187,28 @@ describe('LimitedDropDetailScreen', () => {
     render(<LimitedDropDetailScreen />);
 
     expect(screen.getByLabelText('구매하기')).toBeTruthy();
+  });
+
+  it('대기열 플래그 ON이면 구매하기 CTA가 대기실 경로로 이동한다', () => {
+    isFeatureEnabledMock.mockReturnValue(true);
+    mockUseLimitedDropReturn({ data: { ...baseDrop, status: 'OPEN' } });
+    useCountdownMock.mockReturnValue({ remainingMs: 0, isOpen: true });
+
+    render(<LimitedDropDetailScreen />);
+    fireEvent.press(screen.getByLabelText('구매하기'));
+
+    expect(isFeatureEnabledMock).toHaveBeenCalledWith('virtual-queue.enabled');
+    expect(pushMock).toHaveBeenCalledWith('/queue/limited-drop/1');
+  });
+
+  it('대기열 플래그 OFF이면 구매하기 CTA가 기존 구매 화면으로 직접 이동한다', () => {
+    isFeatureEnabledMock.mockReturnValue(false);
+    mockUseLimitedDropReturn({ data: { ...baseDrop, status: 'OPEN' } });
+    useCountdownMock.mockReturnValue({ remainingMs: 0, isOpen: true });
+
+    render(<LimitedDropDetailScreen />);
+    fireEvent.press(screen.getByLabelText('구매하기'));
+
+    expect(pushMock).toHaveBeenCalledWith('/limited-drop/1/purchase');
   });
 });

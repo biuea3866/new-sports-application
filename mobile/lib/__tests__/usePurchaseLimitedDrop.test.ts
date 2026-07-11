@@ -6,6 +6,9 @@
  * - 재시도로도 해소되지 않는 오류(네트워크·5xx)는 error phase로 매핑한다.
  * - 서로 다른 구매 시도(재시도가 아닌 신규 mutate)는 각각 새 Idempotency-Key를 생성한다.
  * - error phase 이후 재시도는 동일한 Idempotency-Key를 재사용해 중복 주문을 막는다.
+ * - entryTokenStore에 저장된 입장 토큰이 있으면 구매 요청에 entryToken을 전달한다(FE-08).
+ * - 토큰이 없으면 entryToken 없이 기존과 동일하게 호출한다(FE-08).
+ * - 403 BYPASS_DENIED 결과를 bypassDenied phase로 매핑한다(FE-08).
  */
 import { createElement } from 'react';
 import { act } from 'react';
@@ -13,6 +16,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react-native';
 
 import { usePurchaseLimitedDrop } from '../usePurchaseLimitedDrop';
+import { useEntryTokenStore } from '../entryTokenStore';
 import type { LimitedDropPurchaseResult } from '../../api/types';
 
 jest.mock('../../api/limitedDrops', () => ({
@@ -44,6 +48,10 @@ function extractIdempotencyKey(callIndex: number): string {
 }
 
 describe('usePurchaseLimitedDrop', () => {
+  beforeEach(() => {
+    useEntryTokenStore.setState({ tokens: {} });
+  });
+
   afterEach(() => {
     jest.clearAllMocks();
   });
@@ -201,5 +209,55 @@ describe('usePurchaseLimitedDrop', () => {
 
     expect(purchaseLimitedDropMock).toHaveBeenCalledTimes(2);
     expect(extractIdempotencyKey(0)).not.toBe(extractIdempotencyKey(1));
+  });
+
+  it('저장된 입장 토큰이 있으면 구매 요청에 entryToken을 전달한다', async () => {
+    useEntryTokenStore
+      .getState()
+      .setToken('limited-drop', 1, 'entry-token-xyz', new Date(Date.now() + 60_000).toISOString());
+    purchaseLimitedDropMock.mockResolvedValue({
+      outcome: 'ADMITTED',
+      data: { orderId: 1, dropId: 1, status: 'PENDING' },
+    });
+    const { wrapper } = createWrapper();
+
+    const { result } = renderHook(() => usePurchaseLimitedDrop(1), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ quantity: 1 });
+    });
+
+    const call = purchaseLimitedDropMock.mock.calls[0];
+    expect(call[2].entryToken).toBe('entry-token-xyz');
+  });
+
+  it('토큰이 없으면 entryToken 없이 기존과 동일하게 호출한다', async () => {
+    purchaseLimitedDropMock.mockResolvedValue({
+      outcome: 'ADMITTED',
+      data: { orderId: 1, dropId: 1, status: 'PENDING' },
+    });
+    const { wrapper } = createWrapper();
+
+    const { result } = renderHook(() => usePurchaseLimitedDrop(1), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ quantity: 1 });
+    });
+
+    const call = purchaseLimitedDropMock.mock.calls[0];
+    expect(call[2].entryToken).toBeUndefined();
+  });
+
+  it('403 BYPASS_DENIED 결과를 bypassDenied phase로 매핑한다', async () => {
+    purchaseLimitedDropMock.mockResolvedValueOnce({ outcome: 'BYPASS_DENIED' });
+    const { wrapper } = createWrapper();
+
+    const { result } = renderHook(() => usePurchaseLimitedDrop(1), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ quantity: 1 });
+    });
+
+    await waitFor(() => expect(result.current.data).toEqual({ phase: 'bypassDenied' }));
   });
 });

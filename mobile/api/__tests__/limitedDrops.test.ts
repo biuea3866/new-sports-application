@@ -4,6 +4,11 @@
  * U-03: purchaseLimitedDrop이 202 응답을 ADMITTED outcome으로 파싱한다
  * U-04: purchaseLimitedDrop이 409/429/403/425 응답 상태코드를 판별 가능한 결과로 매핑한다
  * U-05: getLimitedDrop이 404 응답 시 에러를 던진다
+ *
+ * code 판별 케이스는 실제 BE의 Spring ProblemDetail 응답 형태(code가 properties.code에
+ * 중첩 직렬화됨 — ProblemDetailBuilder.build의 setProperty("code", ...),
+ * spring.mvc.problemdetails.enabled 미설정으로 unwrap되지 않음)를 그대로 목킹해 검증한다.
+ * 과거 형태(top-level code)로도 폴백 판별되는지는 별도 케이스로 확인한다.
  */
 import MockAdapter from 'axios-mock-adapter';
 import { createBeClient } from '../be-client';
@@ -62,6 +67,20 @@ const mockPurchaseResponse: LimitedDropPurchaseResponse = {
   dropId: 1,
   status: 'PENDING',
 };
+
+/** 실제 BE ProblemDetail 응답 형태 — ProblemDetailBuilder.build가 생성하는 구조와 동일 */
+function problemDetailBody(status: number, code: string, detail: string) {
+  return {
+    type: `https://errors.sports-application/${code.toLowerCase().replace(/_/g, '-')}`,
+    title: code
+      .split('_')
+      .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
+      .join(' '),
+    status,
+    detail,
+    properties: { code },
+  };
+}
 
 describe('getLimitedDrop', () => {
   it('GET /limited-drops/{dropId} 200 응답을 LimitedDropResponse로 반환한다', async () => {
@@ -136,10 +155,10 @@ describe('purchaseLimitedDrop', () => {
     expect(result).toEqual({ outcome: 'SOLD_OUT' });
   });
 
-  it('409 응답(code=LIMITED_DROP_CLOSED, 실제 BE 에러 코드)을 CLOSED outcome으로 매핑한다', async () => {
+  it('409 응답(ProblemDetail properties.code=LIMITED_DROP_CLOSED, 실제 BE 형태)을 CLOSED outcome으로 매핑한다', async () => {
     mock
       .onPost('/limited-drops/1/orders')
-      .reply(409, { code: 'LIMITED_DROP_CLOSED', message: 'Closed' });
+      .reply(409, problemDetailBody(409, 'LIMITED_DROP_CLOSED', 'Closed'));
 
     const result = await purchaseLimitedDrop(
       1,
@@ -150,7 +169,21 @@ describe('purchaseLimitedDrop', () => {
     expect(result).toEqual({ outcome: 'CLOSED' });
   });
 
-  it('409 응답(code=LIMITED_DROP_SOLD_OUT, 실제 BE 에러 코드)을 SOLD_OUT outcome으로 매핑한다', async () => {
+  it('409 응답(ProblemDetail properties.code=LIMITED_DROP_SOLD_OUT, 실제 BE 형태)을 SOLD_OUT outcome으로 매핑한다', async () => {
+    mock
+      .onPost('/limited-drops/1/orders')
+      .reply(409, problemDetailBody(409, 'LIMITED_DROP_SOLD_OUT', 'Sold out'));
+
+    const result = await purchaseLimitedDrop(
+      1,
+      { quantity: 1 },
+      { userId: 7, idempotencyKey: 'idem-key-005b' }
+    );
+
+    expect(result).toEqual({ outcome: 'SOLD_OUT' });
+  });
+
+  it('409 응답(과거 형태 top-level code)도 폴백으로 SOLD_OUT outcome으로 매핑한다', async () => {
     mock
       .onPost('/limited-drops/1/orders')
       .reply(409, { code: 'LIMITED_DROP_SOLD_OUT', message: 'Sold out' });
@@ -158,7 +191,7 @@ describe('purchaseLimitedDrop', () => {
     const result = await purchaseLimitedDrop(
       1,
       { quantity: 1 },
-      { userId: 7, idempotencyKey: 'idem-key-005b' }
+      { userId: 7, idempotencyKey: 'idem-key-005c' }
     );
 
     expect(result).toEqual({ outcome: 'SOLD_OUT' });
@@ -186,6 +219,42 @@ describe('purchaseLimitedDrop', () => {
     );
 
     expect(result).toEqual({ outcome: 'LIMIT_EXCEEDED' });
+  });
+
+  it('403 응답(ProblemDetail properties.code=QUEUE_BYPASS_DENIED, 실제 BE 형태)을 BYPASS_DENIED outcome으로 매핑한다', async () => {
+    mock
+      .onPost('/limited-drops/1/orders')
+      .reply(403, problemDetailBody(403, 'QUEUE_BYPASS_DENIED', 'Entry token invalid or expired'));
+
+    const result = await purchaseLimitedDrop(
+      1,
+      { quantity: 1 },
+      { userId: 7, idempotencyKey: 'idem-key-007b' }
+    );
+
+    expect(result).toEqual({ outcome: 'BYPASS_DENIED' });
+  });
+
+  it('entryToken이 있으면 X-Entry-Token 헤더를 전송한다', async () => {
+    mock.onPost('/limited-drops/1/orders').reply(202, mockPurchaseResponse);
+
+    await purchaseLimitedDrop(
+      1,
+      { quantity: 1 },
+      { userId: 7, idempotencyKey: 'idem-key-009', entryToken: 'entry-token-xyz' }
+    );
+
+    const requestHistory = mock.history.post;
+    expect(requestHistory[0].headers?.['X-Entry-Token']).toBe('entry-token-xyz');
+  });
+
+  it('entryToken이 없으면 X-Entry-Token 헤더 없이 기존과 동일하게 호출한다', async () => {
+    mock.onPost('/limited-drops/1/orders').reply(202, mockPurchaseResponse);
+
+    await purchaseLimitedDrop(1, { quantity: 1 }, { userId: 7, idempotencyKey: 'idem-key-010' });
+
+    const requestHistory = mock.history.post;
+    expect(requestHistory[0].headers?.['X-Entry-Token']).toBeUndefined();
   });
 
   it('5xx 응답은 판별 결과로 매핑하지 않고 에러를 전파한다', async () => {
