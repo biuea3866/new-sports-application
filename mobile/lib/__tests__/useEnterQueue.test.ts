@@ -52,7 +52,7 @@ describe('useEnterQueue', () => {
         aheadCount: null,
         etaSeconds: null,
         entryToken: 'entry-token-abc',
-        tokenExpiresAt: '2026-07-10T00:10:00Z',
+        tokenExpiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
       },
     };
     enterQueueMock.mockResolvedValue(entered);
