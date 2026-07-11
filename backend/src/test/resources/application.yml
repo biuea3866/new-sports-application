@@ -115,6 +115,14 @@ limited-drop:
   redis-gate:
     enabled: true
 
+# BE-03: HmacEntryTokenGateway 는 빈 secret 시 부팅 실패(init 블록 require)하므로, 이 파일이
+# src/main/resources/application.yml 을 완전히 대체하는 테스트 컨텍스트에서도 항상 유효한
+# secret 을 갖도록 명시한다 (app.jwt.secret 과 동일 패턴 — 운영 기본값이 아닌 테스트 전용 값).
+virtual-queue:
+  token:
+    secret: test-virtual-queue-token-secret-for-integration-tests
+    ttl-seconds: 300
+
 app:
   jwt:
     secret: test-secret-key-for-integration-tests-that-is-at-least-32-chars-long
