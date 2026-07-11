@@ -549,9 +549,14 @@ export interface LimitedDropPurchaseResponse {
 }
 
 export interface LimitedDropApiErrorBody {
+  /** 과거 형태(top-level) 폴백 — 실 BE 응답은 properties.code를 사용한다 */
   code?: string;
   message?: string;
   openAt?: string; // 425 TooEarly 응답에 포함
+  /** Spring ProblemDetail의 code는 여기(중첩)에 직렬화된다 (setProperty("code", ...)) */
+  properties?: {
+    code?: string;
+  };
 }
 
 /**

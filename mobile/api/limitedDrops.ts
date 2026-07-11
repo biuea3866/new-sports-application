@@ -55,12 +55,24 @@ export async function purchaseLimitedDrop(
   }
 }
 
+/**
+ * BE는 에러를 Spring ProblemDetail로 내리며, code는 최상위가 아니라
+ * `properties.code`에 중첩 직렬화된다 (ProblemDetailBuilder.build의 setProperty("code", ...),
+ * spring.mvc.problemdetails.enabled 미설정으로 unwrap되지 않음 — 전 BE 통합 테스트가
+ * `$.properties.code`로 검증). 중첩 값을 우선 읽고, 과거 형태(top-level code) 응답도
+ * 방어적으로 폴백 처리한다.
+ */
+function extractProblemCode(data: LimitedDropApiErrorBody | undefined): string | undefined {
+  return data?.properties?.code ?? data?.code;
+}
+
 function mapPurchaseFailure(error: unknown): LimitedDropPurchaseResult {
   if (!(error instanceof AxiosError) || !error.response) {
     throw error;
   }
 
   const errorBody = error.response.data as LimitedDropApiErrorBody | undefined;
+  const code = extractProblemCode(errorBody);
 
   switch (error.response.status) {
     case 425:
@@ -69,13 +81,11 @@ function mapPurchaseFailure(error: unknown): LimitedDropPurchaseResult {
       // BE ProblemDetail의 실제 code 값은 LIMITED_DROP_CLOSED / LIMITED_DROP_SOLD_OUT이다
       // (GlobalExceptionHandler + LimitedDropClosedException/LimitedDropSoldOutException 참고).
       // code가 없거나 다른 값이면 SOLD_OUT으로 기본 처리한다.
-      return errorBody?.code === 'LIMITED_DROP_CLOSED'
-        ? { outcome: 'CLOSED' }
-        : { outcome: 'SOLD_OUT' };
+      return code === 'LIMITED_DROP_CLOSED' ? { outcome: 'CLOSED' } : { outcome: 'SOLD_OUT' };
     case 429:
       return { outcome: 'THROTTLED' };
     case 403:
-      return errorBody?.code === 'QUEUE_BYPASS_DENIED'
+      return code === 'QUEUE_BYPASS_DENIED'
         ? { outcome: 'BYPASS_DENIED' }
         : { outcome: 'LIMIT_EXCEEDED' };
     default:
