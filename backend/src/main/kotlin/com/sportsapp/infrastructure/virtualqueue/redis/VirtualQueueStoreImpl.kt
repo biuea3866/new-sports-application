@@ -139,6 +139,15 @@ class VirtualQueueStoreImpl(
         Unit
     }
 
+    override fun seqExists(target: QueueTarget): Boolean = executeTracked {
+        redisTemplate.hasKey(target.seqKey()) == true
+    }
+
+    override fun deactivate(target: QueueTarget): Unit = executeTracked {
+        redisTemplate.opsForSet().remove(QueueTarget.ACTIVE_TARGETS_KEY, target.activeMember())
+        Unit
+    }
+
     /**
      * Redis 인프라 장애(`DataAccessException`)를 [REDIS_DEGRADED_COUNTER]로 관측하되, 예외 자체는
      * 삼키지 않고 그대로 재전파한다 — 호출부의 fail-open 판단을 이 레이어가 가로채지 않는다.

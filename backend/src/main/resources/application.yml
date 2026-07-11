@@ -182,9 +182,12 @@ virtual-queue:
   # enter/admit/evict/touchHeartbeat 호출마다 이 값으로 PEXPIRE를 갱신한다.
   sliding-ttl-seconds: ${VIRTUAL_QUEUE_SLIDING_TTL_SECONDS:1800}
   admission:
-    # 2초당 100명(NFR) — AdmissionPumpScheduler(후행 티켓)가 admit.lua 호출 시 사용할 배치 크기·주기.
+    # 2초당 100명(NFR) — AdmissionPumpScheduler가 admit.lua 호출 시 사용할 배치 크기·주기.
     batch-size: ${VIRTUAL_QUEUE_BATCH_SIZE:100}
     tick-seconds: ${VIRTUAL_QUEUE_TICK_SECONDS:2}
+    # 운영 킬 스위치(BE-07) — false면 AdmissionPumpScheduler가 매 틱 배치 실행 자체를 건너뛴다
+    # (배포 없는 즉시 롤백). 부팅 토글이 아니라 매 틱 런타임 조회이므로 재기동 불요.
+    enabled: ${VIRTUAL_QUEUE_ADMISSION_ENABLED:true}
   heartbeat:
     # 60초 미갱신 시 이탈 판정(FR-8). evict.lua의 cutoff(now - stale-seconds) 계산 기준.
     stale-seconds: ${VIRTUAL_QUEUE_HEARTBEAT_STALE_SECONDS:60}
