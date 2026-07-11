@@ -8,6 +8,7 @@ import com.sportsapp.domain.virtualqueue.exception.QueueFullException
 import com.sportsapp.domain.virtualqueue.gateway.EntryTokenIssuer
 import com.sportsapp.domain.virtualqueue.gateway.VirtualQueueStore
 import com.sportsapp.domain.virtualqueue.vo.QueuePosition
+import com.sportsapp.domain.virtualqueue.vo.QueueStats
 import com.sportsapp.domain.virtualqueue.vo.QueueStatus
 import com.sportsapp.domain.virtualqueue.vo.QueueTarget
 import org.springframework.beans.factory.annotation.Value
@@ -66,6 +67,16 @@ class VirtualQueueDomainService(
     fun leave(target: QueueTarget, userId: Long) {
         virtualQueueStore.leave(target, userId)
     }
+
+    /**
+     * 운영자 통계 조회(FR-11). waitingCount·admittedCount는 Store 즉시 조회값으로 구성하고,
+     * 지표성 필드(admissionRatePerSec·avgWaitSeconds·p95WaitSeconds)는 BE-10 Observability
+     * 연동 전까지 placeholder다([QueueStats] 클래스 문서 참조).
+     */
+    fun stats(target: QueueTarget): QueueStats = QueueStats.of(
+        waitingCount = virtualQueueStore.waitingSize(target),
+        admittedCount = virtualQueueStore.admittedCount(target),
+    )
 
     private fun isQueueEnabled(userId: Long): Boolean =
         featureFlagEvaluator.isEnabled(VirtualQueueFeatureFlagKeys.ENABLED, FeatureContext.of(userId), false)

@@ -317,4 +317,46 @@ class VirtualQueueDomainServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("운영자 통계를 조회하는 상황에서 (FR-11, BE-06)") {
+        val virtualQueueStore = mockk<VirtualQueueStore>()
+        val service = buildService(virtualQueueStore = virtualQueueStore)
+
+        every { virtualQueueStore.waitingSize(target) } returns 250L
+        every { virtualQueueStore.admittedCount(target) } returns 100L
+
+        When("stats를 호출하면") {
+            val result = service.stats(target)
+
+            Then("waitingCount·admittedCount는 Store 즉시 조회값을 그대로 담는다") {
+                result.waitingCount shouldBe 250L
+                result.admittedCount shouldBe 100L
+                verify(exactly = 1) { virtualQueueStore.waitingSize(target) }
+                verify(exactly = 1) { virtualQueueStore.admittedCount(target) }
+            }
+
+            Then("지표성 필드(admissionRate·avgWait·p95Wait)는 BE-10 미연동 상태라 0.0 placeholder다") {
+                result.admissionRatePerSec shouldBe 0.0
+                result.avgWaitSeconds shouldBe 0.0
+                result.p95WaitSeconds shouldBe 0.0
+            }
+        }
+    }
+
+    Given("대기 인원이 0건인 큐의 통계를 조회하는 상황에서") {
+        val virtualQueueStore = mockk<VirtualQueueStore>()
+        val service = buildService(virtualQueueStore = virtualQueueStore)
+
+        every { virtualQueueStore.waitingSize(target) } returns 0L
+        every { virtualQueueStore.admittedCount(target) } returns 0L
+
+        When("stats를 호출하면") {
+            val result = service.stats(target)
+
+            Then("예외 없이 0건 통계를 반환한다") {
+                result.waitingCount shouldBe 0L
+                result.admittedCount shouldBe 0L
+            }
+        }
+    }
 })

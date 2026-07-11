@@ -1,5 +1,6 @@
 package com.sportsapp.application.virtualqueue.dto
 
+import com.sportsapp.domain.virtualqueue.vo.QueueStatus
 import java.time.ZonedDateTime
 
 /**
@@ -11,9 +12,6 @@ import java.time.ZonedDateTime
  * - [aheadCount]: 앞선 대기 인원(WAITING만, `QueuePosition.aheadCount`)
  * - [etaSeconds]: 예상 대기 초(WAITING만, `QueuePosition.etaSeconds`)
  * - [entryToken]/[tokenExpiresAt]: ADMITTED/DIRECT_ADMITTED만 값 보유
- *
- * 도메인(`QueueStatus`) → 응답 변환 로직은 이 티켓 범위가 아니다(후행 `GetQueueStatusUseCase`
- * 등에서 확정) — 여기서는 FE 계약과 1:1 대응하는 응답 형태(shape)만 고정한다.
  */
 data class QueueEntryResponse(
     val status: String,
@@ -22,4 +20,27 @@ data class QueueEntryResponse(
     val etaSeconds: Long?,
     val entryToken: String?,
     val tokenExpiresAt: ZonedDateTime?,
-)
+) {
+
+    companion object {
+        /**
+         * `QueueStatus` → `QueueEntryResponse` 변환 (BE-06, EnterQueueUseCase/GetQueueStatusUseCase 공용).
+         *
+         * [position](1-based 순번)은 도메인에 별도로 보관되지 않는다 — `QueuePosition.aheadCount`
+         * (ZRANK, 표시용 동적 순위)에 +1한 값으로 계산한다. admission 판정에 쓰이는 고정 시퀀스
+         * (`seq`)는 내부 판정 전용이라 API로 노출하지 않는다(§0-1 — seq는 admitted 판정에만 관여).
+         */
+        fun of(status: QueueStatus): QueueEntryResponse {
+            val position = status.position
+            val entryToken = status.entryToken
+            return QueueEntryResponse(
+                status = status.state.name,
+                position = position?.let { it.aheadCount + 1 },
+                aheadCount = position?.aheadCount,
+                etaSeconds = position?.etaSeconds,
+                entryToken = entryToken?.raw,
+                tokenExpiresAt = entryToken?.expiresAt,
+            )
+        }
+    }
+}
