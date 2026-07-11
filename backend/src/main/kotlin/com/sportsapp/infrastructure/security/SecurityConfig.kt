@@ -108,6 +108,7 @@ class SecurityConfig(
             "/weather/**",
             "/operator/inbox/**", // TODO(AUTH-04): JWT 인증 통합 시 제거
             "/limited-drops/**", // TODO(AUTH-04): JWT 인증 통합 시 제거 — goods-orders와 동일한 X-User-Id 헤더 임시 방식
+            "/virtual-queues/**", // BE-08: /limited-drops/**와 동일한 X-User-Id 헤더 임시 관례(TODO AUTH-04 제거 대상)
         ).permitAll()
         // BE-09: catalog(BE-07)·order(BE-08) 통합 파사드 인가 등록. catalog는 비로그인 통합검색을
         // 허용(FR-1/2), order는 principal.id(JWT) 기반 조회라 인증 필수(FR-5, User Scenario 7).
