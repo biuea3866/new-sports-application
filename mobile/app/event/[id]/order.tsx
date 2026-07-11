@@ -4,10 +4,16 @@
  * 진입: /event/{id}/order?seatIds=1,2,3 (index.tsx에서 선택된 좌석 ID 전달)
  * 흐름:
  *   1. 선택된 좌석 목록 표시 (전달받은 seatIds 기반)
- *   2. POST /events/{id}/seats/select → lockId + expiresAt 획득 (선점)
+ *   2. POST /events/{id}/seats/select → lockId + expiresAt 획득 (선점, 저장된 입장 토큰이
+ *      있으면 X-Entry-Token 헤더가 자동 부착된다 — `api/ticketOrders.ts#selectSeats`)
  *   3. POST /ticket-orders → ticketOrderId + amount 획득 (주문 생성)
  *   4. router.push('/payment/new?orderType=TICKETING&orderId={ticketOrderId}&amount={amount}')
  *   5. 뒤로가기 또는 컴포넌트 언마운트 시 POST /events/{id}/seats/release (선점 해제)
+ *
+ * 가상 대기열(FE-09, design-fe-app.md "화면별 상태 표" error—토큰 만료(구매 단계) ·
+ * 시나리오 3): 좌석 선점(selectSeats)이 403 `QUEUE_BYPASS_DENIED`(입장 토큰 부재·위조·만료)로
+ * 거부되면 일반 오류와 구분해 "대기 시간이 지났어요 · 다시 대기하기" 안내 후 대기실로
+ * `router.replace` 재진입시킨다.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -21,7 +27,13 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEvent } from '../../../lib/useEvent';
-import { selectSeats, releaseSeats, purchaseTicketOrder } from '../../../api/ticketOrders';
+import {
+  isQueueBypassDeniedError,
+  selectSeats,
+  releaseSeats,
+  purchaseTicketOrder,
+} from '../../../api/ticketOrders';
+import { ROUTES } from '../../../lib/navigation';
 import type { PaymentMethod, SeatInfo } from '../../../api/types';
 
 type Phase = 'confirm' | 'selecting' | 'purchasing' | 'done';
@@ -131,10 +143,21 @@ export default function EventOrderScreen() {
         lockIdRef.current = null;
         releasedRef.current = false;
       }
+      setPhase('confirm');
+
+      if (isQueueBypassDeniedError(error)) {
+        Alert.alert('대기 시간이 지났어요', '다시 대기하기', [
+          {
+            text: '다시 대기하기',
+            onPress: () => router.replace(ROUTES.queue.waiting('ticketing-event', String(eventId))),
+          },
+        ]);
+        return;
+      }
+
       const message =
         error instanceof Error ? error.message : '처리에 실패했습니다. 다시 시도해주세요.';
       Alert.alert('오류', message);
-      setPhase('confirm');
     }
   }, [eventId, selectedSeatIds, amount, event?.title]);
 

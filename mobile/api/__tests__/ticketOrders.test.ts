@@ -6,11 +6,16 @@
  * U-05: POST /events/{id}/seats/select 실패(409) 시 에러를 발생시킨다
  * U-06: selectSeats 성공 후 purchaseTicketOrder 실패 시 releaseSeats를 호출할 수 있다 (재시도 경로 검증)
  * U-07: getTicketOrderDetail은 GET /ticket-orders/{id}로 상세(eventId·eventTitle·paymentId·createdAt 포함)를 반환한다(주문상세 Option A+)
+ * U-08: 저장된 입장 토큰이 있으면 selectSeats가 X-Entry-Token 헤더를 부착한다(FE-09)
+ * U-09: 저장된 입장 토큰이 없으면 selectSeats가 X-Entry-Token 헤더 없이 호출한다(FE-09)
+ * U-10: isQueueBypassDeniedError는 403 QUEUE_BYPASS_DENIED만 true를 반환한다(FE-09)
  */
 import MockAdapter from 'axios-mock-adapter';
+import { AxiosError } from 'axios';
 import { createBeClient } from '../be-client';
-import { getTicketOrderDetail } from '../ticketOrders';
+import { getTicketOrderDetail, isQueueBypassDeniedError, selectSeats } from '../ticketOrders';
 import type { SelectSeatsResponse, TicketOrderDetailResponse, TicketOrderResponse } from '../types';
+import { useEntryTokenStore } from '../../lib/entryTokenStore';
 
 jest.mock('../be-client', () => {
   const actual = jest.requireActual<typeof import('../be-client')>('../be-client');
@@ -26,7 +31,10 @@ describe('TicketOrders API', () => {
   const mock = new MockAdapter(client);
 
   beforeEach(() => getBeClientMock.mockReturnValue(client));
-  afterEach(() => mock.reset());
+  afterEach(() => {
+    mock.reset();
+    useEntryTokenStore.setState({ tokens: {} });
+  });
 
   const mockSelectResponse: SelectSeatsResponse = {
     lockId: '1:10,1:11',
@@ -117,7 +125,11 @@ describe('TicketOrders API', () => {
 
       // purchase 실패
       await expect(
-        client.post('/ticket-orders', { lockId: selectRes.data.lockId, method: 'CREDIT_CARD', currency: 'KRW' }, { headers: { 'Idempotency-Key': 'key-001' } })
+        client.post(
+          '/ticket-orders',
+          { lockId: selectRes.data.lockId, method: 'CREDIT_CARD', currency: 'KRW' },
+          { headers: { 'Idempotency-Key': 'key-001' } }
+        )
       ).rejects.toThrow();
 
       // release 호출 가능 — 204 반환
@@ -152,6 +164,68 @@ describe('TicketOrders API', () => {
       mock.onGet('/ticket-orders/999').reply(404, { message: 'Not found' });
 
       await expect(getTicketOrderDetail(999)).rejects.toThrow();
+    });
+  });
+
+  describe('U-08: selectSeats + 저장된 입장 토큰', () => {
+    it('저장된 입장 토큰이 있으면 X-Entry-Token 헤더가 부착된다', async () => {
+      useEntryTokenStore
+        .getState()
+        .setToken('ticketing-event', 1, 'entry-token-abc', '2099-01-01T00:00:00Z');
+
+      let capturedHeader: string | undefined;
+      mock.onPost('/events/1/seats/select').reply((config) => {
+        capturedHeader = (config.headers as Record<string, string>)['X-Entry-Token'];
+        return [200, mockSelectResponse];
+      });
+
+      await selectSeats(1, [10, 11]);
+
+      expect(capturedHeader).toBe('entry-token-abc');
+    });
+  });
+
+  describe('U-09: selectSeats + 토큰 미저장', () => {
+    it('저장된 입장 토큰이 없으면 X-Entry-Token 헤더 없이 호출한다', async () => {
+      let capturedHeader: string | undefined;
+      mock.onPost('/events/1/seats/select').reply((config) => {
+        capturedHeader = (config.headers as Record<string, string>)['X-Entry-Token'];
+        return [200, mockSelectResponse];
+      });
+
+      await selectSeats(1, [10, 11]);
+
+      expect(capturedHeader).toBeUndefined();
+    });
+  });
+
+  describe('U-10: isQueueBypassDeniedError', () => {
+    it('403 QUEUE_BYPASS_DENIED 응답이면 true를 반환한다', () => {
+      const error = new AxiosError('Forbidden', undefined, undefined, undefined, {
+        status: 403,
+        data: { code: 'QUEUE_BYPASS_DENIED' },
+        statusText: 'Forbidden',
+        headers: {},
+        config: {} as never,
+      });
+
+      expect(isQueueBypassDeniedError(error)).toBe(true);
+    });
+
+    it('403이어도 다른 code면 false를 반환한다', () => {
+      const error = new AxiosError('Forbidden', undefined, undefined, undefined, {
+        status: 403,
+        data: { code: 'SOME_OTHER_REASON' },
+        statusText: 'Forbidden',
+        headers: {},
+        config: {} as never,
+      });
+
+      expect(isQueueBypassDeniedError(error)).toBe(false);
+    });
+
+    it('AxiosError가 아니면 false를 반환한다', () => {
+      expect(isQueueBypassDeniedError(new Error('boom'))).toBe(false);
     });
   });
 });
