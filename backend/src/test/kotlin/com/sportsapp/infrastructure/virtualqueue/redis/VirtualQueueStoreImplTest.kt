@@ -243,6 +243,51 @@ class VirtualQueueStoreImplTest @Autowired constructor(
         }
     }
 
+    Given("seq 키가 존재하는 살아있는 대상에서") {
+        val target = QueueTarget(QueueTargetType.LIMITED_DROP, 3012L)
+        cleanup(target, 950002L)
+        val store = buildStore()
+        store.enterIfAbsent(target, 950002L, maxCapacity = 100)
+
+        When("seqExists를 호출하면") {
+            val exists = store.seqExists(target)
+
+            Then("true를 반환한다") {
+                exists shouldBe true
+            }
+        }
+    }
+
+    Given("seq 키가 없는(만료됐거나 애초에 진입이 없던) 대상에서") {
+        val target = QueueTarget(QueueTargetType.LIMITED_DROP, 3013L)
+        cleanup(target)
+        val store = buildStore()
+
+        When("seqExists를 호출하면") {
+            val exists = store.seqExists(target)
+
+            Then("false를 반환한다") {
+                exists shouldBe false
+            }
+        }
+    }
+
+    Given("queue:active에 등록된 대상을 deactivate로 정리할 때 (seq-존재 가드)") {
+        val target = QueueTarget(QueueTargetType.TICKETING_EVENT, 3014L)
+        cleanup(target)
+        val store = buildStore()
+        store.registerActive(target)
+
+        When("deactivate를 호출하면") {
+            store.deactivate(target)
+            val actives = store.activeTargets()
+
+            Then("queue:active에서 제거된다") {
+                actives shouldBe emptySet()
+            }
+        }
+    }
+
     Given("활성 대상이 등록되지 않은 상태에서") {
         val target = QueueTarget(QueueTargetType.TICKETING_EVENT, 3010L)
         cleanup(target)

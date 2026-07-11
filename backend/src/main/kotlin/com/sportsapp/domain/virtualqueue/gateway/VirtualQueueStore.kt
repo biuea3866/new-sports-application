@@ -59,4 +59,17 @@ interface VirtualQueueStore {
 
     /** `queue:active`에 대상을 등록한다(신규 진입 시 호출). */
     fun registerActive(target: QueueTarget)
+
+    /**
+     * `EXISTS` — seq 키(고정 시퀀스 채번 + seenTotal 상한 원천) 생존 여부.
+     *
+     * pump(BE-07)가 `advanceAdmission`을 호출하기 전에 확인해야 하는 방어적 가드다 — seq가
+     * 만료된 뒤 `admit.lua`가 실행되면 `GET seq or '0'` → 0 → `admitted_count = min(count+batch, 0)
+     * = 0`으로 고수위가 역행/붕괴한다(폴링이 지속되는 한 `touchHeartbeat`가 seq TTL을 함께 슬라이딩
+     * 갱신하므로 생존하지만, 폴링·이탈 모두 끊긴 죽은 대상은 seq가 만료된다).
+     */
+    fun seqExists(target: QueueTarget): Boolean
+
+    /** `queue:active`에서 대상을 제거한다(`SREM`) — seq가 만료된 죽은 대상을 pump가 정리할 때 호출한다. */
+    fun deactivate(target: QueueTarget)
 }
