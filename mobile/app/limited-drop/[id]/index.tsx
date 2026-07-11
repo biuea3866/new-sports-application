@@ -8,6 +8,10 @@
  * 이 컴포넌트는 뷰모델을 그대로 렌더링만 한다(no-logic-in-component).
  * BE GET 응답에 totalQuantity·price가 결합되어(계약 확장) RemainingStockBar(비율 표시)와
  * 가격 표기를 노출한다.
+ *
+ * FE-08: 구매 CTA는 가상 대기열 플래그(`virtual-queue.enabled`)로 분기한다 — ON이면 대기실
+ * (`ROUTES.queue.waiting`)로, OFF면 기존 구매 화면으로 직접 이동한다(design-fe-app.md "라우팅
+ * 흐름" · 시나리오 6·7). 플래그 ON일 때 대기실을 우회할 경로를 두지 않는다.
  */
 import { ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -18,6 +22,8 @@ import { RemainingStockBar } from '../../../components/limitedDrop/RemainingStoc
 import { PrimaryButton } from '../../../components/themed/PrimaryButton';
 import { ThemedText } from '../../../components/themed/ThemedText';
 import { ThemedView } from '../../../components/themed/ThemedView';
+import { isFeatureEnabled } from '../../../lib/feature-flags';
+import { ROUTES } from '../../../lib/navigation';
 import { useLimitedDropDetail } from '../../../lib/useLimitedDropDetail';
 
 export default function LimitedDropDetailScreen() {
@@ -96,7 +102,13 @@ export default function LimitedDropDetailScreen() {
         <PrimaryButton
           label={cta.label}
           disabled={cta.disabled}
-          onPress={() => router.push(`/limited-drop/${drop.dropId}/purchase`)}
+          onPress={() =>
+            router.push(
+              isFeatureEnabled('virtual-queue.enabled')
+                ? ROUTES.queue.waiting('limited-drop', String(drop.dropId))
+                : ROUTES.limitedDrop.purchase(String(drop.dropId))
+            )
+          }
         />
 
         <ThemedText variant="muted" style={styles.limitHint}>

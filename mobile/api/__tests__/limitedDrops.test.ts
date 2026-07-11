@@ -188,6 +188,42 @@ describe('purchaseLimitedDrop', () => {
     expect(result).toEqual({ outcome: 'LIMIT_EXCEEDED' });
   });
 
+  it('403 응답(code=QUEUE_BYPASS_DENIED, 대기열 우회 차단)을 BYPASS_DENIED outcome으로 매핑한다', async () => {
+    mock
+      .onPost('/limited-drops/1/orders')
+      .reply(403, { code: 'QUEUE_BYPASS_DENIED', message: 'Entry token invalid or expired' });
+
+    const result = await purchaseLimitedDrop(
+      1,
+      { quantity: 1 },
+      { userId: 7, idempotencyKey: 'idem-key-007b' }
+    );
+
+    expect(result).toEqual({ outcome: 'BYPASS_DENIED' });
+  });
+
+  it('entryToken이 있으면 X-Entry-Token 헤더를 전송한다', async () => {
+    mock.onPost('/limited-drops/1/orders').reply(202, mockPurchaseResponse);
+
+    await purchaseLimitedDrop(
+      1,
+      { quantity: 1 },
+      { userId: 7, idempotencyKey: 'idem-key-009', entryToken: 'entry-token-xyz' }
+    );
+
+    const requestHistory = mock.history.post;
+    expect(requestHistory[0].headers?.['X-Entry-Token']).toBe('entry-token-xyz');
+  });
+
+  it('entryToken이 없으면 X-Entry-Token 헤더 없이 기존과 동일하게 호출한다', async () => {
+    mock.onPost('/limited-drops/1/orders').reply(202, mockPurchaseResponse);
+
+    await purchaseLimitedDrop(1, { quantity: 1 }, { userId: 7, idempotencyKey: 'idem-key-010' });
+
+    const requestHistory = mock.history.post;
+    expect(requestHistory[0].headers?.['X-Entry-Token']).toBeUndefined();
+  });
+
   it('5xx 응답은 판별 결과로 매핑하지 않고 에러를 전파한다', async () => {
     mock.onPost('/limited-drops/1/orders').reply(500, { message: 'Internal Server Error' });
 

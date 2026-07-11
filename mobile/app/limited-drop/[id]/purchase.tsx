@@ -10,6 +10,10 @@
  * 화면에 도달한 throttled phase는 재시도 후에도 해소되지 않은 상태 — 수동 재시도 CTA만 제공한다.
  * admitted는 정상 성공, tooEarly/soldOut/closed/throttled/limit은 오류가 아닌 결과 상태이며
  * error(5xx·네트워크)만 진짜 오류로 표시한다.
+ *
+ * FE-08: bypassDenied(403 QUEUE_BYPASS_DENIED — 대기실 입장 토큰 없음/만료)는 "다시 대기하기"로
+ * 대기실(`ROUTES.queue.waiting`)에 `router.replace` 재진입한다(design-fe-app.md "화면별 상태 표"
+ * "error — 토큰 만료" · 시나리오 3).
  */
 import { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
@@ -19,6 +23,7 @@ import { QuantityStepper } from '../../../components/limitedDrop/QuantityStepper
 import { PrimaryButton } from '../../../components/themed/PrimaryButton';
 import { ThemedText } from '../../../components/themed/ThemedText';
 import { ThemedView } from '../../../components/themed/ThemedView';
+import { ROUTES } from '../../../lib/navigation';
 import { useLimitedDrop } from '../../../lib/useLimitedDrop';
 import { usePurchaseLimitedDrop } from '../../../lib/usePurchaseLimitedDrop';
 import type { PurchaseLimitedDropPhase } from '../../../lib/usePurchaseLimitedDrop';
@@ -120,6 +125,23 @@ function PurchaseResultView({ result, perUserLimit, dropId, onRetry }: PurchaseR
           {`1인당 ${perUserLimit}개까지 구매할 수 있어요`}
         </ThemedText>
         <BackToDetailLink dropId={dropId} />
+      </ThemedView>
+    );
+  }
+
+  if (result.phase === 'bypassDenied') {
+    return (
+      <ThemedView style={styles.center} accessible accessibilityLabel="대기 시간이 지났어요">
+        <ThemedText variant="warning" style={styles.spacingBottom}>
+          대기 시간이 지났어요
+        </ThemedText>
+        <TouchableOpacity
+          onPress={() => router.replace(ROUTES.queue.waiting('limited-drop', String(dropId)))}
+          accessibilityRole="button"
+          accessibilityLabel="다시 대기하기"
+        >
+          <ThemedText variant="accent">다시 대기하기</ThemedText>
+        </TouchableOpacity>
       </ThemedView>
     );
   }

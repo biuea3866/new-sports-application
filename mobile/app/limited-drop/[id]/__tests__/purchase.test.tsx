@@ -201,6 +201,26 @@ describe('LimitedDropPurchaseScreen', () => {
     expect(mutateMock).toHaveBeenCalledWith({ quantity: 1 });
   });
 
+  it('bypassDenied phase(403 QUEUE_BYPASS_DENIED)에서 다시 대기하기 안내를 표시하고 누르면 대기실로 재진입한다', () => {
+    const replaceMock = jest.fn();
+    useRouterMock.mockReturnValue({
+      push: pushMock,
+      replace: replaceMock,
+      back: jest.fn(),
+    } as unknown as ReturnType<typeof useRouter>);
+    mockUsePurchaseLimitedDropReturn(jest.fn(), {
+      isSuccess: true,
+      data: { phase: 'bypassDenied' },
+    });
+
+    render(<LimitedDropPurchaseScreen />);
+
+    expect(screen.getByText('대기 시간이 지났어요')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('다시 대기하기'));
+
+    expect(replaceMock).toHaveBeenCalledWith('/queue/limited-drop/1');
+  });
+
   it('다크 모드에서도 정상 렌더된다', () => {
     mockUseColorScheme.mockReturnValue('dark');
     mockUsePurchaseLimitedDropReturn(jest.fn(), {});
