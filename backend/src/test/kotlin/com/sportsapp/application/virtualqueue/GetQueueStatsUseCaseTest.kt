@@ -14,7 +14,7 @@ import io.mockk.verify
 
 /**
  * `GetQueueStatsUseCase` — `VirtualQueueDomainService.stats` 위임(execute ≤10줄, FR-11)과
- * QueueStats → QueueStatsResponse 변환을 검증한다 (BE-06).
+ * QueueStats → QueueStatsResponse 변환을 검증한다
  *
  * stats 산출 방침: waitingCount·admittedCount는 Store 즉시 조회값(DomainService.stats가 이미
  * 조합), admissionRatePerSec·avgWaitSeconds·p95WaitSeconds는 BE-10 Observability 미연동 상태라

@@ -21,7 +21,7 @@ private const val USER_ID = 100L
 
 /**
  * `EnterQueueUseCase` — `VirtualQueueDomainService.enter` 위임(execute ≤10줄)과
- * QueueStatus → QueueEntryResponse 변환을 검증한다 (BE-06).
+ * QueueStatus → QueueEntryResponse 변환을 검증한다
  */
 class EnterQueueUseCaseTest : BehaviorSpec({
 

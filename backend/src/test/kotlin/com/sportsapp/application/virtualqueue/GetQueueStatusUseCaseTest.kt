@@ -21,7 +21,7 @@ private const val USER_ID = 200L
 
 /**
  * `GetQueueStatusUseCase` — `VirtualQueueDomainService.status` 위임(execute ≤10줄, 폴링/heartbeat
- * 겸용)과 QueueStatus → QueueEntryResponse 변환을 검증한다 (BE-06).
+ * 겸용)과 QueueStatus → QueueEntryResponse 변환을 검증한다
  */
 class GetQueueStatusUseCaseTest : BehaviorSpec({
 

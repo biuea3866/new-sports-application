@@ -13,7 +13,7 @@ import io.mockk.verify
 private const val USER_ID = 300L
 
 /**
- * `LeaveQueueUseCase` — `VirtualQueueDomainService.leave` 위임(execute ≤10줄)을 검증한다 (BE-06).
+ * `LeaveQueueUseCase` — `VirtualQueueDomainService.leave` 위임(execute ≤10줄)을 검증한다
  */
 class LeaveQueueUseCaseTest : BehaviorSpec({
 

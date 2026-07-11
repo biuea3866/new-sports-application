@@ -318,7 +318,7 @@ class VirtualQueueDomainServiceTest : BehaviorSpec({
         }
     }
 
-    Given("운영자 통계를 조회하는 상황에서 (FR-11, BE-06)") {
+    Given("운영자 통계를 조회하는 상황에서 (운영자 통계 조회)") {
         val virtualQueueStore = mockk<VirtualQueueStore>()
         val service = buildService(virtualQueueStore = virtualQueueStore)
 

@@ -9,7 +9,7 @@ import io.kotest.matchers.shouldBe
  * waitingCount·admittedCount는 Store에서 즉시 조회 가능한 카운트를 그대로 담는다.
  * admissionRatePerSec·avgWaitSeconds·p95WaitSeconds는 시계열 지표로 Observability(BE-10,
  * `VirtualQueueMetricsBinder`)가 소유하며, BE-10이 아직 request-time 조회 경로를 제공하지 않으므로
- * 이 시점에는 0.0 placeholder로 채운다(BE-06 stats 산출 방침, [VirtualQueueDomainService.stats] 참조).
+ * 이 시점에는 0.0 placeholder로 채운다(stats 산출 방침, [VirtualQueueDomainService.stats] 참조).
  */
 class QueueStatsTest : BehaviorSpec({
 
