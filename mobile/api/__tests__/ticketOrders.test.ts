@@ -9,6 +9,7 @@
  * U-08: 저장된 입장 토큰이 있으면 selectSeats가 X-Entry-Token 헤더를 부착한다(FE-09)
  * U-09: 저장된 입장 토큰이 없으면 selectSeats가 X-Entry-Token 헤더 없이 호출한다(FE-09)
  * U-10: isQueueBypassDeniedError는 403 QUEUE_BYPASS_DENIED만 true를 반환한다(FE-09)
+ * ProblemDetail `properties.code` 중첩 응답과 flat `code` 폴백 응답 모두를 검증한다(FE-09)
  */
 import MockAdapter from 'axios-mock-adapter';
 import { AxiosError } from 'axios';
@@ -167,7 +168,7 @@ describe('TicketOrders API', () => {
     });
   });
 
-  describe('U-08: selectSeats + 저장된 입장 토큰', () => {
+  describe('selectSeats + 저장된 입장 토큰', () => {
     it('저장된 입장 토큰이 있으면 X-Entry-Token 헤더가 부착된다', async () => {
       useEntryTokenStore
         .getState()
@@ -185,7 +186,7 @@ describe('TicketOrders API', () => {
     });
   });
 
-  describe('U-09: selectSeats + 토큰 미저장', () => {
+  describe('selectSeats + 토큰 미저장', () => {
     it('저장된 입장 토큰이 없으면 X-Entry-Token 헤더 없이 호출한다', async () => {
       let capturedHeader: string | undefined;
       mock.onPost('/events/1/seats/select').reply((config) => {
@@ -199,8 +200,24 @@ describe('TicketOrders API', () => {
     });
   });
 
-  describe('U-10: isQueueBypassDeniedError', () => {
-    it('403 QUEUE_BYPASS_DENIED 응답이면 true를 반환한다', () => {
+  describe('isQueueBypassDeniedError', () => {
+    it('403 ProblemDetail(properties.code=QUEUE_BYPASS_DENIED) 응답이면 true를 반환한다', () => {
+      const error = new AxiosError('Forbidden', undefined, undefined, undefined, {
+        status: 403,
+        data: {
+          type: 'about:blank',
+          title: 'Forbidden',
+          properties: { code: 'QUEUE_BYPASS_DENIED' },
+        },
+        statusText: 'Forbidden',
+        headers: {},
+        config: {} as never,
+      });
+
+      expect(isQueueBypassDeniedError(error)).toBe(true);
+    });
+
+    it('flat code(QUEUE_BYPASS_DENIED) 응답이어도 폴백으로 true를 반환한다', () => {
       const error = new AxiosError('Forbidden', undefined, undefined, undefined, {
         status: 403,
         data: { code: 'QUEUE_BYPASS_DENIED' },
@@ -215,7 +232,7 @@ describe('TicketOrders API', () => {
     it('403이어도 다른 code면 false를 반환한다', () => {
       const error = new AxiosError('Forbidden', undefined, undefined, undefined, {
         status: 403,
-        data: { code: 'SOME_OTHER_REASON' },
+        data: { properties: { code: 'SOME_OTHER_REASON' } },
         statusText: 'Forbidden',
         headers: {},
         config: {} as never,
