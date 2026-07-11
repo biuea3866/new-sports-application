@@ -43,5 +43,18 @@ data class QueueTarget(
 
         /** pump가 활성 대상을 순회하는 인덱스 키(`SMEMBERS`, `KEYS`/`SCAN` 회피). */
         const val ACTIVE_TARGETS_KEY = "queue:active"
+
+        /**
+         * [activeMember]의 역변환 — `VirtualQueueStoreImpl.activeTargets`가 `queue:active`에서
+         * 읽은 `{slug}:{targetId}` 문자열을 다시 `QueueTarget`으로 복원한다. slug는 콜론을 포함하지
+         * 않으므로 마지막 콜론을 기준으로 분리한다.
+         */
+        fun fromActiveMember(member: String): QueueTarget {
+            val separatorIndex = member.lastIndexOf(':')
+            require(separatorIndex > 0) { "Invalid active member format: $member" }
+            val slug = member.substring(0, separatorIndex)
+            val targetId = member.substring(separatorIndex + 1).toLong()
+            return QueueTarget(type = QueueTargetType.fromSlug(slug), targetId = targetId)
+        }
     }
 }
