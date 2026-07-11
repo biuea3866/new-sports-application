@@ -2,11 +2,19 @@
  * 이벤트 상세 화면
  * GET /events/{id} : 기본 정보 + 섹션별 좌석 수 + 개별 좌석 목록
  * 좌석 선택 후 order 화면으로 진입
+ *
+ * 가상 대기열(FE-09, `20260709-가상대기열-design-fe-app.md` "라우팅·내비게이션 흐름"):
+ * 예매 진입(티켓 구매 CTA)은 `virtual-queue.enabled` 플래그로 분기한다.
+ * ON이면 대기실(`ticketing-event`, eventId 기준)을 경유하고, 대기실 뷰모델(`useWaitingRoom`,
+ * FE-07)이 ADMITTED 시 `event order` 화면으로 전환한다(좌석은 대기실 통과 후 재확인).
+ * OFF면 선택 좌석을 그대로 들고 기존처럼 order 화면으로 직접 이동한다.
  */
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useCallback, useMemo, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEvent } from '../../../lib/useEvent';
+import { isFeatureEnabled } from '../../../lib/feature-flags';
+import { ROUTES } from '../../../lib/navigation';
 import type { SeatInfo, SectionAvailability } from '../../../api/types';
 
 function formatDate(iso: string): string {
@@ -69,7 +77,13 @@ function SeatItem({ seat, selected, onToggle }: SeatItemProps) {
       disabled={isUnavailable}
       onPress={() => onToggle(seat.id)}
     >
-      <Text style={[styles.seatItemText, selected && styles.seatItemTextSelected, isUnavailable && styles.seatItemTextUnavailable]}>
+      <Text
+        style={[
+          styles.seatItemText,
+          selected && styles.seatItemTextSelected,
+          isUnavailable && styles.seatItemTextUnavailable,
+        ]}
+      >
         {isUnavailable ? '선점중' : `${seat.section}-${seat.rowNo}-${seat.seatNo}`}
       </Text>
     </Pressable>
@@ -92,6 +106,10 @@ export default function EventDetailScreen() {
 
   const handleOrderPress = useCallback(() => {
     if (selectedSeatIds.length === 0) return;
+    if (isFeatureEnabled('virtual-queue.enabled')) {
+      router.push(ROUTES.queue.waiting('ticketing-event', String(eventId)));
+      return;
+    }
     router.push(`/event/${eventId}/order?seatIds=${selectedSeatIds.join(',')}`);
   }, [eventId, selectedSeatIds]);
 
