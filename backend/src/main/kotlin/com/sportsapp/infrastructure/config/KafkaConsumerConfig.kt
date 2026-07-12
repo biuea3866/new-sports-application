@@ -32,7 +32,8 @@ import org.springframework.util.backoff.FixedBackOff
  * base 타입별로 별도의 ConsumerFactory/ContainerFactory를 둔다.
  *
  * 각 팩토리는 `ErrorHandlingDeserializer`로 key/value 역직렬화를 감싸, 손상된(poison) 레코드가
- * 무한 재시도로 컨슈머를 멈추게 하지 않고 스킵(+ 에러 로깅)되도록 한다.
+ * 무한 재시도로 컨슈머를 멈추게 하지 않고 스킵(+ 에러 로깅)되도록 한다. 리스너 UseCase가 던지는
+ * 일시적 처리 예외(DB 데드락·순간 커넥션 실패 등)는 별개로 취급한다 — [kafkaErrorHandler] 참고.
  */
 @Configuration
 class KafkaConsumerConfig(
@@ -75,22 +76,35 @@ class KafkaConsumerConfig(
         factory.consumerFactory = consumerFactoryFor(targetType)
         // Kafka 경계에서 W3C traceparent 헤더를 자동 추출해 Producer span과 동일 trace로 연결한다
         factory.containerProperties.isObservationEnabled = true
-        factory.setCommonErrorHandler(poisonRecordSkippingErrorHandler())
+        factory.setCommonErrorHandler(kafkaErrorHandler())
         return factory
     }
 
-    private fun poisonRecordSkippingErrorHandler(): DefaultErrorHandler {
+    /**
+     * 재시도 정책은 예외 종류로 갈린다.
+     *
+     * - **역직렬화 실패(poison record, [DeserializationException])** — `DefaultErrorHandler`의
+     *   기본 fatal(비재시도) 목록에 이미 포함되어 있어, 아래 backoff 설정과 무관하게 즉시
+     *   recoverer(로깅 + 오프셋 스킵)로 넘어간다. `addNotRetryableExceptions` 호출은 기본 목록과
+     *   중복이지만, poison record가 재시도 대상이 아님을 코드로 명시하기 위해 남겨 둔다.
+     * - **리스너 UseCase 처리 예외(DB 데드락·순간 커넥션 실패 등 일시적 실패)** — poison record와
+     *   달리 재시도하면 성공할 수 있으므로 `FixedBackOff(1000L, 3L)`(1초 간격 최대 3회)로 재시도한다.
+     *   `event.payment.payment.v1`은 "결제됨 + 주문 미확정" 상태를 막아야 하는 내구성 필수 대상이라,
+     *   재시도 없이 즉시 스킵(오프셋 커밋)하면 메시지가 영구 유실된다.
+     * - 재시도가 모두 소진돼도 poison record와 동일하게 recoverer가 로깅 후 오프셋을 스킵한다
+     *   (DLQ 미구성 — 후속 과제).
+     */
+    private fun kafkaErrorHandler(): DefaultErrorHandler {
         val recoverer = ConsumerRecordRecoverer { record, exception ->
             log.error(
-                "Kafka 레코드 역직렬화 실패로 스킵합니다: topic={}, partition={}, offset={}",
+                "Kafka 레코드 처리 실패로 스킵합니다: topic={}, partition={}, offset={}",
                 record.topic(),
                 record.partition(),
                 record.offset(),
                 exception,
             )
         }
-        // 재시도 없이 즉시 recoverer(로깅 + 오프셋 스킵)로 넘긴다 — poison record는 재시도해도 계속 실패한다
-        val handler = DefaultErrorHandler(recoverer, FixedBackOff(0L, 0L))
+        val handler = DefaultErrorHandler(recoverer, FixedBackOff(1_000L, 3L))
         handler.addNotRetryableExceptions(DeserializationException::class.java)
         return handler
     }
