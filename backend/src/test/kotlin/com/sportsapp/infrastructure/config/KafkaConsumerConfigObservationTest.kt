@@ -6,7 +6,8 @@ import io.kotest.matchers.shouldBe
 
 /**
  * KafkaConsumerConfig — Kafka Consumer 경계에서 trace 전파를 위해
- * kafkaListenerContainerFactory의 containerProperties.observationEnabled가 켜져 있어야 한다.
+ * 도메인 이벤트 타입별 ContainerFactory(paymentEvent/bookingEvent/ticketEvent)의
+ * containerProperties.observationEnabled가 켜져 있어야 한다.
  * Spring 컨텍스트 없이 구성만 검증한다(Testcontainers 경합 회피).
  */
 class KafkaConsumerConfigObservationTest : BehaviorSpec({
@@ -23,8 +24,24 @@ class KafkaConsumerConfigObservationTest : BehaviorSpec({
     Given("KafkaConsumerConfig가 초기화된 상태") {
         val config = newConfigWithProperties()
 
-        When("kafkaListenerContainerFactory를 생성하면") {
-            val factory = config.kafkaListenerContainerFactory()
+        When("paymentEventKafkaListenerContainerFactory를 생성하면") {
+            val factory = config.paymentEventKafkaListenerContainerFactory()
+
+            Then("containerProperties의 observation이 활성화된다") {
+                factory.containerProperties.isObservationEnabled shouldBe true
+            }
+        }
+
+        When("bookingEventKafkaListenerContainerFactory를 생성하면") {
+            val factory = config.bookingEventKafkaListenerContainerFactory()
+
+            Then("containerProperties의 observation이 활성화된다") {
+                factory.containerProperties.isObservationEnabled shouldBe true
+            }
+        }
+
+        When("ticketEventKafkaListenerContainerFactory를 생성하면") {
+            val factory = config.ticketEventKafkaListenerContainerFactory()
 
             Then("containerProperties의 observation이 활성화된다") {
                 factory.containerProperties.isObservationEnabled shouldBe true

@@ -17,7 +17,11 @@ class GoodsPaymentEventWorker(
     private val confirmGoodsPaymentUseCase: ConfirmGoodsPaymentUseCase,
     private val cancelGoodsPaymentUseCase: CancelGoodsPaymentUseCase,
 ) {
-    @KafkaListener(topics = [PaymentEvent.TOPIC], groupId = "goods-payment")
+    @KafkaListener(
+        topics = [PaymentEvent.TOPIC],
+        groupId = "goods-payment",
+        containerFactory = "paymentEventKafkaListenerContainerFactory",
+    )
     fun consume(event: PaymentEvent) {
         if (event.orderType != OrderType.GOODS) return
         when (event) {

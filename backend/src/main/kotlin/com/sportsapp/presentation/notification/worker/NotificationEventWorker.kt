@@ -23,7 +23,11 @@ import org.springframework.stereotype.Component
 class NotificationEventWorker(
     private val enqueueNotificationUseCase: EnqueueNotificationUseCase,
 ) {
-    @KafkaListener(topics = [PaymentEvent.TOPIC], groupId = "notification-payment")
+    @KafkaListener(
+        topics = [PaymentEvent.TOPIC],
+        groupId = "notification-payment",
+        containerFactory = "paymentEventKafkaListenerContainerFactory",
+    )
     fun consumePayment(event: PaymentEvent) {
         when (event) {
             is PaymentEvent.Confirmed -> enqueueBoth(
@@ -36,7 +40,11 @@ class NotificationEventWorker(
         }
     }
 
-    @KafkaListener(topics = [BookingEvent.TOPIC], groupId = "notification-booking")
+    @KafkaListener(
+        topics = [BookingEvent.TOPIC],
+        groupId = "notification-booking",
+        containerFactory = "bookingEventKafkaListenerContainerFactory",
+    )
     fun consumeBooking(event: BookingEvent) {
         when (event) {
             is BookingEvent.Confirmed -> enqueueBoth(
@@ -48,7 +56,11 @@ class NotificationEventWorker(
         }
     }
 
-    @KafkaListener(topics = [TicketEvent.TOPIC], groupId = "notification-ticketing")
+    @KafkaListener(
+        topics = [TicketEvent.TOPIC],
+        groupId = "notification-ticketing",
+        containerFactory = "ticketEventKafkaListenerContainerFactory",
+    )
     fun consumeTicket(event: TicketEvent) {
         when (event) {
             is TicketEvent.Issued -> enqueueBoth(
