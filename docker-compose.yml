@@ -20,6 +20,12 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      # 가상 대기열 토큰 서명 시크릿 — application.yml이 빈 기본값을 fail-fast로 막으므로(HmacEntryTokenGateway)
+      # 반드시 컨테이너로 전달해야 backend가 부팅한다. 값은 .env.<env>로 주입(비커밋).
+      VIRTUAL_QUEUE_TOKEN_SECRET: ${VIRTUAL_QUEUE_TOKEN_SECRET:-}
+      # 메일 발송 호스트 — 컨테이너 내부 localhost가 아니라 compose 서비스명 mailhog으로 붙는다.
+      MAIL_HOST: ${MAIL_HOST:-mailhog}
+      MAIL_PORT: ${MAIL_PORT:-1025}
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
       interval: 10s
