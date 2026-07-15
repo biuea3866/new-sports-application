@@ -1,12 +1,11 @@
 /**
- * TabsLayout — 탭 활성색 accent 토큰화·전역 안읽은 배지·community 플래그 게이팅 검증
- * 근거: 티켓 "앱 와이어업·기능 플래그·전역 배지 통합" 테스트 케이스.
+ * TabsLayout — 5탭(홈/시설/스토어/커뮤니티/마이) 등록·아이콘·활성색 accent 토큰화 검증.
+ * 근거: 사용자 피드백 "탭바 아이콘이 하나도 안 보인다" + "탭을 5개로 재편"
+ * (스토어=굿즈|티켓, 커뮤니티=게시글|동아리 세그먼트 통합, 채팅은 탭에서 제거).
  *
  * jest.setup.ts의 전역 expo-router mock은 Tabs/Tabs.Screen을 실제 컴포넌트가 아닌
  * 단순 객체/문자열로 대체하므로, `render()`로 마운트하지 않고 TabsLayout()을 순수
- * 함수로 호출해 반환된 React 엘리먼트 트리를 구조적으로 검증한다(app/__tests__/_layout.test.tsx와
- * 동일 기법). useTheme·useTotalUnread·feature-flags는 모듈 모킹으로 대체해 훅 디스패처 없이도
- * 안전하게 직접 호출할 수 있게 한다.
+ * 함수로 호출해 반환된 React 엘리먼트 트리를 구조적으로 검증한다.
  */
 import React from 'react';
 
@@ -17,21 +16,9 @@ jest.mock('../../../theme/useTheme', () => ({
   useTheme: jest.fn(),
 }));
 
-jest.mock('../../../lib/useTotalUnread', () => ({
-  useTotalUnread: jest.fn(),
-}));
-
-jest.mock('../../../lib/feature-flags', () => ({
-  isFeatureEnabled: jest.fn(),
-}));
-
 import { useTheme } from '../../../theme/useTheme';
-import { useTotalUnread } from '../../../lib/useTotalUnread';
-import { isFeatureEnabled } from '../../../lib/feature-flags';
 
 const useThemeMock = useTheme as jest.MockedFunction<typeof useTheme>;
-const useTotalUnreadMock = useTotalUnread as jest.MockedFunction<typeof useTotalUnread>;
-const isFeatureEnabledMock = isFeatureEnabled as jest.MockedFunction<typeof isFeatureEnabled>;
 
 type ElementWithChildren = React.ReactElement<{ children?: React.ReactNode }>;
 
@@ -87,13 +74,60 @@ function findTabScreens(tree: ElementWithChildren): React.ReactElement<{
   }>[];
 }
 
+function findScreen(
+  screens: ReturnType<typeof findTabScreens>,
+  name: string
+): React.ReactElement<{ name?: string; options?: Record<string, unknown> }> {
+  return requireDefined(
+    screens.find((s) => s.props.name === name),
+    `${name} 탭이 등록되지 않았습니다`
+  );
+}
+
+const EXPECTED_TAB_NAMES = ['index', 'facilities', 'store', 'community', 'me'];
+
 describe('TabsLayout', () => {
+  beforeEach(() => {
+    useThemeMock.mockReturnValue({ scheme: 'light', tokens: lightTokens });
+  });
+
   afterEach(() => jest.clearAllMocks());
+
+  it('정확히 5개 탭(홈/시설/스토어/커뮤니티/마이)이 등록된다', () => {
+    const tree = TabsLayout() as ElementWithChildren;
+    const screens = findTabScreens(tree);
+
+    expect(screens.map((s) => s.props.name)).toEqual(EXPECTED_TAB_NAMES);
+  });
+
+  it.each(EXPECTED_TAB_NAMES)('%s 탭에 tabBarIcon이 설정되어 있다', (name) => {
+    const tree = TabsLayout() as ElementWithChildren;
+    const screens = findTabScreens(tree);
+    const screen = findScreen(screens, name);
+
+    expect(typeof screen.props.options?.tabBarIcon).toBe('function');
+  });
+
+  it('탭 아이콘 렌더러는 focused 여부에 따라 다른 아이콘 이름을 사용한다', () => {
+    const tree = TabsLayout() as ElementWithChildren;
+    const screens = findTabScreens(tree);
+    const homeScreen = findScreen(screens, 'index');
+    const tabBarIcon = homeScreen.props.options?.tabBarIcon as (props: {
+      focused: boolean;
+      color: string;
+      size: number;
+    }) => React.ReactElement;
+
+    const focusedIcon = tabBarIcon({ focused: true, color: '#000', size: 24 });
+    const unfocusedIcon = tabBarIcon({ focused: false, color: '#000', size: 24 });
+
+    expect((focusedIcon.props as { name?: string }).name).not.toBe(
+      (unfocusedIcon.props as { name?: string }).name
+    );
+  });
 
   it('탭 활성색·비활성색이 하드코딩이 아닌 accent·textTertiary 토큰으로 렌더된다 (라이트)', () => {
     useThemeMock.mockReturnValue({ scheme: 'light', tokens: lightTokens });
-    useTotalUnreadMock.mockReturnValue(0);
-    isFeatureEnabledMock.mockReturnValue(true);
 
     const tree = TabsLayout() as ElementWithChildren;
     const tabsElement = findTabsElement(tree);
@@ -108,92 +142,30 @@ describe('TabsLayout', () => {
 
   it('탭 활성색이 다크 모드에서는 다크 accent 토큰으로 렌더된다', () => {
     useThemeMock.mockReturnValue({ scheme: 'dark', tokens: darkTokens });
-    useTotalUnreadMock.mockReturnValue(0);
-    isFeatureEnabledMock.mockReturnValue(true);
 
     const tree = TabsLayout() as ElementWithChildren;
-    const screens = findTabScreens(tree);
-    const chatScreen = requireDefined(
-      screens.find((s) => s.props.name === 'chat'),
-      'chat 탭이 등록되지 않았습니다'
-    );
+    const tabsElement = findTabsElement(tree);
+    const screenOptions = (tabsElement.props as { screenOptions: Record<string, unknown> })
+      .screenOptions;
 
-    // 다크 모드 배지 색상도 다크 토큰을 사용해야 한다 (chat 탭 배지 스타일로 확인)
-    const badgeStyle = chatScreen.props.options?.tabBarBadgeStyle as
-      | { backgroundColor?: string }
-      | undefined;
-    expect(badgeStyle?.backgroundColor).toBe(darkTokens.badge);
+    expect(screenOptions.tabBarActiveTintColor).toBe(darkTokens.accent);
   });
 
-  it('전역 안읽은 수 합계가 0보다 크면 채팅 탭에 배지가 표시된다', () => {
-    useThemeMock.mockReturnValue({ scheme: 'light', tokens: lightTokens });
-    useTotalUnreadMock.mockReturnValue(7);
-    isFeatureEnabledMock.mockReturnValue(true);
-
+  it('채팅·동아리·티켓 탭은 더 이상 등록되지 않는다(스토어·커뮤니티에 통합)', () => {
     const tree = TabsLayout() as ElementWithChildren;
     const screens = findTabScreens(tree);
-    const chatScreen = requireDefined(
-      screens.find((s) => s.props.name === 'chat'),
-      'chat 탭이 등록되지 않았습니다'
-    );
+    const names = screens.map((s) => s.props.name);
 
-    expect(chatScreen.props.options?.tabBarBadge).toBe(7);
+    expect(names).not.toContain('chat');
+    expect(names).not.toContain('clubs');
+    expect(names).not.toContain('tickets');
   });
 
-  it('전역 안읽은 수 합계가 0이면 채팅 탭에 배지가 표시되지 않는다', () => {
-    useThemeMock.mockReturnValue({ scheme: 'light', tokens: lightTokens });
-    useTotalUnreadMock.mockReturnValue(0);
-    isFeatureEnabledMock.mockReturnValue(true);
-
+  it('시설 탭 라벨은 "시설"이다 (search라는 모호한 이름을 쓰지 않는다)', () => {
     const tree = TabsLayout() as ElementWithChildren;
     const screens = findTabScreens(tree);
-    const chatScreen = requireDefined(
-      screens.find((s) => s.props.name === 'chat'),
-      'chat 탭이 등록되지 않았습니다'
-    );
+    const facilitiesScreen = findScreen(screens, 'facilities');
 
-    expect(chatScreen.props.options?.tabBarBadge).toBeUndefined();
-  });
-
-  it('chat.community.enabled가 OFF면 동아리(clubs) 탭 진입점이 숨겨진다', () => {
-    useThemeMock.mockReturnValue({ scheme: 'light', tokens: lightTokens });
-    useTotalUnreadMock.mockReturnValue(0);
-    isFeatureEnabledMock.mockReturnValue(false);
-
-    const tree = TabsLayout() as ElementWithChildren;
-    const screens = findTabScreens(tree);
-    const clubsScreen = requireDefined(
-      screens.find((s) => s.props.name === 'clubs'),
-      'clubs 탭이 등록되지 않았습니다'
-    );
-
-    expect(clubsScreen.props.options?.href).toBeNull();
-  });
-
-  it('chat.community.enabled가 ON이면 동아리(clubs) 탭 진입점이 노출된다', () => {
-    useThemeMock.mockReturnValue({ scheme: 'light', tokens: lightTokens });
-    useTotalUnreadMock.mockReturnValue(0);
-    isFeatureEnabledMock.mockReturnValue(true);
-
-    const tree = TabsLayout() as ElementWithChildren;
-    const screens = findTabScreens(tree);
-    const clubsScreen = requireDefined(
-      screens.find((s) => s.props.name === 'clubs'),
-      'clubs 탭이 등록되지 않았습니다'
-    );
-
-    expect(clubsScreen.props.options?.href).not.toBeNull();
-  });
-
-  it('기존 post 게시판 커뮤니티 탭(community)이 그대로 유지된다', () => {
-    useThemeMock.mockReturnValue({ scheme: 'light', tokens: lightTokens });
-    useTotalUnreadMock.mockReturnValue(0);
-    isFeatureEnabledMock.mockReturnValue(true);
-
-    const tree = TabsLayout() as ElementWithChildren;
-    const screens = findTabScreens(tree);
-    const communityScreen = screens.find((s) => s.props.name === 'community');
-
-    expect(communityScreen).toBeDefined();
+    expect(facilitiesScreen.props.options?.title).toBe('시설');
   });
 });
