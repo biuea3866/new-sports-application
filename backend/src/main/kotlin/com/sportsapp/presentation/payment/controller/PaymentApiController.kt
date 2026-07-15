@@ -9,6 +9,7 @@ import com.sportsapp.application.payment.dto.PreparePaymentResponse
 import com.sportsapp.application.payment.usecase.PreparePaymentUseCase
 import com.sportsapp.domain.payment.exception.MissingIdempotencyKeyException
 import com.sportsapp.domain.payment.entity.PaymentStatus
+import com.sportsapp.domain.user.vo.UserPrincipal
 import com.sportsapp.presentation.payment.dto.request.CreatePaymentRequest
 import com.sportsapp.presentation.payment.dto.request.PreparePaymentRequest
 import jakarta.validation.Valid
@@ -17,6 +18,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.http.HttpStatus
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -40,35 +42,36 @@ class PaymentApiController(
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun createPayment(
+        @AuthenticationPrincipal principal: UserPrincipal,
         @RequestHeader("Idempotency-Key", required = false) idempotencyKey: String?,
         @Valid @RequestBody request: CreatePaymentRequest,
     ): PaymentResponse {
         if (idempotencyKey.isNullOrBlank()) throw MissingIdempotencyKeyException()
-        val command = request.toCommand(userId = 1L, idempotencyKey = idempotencyKey)
+        val command = request.toCommand(userId = principal.id, idempotencyKey = idempotencyKey)
         return createPaymentUseCase.execute(command)
     }
 
     @PostMapping("/prepare")
     @ResponseStatus(HttpStatus.CREATED)
     fun preparePayment(
-        @RequestHeader("X-User-Id") userId: Long,
+        @AuthenticationPrincipal principal: UserPrincipal,
         @RequestHeader("Idempotency-Key", required = false) idempotencyKey: String?,
         @Valid @RequestBody request: PreparePaymentRequest,
     ): PreparePaymentResponse {
         if (idempotencyKey.isNullOrBlank()) throw MissingIdempotencyKeyException()
-        val command = request.toCommand(userId = userId, idempotencyKey = idempotencyKey)
+        val command = request.toCommand(userId = principal.id, idempotencyKey = idempotencyKey)
         return preparePaymentUseCase.execute(command)
     }
 
     @GetMapping("/{id}")
     fun getPayment(
-        @RequestHeader("X-User-Id") userId: Long,
+        @AuthenticationPrincipal principal: UserPrincipal,
         @PathVariable id: Long,
-    ): PaymentResponse = getPaymentUseCase.execute(userId = userId, paymentId = id)
+    ): PaymentResponse = getPaymentUseCase.execute(userId = principal.id, paymentId = id)
 
     @GetMapping("/me")
     fun listMyPayments(
-        @RequestHeader("X-User-Id") userId: Long,
+        @AuthenticationPrincipal principal: UserPrincipal,
         @RequestParam(required = false) status: PaymentStatus?,
         @RequestParam(required = false) paidAtFrom: ZonedDateTime?,
         @RequestParam(required = false) paidAtTo: ZonedDateTime?,
@@ -76,7 +79,7 @@ class PaymentApiController(
         @RequestParam(defaultValue = "20") size: Int,
     ): Page<PaymentResponse> {
         val criteria = PaymentCriteria(
-            userId = userId,
+            userId = principal.id,
             status = status,
             paidAtFrom = paidAtFrom,
             paidAtTo = paidAtTo,

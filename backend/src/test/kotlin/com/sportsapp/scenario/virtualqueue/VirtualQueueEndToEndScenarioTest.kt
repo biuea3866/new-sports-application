@@ -16,6 +16,7 @@ import com.sportsapp.domain.goods.vo.ProductCategory
 import com.sportsapp.domain.ticketing.entity.Event
 import com.sportsapp.domain.ticketing.entity.EventStatus
 import com.sportsapp.domain.ticketing.entity.Seat
+import com.sportsapp.domain.user.gateway.JwtIssuer
 import com.sportsapp.domain.user.service.UserDomainService
 import com.sportsapp.domain.virtualqueue.VirtualQueueFeatureFlagKeys
 import com.sportsapp.domain.virtualqueue.vo.QueueTarget
@@ -26,6 +27,7 @@ import com.sportsapp.infrastructure.ticketing.mysql.EventJpaRepository
 import com.sportsapp.infrastructure.ticketing.mysql.SeatJpaRepository
 import com.sportsapp.presentation.featureflag.dto.CreateFeatureFlagRequest
 import com.sportsapp.presentation.featureflag.dto.UpdateFeatureFlagRequest
+import com.sportsapp.presentation.support.bearerTokenFor
 import io.kotest.assertions.nondeterministic.eventually
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -43,6 +45,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.data.redis.core.script.DefaultRedisScript
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.web.servlet.MockMvc
@@ -84,6 +87,7 @@ class VirtualQueueEndToEndScenarioTest(
     @Autowired private val stockJpaRepository: StockJpaRepository,
     @Autowired private val eventJpaRepository: EventJpaRepository,
     @Autowired private val seatJpaRepository: SeatJpaRepository,
+    @Autowired private val jwtIssuer: JwtIssuer,
 ) : BaseIntegrationTest() {
 
     init {
@@ -201,10 +205,10 @@ class VirtualQueueEndToEndScenarioTest(
         fun statusUrl(type: QueueTargetType, targetId: Long) = "/virtual-queues/${type.slug}/$targetId/entries/me"
 
         fun enter(type: QueueTargetType, targetId: Long, userId: Long) =
-            mockMvc.perform(post(enterUrl(type, targetId)).header("X-User-Id", userId.toString()))
+            mockMvc.perform(post(enterUrl(type, targetId)).header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(userId)))
 
         fun pollStatus(type: QueueTargetType, targetId: Long, userId: Long) =
-            mockMvc.perform(get(statusUrl(type, targetId)).header("X-User-Id", userId.toString()))
+            mockMvc.perform(get(statusUrl(type, targetId)).header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(userId)))
 
         fun parseEntry(bodyJson: String): QueueEntryResponse = objectMapper.readValue(bodyJson, QueueEntryResponse::class.java)
 
@@ -256,7 +260,7 @@ class VirtualQueueEndToEndScenarioTest(
             )
             val result = mockMvc.perform(
                 post("/limited-drops")
-                    .header("X-User-Id", OWNER_USER_ID.toString())
+                    .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(OWNER_USER_ID))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(body)
             ).andExpect(status().isCreated).andReturn()
@@ -265,7 +269,7 @@ class VirtualQueueEndToEndScenarioTest(
 
         fun purchase(dropId: Long, userId: Long, entryToken: String?, idempotencyKey: String = UUID.randomUUID().toString()): ResultActions {
             val builder = post("/limited-drops/$dropId/orders")
-                .header("X-User-Id", userId.toString())
+                .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(userId))
                 .header("Idempotency-Key", idempotencyKey)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(mapOf("quantity" to 1)))
@@ -289,7 +293,7 @@ class VirtualQueueEndToEndScenarioTest(
 
         fun selectSeats(eventId: Long, seatIds: List<Long>, userId: Long, entryToken: String?): ResultActions {
             val builder = post("/events/$eventId/seats/select")
-                .header("X-User-Id", userId.toString())
+                .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(userId))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(mapOf("seatIds" to seatIds)))
             entryToken?.let { builder.header("X-Entry-Token", it) }

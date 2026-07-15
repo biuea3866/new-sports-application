@@ -3,16 +3,17 @@ package com.sportsapp.presentation.facility.controller
 import com.sportsapp.application.facility.dto.ProgramResponse
 import com.sportsapp.application.facility.usecase.ListProgramsUseCase
 import com.sportsapp.application.facility.usecase.RegisterProgramUseCase
+import com.sportsapp.domain.user.vo.UserPrincipal
 import com.sportsapp.presentation.facility.dto.request.RegisterProgramRequest
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Profile
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
@@ -33,11 +34,11 @@ class ProgramApiController(
 
     @PostMapping
     fun registerProgram(
-        @RequestHeader("X-User-Id") ownerUserId: Long,
+        @AuthenticationPrincipal principal: UserPrincipal,
         @PathVariable facilityId: String,
         @RequestBody request: RegisterProgramRequest,
     ): ResponseEntity<ProgramResponse> {
-        val response = registerProgramUseCase.execute(request.toCommand(facilityId, ownerUserId))
+        val response = registerProgramUseCase.execute(request.toCommand(facilityId, principal.id))
         return ResponseEntity.status(HttpStatus.CREATED).body(response)
     }
 

@@ -5,10 +5,13 @@ import com.sportsapp.domain.goods.entity.Product
 import com.sportsapp.domain.goods.vo.ProductCategory
 import com.sportsapp.domain.goods.entity.ProductStatus
 import com.sportsapp.domain.goods.entity.Stock
+import com.sportsapp.domain.user.gateway.JwtIssuer
 import com.sportsapp.infrastructure.goods.mysql.ProductJpaRepository
 import com.sportsapp.infrastructure.goods.mysql.StockJpaRepository
+import com.sportsapp.presentation.support.bearerTokenFor
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.web.servlet.MockMvc
@@ -20,12 +23,14 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.math.BigDecimal
 
+/** AUTH-04 — `X-User-Id` 헤더 대신 `Authorization: Bearer JWT`로 본인 식별한다. */
 @AutoConfigureMockMvc
 class CartScenarioTest(
     @Autowired private val mockMvc: MockMvc,
     @Autowired private val productJpaRepository: ProductJpaRepository,
     @Autowired private val stockJpaRepository: StockJpaRepository,
     @Autowired private val jdbcTemplate: JdbcTemplate,
+    @Autowired private val jwtIssuer: JwtIssuer,
 ) : BaseIntegrationTest() {
 
     init {
@@ -57,19 +62,19 @@ class CartScenarioTest(
                 Then("GET /cart/me는 빈 결과를 반환한다") {
                     mockMvc.perform(
                         post("/cart/items")
-                            .header("X-User-Id", "100")
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(100L))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""{"productId": $productId, "quantity": 2}""")
                     ).andExpect(status().isOk)
 
                     mockMvc.perform(
                         delete("/cart")
-                            .header("X-User-Id", "100")
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(100L))
                     ).andExpect(status().isNoContent)
 
                     mockMvc.perform(
                         get("/cart/me")
-                            .header("X-User-Id", "100")
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(100L))
                     ).andExpect(status().isOk)
                         .andExpect(jsonPath("$.items").isArray)
                         .andExpect(jsonPath("$.items.length()").value(0))
@@ -80,14 +85,14 @@ class CartScenarioTest(
                 Then("409 응답이 반환되고 장바구니는 변경되지 않는다") {
                     mockMvc.perform(
                         post("/cart/items")
-                            .header("X-User-Id", "101")
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(101L))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""{"productId": $productId, "quantity": 10}""")
                     ).andExpect(status().isConflict)
 
                     mockMvc.perform(
                         get("/cart/me")
-                            .header("X-User-Id", "101")
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(101L))
                     ).andExpect(status().isOk)
                         .andExpect(jsonPath("$.items.length()").value(0))
                 }
@@ -97,14 +102,14 @@ class CartScenarioTest(
                 Then("quantity가 병합되고 row가 하나만 생성된다") {
                     mockMvc.perform(
                         post("/cart/items")
-                            .header("X-User-Id", "102")
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(102L))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""{"productId": $productId, "quantity": 2}""")
                     ).andExpect(status().isOk)
 
                     mockMvc.perform(
                         post("/cart/items")
-                            .header("X-User-Id", "102")
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(102L))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""{"productId": $productId, "quantity": 1}""")
                     ).andExpect(status().isOk)
@@ -117,7 +122,7 @@ class CartScenarioTest(
                 Then("403 응답이 반환된다") {
                     val addResponse = mockMvc.perform(
                         post("/cart/items")
-                            .header("X-User-Id", "103")
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(103L))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""{"productId": $productId, "quantity": 1}""")
                     ).andExpect(status().isOk)
@@ -131,7 +136,7 @@ class CartScenarioTest(
 
                     mockMvc.perform(
                         patch("/cart/items/$itemId")
-                            .header("X-User-Id", "999")
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(999L))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""{"quantity": 5}""")
                     ).andExpect(status().isForbidden)

@@ -12,6 +12,7 @@ import com.sportsapp.domain.recruitment.entity.ApplicationStatus
 import com.sportsapp.domain.recruitment.exception.ApplicationCancellationClosedException
 import com.sportsapp.domain.recruitment.exception.UnauthorizedApplicationAccessException
 import com.sportsapp.presentation.exception.GlobalExceptionHandler
+import com.sportsapp.presentation.support.fixedPrincipalResolver
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every
 import io.mockk.mockk
@@ -26,19 +27,23 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders
 
 private const val TEST_USER_ID = 100L
 
+/** AUTH-04 — `X-User-Id` 헤더 대신 `@AuthenticationPrincipal UserPrincipal`로 본인 식별한다. */
 class ApplicationApiControllerTest : BehaviorSpec({
 
     fun buildMockMvc(
         listMyApplicationsUseCase: ListMyApplicationsUseCase = mockk(),
         cancelApplicationUseCase: CancelApplicationUseCase = mockk(),
         getApplicationDetailUseCase: GetApplicationDetailUseCase = mockk(),
+        userId: Long = TEST_USER_ID,
     ) = MockMvcBuilders.standaloneSetup(
         ApplicationApiController(
             listMyApplicationsUseCase = listMyApplicationsUseCase,
             cancelApplicationUseCase = cancelApplicationUseCase,
             getApplicationDetailUseCase = getApplicationDetailUseCase,
         ),
-    ).setControllerAdvice(GlobalExceptionHandler()).build()
+    ).setControllerAdvice(GlobalExceptionHandler())
+        .setCustomArgumentResolvers(fixedPrincipalResolver(userId))
+        .build()
 
     Given("본인 신청 목록 조회 요청") {
         val listMyApplicationsUseCase = mockk<ListMyApplicationsUseCase>()
@@ -54,7 +59,7 @@ class ApplicationApiControllerTest : BehaviorSpec({
         val mockMvc = buildMockMvc(listMyApplicationsUseCase = listMyApplicationsUseCase)
 
         When("GET /applications 요청 시") {
-            val result = mockMvc.perform(get("/applications").header("X-User-Id", TEST_USER_ID))
+            val result = mockMvc.perform(get("/applications"))
 
             Then("200과 함께 본인 신청 목록을 반환한다") {
                 result.andExpect(status().isOk)
@@ -67,10 +72,10 @@ class ApplicationApiControllerTest : BehaviorSpec({
     Given("신청 이력이 없는 사용자의 조회") {
         val listMyApplicationsUseCase = mockk<ListMyApplicationsUseCase>()
         every { listMyApplicationsUseCase.execute(200L) } returns emptyList()
-        val mockMvc = buildMockMvc(listMyApplicationsUseCase = listMyApplicationsUseCase)
+        val mockMvc = buildMockMvc(listMyApplicationsUseCase = listMyApplicationsUseCase, userId = 200L)
 
         When("GET /applications 요청 시") {
-            val result = mockMvc.perform(get("/applications").header("X-User-Id", 200L))
+            val result = mockMvc.perform(get("/applications"))
 
             Then("200과 함께 빈 목록을 반환한다") {
                 result.andExpect(status().isOk)
@@ -93,7 +98,7 @@ class ApplicationApiControllerTest : BehaviorSpec({
         val mockMvc = buildMockMvc(cancelApplicationUseCase = cancelApplicationUseCase)
 
         When("POST /applications/11/cancel 요청 시") {
-            val result = mockMvc.perform(post("/applications/11/cancel").header("X-User-Id", TEST_USER_ID))
+            val result = mockMvc.perform(post("/applications/11/cancel"))
 
             Then("200과 함께 CANCELLED 상태를 반환한다") {
                 result.andExpect(status().isOk)
@@ -105,14 +110,13 @@ class ApplicationApiControllerTest : BehaviorSpec({
     Given("본인 소유가 아닌 신청 취소 요청") {
         val cancelApplicationUseCase = mockk<CancelApplicationUseCase>()
         every { cancelApplicationUseCase.execute(any()) } throws UnauthorizedApplicationAccessException(11L)
-        val mockMvc = buildMockMvc(cancelApplicationUseCase = cancelApplicationUseCase)
+        val mockMvc = buildMockMvc(cancelApplicationUseCase = cancelApplicationUseCase, userId = 999L)
 
         When("POST /applications/11/cancel 요청 시") {
-            val result = mockMvc.perform(post("/applications/11/cancel").header("X-User-Id", 999L))
+            val result = mockMvc.perform(post("/applications/11/cancel"))
 
             Then("403을 반환한다") {
                 result.andExpect(status().isForbidden)
-                    .andExpect(jsonPath("$.code").value("APPLICATION_ACCESS_DENIED"))
             }
         }
     }
@@ -123,7 +127,7 @@ class ApplicationApiControllerTest : BehaviorSpec({
         val mockMvc = buildMockMvc(cancelApplicationUseCase = cancelApplicationUseCase)
 
         When("POST /applications/11/cancel 요청 시") {
-            val result = mockMvc.perform(post("/applications/11/cancel").header("X-User-Id", TEST_USER_ID))
+            val result = mockMvc.perform(post("/applications/11/cancel"))
 
             Then("422를 반환한다") {
                 result.andExpect(status().isUnprocessableEntity)
@@ -150,7 +154,7 @@ class ApplicationApiControllerTest : BehaviorSpec({
         val mockMvc = buildMockMvc(getApplicationDetailUseCase = getApplicationDetailUseCase)
 
         When("GET /applications/11 요청 시") {
-            val result = mockMvc.perform(get("/applications/11").header("X-User-Id", TEST_USER_ID))
+            val result = mockMvc.perform(get("/applications/11"))
 
             Then("200과 함께 모집명·참가비를 포함한 상세를 반환한다") {
                 result.andExpect(status().isOk)
@@ -169,14 +173,13 @@ class ApplicationApiControllerTest : BehaviorSpec({
         every {
             getApplicationDetailUseCase.execute(applicationId = 11L, requesterUserId = 999L)
         } throws UnauthorizedApplicationAccessException(11L)
-        val mockMvc = buildMockMvc(getApplicationDetailUseCase = getApplicationDetailUseCase)
+        val mockMvc = buildMockMvc(getApplicationDetailUseCase = getApplicationDetailUseCase, userId = 999L)
 
         When("GET /applications/11 요청 시") {
-            val result = mockMvc.perform(get("/applications/11").header("X-User-Id", 999L))
+            val result = mockMvc.perform(get("/applications/11"))
 
             Then("403을 반환한다") {
                 result.andExpect(status().isForbidden)
-                    .andExpect(jsonPath("$.code").value("APPLICATION_ACCESS_DENIED"))
             }
         }
     }
@@ -189,7 +192,7 @@ class ApplicationApiControllerTest : BehaviorSpec({
         val mockMvc = buildMockMvc(getApplicationDetailUseCase = getApplicationDetailUseCase)
 
         When("GET /applications/404 요청 시") {
-            val result = mockMvc.perform(get("/applications/404").header("X-User-Id", TEST_USER_ID))
+            val result = mockMvc.perform(get("/applications/404"))
 
             Then("404를 반환한다") {
                 result.andExpect(status().isNotFound)

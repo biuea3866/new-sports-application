@@ -10,8 +10,8 @@ class GetTicketOrderUseCase(
     private val ticketingDomainService: TicketingDomainService,
 ) {
     @Transactional(readOnly = true)
-    fun execute(ticketOrderId: Long): TicketOrderDetailResponse {
-        val detail = ticketingDomainService.getTicketOrderDetail(ticketOrderId)
+    fun execute(ticketOrderId: Long, requesterId: Long): TicketOrderDetailResponse {
+        val detail = ticketingDomainService.getTicketOrderDetail(ticketOrderId, requesterId)
         return TicketOrderDetailResponse.of(detail)
     }
 }

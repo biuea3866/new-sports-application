@@ -4,6 +4,8 @@ import com.sportsapp.BaseJpaIntegrationTest
 import com.sportsapp.domain.operator.entity.OperatorInboxNotification
 import com.sportsapp.domain.operator.repository.OperatorInboxNotificationRepository
 import com.sportsapp.domain.operator.vo.OperatorInboxNotificationType
+import com.sportsapp.domain.user.gateway.JwtIssuer
+import com.sportsapp.presentation.support.bearerTokenFor
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import org.springframework.beans.factory.annotation.Autowired
@@ -13,9 +15,11 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 
+/** AUTH-04 — `X-User-Id` 헤더 대신 `Authorization: Bearer JWT`로 본인 식별한다. */
 class OperatorInboxApiControllerIntegrationTest(
     @Autowired private val restTemplate: TestRestTemplate,
     @Autowired private val repository: OperatorInboxNotificationRepository,
+    @Autowired private val jwtIssuer: JwtIssuer,
 ) : BaseJpaIntegrationTest() {
 
     init {
@@ -28,7 +32,7 @@ class OperatorInboxApiControllerIntegrationTest(
             )
 
             When("GET /operator/inbox 를 호출하면") {
-                val headers = HttpHeaders().apply { set("X-User-Id", "1001") }
+                val headers = HttpHeaders().apply { set(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(1001L)) }
                 val response = restTemplate.exchange(
                     "/operator/inbox",
                     HttpMethod.GET,
@@ -49,7 +53,7 @@ class OperatorInboxApiControllerIntegrationTest(
             )
 
             When("PATCH /operator/inbox/{id}/read 를 호출하면") {
-                val headers = HttpHeaders().apply { set("X-User-Id", "1002") }
+                val headers = HttpHeaders().apply { set(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(1002L)) }
                 val response = restTemplate.exchange(
                     "/operator/inbox/${notification.id}/read",
                     HttpMethod.PATCH,
@@ -66,7 +70,7 @@ class OperatorInboxApiControllerIntegrationTest(
 
         Given("userId=1003 의 알림이 없는 상황") {
             When("GET /operator/inbox/unread-count 를 호출하면") {
-                val headers = HttpHeaders().apply { set("X-User-Id", "1003") }
+                val headers = HttpHeaders().apply { set(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(1003L)) }
                 val response = restTemplate.exchange(
                     "/operator/inbox/unread-count",
                     HttpMethod.GET,
@@ -88,7 +92,7 @@ class OperatorInboxApiControllerIntegrationTest(
             )
 
             When("userId=1005 가 PATCH /operator/inbox/{id}/read 를 호출하면") {
-                val headers = HttpHeaders().apply { set("X-User-Id", "1005") }
+                val headers = HttpHeaders().apply { set(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(1005L)) }
                 val response = restTemplate.exchange(
                     "/operator/inbox/${notification.id}/read",
                     HttpMethod.PATCH,

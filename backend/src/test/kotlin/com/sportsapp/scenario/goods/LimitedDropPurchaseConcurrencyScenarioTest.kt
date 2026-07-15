@@ -6,12 +6,15 @@ import com.sportsapp.domain.goods.entity.Product
 import com.sportsapp.domain.goods.entity.ProductStatus
 import com.sportsapp.domain.goods.entity.Stock
 import com.sportsapp.domain.goods.vo.ProductCategory
+import com.sportsapp.domain.user.gateway.JwtIssuer
 import com.sportsapp.infrastructure.goods.mysql.ProductJpaRepository
 import com.sportsapp.infrastructure.goods.mysql.StockJpaRepository
+import com.sportsapp.presentation.support.bearerTokenFor
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.data.redis.core.StringRedisTemplate
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.web.servlet.MockMvc
@@ -48,6 +51,7 @@ class LimitedDropPurchaseConcurrencyScenarioTest(
     @Autowired private val objectMapper: ObjectMapper,
     @Autowired private val jdbcTemplate: JdbcTemplate,
     @Autowired private val redisTemplate: StringRedisTemplate,
+    @Autowired private val jwtIssuer: JwtIssuer,
 ) : BaseIntegrationTest() {
 
     init {
@@ -95,7 +99,7 @@ class LimitedDropPurchaseConcurrencyScenarioTest(
             )
             val result = mockMvc.perform(
                 post("/limited-drops")
-                    .header("X-User-Id", OWNER_USER_ID.toString())
+                    .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(OWNER_USER_ID))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(body)
             ).andExpect(status().isCreated).andReturn()
@@ -104,7 +108,7 @@ class LimitedDropPurchaseConcurrencyScenarioTest(
 
         fun purchase(dropId: Long, userId: Long, idempotencyKey: String, quantity: Int = 1) = mockMvc.perform(
             post("/limited-drops/$dropId/orders")
-                .header("X-User-Id", userId.toString())
+                .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(userId))
                 .header("Idempotency-Key", idempotencyKey)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(mapOf("quantity" to quantity)))

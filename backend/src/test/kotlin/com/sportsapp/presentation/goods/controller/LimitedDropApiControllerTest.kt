@@ -6,11 +6,14 @@ import com.sportsapp.domain.goods.entity.Product
 import com.sportsapp.domain.goods.entity.ProductStatus
 import com.sportsapp.domain.goods.entity.Stock
 import com.sportsapp.domain.goods.vo.ProductCategory
+import com.sportsapp.domain.user.gateway.JwtIssuer
 import com.sportsapp.infrastructure.goods.mysql.ProductJpaRepository
 import com.sportsapp.infrastructure.goods.mysql.StockJpaRepository
+import com.sportsapp.presentation.support.bearerTokenFor
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.web.servlet.MockMvc
@@ -30,6 +33,8 @@ private const val OTHER_BUYER_USER_ID = 902L
 /**
  * LimitedDropApiController — API 계약(TDD "API 계약") 매핑 검증.
  * limited-drop.enabled=true(test application.yml 기본값) 컨텍스트에서 실행한다.
+ *
+ * AUTH-04 — `X-User-Id` 헤더 대신 `Authorization: Bearer JWT`로 본인 식별한다.
  */
 @AutoConfigureMockMvc
 class LimitedDropApiControllerTest(
@@ -38,6 +43,7 @@ class LimitedDropApiControllerTest(
     @Autowired private val stockJpaRepository: StockJpaRepository,
     @Autowired private val objectMapper: ObjectMapper,
     @Autowired private val jdbcTemplate: JdbcTemplate,
+    @Autowired private val jwtIssuer: JwtIssuer,
 ) : BaseIntegrationTest() {
 
     init {
@@ -90,7 +96,7 @@ class LimitedDropApiControllerTest(
         ): Long {
             val result = mockMvc.perform(
                 post("/limited-drops")
-                    .header("X-User-Id", OWNER_USER_ID.toString())
+                    .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(OWNER_USER_ID))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(createDropBody(openAt, closeAt, limitedQuantity, perUserLimit))
             ).andExpect(status().isCreated).andReturn()
@@ -99,7 +105,7 @@ class LimitedDropApiControllerTest(
 
         fun purchase(dropId: Long, userId: Long, idempotencyKey: String, quantity: Int = 1) = mockMvc.perform(
             post("/limited-drops/$dropId/orders")
-                .header("X-User-Id", userId.toString())
+                .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(userId))
                 .header("Idempotency-Key", idempotencyKey)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(mapOf("quantity" to quantity)))
@@ -200,7 +206,7 @@ class LimitedDropApiControllerTest(
 
                     mockMvc.perform(
                         post("/limited-drops")
-                            .header("X-User-Id", OWNER_USER_ID.toString())
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(OWNER_USER_ID))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(createDropBody(openAt, closeAt, limitedQuantity = 15, perUserLimit = 2))
                     )

@@ -5,6 +5,7 @@ import com.sportsapp.application.facility.usecase.ListProgramsUseCase
 import com.sportsapp.application.facility.usecase.RegisterProgramUseCase
 import com.sportsapp.domain.facility.exception.UnauthorizedFacilityAccessException
 import com.sportsapp.presentation.exception.GlobalExceptionHandler
+import com.sportsapp.presentation.support.fixedPrincipalResolver
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every
 import io.mockk.mockk
@@ -22,10 +23,12 @@ class ProgramApiControllerTest : BehaviorSpec({
     fun buildMockMvc(
         registerProgramUseCase: RegisterProgramUseCase = mockk(),
         listProgramsUseCase: ListProgramsUseCase = mockk(),
+        userId: Long = 1L,
     ) = MockMvcBuilders.standaloneSetup(
         ProgramApiController(registerProgramUseCase, listProgramsUseCase),
     )
         .setControllerAdvice(GlobalExceptionHandler())
+        .setCustomArgumentResolvers(fixedPrincipalResolver(userId))
         .build()
 
     fun programResponse(id: Long = 1L) = ProgramResponse(
@@ -50,7 +53,6 @@ class ProgramApiControllerTest : BehaviorSpec({
             """.trimIndent()
             val result = mockMvc.perform(
                 post("/facilities/FAC-01/programs")
-                    .header("X-User-Id", "1")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(body),
             )
@@ -67,13 +69,12 @@ class ProgramApiControllerTest : BehaviorSpec({
     Given("소유자가 아닌 사용자의 등록 요청") {
         val registerProgramUseCase = mockk<RegisterProgramUseCase>()
         every { registerProgramUseCase.execute(any()) } throws UnauthorizedFacilityAccessException("FAC-01")
-        val mockMvc = buildMockMvc(registerProgramUseCase = registerProgramUseCase)
+        val mockMvc = buildMockMvc(registerProgramUseCase = registerProgramUseCase, userId = 99L)
 
         When("POST /facilities/FAC-01/programs 요청 시") {
             val body = """{"name":"1:1 PT","description":null,"price":0,"capacity":1,"durationMinutes":60}"""
             val result = mockMvc.perform(
                 post("/facilities/FAC-01/programs")
-                    .header("X-User-Id", "99")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(body),
             )

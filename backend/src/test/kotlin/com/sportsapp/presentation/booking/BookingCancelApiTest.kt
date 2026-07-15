@@ -6,6 +6,8 @@ import com.sportsapp.domain.booking.repository.BookingRepository
 import com.sportsapp.domain.booking.entity.BookingStatus
 import com.sportsapp.domain.booking.entity.Slot
 import com.sportsapp.domain.booking.repository.SlotRepository
+import com.sportsapp.domain.user.gateway.JwtIssuer
+import com.sportsapp.presentation.support.bearerTokenFor
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import org.springframework.beans.factory.annotation.Autowired
@@ -18,16 +20,18 @@ import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
 import java.time.ZonedDateTime
 
+/** AUTH-04 — `X-User-Id` 헤더 대신 `Authorization: Bearer JWT`로 본인 식별한다. */
 class BookingCancelApiTest(
     @Autowired private val slotRepository: SlotRepository,
     @Autowired private val bookingRepository: BookingRepository,
     @Autowired private val bookingDomainService: BookingDomainService,
     @Autowired private val jdbcTemplate: JdbcTemplate,
     @Autowired private val restTemplate: TestRestTemplate,
+    @Autowired private val jwtIssuer: JwtIssuer,
 ) : BaseIntegrationTest() {
 
     private fun headers(userId: Long): HttpHeaders = HttpHeaders().apply {
-        set("X-User-Id", userId.toString())
+        set(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(userId))
         contentType = MediaType.APPLICATION_JSON
     }
 

@@ -11,6 +11,7 @@ import com.sportsapp.domain.community.exception.NotCommunityMemberException
 import com.sportsapp.domain.post.entity.Post
 import com.sportsapp.domain.post.vo.PostType
 import com.sportsapp.presentation.exception.GlobalExceptionHandler
+import com.sportsapp.presentation.support.fixedPrincipalResolver
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every
 import io.mockk.mockk
@@ -27,6 +28,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders
 
 private const val TEST_USER_ID = 100L
 
+/** AUTH-04 — 작성은 `UserPrincipal`(non-null), 상세 조회는 익명 브라우징 허용을 위해 `UserPrincipal?`(nullable)로 식별한다. */
 class PostApiControllerTest : BehaviorSpec({
 
     fun initAuditFields(entity: Any) {
@@ -43,10 +45,12 @@ class PostApiControllerTest : BehaviorSpec({
         getPostUseCase: GetPostUseCase = mockk(),
         createPostUseCase: CreatePostUseCase = mockk(),
         createCommunityPostUseCase: CreateCommunityPostUseCase = mockk(),
+        userId: Long? = TEST_USER_ID,
     ) = MockMvcBuilders.standaloneSetup(
         PostApiController(searchPostsUseCase, getPostUseCase, createPostUseCase, createCommunityPostUseCase),
     )
         .setControllerAdvice(GlobalExceptionHandler())
+        .setCustomArgumentResolvers(fixedPrincipalResolver(userId))
         .build()
 
     Given("communityId 없이 게시글 작성을 요청하면") {
@@ -57,9 +61,7 @@ class PostApiControllerTest : BehaviorSpec({
 
         When("POST /posts 요청 시") {
             val body = """{"title":"제목","content":"내용"}"""
-            val result = mockMvc.perform(
-                post("/posts").header("X-User-Id", TEST_USER_ID).contentType(MediaType.APPLICATION_JSON).content(body),
-            )
+            val result = mockMvc.perform(post("/posts").contentType(MediaType.APPLICATION_JSON).content(body))
 
             Then("전역 게시글로 CreatePostUseCase 가 호출되고 201을 반환한다") {
                 result.andExpect(status().isCreated)
@@ -86,9 +88,7 @@ class PostApiControllerTest : BehaviorSpec({
 
         When("POST /posts 요청 시") {
             val body = """{"title":"공지","content":"내용","type":"NOTICE","communityId":10}"""
-            val result = mockMvc.perform(
-                post("/posts").header("X-User-Id", TEST_USER_ID).contentType(MediaType.APPLICATION_JSON).content(body),
-            )
+            val result = mockMvc.perform(post("/posts").contentType(MediaType.APPLICATION_JSON).content(body))
 
             Then("CreateCommunityPostUseCase 가 호출되고 communityId 가 응답에 포함된다") {
                 result.andExpect(status().isCreated)
@@ -105,9 +105,7 @@ class PostApiControllerTest : BehaviorSpec({
 
         When("POST /posts 요청 시") {
             val body = """{"title":"제목","content":"내용","communityId":10}"""
-            val result = mockMvc.perform(
-                post("/posts").header("X-User-Id", TEST_USER_ID).contentType(MediaType.APPLICATION_JSON).content(body),
-            )
+            val result = mockMvc.perform(post("/posts").contentType(MediaType.APPLICATION_JSON).content(body))
 
             Then("403을 반환한다") {
                 result.andExpect(status().isForbidden)
@@ -115,11 +113,11 @@ class PostApiControllerTest : BehaviorSpec({
         }
     }
 
-    Given("X-User-Id 헤더 없이 게시글 상세를 조회하면") {
+    Given("인증 없이 게시글 상세를 조회하면") {
         val getPostUseCase = mockk<GetPostUseCase>()
         val post = Post.create(userId = TEST_USER_ID, title = "제목", content = "내용").also { initAuditFields(it) }
         every { getPostUseCase.execute(postId = 1L, requesterId = null) } returns Pair(post, emptyList())
-        val mockMvc = buildMockMvc(getPostUseCase = getPostUseCase)
+        val mockMvc = buildMockMvc(getPostUseCase = getPostUseCase, userId = null)
 
         When("GET /posts/1 요청 시") {
             val result = mockMvc.perform(get("/posts/1"))
@@ -131,13 +129,13 @@ class PostApiControllerTest : BehaviorSpec({
         }
     }
 
-    Given("X-User-Id 헤더와 함께 PRIVATE 모임 게시글 상세를 비멤버가 조회하면") {
+    Given("인증된 사용자가 PRIVATE 모임 게시글 상세를 비멤버로 조회하면") {
         val getPostUseCase = mockk<GetPostUseCase>()
         every { getPostUseCase.execute(postId = 2L, requesterId = TEST_USER_ID) } throws NotCommunityMemberException(20L, TEST_USER_ID)
         val mockMvc = buildMockMvc(getPostUseCase = getPostUseCase)
 
         When("GET /posts/2 요청 시") {
-            val result = mockMvc.perform(get("/posts/2").header("X-User-Id", TEST_USER_ID))
+            val result = mockMvc.perform(get("/posts/2"))
 
             Then("403을 반환한다") {
                 result.andExpect(status().isForbidden)

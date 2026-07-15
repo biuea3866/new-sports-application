@@ -14,9 +14,9 @@ import org.springframework.web.bind.annotation.RestController
  * 방장의 게스트 수동 방출 엔드포인트 (TDD FR-15, `EvictGuestUseCase`).
  *
  * `/rooms` 하위 경로는 `RoomApiController`/`MessageApiController`와 동일하게 Authorization: Bearer JWT
- * (`@AuthenticationPrincipal UserPrincipal`) 로 신원을 확인한다 — X-User-Id 헤더는 클라이언트가
- * 임의로 조작할 수 있어 방장 검증(`Room.requireHostedBy`, `GuestEvictionDomainService.evict` 내부에서 위임)이
- * 무력화되므로 사용하지 않는다.
+ * (`@AuthenticationPrincipal UserPrincipal`) 로 신원을 확인한다 — 클라이언트가 임의로 조작 가능한
+ * 커스텀 사용자 식별 헤더는 방장 검증(`Room.requireHostedBy`, `GuestEvictionDomainService.evict` 내부에서
+ * 위임)을 무력화하므로 사용하지 않는다.
  */
 @RestController
 @RequestMapping("/rooms/{roomId}/guests/{userId}")

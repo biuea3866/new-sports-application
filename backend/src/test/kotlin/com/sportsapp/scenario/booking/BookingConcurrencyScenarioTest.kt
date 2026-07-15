@@ -3,9 +3,12 @@ package com.sportsapp.scenario.booking
 import com.sportsapp.BaseIntegrationTest
 import com.sportsapp.domain.booking.entity.Slot
 import com.sportsapp.domain.booking.repository.SlotRepository
+import com.sportsapp.domain.user.gateway.JwtIssuer
+import com.sportsapp.presentation.support.bearerTokenFor
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.web.servlet.MockMvc
@@ -15,11 +18,13 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
+/** AUTH-04 — `X-User-Id` 헤더 대신 `Authorization: Bearer JWT`로 본인 식별한다. */
 @AutoConfigureMockMvc
 class BookingConcurrencyScenarioTest(
     @Autowired private val slotRepository: SlotRepository,
     @Autowired private val jdbcTemplate: JdbcTemplate,
     @Autowired private val mockMvc: MockMvc,
+    @Autowired private val jwtIssuer: JwtIssuer,
 ) : BaseIntegrationTest() {
 
     init {
@@ -51,7 +56,7 @@ class BookingConcurrencyScenarioTest(
                     executor.submit {
                         val result = mockMvc.post("/bookings") {
                             contentType = MediaType.APPLICATION_JSON
-                            header("X-User-Id", userId.toString())
+                            header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(userId))
                             content = requestBody
                         }.andReturn()
                         val status = result.response.status
@@ -90,7 +95,7 @@ class BookingConcurrencyScenarioTest(
                     executor.submit {
                         val result = mockMvc.post("/bookings") {
                             contentType = MediaType.APPLICATION_JSON
-                            header("X-User-Id", userId.toString())
+                            header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(userId))
                             content = requestBody
                         }.andReturn()
                         if (result.response.status == 202) successCount.incrementAndGet()
@@ -125,7 +130,7 @@ class BookingConcurrencyScenarioTest(
             When("POST /bookings 단건 호출") {
                 val result = mockMvc.post("/bookings") {
                     contentType = MediaType.APPLICATION_JSON
-                    header("X-User-Id", "5")
+                    header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(5L))
                     content = buildRequestBody(slot.id)
                 }.andReturn()
 

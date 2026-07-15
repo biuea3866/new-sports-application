@@ -4,12 +4,15 @@ import com.sportsapp.BaseIntegrationTest
 import com.sportsapp.domain.ticketing.entity.Event
 import com.sportsapp.domain.ticketing.entity.EventStatus
 import com.sportsapp.domain.ticketing.entity.Seat
+import com.sportsapp.domain.user.gateway.JwtIssuer
 import com.sportsapp.infrastructure.ticketing.mysql.EventJpaRepository
 import com.sportsapp.infrastructure.ticketing.mysql.SeatJpaRepository
+import com.sportsapp.presentation.support.bearerTokenFor
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.data.redis.core.StringRedisTemplate
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.post
@@ -20,12 +23,14 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
+/** AUTH-04 — `X-User-Id` 헤더 대신 `Authorization: Bearer JWT`로 본인 식별한다. */
 @AutoConfigureMockMvc
 class SeatLockConcurrencyScenarioTest(
     @Autowired private val mockMvc: MockMvc,
     @Autowired private val eventJpaRepository: EventJpaRepository,
     @Autowired private val seatJpaRepository: SeatJpaRepository,
     @Autowired private val redisTemplate: StringRedisTemplate,
+    @Autowired private val jwtIssuer: JwtIssuer,
 ) : BaseIntegrationTest() {
 
     private val baseTime = ZonedDateTime.of(2026, 12, 1, 18, 0, 0, 0, ZoneOffset.UTC)
@@ -55,7 +60,7 @@ class SeatLockConcurrencyScenarioTest(
                     executor.submit {
                         val result = mockMvc.post("/events/${event.id}/seats/select") {
                             contentType = MediaType.APPLICATION_JSON
-                            header("X-User-Id", userId.toString())
+                            header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(userId))
                             content = requestBody
                         }.andReturn()
                         when (result.response.status) {
@@ -93,7 +98,7 @@ class SeatLockConcurrencyScenarioTest(
                     executor.submit {
                         val result = mockMvc.post("/events/${event.id}/seats/select") {
                             contentType = MediaType.APPLICATION_JSON
-                            header("X-User-Id", userId.toString())
+                            header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(userId.toLong()))
                             content = requestBody
                         }.andReturn()
                         when (result.response.status) {
@@ -126,7 +131,7 @@ class SeatLockConcurrencyScenarioTest(
                 val requestBody = """{"seatIds":[${seat1.id},${seat2.id}]}"""
                 val result = mockMvc.post("/events/${event.id}/seats/select") {
                     contentType = MediaType.APPLICATION_JSON
-                    header("X-User-Id", "7")
+                    header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(7L))
                     content = requestBody
                 }.andReturn()
 
@@ -151,7 +156,7 @@ class SeatLockConcurrencyScenarioTest(
                 val requestBody = """{"seatIds":[${seat.id}]}"""
                 val result = mockMvc.post("/events/${event.id}/seats/release") {
                     contentType = MediaType.APPLICATION_JSON
-                    header("X-User-Id", "5")
+                    header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(5L))
                     content = requestBody
                 }.andReturn()
 
@@ -176,7 +181,7 @@ class SeatLockConcurrencyScenarioTest(
                 val requestBody = """{"seatIds":[${seat.id}]}"""
                 val result = mockMvc.post("/events/${event.id}/seats/release") {
                     contentType = MediaType.APPLICATION_JSON
-                    header("X-User-Id", "7")
+                    header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(7L))
                     content = requestBody
                 }.andReturn()
 

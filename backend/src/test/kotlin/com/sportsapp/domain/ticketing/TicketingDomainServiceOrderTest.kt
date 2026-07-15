@@ -15,6 +15,7 @@ import com.sportsapp.domain.common.DomainEvent
 import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import com.sportsapp.domain.ticketing.exception.MalformedLockIdException
+import com.sportsapp.domain.ticketing.exception.UnauthorizedTicketOrderAccessException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -22,6 +23,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
 import java.time.ZonedDateTime
 
 class TicketingDomainServiceOrderTest : BehaviorSpec({
@@ -152,8 +154,8 @@ class TicketingDomainServiceOrderTest : BehaviorSpec({
         every { eventRepository.findById(7L) } returns
             Event.create("월드컵 결승", "상암 월드컵 경기장", ZonedDateTime.now(), 3L)
 
-        When("getTicketOrderDetail(100L)을 호출하면") {
-            val result = service.getTicketOrderDetail(100L)
+        When("소유자(requesterId=1L)로 getTicketOrderDetail(100L)을 호출하면") {
+            val result = service.getTicketOrderDetail(100L, requesterId = 1L)
 
             Then("이벤트명·이벤트id·결제id·생성일시가 채워진 TicketOrderDetail이 반환된다") {
                 result.ticketOrderId shouldBe 100L
@@ -162,6 +164,32 @@ class TicketingDomainServiceOrderTest : BehaviorSpec({
                 result.eventTitle shouldBe "월드컵 결승"
                 result.paymentId shouldBe 555L
                 result.createdAt shouldBe createdAt
+            }
+
+            Then("소유자 검증(requireOwnedBy)이 requesterId로 호출된다") {
+                verify(exactly = 1) { order.requireOwnedBy(1L) }
+            }
+        }
+    }
+
+    Given("TicketOrder가 존재하지만 요청자가 소유자가 아닐 때") {
+        val ticketOrderRepository = mockk<TicketOrderRepository>()
+        val eventRepository = mockk<EventRepository>()
+        val service = buildService(
+            ticketOrderRepository = ticketOrderRepository,
+            eventRepository = eventRepository,
+        )
+        val order = mockk<TicketOrder>(relaxed = true).also {
+            every { it.id } returns 100L
+            every { it.requireOwnedBy(99L) } throws UnauthorizedTicketOrderAccessException(100L)
+        }
+        every { ticketOrderRepository.findById(100L) } returns order
+
+        When("소유자가 아닌 requesterId=99L로 getTicketOrderDetail(100L)을 호출하면") {
+            Then("UnauthorizedTicketOrderAccessException이 발생한다") {
+                shouldThrow<UnauthorizedTicketOrderAccessException> {
+                    service.getTicketOrderDetail(100L, requesterId = 99L)
+                }
             }
         }
     }
@@ -183,8 +211,8 @@ class TicketingDomainServiceOrderTest : BehaviorSpec({
         every { ticketOrderRepository.findById(200L) } returns order
         every { eventRepository.findById(8L) } returns null
 
-        When("getTicketOrderDetail(200L)을 호출하면") {
-            val result = service.getTicketOrderDetail(200L)
+        When("소유자(requesterId=1L)로 getTicketOrderDetail(200L)을 호출하면") {
+            val result = service.getTicketOrderDetail(200L, requesterId = 1L)
 
             Then("eventTitle은 빈 문자열로 방어되고 eventId는 유지된다") {
                 result.eventTitle shouldBe ""
@@ -202,7 +230,7 @@ class TicketingDomainServiceOrderTest : BehaviorSpec({
         When("getTicketOrderDetail(999L)을 호출하면") {
             Then("ResourceNotFoundException이 발생한다") {
                 shouldThrow<ResourceNotFoundException> {
-                    service.getTicketOrderDetail(999L)
+                    service.getTicketOrderDetail(999L, requesterId = 1L)
                 }
             }
         }

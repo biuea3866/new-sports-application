@@ -68,9 +68,7 @@ class TicketOrder(
 
     fun requireOwnedBy(userId: Long) {
         if (this.userId != userId) {
-            throw com.sportsapp.domain.common.exceptions.BusinessRuleViolationException(
-                "TicketOrder $id is not owned by user $userId"
-            )
+            throw com.sportsapp.domain.ticketing.exception.UnauthorizedTicketOrderAccessException(id)
         }
     }
 

@@ -10,13 +10,14 @@ import com.sportsapp.application.virtualqueue.usecase.EnterQueueUseCase
 import com.sportsapp.application.virtualqueue.usecase.GetQueueStatsUseCase
 import com.sportsapp.application.virtualqueue.usecase.GetQueueStatusUseCase
 import com.sportsapp.application.virtualqueue.usecase.LeaveQueueUseCase
+import com.sportsapp.domain.user.vo.UserPrincipal
 import com.sportsapp.domain.virtualqueue.vo.QueueTargetType
 import org.springframework.http.ResponseEntity
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
@@ -44,9 +45,9 @@ class VirtualQueueApiController(
     fun enter(
         @PathVariable type: String,
         @PathVariable targetId: Long,
-        @RequestHeader("X-User-Id") userId: Long,
+        @AuthenticationPrincipal principal: UserPrincipal,
     ): ResponseEntity<QueueEntryResponse> {
-        val command = EnterQueueCommand(type = QueueTargetType.fromSlug(type), targetId = targetId, userId = userId)
+        val command = EnterQueueCommand(type = QueueTargetType.fromSlug(type), targetId = targetId, userId = principal.id)
         return ResponseEntity.ok(enterQueueUseCase.execute(command))
     }
 
@@ -55,9 +56,9 @@ class VirtualQueueApiController(
     fun getStatus(
         @PathVariable type: String,
         @PathVariable targetId: Long,
-        @RequestHeader("X-User-Id") userId: Long,
+        @AuthenticationPrincipal principal: UserPrincipal,
     ): ResponseEntity<QueueEntryResponse> {
-        val command = GetQueueStatusCommand(type = QueueTargetType.fromSlug(type), targetId = targetId, userId = userId)
+        val command = GetQueueStatusCommand(type = QueueTargetType.fromSlug(type), targetId = targetId, userId = principal.id)
         return ResponseEntity.ok(getQueueStatusUseCase.execute(command))
     }
 
@@ -66,9 +67,9 @@ class VirtualQueueApiController(
     fun leave(
         @PathVariable type: String,
         @PathVariable targetId: Long,
-        @RequestHeader("X-User-Id") userId: Long,
+        @AuthenticationPrincipal principal: UserPrincipal,
     ): ResponseEntity<Void> {
-        val command = LeaveQueueCommand(type = QueueTargetType.fromSlug(type), targetId = targetId, userId = userId)
+        val command = LeaveQueueCommand(type = QueueTargetType.fromSlug(type), targetId = targetId, userId = principal.id)
         leaveQueueUseCase.execute(command)
         return ResponseEntity.noContent().build()
     }

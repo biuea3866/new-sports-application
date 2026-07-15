@@ -6,9 +6,12 @@ import com.sportsapp.domain.payment.entity.Payment
 import com.sportsapp.domain.payment.repository.PaymentRepository
 import com.sportsapp.domain.payment.vo.PaymentMethod
 import com.sportsapp.domain.payment.entity.PaymentStatus
+import com.sportsapp.domain.user.gateway.JwtIssuer
+import com.sportsapp.presentation.support.bearerTokenFor
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.web.servlet.MockMvc
@@ -16,11 +19,13 @@ import org.springframework.test.web.servlet.get
 import java.math.BigDecimal
 import java.time.ZonedDateTime
 
+/** AUTH-04 — `X-User-Id` 헤더 대신 `Authorization: Bearer JWT`로 본인 식별한다. */
 @AutoConfigureMockMvc
 class PaymentQueryScenarioTest(
     @Autowired private val mockMvc: MockMvc,
     @Autowired private val paymentRepository: PaymentRepository,
     @Autowired private val jdbcTemplate: JdbcTemplate,
+    @Autowired private val jwtIssuer: JwtIssuer,
 ) : BaseIntegrationTest() {
 
     private fun saveCompletedPayment(userId: Long, idempotencyKey: String): Payment {
@@ -51,7 +56,7 @@ class PaymentQueryScenarioTest(
 
             When("GET /payments/me?status=COMPLETED 요청 시") {
                 val response = mockMvc.get("/payments/me") {
-                    header("X-User-Id", userId.toString())
+                    header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(userId))
                     param("status", "COMPLETED")
                     accept = MediaType.APPLICATION_JSON
                 }.andReturn()
@@ -70,7 +75,7 @@ class PaymentQueryScenarioTest(
 
             When("userId = 99 가 타인 paymentId 단건 조회 시") {
                 val response = mockMvc.get("/payments/${payment.id}") {
-                    header("X-User-Id", "99")
+                    header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(99L))
                     accept = MediaType.APPLICATION_JSON
                 }.andReturn()
 
@@ -86,7 +91,7 @@ class PaymentQueryScenarioTest(
 
             When("GET /payments/{id} 본인 결제 단건 조회 시") {
                 val response = mockMvc.get("/payments/${payment.id}") {
-                    header("X-User-Id", userId.toString())
+                    header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(userId))
                     accept = MediaType.APPLICATION_JSON
                 }.andReturn()
 

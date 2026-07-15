@@ -3,9 +3,11 @@ package com.sportsapp.presentation.virtualqueue.controller
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
 import com.sportsapp.application.virtualqueue.dto.QueueEntryResponse
+import com.sportsapp.domain.user.gateway.JwtIssuer
 import com.sportsapp.domain.virtualqueue.VirtualQueueFeatureFlagKeys
 import com.sportsapp.domain.virtualqueue.vo.QueueTarget
 import com.sportsapp.domain.virtualqueue.vo.QueueTargetType
+import com.sportsapp.presentation.support.bearerTokenFor
 import io.kotest.matchers.doubles.shouldBeGreaterThan
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -14,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.data.redis.core.script.DefaultRedisScript
+import org.springframework.http.HttpHeaders
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
@@ -33,6 +36,9 @@ private const val TYPE_SLUG = "limited-drop"
  * 직접 INSERT를 유지한다. Admission Pump는 `virtualqueue.admission.enabled`를 seed하지 않아
  * default(false)로 항상 스킵되므로, admittedCount는 테스트 동안 0으로 고정되고 WAITING 상태가
  * 안정적으로 유지된다.
+ *
+ * AUTH-04 — `X-User-Id` 헤더 대신 `Authorization: Bearer JWT`로 본인 식별한다. `GET stats`는
+ * SecurityConfig 상 permitAll(운영 통계 공개 조회)이라 인증 없이 호출한다.
  */
 @AutoConfigureMockMvc
 class VirtualQueueApiControllerTest(
@@ -40,6 +46,7 @@ class VirtualQueueApiControllerTest(
     @Autowired private val objectMapper: ObjectMapper,
     @Autowired private val jdbcTemplate: JdbcTemplate,
     @Autowired private val redisTemplate: StringRedisTemplate,
+    @Autowired private val jwtIssuer: JwtIssuer,
 ) : BaseIntegrationTest() {
 
     init {
@@ -63,7 +70,7 @@ class VirtualQueueApiControllerTest(
         fun statusUrl(targetId: Long) = "/virtual-queues/$TYPE_SLUG/$targetId/entries/me"
         fun statsUrl(targetId: Long) = "/virtual-queues/$TYPE_SLUG/$targetId/stats"
 
-        fun enter(targetId: Long, userId: Long) = mockMvc.perform(post(enterUrl(targetId)).header("X-User-Id", userId.toString()))
+        fun enter(targetId: Long, userId: Long) = mockMvc.perform(post(enterUrl(targetId)).header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(userId)))
 
         fun parseEntry(bodyJson: String): QueueEntryResponse = objectMapper.readValue(bodyJson, QueueEntryResponse::class.java)
 
@@ -140,7 +147,7 @@ class VirtualQueueApiControllerTest(
 
             When("GET entries/me로 상태를 조회하면") {
                 Thread.sleep(5)
-                val result = mockMvc.perform(get(statusUrl(targetId)).header("X-User-Id", "3"))
+                val result = mockMvc.perform(get(statusUrl(targetId)).header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(3L)))
                     .andExpect(status().isOk)
                     .andReturn()
 
@@ -161,7 +168,7 @@ class VirtualQueueApiControllerTest(
             cleanupTarget(targetId)
 
             When("GET entries/me로 상태를 조회하면") {
-                val result = mockMvc.perform(get(statusUrl(targetId)).header("X-User-Id", "4"))
+                val result = mockMvc.perform(get(statusUrl(targetId)).header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(4L)))
                     .andExpect(status().isNotFound)
                     .andReturn()
 
@@ -179,7 +186,7 @@ class VirtualQueueApiControllerTest(
             val target = QueueTarget(QueueTargetType.LIMITED_DROP, targetId)
 
             When("DELETE entries/me를 호출하면") {
-                mockMvc.perform(delete(statusUrl(targetId)).header("X-User-Id", "5"))
+                mockMvc.perform(delete(statusUrl(targetId)).header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(5L)))
                     .andExpect(status().isNoContent)
 
                 Then("204를 반환하고 waiting ZSET에서 제거된다") {
@@ -212,7 +219,7 @@ class VirtualQueueApiControllerTest(
             val targetId = 910_008L
 
             When("POST entries를 호출하면") {
-                val result = mockMvc.perform(post("/virtual-queues/not-a-real-type/$targetId/entries").header("X-User-Id", "8"))
+                val result = mockMvc.perform(post("/virtual-queues/not-a-real-type/$targetId/entries").header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(8L)))
                     .andExpect(status().isBadRequest)
                     .andReturn()
 

@@ -1,19 +1,24 @@
 package com.sportsapp.scenario.payment
 
 import com.sportsapp.BaseIntegrationTest
+import com.sportsapp.domain.user.gateway.JwtIssuer
+import com.sportsapp.presentation.support.bearerTokenFor
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.post
 
+/** AUTH-04 — `POST /payments`는 이전에 `userId = 1L` 하드코딩 버그가 있었다. JWT principal로 수정하며 테스트도 실 토큰을 싣는다. */
 @AutoConfigureMockMvc
 class PaymentCreateScenarioTest(
     @Autowired private val mockMvc: MockMvc,
     @Autowired private val jdbcTemplate: JdbcTemplate,
+    @Autowired private val jwtIssuer: JwtIssuer,
 ) : BaseIntegrationTest() {
 
     private val baseRequestBody = """
@@ -38,6 +43,7 @@ class PaymentCreateScenarioTest(
                 val firstResponse = mockMvc.post("/payments") {
                     contentType = MediaType.APPLICATION_JSON
                     header("Idempotency-Key", idempotencyKey)
+                    header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(1L))
                     content = baseRequestBody
                 }.andReturn()
 
@@ -47,6 +53,7 @@ class PaymentCreateScenarioTest(
                     val secondResponse = mockMvc.post("/payments") {
                         contentType = MediaType.APPLICATION_JSON
                         header("Idempotency-Key", idempotencyKey)
+                        header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(1L))
                         content = baseRequestBody
                     }.andReturn()
 
@@ -71,12 +78,14 @@ class PaymentCreateScenarioTest(
                 val firstResponse = mockMvc.post("/payments") {
                     contentType = MediaType.APPLICATION_JSON
                     header("Idempotency-Key", firstKey)
+                    header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(1L))
                     content = baseRequestBody
                 }.andReturn()
 
                 val secondResponse = mockMvc.post("/payments") {
                     contentType = MediaType.APPLICATION_JSON
                     header("Idempotency-Key", secondKey)
+                    header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(1L))
                     content = baseRequestBody
                 }.andReturn()
 
@@ -113,6 +122,7 @@ class PaymentCreateScenarioTest(
                     mockMvc.post("/payments") {
                         contentType = MediaType.APPLICATION_JSON
                         header("Idempotency-Key", "scenario-invalid-01")
+                        header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(1L))
                         content = invalidBody
                     }.andExpect {
                         status { isBadRequest() }

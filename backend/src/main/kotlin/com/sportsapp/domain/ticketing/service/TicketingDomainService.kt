@@ -140,8 +140,9 @@ class TicketingDomainService(
 
     // 단건 상세 조회용 — TicketOrder에 이벤트명·이벤트id를 조합한 표시용 프로젝션.
     // 참조 Event가 없거나 삭제된 경우 eventTitle은 빈 문자열로 방어한다 (listTicketOrdersBy와 동일 정책).
-    fun getTicketOrderDetail(ticketOrderId: Long): TicketOrderDetail {
+    fun getTicketOrderDetail(ticketOrderId: Long, requesterId: Long): TicketOrderDetail {
         val order = getTicketOrder(ticketOrderId)
+        order.requireOwnedBy(requesterId)
         val event = eventRepository.findById(order.lockedEventId)
         return TicketOrderDetail(
             ticketOrderId = order.id,
