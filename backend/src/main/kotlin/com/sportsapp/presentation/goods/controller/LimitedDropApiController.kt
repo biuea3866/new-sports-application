@@ -4,6 +4,7 @@ import com.sportsapp.application.goods.usecase.CreateLimitedDropUseCase
 import com.sportsapp.application.goods.usecase.GetLimitedDropStatsUseCase
 import com.sportsapp.application.goods.usecase.GetLimitedDropUseCase
 import com.sportsapp.application.goods.usecase.PurchaseLimitedDropUseCase
+import com.sportsapp.domain.user.vo.UserPrincipal
 import com.sportsapp.presentation.goods.dto.request.CreateLimitedDropRequest
 import com.sportsapp.presentation.goods.dto.request.PurchaseLimitedDropRequest
 import com.sportsapp.presentation.goods.dto.response.LimitedDropPurchaseResponse
@@ -12,6 +13,7 @@ import com.sportsapp.presentation.goods.dto.response.LimitedDropStatsResponse
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -36,10 +38,10 @@ class LimitedDropApiController(
 
     @PostMapping
     fun createDrop(
-        @RequestHeader("X-User-Id") ownerUserId: Long,
+        @AuthenticationPrincipal principal: UserPrincipal,
         @RequestBody request: CreateLimitedDropRequest,
     ): ResponseEntity<LimitedDropResponse> {
-        val view = createLimitedDropUseCase.execute(request.toCommand(ownerUserId))
+        val view = createLimitedDropUseCase.execute(request.toCommand(principal.id))
         return ResponseEntity.status(HttpStatus.CREATED).body(LimitedDropResponse.of(view))
     }
 
@@ -52,11 +54,11 @@ class LimitedDropApiController(
     @PostMapping("/{dropId}/orders")
     fun purchase(
         @PathVariable dropId: Long,
-        @RequestHeader("X-User-Id") userId: Long,
+        @AuthenticationPrincipal principal: UserPrincipal,
         @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @RequestBody request: PurchaseLimitedDropRequest,
     ): ResponseEntity<LimitedDropPurchaseResponse> {
-        val result = purchaseLimitedDropUseCase.execute(request.toCommand(dropId, userId, idempotencyKey))
+        val result = purchaseLimitedDropUseCase.execute(request.toCommand(dropId, principal.id, idempotencyKey))
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(LimitedDropPurchaseResponse.of(result))
     }
 

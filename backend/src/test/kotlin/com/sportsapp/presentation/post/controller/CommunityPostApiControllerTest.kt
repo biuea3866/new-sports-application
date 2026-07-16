@@ -4,6 +4,7 @@ import com.sportsapp.application.post.usecase.ListCommunityPostsUseCase
 import com.sportsapp.domain.community.exception.NotCommunityMemberException
 import com.sportsapp.domain.post.entity.Post
 import com.sportsapp.presentation.exception.GlobalExceptionHandler
+import com.sportsapp.presentation.support.fixedPrincipalResolver
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every
 import io.mockk.mockk
@@ -18,12 +19,13 @@ private const val TEST_USER_ID = 100L
 
 class CommunityPostApiControllerTest : BehaviorSpec({
 
-    fun buildMockMvc(listCommunityPostsUseCase: ListCommunityPostsUseCase = mockk()) =
+    fun buildMockMvc(listCommunityPostsUseCase: ListCommunityPostsUseCase = mockk(), userId: Long? = null) =
         MockMvcBuilders.standaloneSetup(CommunityPostApiController(listCommunityPostsUseCase))
             .setControllerAdvice(GlobalExceptionHandler())
+            .setCustomArgumentResolvers(fixedPrincipalResolver(userId))
             .build()
 
-    Given("PUBLIC 모임의 게시글 목록을 비멤버가 조회하면") {
+    Given("인증 없이 PUBLIC 모임의 게시글 목록을 조회하면") {
         val listCommunityPostsUseCase = mockk<ListCommunityPostsUseCase>()
         every {
             listCommunityPostsUseCase.execute(communityId = 10L, requesterId = null, sportCategory = null, page = 0, size = 20)
@@ -45,10 +47,10 @@ class CommunityPostApiControllerTest : BehaviorSpec({
         every {
             listCommunityPostsUseCase.execute(communityId = 20L, requesterId = TEST_USER_ID, sportCategory = null, page = 0, size = 20)
         } throws NotCommunityMemberException(20L, TEST_USER_ID)
-        val mockMvc = buildMockMvc(listCommunityPostsUseCase)
+        val mockMvc = buildMockMvc(listCommunityPostsUseCase, userId = TEST_USER_ID)
 
         When("GET /communities/20/posts 요청 시") {
-            val result = mockMvc.perform(get("/communities/20/posts").header("X-User-Id", TEST_USER_ID))
+            val result = mockMvc.perform(get("/communities/20/posts"))
 
             Then("403을 반환한다") {
                 result.andExpect(status().isForbidden)

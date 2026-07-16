@@ -228,7 +228,11 @@ app:
     mock:
       success-rate: 1.0
     pg:
+      # 서버→서버 호출용(내부 네트워크, 예: 도커 dev의 mock-pg:9090).
       mock-base-url: ${PG_MOCK_BASE_URL:http://localhost:9090}
+      # 브라우저가 checkoutUrl로 리다이렉트하는 공개 호스트. 기본값(localhost:9090)은 로컬 직접 실행 기준이며,
+      # 도커 dev는 호스트 노출 포트(PG_MOCK_PUBLIC_BASE_URL=http://localhost:9190)로 override 한다.
+      public-base-url: ${PG_MOCK_PUBLIC_BASE_URL:http://localhost:9090}
   limited-drop:
     reservation:
       # DropReservationStoreImpl 인프로세스 세마포어(FR-7) — 단일 인스턴스 전제(TDD Open Questions).

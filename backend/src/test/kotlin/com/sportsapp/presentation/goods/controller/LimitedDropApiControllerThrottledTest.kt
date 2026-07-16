@@ -6,11 +6,14 @@ import com.sportsapp.domain.goods.entity.Product
 import com.sportsapp.domain.goods.entity.ProductStatus
 import com.sportsapp.domain.goods.entity.Stock
 import com.sportsapp.domain.goods.vo.ProductCategory
+import com.sportsapp.domain.user.gateway.JwtIssuer
 import com.sportsapp.infrastructure.goods.mysql.ProductJpaRepository
 import com.sportsapp.infrastructure.goods.mysql.StockJpaRepository
+import com.sportsapp.presentation.support.bearerTokenFor
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.TestPropertySource
@@ -29,6 +32,8 @@ private const val BUYER_USER_ID = 911L
 /**
  * 완충 permit(FR-7) 소진 시 429 Throttled 매핑을 검증한다. 세마포어를 0으로 강제해야 해
  * [LimitedDropApiControllerTest]와 다른 Spring 컨텍스트(별도 프로퍼티)로 분리한다.
+ *
+ * AUTH-04 — `X-User-Id` 헤더 대신 `Authorization: Bearer JWT`로 본인 식별한다.
  */
 @AutoConfigureMockMvc
 @TestPropertySource(
@@ -43,6 +48,7 @@ class LimitedDropApiControllerThrottledTest(
     @Autowired private val stockJpaRepository: StockJpaRepository,
     @Autowired private val objectMapper: ObjectMapper,
     @Autowired private val jdbcTemplate: JdbcTemplate,
+    @Autowired private val jwtIssuer: JwtIssuer,
 ) : BaseIntegrationTest() {
 
     init {
@@ -72,7 +78,7 @@ class LimitedDropApiControllerThrottledTest(
                     val closeAt = ZonedDateTime.now().plusDays(1)
                     val createResult = mockMvc.perform(
                         post("/limited-drops")
-                            .header("X-User-Id", OWNER_USER_ID.toString())
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(OWNER_USER_ID))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(
                                 objectMapper.writeValueAsString(
@@ -90,7 +96,7 @@ class LimitedDropApiControllerThrottledTest(
 
                     val result = mockMvc.perform(
                         post("/limited-drops/$dropId/orders")
-                            .header("X-User-Id", BUYER_USER_ID.toString())
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(BUYER_USER_ID))
                             .header("Idempotency-Key", UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""{"quantity":1}""")

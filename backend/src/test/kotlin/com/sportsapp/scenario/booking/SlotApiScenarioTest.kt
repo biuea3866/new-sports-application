@@ -8,6 +8,8 @@ import com.sportsapp.domain.booking.repository.SlotRepository
 import com.sportsapp.domain.facility.entity.Facility
 import com.sportsapp.domain.facility.vo.FacilityRegion
 import com.sportsapp.domain.booking.exception.SlotClosedException
+import com.sportsapp.domain.user.gateway.JwtIssuer
+import com.sportsapp.presentation.support.bearerTokenFor
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -25,16 +27,18 @@ import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
 import java.time.ZonedDateTime
 
+/** AUTH-04 — `X-User-Id` 헤더 대신 `Authorization: Bearer JWT`로 시설주 신원을 식별한다. */
 class SlotApiScenarioTest(
     @Autowired private val slotRepository: SlotRepository,
     @Autowired private val bookingDomainService: BookingDomainService,
     @Autowired private val jdbcTemplate: JdbcTemplate,
     @Autowired private val mongoTemplate: MongoTemplate,
     @Autowired private val restTemplate: TestRestTemplate,
+    @Autowired private val jwtIssuer: JwtIssuer,
 ) : BaseIntegrationTest() {
 
     private fun headers(userId: Long): HttpHeaders = HttpHeaders().apply {
-        set("X-User-Id", userId.toString())
+        set(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(userId))
         contentType = MediaType.APPLICATION_JSON
     }
 

@@ -16,6 +16,7 @@ import com.sportsapp.domain.recruitment.entity.RecruitmentStatus
 import com.sportsapp.domain.recruitment.exception.NotRecruiterException
 import com.sportsapp.domain.recruitment.exception.RecruitmentFullException
 import com.sportsapp.presentation.exception.GlobalExceptionHandler
+import com.sportsapp.presentation.support.fixedPrincipalResolver
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every
 import io.mockk.mockk
@@ -31,6 +32,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders
 
 private const val TEST_USER_ID = 100L
 
+/** AUTH-04 — 작성·신청·취소는 `UserPrincipal`(non-null), 목록·상세 조회는 익명 브라우징 허용을 위해 `UserPrincipal?`(nullable)로 식별한다. */
 class RecruitmentApiControllerTest : BehaviorSpec({
 
     fun buildMockMvc(
@@ -40,6 +42,7 @@ class RecruitmentApiControllerTest : BehaviorSpec({
         listApplicationsUseCase: ListApplicationsUseCase = mockk(),
         applyRecruitmentUseCase: ApplyRecruitmentUseCase = mockk(),
         cancelRecruitmentUseCase: CancelRecruitmentUseCase = mockk(),
+        userId: Long? = TEST_USER_ID,
     ) = MockMvcBuilders.standaloneSetup(
         RecruitmentApiController(
             createRecruitmentUseCase = createRecruitmentUseCase,
@@ -49,7 +52,9 @@ class RecruitmentApiControllerTest : BehaviorSpec({
             applyRecruitmentUseCase = applyRecruitmentUseCase,
             cancelRecruitmentUseCase = cancelRecruitmentUseCase,
         ),
-    ).setControllerAdvice(GlobalExceptionHandler()).build()
+    ).setControllerAdvice(GlobalExceptionHandler())
+        .setCustomArgumentResolvers(fixedPrincipalResolver(userId))
+        .build()
 
     fun recruitmentResponse(id: Long, status: RecruitmentStatus = RecruitmentStatus.OPEN): RecruitmentResponse =
         RecruitmentResponse(
@@ -74,7 +79,6 @@ class RecruitmentApiControllerTest : BehaviorSpec({
         When("POST /recruitments 요청 시") {
             val result = mockMvc.perform(
                 post("/recruitments")
-                    .header("X-User-Id", TEST_USER_ID)
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(
                         """{"title":"주말 축구 모임","description":"설명","capacity":10,"feeAmount":10000,
@@ -94,7 +98,7 @@ class RecruitmentApiControllerTest : BehaviorSpec({
     Given("모집 목록 조회 요청") {
         val listRecruitmentsUseCase = mockk<ListRecruitmentsUseCase>()
         every { listRecruitmentsUseCase.execute(1L, null) } returns listOf(recruitmentResponse(1L))
-        val mockMvc = buildMockMvc(listRecruitmentsUseCase = listRecruitmentsUseCase)
+        val mockMvc = buildMockMvc(listRecruitmentsUseCase = listRecruitmentsUseCase, userId = null)
 
         When("GET /recruitments?communityId=1 요청 시") {
             val result = mockMvc.perform(get("/recruitments").param("communityId", "1"))
@@ -109,7 +113,7 @@ class RecruitmentApiControllerTest : BehaviorSpec({
     Given("소속 모집이 없는 커뮤니티 조회") {
         val listRecruitmentsUseCase = mockk<ListRecruitmentsUseCase>()
         every { listRecruitmentsUseCase.execute(2L, null) } returns emptyList()
-        val mockMvc = buildMockMvc(listRecruitmentsUseCase = listRecruitmentsUseCase)
+        val mockMvc = buildMockMvc(listRecruitmentsUseCase = listRecruitmentsUseCase, userId = null)
 
         When("GET /recruitments?communityId=2 요청 시") {
             val result = mockMvc.perform(get("/recruitments").param("communityId", "2"))
@@ -129,9 +133,7 @@ class RecruitmentApiControllerTest : BehaviorSpec({
         val mockMvc = buildMockMvc(listRecruitmentsUseCase = listRecruitmentsUseCase)
 
         When("GET /recruitments?communityId=3 요청 시") {
-            val result = mockMvc.perform(
-                get("/recruitments").param("communityId", "3").header("X-User-Id", TEST_USER_ID),
-            )
+            val result = mockMvc.perform(get("/recruitments").param("communityId", "3"))
 
             Then("403을 반환한다") {
                 result.andExpect(status().isForbidden)
@@ -143,7 +145,7 @@ class RecruitmentApiControllerTest : BehaviorSpec({
     Given("모집 상세 조회 요청") {
         val getRecruitmentUseCase = mockk<GetRecruitmentUseCase>()
         every { getRecruitmentUseCase.execute(1L, null) } returns recruitmentResponse(1L)
-        val mockMvc = buildMockMvc(getRecruitmentUseCase = getRecruitmentUseCase)
+        val mockMvc = buildMockMvc(getRecruitmentUseCase = getRecruitmentUseCase, userId = null)
 
         When("GET /recruitments/1 요청 시") {
             val result = mockMvc.perform(get("/recruitments/1"))
@@ -163,7 +165,7 @@ class RecruitmentApiControllerTest : BehaviorSpec({
         val mockMvc = buildMockMvc(getRecruitmentUseCase = getRecruitmentUseCase)
 
         When("GET /recruitments/4 요청 시") {
-            val result = mockMvc.perform(get("/recruitments/4").header("X-User-Id", TEST_USER_ID))
+            val result = mockMvc.perform(get("/recruitments/4"))
 
             Then("403을 반환한다") {
                 result.andExpect(status().isForbidden)
@@ -172,10 +174,10 @@ class RecruitmentApiControllerTest : BehaviorSpec({
         }
     }
 
-    Given("X-User-Id 헤더 없이 모집 상세를 조회하면") {
+    Given("인증 없이 모집 상세를 조회하면") {
         val getRecruitmentUseCase = mockk<GetRecruitmentUseCase>()
         every { getRecruitmentUseCase.execute(5L, null) } returns recruitmentResponse(5L)
-        val mockMvc = buildMockMvc(getRecruitmentUseCase = getRecruitmentUseCase)
+        val mockMvc = buildMockMvc(getRecruitmentUseCase = getRecruitmentUseCase, userId = null)
 
         When("GET /recruitments/5 요청 시") {
             val result = mockMvc.perform(get("/recruitments/5"))
@@ -201,7 +203,7 @@ class RecruitmentApiControllerTest : BehaviorSpec({
         val mockMvc = buildMockMvc(listApplicationsUseCase = listApplicationsUseCase)
 
         When("GET /recruitments/1/applications 요청 시") {
-            val result = mockMvc.perform(get("/recruitments/1/applications").header("X-User-Id", TEST_USER_ID))
+            val result = mockMvc.perform(get("/recruitments/1/applications"))
 
             Then("200과 함께 신청자 목록을 반환한다") {
                 result.andExpect(status().isOk)
@@ -214,10 +216,10 @@ class RecruitmentApiControllerTest : BehaviorSpec({
     Given("개설자가 아닌 사용자의 신청자 목록 조회") {
         val listApplicationsUseCase = mockk<ListApplicationsUseCase>()
         every { listApplicationsUseCase.execute(1L, 999L) } throws NotRecruiterException(1L)
-        val mockMvc = buildMockMvc(listApplicationsUseCase = listApplicationsUseCase)
+        val mockMvc = buildMockMvc(listApplicationsUseCase = listApplicationsUseCase, userId = 999L)
 
         When("GET /recruitments/1/applications 요청 시") {
-            val result = mockMvc.perform(get("/recruitments/1/applications").header("X-User-Id", 999L))
+            val result = mockMvc.perform(get("/recruitments/1/applications"))
 
             Then("403을 반환한다") {
                 result.andExpect(status().isForbidden)
@@ -243,7 +245,6 @@ class RecruitmentApiControllerTest : BehaviorSpec({
         When("POST /recruitments/1/applications 요청 시") {
             val result = mockMvc.perform(
                 post("/recruitments/1/applications")
-                    .header("X-User-Id", TEST_USER_ID)
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("""{"paymentMethod":"CREDIT_CARD","currency":"KRW"}"""),
             )
@@ -264,7 +265,6 @@ class RecruitmentApiControllerTest : BehaviorSpec({
         When("POST /recruitments/1/applications 요청 시") {
             val result = mockMvc.perform(
                 post("/recruitments/1/applications")
-                    .header("X-User-Id", TEST_USER_ID)
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("""{"paymentMethod":"CREDIT_CARD","currency":"KRW"}"""),
             )
@@ -284,7 +284,7 @@ class RecruitmentApiControllerTest : BehaviorSpec({
         val mockMvc = buildMockMvc(cancelRecruitmentUseCase = cancelRecruitmentUseCase)
 
         When("POST /recruitments/1/cancel 요청 시") {
-            val result = mockMvc.perform(post("/recruitments/1/cancel").header("X-User-Id", TEST_USER_ID))
+            val result = mockMvc.perform(post("/recruitments/1/cancel"))
 
             Then("200과 함께 CANCELLED 상태를 반환한다") {
                 result.andExpect(status().isOk)
@@ -296,10 +296,10 @@ class RecruitmentApiControllerTest : BehaviorSpec({
     Given("개설자가 아닌 사용자의 모집 취소 요청") {
         val cancelRecruitmentUseCase = mockk<CancelRecruitmentUseCase>()
         every { cancelRecruitmentUseCase.execute(any()) } throws NotRecruiterException(1L)
-        val mockMvc = buildMockMvc(cancelRecruitmentUseCase = cancelRecruitmentUseCase)
+        val mockMvc = buildMockMvc(cancelRecruitmentUseCase = cancelRecruitmentUseCase, userId = 999L)
 
         When("POST /recruitments/1/cancel 요청 시") {
-            val result = mockMvc.perform(post("/recruitments/1/cancel").header("X-User-Id", 999L))
+            val result = mockMvc.perform(post("/recruitments/1/cancel"))
 
             Then("403을 반환한다") {
                 result.andExpect(status().isForbidden)

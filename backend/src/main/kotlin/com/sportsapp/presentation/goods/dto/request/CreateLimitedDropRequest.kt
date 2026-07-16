@@ -4,7 +4,8 @@ import com.sportsapp.application.goods.dto.CreateLimitedDropCommand
 import java.time.ZonedDateTime
 
 /**
- * 판매자 한정판 회차 개설 요청(`POST /limited-drops`). ownerUserId는 `X-User-Id` 헤더에서 받는다.
+ * 판매자 한정판 회차 개설 요청(`POST /limited-drops`). ownerUserId는 JWT(`@AuthenticationPrincipal
+ * UserPrincipal.id`)에서 받는다.
  */
 data class CreateLimitedDropRequest(
     val productId: Long,

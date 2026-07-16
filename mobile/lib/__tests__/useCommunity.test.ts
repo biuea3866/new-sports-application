@@ -151,6 +151,29 @@ describe('useCommunity · useCommunityMembers', () => {
     expect(result.current.data).toEqual([activeMember]);
     expect(listMembersMock).toHaveBeenCalledWith(1);
   });
+
+  /**
+   * [버그3] 실제 앱에서 쓰는 queryClient(retry: shouldRetryQuery)를 그대로 사용해,
+   * 비ACTIVE 멤버의 403 응답이 재시도 없이 즉시 실패 처리되는지 검증한다.
+   * 재시도가 남아 있으면 화면이 "멤버 접근 제한" 안내가 뜨기 전에 깜빡인다.
+   */
+  it('403 응답은 재시도 없이 즉시 실패 처리된다(실제 queryClient 재시도 정책)', async () => {
+    const forbiddenError = Object.assign(new Error('Forbidden'), {
+      isAxiosError: true,
+      response: { status: 403 },
+    });
+    listMembersMock.mockRejectedValue(forbiddenError);
+    const { queryClient: appQueryClient } = jest.requireActual('../query-client');
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      createElement(QueryClientProvider, { client: appQueryClient }, children);
+
+    const { result } = renderHook(() => useCommunityMembers(1), { wrapper });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(listMembersMock).toHaveBeenCalledTimes(1);
+
+    appQueryClient.clear();
+  });
 });
 
 describe('useJoinCommunity', () => {

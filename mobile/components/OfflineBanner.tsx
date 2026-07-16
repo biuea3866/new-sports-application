@@ -4,9 +4,14 @@
  */
 import { View, Text, StyleSheet } from 'react-native';
 import { useNetInfo } from '../lib/netinfo';
+import { useTheme } from '../theme/useTheme';
+import { createStyles } from '../theme/createStyles';
+import type { ThemeTokens } from '../theme/tokens';
 
 export function OfflineBanner() {
   const netInfo = useNetInfo();
+  const { tokens } = useTheme();
+  const styles = useStyles(tokens);
 
   if (netInfo.isConnected !== false) {
     return null;
@@ -23,16 +28,18 @@ export function OfflineBanner() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#B00020',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-  },
-  text: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-});
+const useStyles = createStyles((theme: ThemeTokens) =>
+  StyleSheet.create({
+    container: {
+      backgroundColor: theme.danger,
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      alignItems: 'center',
+    },
+    text: {
+      color: theme.accentText,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+  })
+);

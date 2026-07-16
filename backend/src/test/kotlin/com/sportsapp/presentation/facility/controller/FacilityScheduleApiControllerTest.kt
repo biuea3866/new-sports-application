@@ -10,16 +10,13 @@ import com.sportsapp.domain.facility.exception.UnauthorizedFacilityAccessExcepti
 import com.sportsapp.domain.facility.vo.OperatingHours
 import com.sportsapp.domain.user.vo.UserPrincipal
 import com.sportsapp.presentation.exception.GlobalExceptionHandler
+import com.sportsapp.presentation.support.fixedPrincipalResolver
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.springframework.data.geo.Point
-import org.springframework.security.core.Authentication
-import org.springframework.security.core.context.SecurityContextHolder
-import org.springframework.security.core.context.SecurityContextImpl
-import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
@@ -38,14 +35,9 @@ private fun buildMockMvc(
     principal: UserPrincipal = UserPrincipal(id = 1L, email = "owner@test.com", roles = listOf("FACILITY_OWNER")),
 ) = MockMvcBuilders.standaloneSetup(
     FacilityScheduleApiController(registerOperatingHoursUseCase, addHolidayUseCase, removeHolidayUseCase),
-).setCustomArgumentResolvers(AuthenticationPrincipalArgumentResolver())
+).setCustomArgumentResolvers(fixedPrincipalResolver(principal.id, principal.email, principal.roles))
     .setControllerAdvice(GlobalExceptionHandler())
     .build()
-    .also {
-        val authentication = mockk<Authentication>()
-        every { authentication.principal } returns principal
-        SecurityContextHolder.setContext(SecurityContextImpl(authentication))
-    }
 
 private fun buildFacility(operatingHoursList: List<OperatingHours> = emptyList()): Facility = Facility(
     id = "f-001", code = "C-001", name = "강남 수영장",

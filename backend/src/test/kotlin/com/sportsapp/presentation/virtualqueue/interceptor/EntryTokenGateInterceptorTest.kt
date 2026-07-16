@@ -22,6 +22,8 @@ import com.sportsapp.domain.goods.entity.LimitedDropStatus
 import com.sportsapp.domain.virtualqueue.VirtualQueueFeatureFlagKeys
 import com.sportsapp.presentation.exception.GlobalExceptionHandler
 import com.sportsapp.presentation.goods.controller.LimitedDropApiController
+import com.sportsapp.presentation.support.fixedPrincipalResolver
+import com.sportsapp.presentation.support.withAuthenticatedPrincipal
 import com.sportsapp.presentation.ticketing.controller.EventApiController
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -51,6 +53,11 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders
  * .LIMITED_DROP_ORDER_PATH]·[TICKETING_SELECT_SEATS_PATH])로
  * [org.springframework.test.web.servlet.setup.StandaloneMockMvcBuilder.addMappedInterceptors]에
  * 등록해 검증한다.
+ *
+ * AUTH-04 — 인터셉터가 `X-User-Id` 헤더 대신 `SecurityContextHolder`의 JWT 인증 principal을
+ * 읽도록 전환됨에 따라, standalone MockMvc(서블릿 필터 미실행)에서는
+ * [withAuthenticatedPrincipal]로 컨텍스트를 직접 채운다. 컨트롤러의 `@AuthenticationPrincipal`도
+ * 동일 userId로 해석되도록 [fixedPrincipalResolver]를 함께 등록한다.
  */
 class EntryTokenGateInterceptorTest : BehaviorSpec({
 
@@ -58,6 +65,7 @@ class EntryTokenGateInterceptorTest : BehaviorSpec({
         entryTokenGuard: EntryTokenGuard,
         featureFlagEvaluator: FeatureFlagEvaluator,
         meterRegistry: SimpleMeterRegistry,
+        userId: Long,
         purchaseLimitedDropUseCase: PurchaseLimitedDropUseCase = mockk(),
         getLimitedDropUseCase: GetLimitedDropUseCase = mockk(),
         selectSeatsUseCase: SelectSeatsUseCase = mockk(),
@@ -80,6 +88,7 @@ class EntryTokenGateInterceptorTest : BehaviorSpec({
             .standaloneSetup(limitedDropApiController, eventApiController)
             .setControllerAdvice(GlobalExceptionHandler())
             .setMessageConverters(MappingJackson2HttpMessageConverter(objectMapper))
+            .setCustomArgumentResolvers(fixedPrincipalResolver(userId))
             .addMappedInterceptors(
                 arrayOf(
                     EntryTokenGateInterceptor.LIMITED_DROP_ORDER_PATH,
@@ -99,6 +108,7 @@ class EntryTokenGateInterceptorTest : BehaviorSpec({
             entryTokenGuard = entryTokenGuard,
             featureFlagEvaluator = featureFlagEvaluator,
             meterRegistry = meterRegistry,
+            userId = 1L,
             purchaseLimitedDropUseCase = purchaseLimitedDropUseCase,
         )
 
@@ -114,14 +124,15 @@ class EntryTokenGateInterceptorTest : BehaviorSpec({
 
         When("한정판 구매 요청 시") {
             Then("다운스트림(구매 UseCase)으로 통과한다") {
-                mockMvc.perform(
-                    post("/limited-drops/10/orders")
-                        .header("X-User-Id", 1L)
-                        .header("Idempotency-Key", "idem-1")
-                        .header("X-Entry-Token", "valid-token")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""{"quantity":1}"""),
-                ).andExpect(status().isAccepted)
+                withAuthenticatedPrincipal(1L) {
+                    mockMvc.perform(
+                        post("/limited-drops/10/orders")
+                            .header("Idempotency-Key", "idem-1")
+                            .header("X-Entry-Token", "valid-token")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""{"quantity":1}"""),
+                    ).andExpect(status().isAccepted)
+                }
             }
         }
     }
@@ -130,7 +141,7 @@ class EntryTokenGateInterceptorTest : BehaviorSpec({
         val entryTokenGuard = mockk<EntryTokenGuard>()
         val featureFlagEvaluator = mockk<FeatureFlagEvaluator>()
         val meterRegistry = SimpleMeterRegistry()
-        val mockMvc = buildMockMvc(entryTokenGuard, featureFlagEvaluator, meterRegistry)
+        val mockMvc = buildMockMvc(entryTokenGuard, featureFlagEvaluator, meterRegistry, userId = 2L)
 
         every {
             featureFlagEvaluator.isEnabled(VirtualQueueFeatureFlagKeys.ENABLED, FeatureContext.of(2L), false)
@@ -139,15 +150,16 @@ class EntryTokenGateInterceptorTest : BehaviorSpec({
 
         When("X-Entry-Token 헤더 없이 한정판 구매 요청 시") {
             Then("403 QUEUE_BYPASS_DENIED를 반환한다") {
-                mockMvc.perform(
-                    post("/limited-drops/11/orders")
-                        .header("X-User-Id", 2L)
-                        .header("Idempotency-Key", "idem-2")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""{"quantity":1}"""),
-                )
-                    .andExpect(status().isForbidden)
-                    .andExpect(jsonPath("$.properties.code").value("QUEUE_BYPASS_DENIED"))
+                withAuthenticatedPrincipal(2L) {
+                    mockMvc.perform(
+                        post("/limited-drops/11/orders")
+                            .header("Idempotency-Key", "idem-2")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""{"quantity":1}"""),
+                    )
+                        .andExpect(status().isForbidden)
+                        .andExpect(jsonPath("$.properties.code").value("QUEUE_BYPASS_DENIED"))
+                }
             }
         }
     }
@@ -156,7 +168,7 @@ class EntryTokenGateInterceptorTest : BehaviorSpec({
         val entryTokenGuard = mockk<EntryTokenGuard>()
         val featureFlagEvaluator = mockk<FeatureFlagEvaluator>()
         val meterRegistry = SimpleMeterRegistry()
-        val mockMvc = buildMockMvc(entryTokenGuard, featureFlagEvaluator, meterRegistry)
+        val mockMvc = buildMockMvc(entryTokenGuard, featureFlagEvaluator, meterRegistry, userId = 3L)
 
         every {
             featureFlagEvaluator.isEnabled(VirtualQueueFeatureFlagKeys.ENABLED, FeatureContext.of(3L), false)
@@ -165,13 +177,14 @@ class EntryTokenGateInterceptorTest : BehaviorSpec({
 
         When("좌석 선택 요청 시 위조 토큰이면") {
             Then("403을 반환하고 bypass_attempt 카운터를 증가시킨다") {
-                mockMvc.perform(
-                    post("/events/20/seats/select")
-                        .header("X-User-Id", 3L)
-                        .header("X-Entry-Token", "forged-token")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""{"seatIds":[100]}"""),
-                ).andExpect(status().isForbidden)
+                withAuthenticatedPrincipal(3L) {
+                    mockMvc.perform(
+                        post("/events/20/seats/select")
+                            .header("X-Entry-Token", "forged-token")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""{"seatIds":[100]}"""),
+                    ).andExpect(status().isForbidden)
+                }
 
                 meterRegistry.counter("virtual_queue.bypass_attempt").count() shouldBe 1.0
             }
@@ -187,6 +200,7 @@ class EntryTokenGateInterceptorTest : BehaviorSpec({
             entryTokenGuard = entryTokenGuard,
             featureFlagEvaluator = featureFlagEvaluator,
             meterRegistry = meterRegistry,
+            userId = 4L,
             purchaseLimitedDropUseCase = purchaseLimitedDropUseCase,
         )
 
@@ -201,13 +215,14 @@ class EntryTokenGateInterceptorTest : BehaviorSpec({
 
         When("토큰 없이 한정판 구매 요청 시") {
             Then("검증을 스킵하고 통과한다(직접 구매 경로)") {
-                mockMvc.perform(
-                    post("/limited-drops/12/orders")
-                        .header("X-User-Id", 4L)
-                        .header("Idempotency-Key", "idem-4")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""{"quantity":1}"""),
-                ).andExpect(status().isAccepted)
+                withAuthenticatedPrincipal(4L) {
+                    mockMvc.perform(
+                        post("/limited-drops/12/orders")
+                            .header("Idempotency-Key", "idem-4")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""{"quantity":1}"""),
+                    ).andExpect(status().isAccepted)
+                }
             }
         }
     }
@@ -221,6 +236,7 @@ class EntryTokenGateInterceptorTest : BehaviorSpec({
             entryTokenGuard = entryTokenGuard,
             featureFlagEvaluator = featureFlagEvaluator,
             meterRegistry = meterRegistry,
+            userId = 5L,
             getLimitedDropUseCase = getLimitedDropUseCase,
         )
 

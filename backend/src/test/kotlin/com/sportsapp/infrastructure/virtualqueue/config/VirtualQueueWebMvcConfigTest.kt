@@ -132,16 +132,19 @@ class VirtualQueueWebMvcConfigTest : BehaviorSpec({
     Given("VirtualQueueWebMvcConfig가 실제 Spring MVC 컨텍스트에 배선된 상태 (플래그 ON + 토큰 항상 거부)") {
         val mockMvc = buildRoutingMockMvc()
 
+        // AUTH-04: 인터셉터가 SecurityContextHolder에서 userId를 읽도록 전환됐다. 이 테스트는 실 필터체인이
+        // 없는 raw WebApplicationContext라 principal이 항상 비어 있지만, entryTokenGuard.verify가 무조건
+        // false를 반환하도록 고정돼 있어(위 Bean 정의) 결과(403)는 principal 유무와 무관하다.
         When("POST /limited-drops/{dropId}/orders 요청 시") {
             Then("등록된 경로라 게이트가 실행되어 403을 반환한다") {
-                mockMvc.perform(post("/limited-drops/1/orders").header("X-User-Id", 1L))
+                mockMvc.perform(post("/limited-drops/1/orders"))
                     .andExpect(status().isForbidden)
             }
         }
 
         When("POST /events/{eventId}/seats/select 요청 시") {
             Then("등록된 경로라 게이트가 실행되어 403을 반환한다") {
-                mockMvc.perform(post("/events/1/seats/select").header("X-User-Id", 1L))
+                mockMvc.perform(post("/events/1/seats/select"))
                     .andExpect(status().isForbidden)
             }
         }

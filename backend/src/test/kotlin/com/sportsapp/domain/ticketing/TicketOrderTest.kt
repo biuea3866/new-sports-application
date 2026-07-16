@@ -96,8 +96,8 @@ class TicketOrderTest : BehaviorSpec({
         }
 
         When("requireOwnedBy(2)를 호출하면") {
-            Then("BusinessRuleViolationException을 던진다") {
-                shouldThrow<com.sportsapp.domain.common.exceptions.BusinessRuleViolationException> {
+            Then("UnauthorizedTicketOrderAccessException을 던진다") {
+                shouldThrow<com.sportsapp.domain.ticketing.exception.UnauthorizedTicketOrderAccessException> {
                     order.requireOwnedBy(2L)
                 }
             }

@@ -36,6 +36,7 @@ import {
   ThemedText,
   ThemedView,
 } from '../../components/ui';
+import { ScreenHeader } from '../../components/common/ScreenHeader';
 import { isFeatureEnabled } from '../../lib/feature-flags';
 import { isForbiddenError } from '../../lib/http-error';
 import {
@@ -113,6 +114,7 @@ export default function CommunityDetailScreen() {
   function handleEnterChat() {
     const roomId = communityQuery.data?.roomId;
     if (roomId === null || roomId === undefined) {
+      Alert.alert('채팅방 안내', '채팅방이 아직 없습니다');
       return;
     }
     router.push(`/rooms/${roomId}`);
@@ -172,6 +174,7 @@ export default function CommunityDetailScreen() {
   if (isInvalidCommunityId) {
     return (
       <ThemedView style={styles.container} background="background">
+        <ScreenHeader onBack={() => router.back()} />
         <EmptyState message="잘못된 접근이에요" description="커뮤니티 링크를 다시 확인해 주세요" />
       </ThemedView>
     );
@@ -179,6 +182,7 @@ export default function CommunityDetailScreen() {
 
   return (
     <ThemedView style={styles.container} background="background">
+      <ScreenHeader title={communityQuery.data?.name} onBack={() => router.back()} />
       {isLoading && <LoadingView variant="skeleton" skeletonCount={4} />}
 
       {!isLoading && communityQuery.isError && (

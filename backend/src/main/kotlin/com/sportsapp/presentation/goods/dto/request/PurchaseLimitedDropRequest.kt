@@ -4,7 +4,8 @@ import com.sportsapp.domain.goods.dto.PurchaseLimitedDropCommand
 
 /**
  * 한정판 구매 요청(`POST /limited-drops/{dropId}/orders`).
- * dropId는 경로 변수, userId는 `X-User-Id`, idempotencyKey는 `Idempotency-Key` 헤더에서 받는다.
+ * dropId는 경로 변수, userId는 JWT(`@AuthenticationPrincipal UserPrincipal.id`),
+ * idempotencyKey는 `Idempotency-Key` 헤더에서 받는다.
  */
 data class PurchaseLimitedDropRequest(
     val quantity: Int,

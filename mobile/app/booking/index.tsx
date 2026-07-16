@@ -12,6 +12,9 @@ import {
 } from 'react-native';
 import { useMyBookings, useCancelBooking } from '../../lib/useMyBookings';
 import type { BookingResponse } from '../../api/types';
+import { useTheme } from '../../theme/useTheme';
+import { createStyles } from '../../theme/createStyles';
+import type { ThemeTokens } from '../../theme/tokens';
 
 function BookingItem({
   booking,
@@ -22,6 +25,8 @@ function BookingItem({
   onCancel: (id: number) => void;
   isCancelling: boolean;
 }) {
+  const { tokens } = useTheme();
+  const styles = useStyles(tokens);
   const canCancel = booking.status === 'PENDING' || booking.status === 'CONFIRMED';
 
   return (
@@ -45,9 +50,7 @@ function BookingItem({
           accessibilityLabel={`예약 ${booking.id} 취소`}
           accessibilityState={{ disabled: isCancelling }}
         >
-          <Text style={styles.cancelButtonText}>
-            {isCancelling ? '취소 중...' : '예약 취소'}
-          </Text>
+          <Text style={styles.cancelButtonText}>{isCancelling ? '취소 중...' : '예약 취소'}</Text>
         </Pressable>
       )}
     </View>
@@ -57,6 +60,8 @@ function BookingItem({
 export default function BookingListScreen() {
   const { data, isLoading, isError } = useMyBookings();
   const { mutate: cancelBooking, isPending } = useCancelBooking();
+  const { tokens } = useTheme();
+  const styles = useStyles(tokens);
 
   const handleCancel = (id: number) => {
     Alert.alert('예약 취소', '이 예약을 취소하시겠습니까?', [
@@ -80,7 +85,7 @@ export default function BookingListScreen() {
   if (isLoading) {
     return (
       <View style={styles.centered} accessibilityLabel="예약 목록 로딩 중">
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={tokens.accent} />
       </View>
     );
   }
@@ -109,11 +114,7 @@ export default function BookingListScreen() {
           data={bookings}
           keyExtractor={(item) => String(item.id)}
           renderItem={({ item }) => (
-            <BookingItem
-              booking={item}
-              onCancel={handleCancel}
-              isCancelling={isPending}
-            />
+            <BookingItem booking={item} onCancel={handleCancel} isCancelling={isPending} />
           )}
           contentContainerStyle={styles.list}
         />
@@ -122,72 +123,74 @@ export default function BookingListScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingTop: 60,
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1C1C1E',
-    marginBottom: 20,
-  },
-  list: {
-    paddingBottom: 40,
-  },
-  card: {
-    backgroundColor: '#F2F2F7',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-  },
-  bookingId: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1C1C1E',
-    marginBottom: 4,
-  },
-  bookingStatus: {
-    fontSize: 14,
-    color: '#3C3C43',
-    marginBottom: 4,
-  },
-  bookingDate: {
-    fontSize: 13,
-    color: '#8E8E93',
-    marginBottom: 12,
-  },
-  cancelButton: {
-    backgroundColor: '#FF3B30',
-    borderRadius: 8,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  cancelButtonDisabled: {
-    backgroundColor: '#9E9E9E',
-  },
-  cancelButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  emptyText: {
-    fontSize: 15,
-    color: '#8E8E93',
-    textAlign: 'center',
-    marginTop: 40,
-  },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 15,
-  },
-});
+const useStyles = createStyles((theme: ThemeTokens) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+      paddingHorizontal: 16,
+      paddingTop: 60,
+    },
+    centered: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.background,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: theme.textPrimary,
+      marginBottom: 20,
+    },
+    list: {
+      paddingBottom: 40,
+    },
+    card: {
+      backgroundColor: theme.surface,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 12,
+    },
+    bookingId: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.textPrimary,
+      marginBottom: 4,
+    },
+    bookingStatus: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      marginBottom: 4,
+    },
+    bookingDate: {
+      fontSize: 13,
+      color: theme.textMuted,
+      marginBottom: 12,
+    },
+    cancelButton: {
+      backgroundColor: theme.danger,
+      borderRadius: 8,
+      paddingVertical: 10,
+      alignItems: 'center',
+    },
+    cancelButtonDisabled: {
+      backgroundColor: theme.disabled,
+    },
+    cancelButtonText: {
+      color: theme.accentText,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    emptyText: {
+      fontSize: 15,
+      color: theme.textMuted,
+      textAlign: 'center',
+      marginTop: 40,
+    },
+    errorText: {
+      color: theme.danger,
+      fontSize: 15,
+    },
+  })
+);

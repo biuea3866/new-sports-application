@@ -10,11 +10,14 @@ import com.sportsapp.infrastructure.goods.mysql.CartItemJpaRepository
 import com.sportsapp.infrastructure.goods.mysql.CartJpaRepository
 import com.sportsapp.infrastructure.goods.mysql.ProductJpaRepository
 import com.sportsapp.infrastructure.goods.mysql.StockJpaRepository
+import com.sportsapp.domain.user.gateway.JwtIssuer
 import com.sportsapp.infrastructure.payment.mysql.PaymentJpaRepository
+import com.sportsapp.presentation.support.bearerTokenFor
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.web.servlet.MockMvc
@@ -24,6 +27,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.math.BigDecimal
 import java.util.UUID
 
+/** AUTH-04 — `X-User-Id` 헤더 대신 `Authorization: Bearer JWT`로 본인 식별한다. */
 @AutoConfigureMockMvc
 class GoodsOrderFromCartScenarioTest(
     @Autowired private val mockMvc: MockMvc,
@@ -34,6 +38,7 @@ class GoodsOrderFromCartScenarioTest(
     @Autowired private val paymentJpaRepository: PaymentJpaRepository,
     @Autowired private val objectMapper: ObjectMapper,
     @Autowired private val jdbcTemplate: JdbcTemplate,
+    @Autowired private val jwtIssuer: JwtIssuer,
 ) : BaseIntegrationTest() {
 
     init {
@@ -80,14 +85,14 @@ class GoodsOrderFromCartScenarioTest(
 
                 mockMvc.perform(
                     post("/cart/items")
-                        .header("X-User-Id", userId.toString())
+                        .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""{"productId":$productId1,"quantity":2}""")
                 ).andExpect(status().isOk)
 
                 mockMvc.perform(
                     post("/cart/items")
-                        .header("X-User-Id", userId.toString())
+                        .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""{"productId":$productId2,"quantity":1}""")
                 ).andExpect(status().isOk)
@@ -98,7 +103,7 @@ class GoodsOrderFromCartScenarioTest(
                     val idempotencyKey = UUID.randomUUID().toString()
                     val result = mockMvc.perform(
                         post("/goods-orders")
-                            .header("X-User-Id", userId.toString())
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(userId))
                             .header("Idempotency-Key", idempotencyKey)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(

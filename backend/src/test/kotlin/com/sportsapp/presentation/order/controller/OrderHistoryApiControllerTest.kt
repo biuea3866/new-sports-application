@@ -6,16 +6,13 @@ import com.sportsapp.application.order.dto.OrderHistoryItem
 import com.sportsapp.application.order.dto.OrderHistoryResponse
 import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.user.vo.UserPrincipal
+import com.sportsapp.presentation.support.fixedPrincipalResolver
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
-import org.springframework.security.core.Authentication
-import org.springframework.security.core.context.SecurityContextHolder
-import org.springframework.security.core.context.SecurityContextImpl
-import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -27,13 +24,8 @@ private fun buildMockMvc(
     getOrderHistoryUseCase: GetOrderHistoryUseCase,
     principal: UserPrincipal = UserPrincipal(id = 1L, email = "user@test.com", roles = listOf("USER")),
 ) = MockMvcBuilders.standaloneSetup(OrderHistoryApiController(getOrderHistoryUseCase))
-    .setCustomArgumentResolvers(AuthenticationPrincipalArgumentResolver())
+    .setCustomArgumentResolvers(fixedPrincipalResolver(principal.id, principal.email, principal.roles))
     .build()
-    .also {
-        val authentication = mockk<Authentication>()
-        every { authentication.principal } returns principal
-        SecurityContextHolder.setContext(SecurityContextImpl(authentication))
-    }
 
 class OrderHistoryApiControllerTest : BehaviorSpec({
 

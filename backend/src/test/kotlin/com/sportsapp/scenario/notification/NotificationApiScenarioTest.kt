@@ -5,10 +5,13 @@ import com.sportsapp.domain.notification.entity.Notification
 import com.sportsapp.domain.notification.vo.NotificationChannel
 import com.sportsapp.domain.notification.vo.NotificationPayload
 import com.sportsapp.domain.notification.entity.NotificationStatus
+import com.sportsapp.domain.user.gateway.JwtIssuer
 import com.sportsapp.infrastructure.notification.mysql.NotificationJpaRepository
+import com.sportsapp.presentation.support.bearerTokenFor
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
@@ -19,10 +22,12 @@ import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.util.UUID
 
+/** AUTH-04 — `X-User-Id` 헤더 대신 `Authorization: Bearer JWT`로 본인 식별한다. */
 @AutoConfigureMockMvc
 class NotificationApiScenarioTest(
     @Autowired private val mockMvc: MockMvc,
     @Autowired private val notificationJpaRepository: NotificationJpaRepository,
+    @Autowired private val jwtIssuer: JwtIssuer,
 ) : BaseJpaIntegrationTest() {
 
     init {
@@ -44,7 +49,7 @@ class NotificationApiScenarioTest(
                 Then("[DEF-004][S-01] 응답 JSON 키가 unreadCount이고, 1건 read 후 4로 변경된다") {
                     mockMvc.perform(
                         get("/notifications/me/unread-count")
-                            .header("X-User-Id", userId)
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(userId))
                             .accept(MediaType.APPLICATION_JSON)
                     )
                         .andExpect(status().isOk)
@@ -55,13 +60,13 @@ class NotificationApiScenarioTest(
 
                     mockMvc.perform(
                         patch("/notifications/${notification.id}/read")
-                            .header("X-User-Id", userId)
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(userId))
                             .accept(MediaType.APPLICATION_JSON)
                     ).andExpect(status().isOk)
 
                     mockMvc.perform(
                         get("/notifications/me/unread-count")
-                            .header("X-User-Id", userId)
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(userId))
                             .accept(MediaType.APPLICATION_JSON)
                     )
                         .andExpect(status().isOk)
@@ -87,7 +92,7 @@ class NotificationApiScenarioTest(
                 Then("[S-02] 403 응답이 반환된다") {
                     mockMvc.perform(
                         patch("/notifications/${notification.id}/read")
-                            .header("X-User-Id", otherUserId)
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(otherUserId))
                             .accept(MediaType.APPLICATION_JSON)
                     ).andExpect(status().isForbidden)
                 }
@@ -112,7 +117,7 @@ class NotificationApiScenarioTest(
                 Then("[S-03] 결과가 createdAt desc 정렬로 반환된다") {
                     val result = mockMvc.perform(
                         get("/notifications/me")
-                            .header("X-User-Id", userId)
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(userId))
                             .param("page", "0")
                             .param("size", "20")
                             .accept(MediaType.APPLICATION_JSON)
@@ -148,7 +153,7 @@ class NotificationApiScenarioTest(
 
                     mockMvc.perform(
                         patch("/notifications/${notification.id}/read")
-                            .header("X-User-Id", userId)
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(userId))
                             .accept(MediaType.APPLICATION_JSON)
                     ).andExpect(status().isOk)
 

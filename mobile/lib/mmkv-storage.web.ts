@@ -11,6 +11,20 @@ function getStore(): Storage | null {
   return typeof window !== 'undefined' ? window.localStorage : null;
 }
 
+/**
+ * 네이티브 MMKV 인스턴스(lib/mmkv-storage.ts의 cacheStorage)와 동일한
+ * 동기 API를 localStorage로 제공합니다. themeStore가 이 표면을 직접 사용합니다.
+ */
+export const cacheStorage = {
+  getString: (key: string): string | undefined => getStore()?.getItem(key) ?? undefined,
+  set: (key: string, value: string): void => {
+    getStore()?.setItem(key, value);
+  },
+  delete: (key: string): void => {
+    getStore()?.removeItem(key);
+  },
+};
+
 export const mmkvAsyncStorage: AsyncStorage<string> = {
   getItem: (key: string) => Promise.resolve(getStore()?.getItem(key) ?? null),
   setItem: (key: string, value: string) => {

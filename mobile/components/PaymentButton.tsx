@@ -6,6 +6,9 @@
  */
 import { TouchableOpacity, Text, StyleSheet, Alert } from 'react-native';
 import { useNetInfo } from '../lib/netinfo';
+import { useTheme } from '../theme/useTheme';
+import { createStyles } from '../theme/createStyles';
+import type { ThemeTokens } from '../theme/tokens';
 
 interface PaymentButtonProps {
   label: string;
@@ -15,6 +18,8 @@ interface PaymentButtonProps {
 
 export function PaymentButton({ label, onPress, disabled = false }: PaymentButtonProps) {
   const netInfo = useNetInfo();
+  const { tokens } = useTheme();
+  const styles = useStyles(tokens);
   const isOffline = netInfo.isConnected === false;
 
   const handlePress = () => {
@@ -39,20 +44,22 @@ export function PaymentButton({ label, onPress, disabled = false }: PaymentButto
   );
 }
 
-const styles = StyleSheet.create({
-  button: {
-    backgroundColor: '#1976D2',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buttonDisabled: {
-    backgroundColor: '#9E9E9E',
-  },
-  label: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-});
+const useStyles = createStyles((theme: ThemeTokens) =>
+  StyleSheet.create({
+    button: {
+      backgroundColor: theme.accent,
+      paddingVertical: 14,
+      paddingHorizontal: 24,
+      borderRadius: 8,
+      alignItems: 'center',
+    },
+    buttonDisabled: {
+      backgroundColor: theme.disabled,
+    },
+    label: {
+      color: theme.accentText,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+  })
+);

@@ -9,18 +9,19 @@ import com.sportsapp.application.booking.usecase.DeleteSlotUseCase
 import com.sportsapp.application.booking.usecase.ListSlotsUseCase
 import com.sportsapp.application.booking.usecase.OpenSlotUseCase
 import com.sportsapp.application.booking.usecase.UpdateSlotUseCase
+import com.sportsapp.domain.user.vo.UserPrincipal
 import com.sportsapp.presentation.booking.dto.request.CreateSlotRequest
 import com.sportsapp.presentation.booking.dto.request.UpdateSlotRequest
 import com.sportsapp.presentation.booking.dto.response.SlotResponse
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -37,12 +38,11 @@ class SlotApiController(
 ) {
     @PostMapping
     fun createSlot(
-        @RequestHeader("X-User-Id") userId: Long,
+        @AuthenticationPrincipal principal: UserPrincipal,
         @PathVariable facilityId: String,
         @RequestBody request: CreateSlotRequest,
     ): ResponseEntity<SlotResponse> {
-        if (userId == 0L) return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
-        val slot = createSlotUseCase.execute(request.toCommand(userId, facilityId))
+        val slot = createSlotUseCase.execute(request.toCommand(principal.id, facilityId))
         return ResponseEntity.status(HttpStatus.CREATED).body(SlotResponse.of(slot))
     }
 
@@ -55,42 +55,38 @@ class SlotApiController(
 
     @PatchMapping("/{slotId}")
     fun updateSlot(
-        @RequestHeader("X-User-Id") userId: Long,
+        @AuthenticationPrincipal principal: UserPrincipal,
         @PathVariable slotId: Long,
         @RequestBody request: UpdateSlotRequest,
     ): ResponseEntity<SlotResponse> {
-        if (userId == 0L) return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
-        val slot = updateSlotUseCase.execute(request.toCommand(userId, slotId))
+        val slot = updateSlotUseCase.execute(request.toCommand(principal.id, slotId))
         return ResponseEntity.ok(SlotResponse.of(slot))
     }
 
     @PatchMapping("/{slotId}/close")
     fun closeSlot(
-        @RequestHeader("X-User-Id") userId: Long,
+        @AuthenticationPrincipal principal: UserPrincipal,
         @PathVariable slotId: Long,
     ): ResponseEntity<SlotResponse> {
-        if (userId == 0L) return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
-        val slot = closeSlotUseCase.execute(CloseSlotCommand(requesterId = userId, slotId = slotId))
+        val slot = closeSlotUseCase.execute(CloseSlotCommand(requesterId = principal.id, slotId = slotId))
         return ResponseEntity.ok(SlotResponse.of(slot))
     }
 
     @PatchMapping("/{slotId}/open")
     fun openSlot(
-        @RequestHeader("X-User-Id") userId: Long,
+        @AuthenticationPrincipal principal: UserPrincipal,
         @PathVariable slotId: Long,
     ): ResponseEntity<SlotResponse> {
-        if (userId == 0L) return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
-        val slot = openSlotUseCase.execute(OpenSlotCommand(requesterId = userId, slotId = slotId))
+        val slot = openSlotUseCase.execute(OpenSlotCommand(requesterId = principal.id, slotId = slotId))
         return ResponseEntity.ok(SlotResponse.of(slot))
     }
 
     @DeleteMapping("/{slotId}")
     fun deleteSlot(
-        @RequestHeader("X-User-Id") userId: Long,
+        @AuthenticationPrincipal principal: UserPrincipal,
         @PathVariable slotId: Long,
     ): ResponseEntity<Void> {
-        if (userId == 0L) return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
-        deleteSlotUseCase.execute(DeleteSlotCommand(requesterId = userId, slotId = slotId))
+        deleteSlotUseCase.execute(DeleteSlotCommand(requesterId = principal.id, slotId = slotId))
         return ResponseEntity.noContent().build()
     }
 }

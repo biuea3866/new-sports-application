@@ -6,12 +6,15 @@ import com.sportsapp.domain.goods.entity.Product
 import com.sportsapp.domain.goods.vo.ProductCategory
 import com.sportsapp.domain.goods.entity.ProductStatus
 import com.sportsapp.domain.goods.entity.Stock
+import com.sportsapp.domain.user.gateway.JwtIssuer
 import com.sportsapp.infrastructure.goods.mysql.GoodsOrderJpaRepository
 import com.sportsapp.infrastructure.goods.mysql.ProductJpaRepository
 import com.sportsapp.infrastructure.goods.mysql.StockJpaRepository
+import com.sportsapp.presentation.support.bearerTokenFor
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.web.servlet.MockMvc
@@ -22,6 +25,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.math.BigDecimal
 import java.util.UUID
 
+/** AUTH-04 — `X-User-Id` 헤더 대신 `Authorization: Bearer JWT`로 본인 식별한다. */
 @AutoConfigureMockMvc
 class GoodsOrderScenarioTest(
     @Autowired private val mockMvc: MockMvc,
@@ -30,6 +34,7 @@ class GoodsOrderScenarioTest(
     @Autowired private val goodsOrderJpaRepository: GoodsOrderJpaRepository,
     @Autowired private val objectMapper: ObjectMapper,
     @Autowired private val jdbcTemplate: JdbcTemplate,
+    @Autowired private val jwtIssuer: JwtIssuer,
 ) : BaseIntegrationTest() {
 
     init {
@@ -62,7 +67,7 @@ class GoodsOrderScenarioTest(
                 Then("202 Accepted와 orderId, paymentId, paymentStatus가 반환되고 재고가 차감된다") {
                     val result = mockMvc.perform(
                         post("/goods-orders")
-                            .header("X-User-Id", "1")
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(1L))
                             .header("Idempotency-Key", UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""{"method":"CREDIT_CARD","fromCart":false,"items":[{"productId":$productId,"quantity":3}]}""")
@@ -81,7 +86,7 @@ class GoodsOrderScenarioTest(
 
                     mockMvc.perform(
                         get("/goods-orders/$orderId")
-                            .header("X-User-Id", "1")
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(1L))
                     ).andExpect(status().isOk)
                         .andExpect(jsonPath("$.items.length()").value(1))
                         .andExpect(jsonPath("$.items[0].quantity").value(3))
@@ -92,7 +97,7 @@ class GoodsOrderScenarioTest(
                 Then("202 Accepted와 orderId가 반환된다") {
                     mockMvc.perform(
                         post("/goods-orders")
-                            .header("X-User-Id", "2")
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(2L))
                             .header("Idempotency-Key", UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""{"method":"CREDIT_CARD","fromCart":false,"items":[{"productId":$productId,"quantity":1}]}""")
@@ -105,7 +110,7 @@ class GoodsOrderScenarioTest(
                 Then("409 응답이 반환된다") {
                     mockMvc.perform(
                         post("/goods-orders")
-                            .header("X-User-Id", "3")
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(3L))
                             .header("Idempotency-Key", UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""{"method":"CREDIT_CARD","fromCart":false,"items":[{"productId":$productId,"quantity":10}]}""")
@@ -113,7 +118,7 @@ class GoodsOrderScenarioTest(
 
                     mockMvc.perform(
                         post("/goods-orders")
-                            .header("X-User-Id", "4")
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(4L))
                             .header("Idempotency-Key", UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""{"method":"CREDIT_CARD","fromCart":false,"items":[{"productId":$productId,"quantity":1}]}""")
@@ -125,7 +130,7 @@ class GoodsOrderScenarioTest(
                 Then("해당 userId의 주문 목록만 반환되고 상태가 PENDING이다") {
                     mockMvc.perform(
                         post("/goods-orders")
-                            .header("X-User-Id", "5")
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(5L))
                             .header("Idempotency-Key", UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""{"method":"CREDIT_CARD","fromCart":false,"items":[{"productId":$productId,"quantity":1}]}""")
@@ -133,7 +138,7 @@ class GoodsOrderScenarioTest(
 
                     mockMvc.perform(
                         get("/goods-orders/me")
-                            .header("X-User-Id", "5")
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(5L))
                     ).andExpect(status().isOk)
                         .andExpect(jsonPath("$.content.length()").value(1))
                         .andExpect(jsonPath("$.content[0].status").value("PENDING"))
@@ -144,7 +149,7 @@ class GoodsOrderScenarioTest(
                 Then("PENDING 상태의 주문이 조회된다") {
                     val result = mockMvc.perform(
                         post("/goods-orders")
-                            .header("X-User-Id", "6")
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(6L))
                             .header("Idempotency-Key", UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""{"method":"CREDIT_CARD","fromCart":false,"items":[{"productId":$productId,"quantity":1}]}""")
@@ -156,7 +161,7 @@ class GoodsOrderScenarioTest(
 
                     mockMvc.perform(
                         get("/goods-orders/$orderId")
-                            .header("X-User-Id", "6")
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(6L))
                     ).andExpect(status().isOk)
                         .andExpect(jsonPath("$.status").value("PENDING"))
                         .andExpect(jsonPath("$.id").value(orderId))
@@ -169,7 +174,7 @@ class GoodsOrderScenarioTest(
                 Then("400 Bad Request가 반환된다") {
                     mockMvc.perform(
                         post("/goods-orders")
-                            .header("X-User-Id", "1")
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(1L))
                             .header("Idempotency-Key", UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""{"method":"CREDIT_CARD","fromCart":false,"items":[]}""")
@@ -210,7 +215,7 @@ class GoodsOrderScenarioTest(
 
                     val firstResult = mockMvc.perform(
                         post("/goods-orders")
-                            .header("X-User-Id", "10")
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(10L))
                             .header("Idempotency-Key", idempotencyKey)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(requestBody)
@@ -223,7 +228,7 @@ class GoodsOrderScenarioTest(
 
                     val secondResult = mockMvc.perform(
                         post("/goods-orders")
-                            .header("X-User-Id", "10")
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(10L))
                             .header("Idempotency-Key", idempotencyKey)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(requestBody)

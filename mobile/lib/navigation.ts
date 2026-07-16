@@ -1,13 +1,19 @@
 /**
  * 앱 라우트 상수 — 후행 티켓이 경로 문자열을 하드코딩하지 않도록 한다.
+ *
+ * 탭 재편(사용자 피드백, 7탭→5탭)으로 `tickets`·`chat`·`clubs` 탭이 사라지고
+ * 스토어(굿즈|티켓)·커뮤니티(게시글|동아리) 세그먼트로 통합됐다. `search`는
+ * 실제 기능(내 주변 시설 검색)을 드러내는 `facilities`로 재명명했다.
  */
 
 export const ROUTES = {
   // 탭
   tabs: {
     home: '/(tabs)/',
+    facilities: '/(tabs)/facilities',
     store: '/(tabs)/store',
-    tickets: '/(tabs)/tickets',
+    /** 스토어 탭을 티켓 세그먼트로 바로 여는 진입점 (예: 홈 "다가오는 경기" 카드). */
+    storeTickets: '/(tabs)/store?segment=tickets',
     community: '/(tabs)/community',
     me: '/(tabs)/me',
   },

@@ -109,6 +109,7 @@ const useLocalSearchParamsMock = useLocalSearchParams as jest.MockedFunction<
 >;
 const isFeatureEnabledMock = isFeatureEnabled as jest.MockedFunction<typeof isFeatureEnabled>;
 const routerPushMock = router.push as jest.MockedFunction<typeof router.push>;
+const routerBackMock = router.back as jest.MockedFunction<typeof router.back>;
 
 const MY_USER_ID = 1;
 const HOST_USER_ID = 10;
@@ -332,6 +333,27 @@ describe('CommunityDetailScreen', () => {
     expect(routerPushMock).toHaveBeenCalledWith(`/rooms/${baseCommunity.roomId}`);
   });
 
+  it('BE 응답에 roomId 필드가 없으면(undefined) 채팅 입장 시 안내 알림을 띄우고 이동하지 않는다', () => {
+    mockCommunity({
+      data: { ...baseCommunity, roomId: undefined } as unknown as CommunityResponse,
+    });
+    mockMembers({ data: [member({ id: 1, userId: MY_USER_ID, role: 'MEMBER' })] });
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+
+    renderScreen();
+    fireEvent.press(screen.getByLabelText('채팅 입장'));
+
+    expect(alertSpy).toHaveBeenCalledWith('채팅방 안내', '채팅방이 아직 없습니다');
+    expect(routerPushMock).not.toHaveBeenCalledWith(expect.stringContaining('/rooms/'));
+  });
+
+  it('뒤로가기 버튼을 탭하면 이전 화면으로 이동한다', () => {
+    renderScreen();
+    fireEvent.press(screen.getByLabelText('뒤로 가기'));
+
+    expect(routerBackMock).toHaveBeenCalled();
+  });
+
   it('강퇴 확인 후 성공 시 방목록 캐시가 무효화된다(자동 퇴장)', () => {
     mockMembers({
       data: [
@@ -454,7 +476,7 @@ describe('CommunityDetailScreen', () => {
 
     renderScreen();
 
-    expect(screen.getByText(baseCommunity.name)).toBeTruthy();
+    expect(screen.getAllByText(baseCommunity.name).length).toBeGreaterThan(0);
   });
 
   it('community.post.enabled·community.booking.enabled가 OFF면 게시판·활동 탭이 렌더되지 않는다', () => {

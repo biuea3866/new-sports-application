@@ -3,10 +3,13 @@ package com.sportsapp.scenario.post
 import com.sportsapp.BaseJpaIntegrationTest
 import com.sportsapp.domain.post.entity.Post
 import com.sportsapp.domain.post.vo.PostType
+import com.sportsapp.domain.user.gateway.JwtIssuer
 import com.sportsapp.infrastructure.post.mysql.CommentJpaRepository
 import com.sportsapp.infrastructure.post.mysql.PostJpaRepository
+import com.sportsapp.presentation.support.bearerTokenFor
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.web.servlet.MockMvc
@@ -16,12 +19,14 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
+/** AUTH-04 — `X-User-Id` 헤더 대신 `Authorization: Bearer JWT`로 본인 식별한다. */
 @AutoConfigureMockMvc
 class CommentApiScenarioTest(
     @Autowired private val mockMvc: MockMvc,
     @Autowired private val postJpaRepository: PostJpaRepository,
     @Autowired private val commentJpaRepository: CommentJpaRepository,
     @Autowired private val jdbcTemplate: JdbcTemplate,
+    @Autowired private val jwtIssuer: JwtIssuer,
 ) : BaseJpaIntegrationTest() {
 
     init {
@@ -39,7 +44,7 @@ class CommentApiScenarioTest(
 
                     mockMvc.perform(
                         post("/posts/${savedPost.id}/comments")
-                            .header("X-User-Id", 10L)
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(10L))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""{"content": "새 댓글"}""")
                     ).andExpect(status().isCreated)
@@ -65,7 +70,7 @@ class CommentApiScenarioTest(
                     )
                     mockMvc.perform(
                         post("/posts/${savedPost.id}/comments")
-                            .header("X-User-Id", 10L)
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(10L))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""{"content": "댓글 내용"}""")
                     ).andExpect(status().isCreated)
@@ -74,7 +79,7 @@ class CommentApiScenarioTest(
 
                     mockMvc.perform(
                         delete("/comments/$commentId")
-                            .header("X-User-Id", 1L)
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(1L))
                     ).andExpect(status().isForbidden)
                 }
             }
@@ -88,7 +93,7 @@ class CommentApiScenarioTest(
                     )
                     mockMvc.perform(
                         post("/posts/${savedPost.id}/comments")
-                            .header("X-User-Id", 10L)
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(10L))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""{"content": "삭제될 댓글"}""")
                     ).andExpect(status().isCreated)
@@ -97,7 +102,7 @@ class CommentApiScenarioTest(
 
                     mockMvc.perform(
                         delete("/comments/$commentId")
-                            .header("X-User-Id", 10L)
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(10L))
                     ).andExpect(status().isNoContent)
 
                     mockMvc.perform(
@@ -121,7 +126,7 @@ class CommentApiScenarioTest(
                     repeat(5) { index ->
                         mockMvc.perform(
                             post("/posts/${savedPost.id}/comments")
-                                .header("X-User-Id", 10L)
+                                .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(10L))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("""{"content": "댓글 $index"}""")
                         ).andExpect(status().isCreated)
@@ -150,7 +155,7 @@ class CommentApiScenarioTest(
                     repeat(25) { index ->
                         mockMvc.perform(
                             post("/posts/${savedPost.id}/comments")
-                                .header("X-User-Id", 10L)
+                                .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(10L))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("""{"content": "댓글 ${index + 1}"}""")
                         ).andExpect(status().isCreated)
@@ -178,7 +183,7 @@ class CommentApiScenarioTest(
                     repeat(25) { index ->
                         mockMvc.perform(
                             post("/posts/${savedPost.id}/comments")
-                                .header("X-User-Id", 10L)
+                                .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(10L))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("""{"content": "댓글 ${index + 1}"}""")
                         ).andExpect(status().isCreated)
@@ -201,7 +206,7 @@ class CommentApiScenarioTest(
                 Then("[S-01] 404 Not Found 가 반환된다") {
                     mockMvc.perform(
                         post("/posts/99999/comments")
-                            .header("X-User-Id", 10L)
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(10L))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""{"content": "댓글"}""")
                     ).andExpect(status().isNotFound)
@@ -220,7 +225,7 @@ class CommentApiScenarioTest(
 
                     mockMvc.perform(
                         post("/posts/${savedPost.id}/comments")
-                            .header("X-User-Id", 10L)
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(10L))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""{"content": "댓글"}""")
                     ).andExpect(status().isNotFound)

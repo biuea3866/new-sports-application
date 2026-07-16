@@ -6,8 +6,10 @@ import com.sportsapp.application.ticketing.usecase.PurchaseTicketsUseCase
 import com.sportsapp.application.ticketing.dto.TicketOrderDetailResponse
 import com.sportsapp.application.ticketing.dto.TicketOrderResponse
 import com.sportsapp.domain.payment.exception.MissingIdempotencyKeyException
+import com.sportsapp.domain.user.vo.UserPrincipal
 import com.sportsapp.presentation.ticketing.dto.request.PurchaseTicketOrderRequest
 import org.springframework.http.HttpStatus
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -26,13 +28,13 @@ class TicketOrderApiController(
     @PostMapping
     @ResponseStatus(HttpStatus.ACCEPTED)
     fun purchase(
-        @RequestHeader("X-User-Id") userId: Long,
+        @AuthenticationPrincipal principal: UserPrincipal,
         @RequestHeader(value = "Idempotency-Key", required = false) idempotencyKey: String?,
         @RequestBody request: PurchaseTicketOrderRequest,
     ): TicketOrderResponse {
         if (idempotencyKey.isNullOrBlank()) throw MissingIdempotencyKeyException()
         val command = PurchaseTicketsCommand(
-            userId = userId,
+            userId = principal.id,
             lockId = request.lockId,
             idempotencyKey = idempotencyKey,
             method = request.method,
@@ -43,6 +45,7 @@ class TicketOrderApiController(
 
     @GetMapping("/{id}")
     fun getTicketOrder(
+        @AuthenticationPrincipal principal: UserPrincipal,
         @PathVariable id: Long,
-    ): TicketOrderDetailResponse = getTicketOrderUseCase.execute(id)
+    ): TicketOrderDetailResponse = getTicketOrderUseCase.execute(id, principal.id)
 }

@@ -1,18 +1,23 @@
 package com.sportsapp.scenario.payment
 
 import com.sportsapp.BaseIntegrationTest
+import com.sportsapp.domain.user.gateway.JwtIssuer
+import com.sportsapp.presentation.support.bearerTokenFor
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.post
 
+/** AUTH-04 — `POST /payments`는 JWT principal로 인증한다. */
 @AutoConfigureMockMvc
 class PgPaymentMethodScenarioTest(
     @Autowired private val mockMvc: MockMvc,
     @Autowired private val jdbcTemplate: JdbcTemplate,
+    @Autowired private val jwtIssuer: JwtIssuer,
 ) : BaseIntegrationTest() {
 
     init {
@@ -37,6 +42,7 @@ class PgPaymentMethodScenarioTest(
                     val response = mockMvc.post("/payments") {
                         contentType = MediaType.APPLICATION_JSON
                         header("Idempotency-Key", idempotencyKey)
+                        header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(1L))
                         content = requestBody
                     }.andExpect {
                         status { isCreated() }
@@ -70,11 +76,13 @@ class PgPaymentMethodScenarioTest(
                 mockMvc.post("/payments") {
                     contentType = MediaType.APPLICATION_JSON
                     header("Idempotency-Key", idempotencyKey)
+                    header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(1L))
                     content = requestBody
                 }
                 mockMvc.post("/payments") {
                     contentType = MediaType.APPLICATION_JSON
                     header("Idempotency-Key", idempotencyKey)
+                    header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(1L))
                     content = requestBody
                 }
 
@@ -95,6 +103,7 @@ class PgPaymentMethodScenarioTest(
                     mockMvc.post("/payments") {
                         contentType = MediaType.APPLICATION_JSON
                         header("Idempotency-Key", "pg-invalid-method-01")
+                        header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(1L))
                         content = """
                             {
                                 "orderType": "BOOKING",

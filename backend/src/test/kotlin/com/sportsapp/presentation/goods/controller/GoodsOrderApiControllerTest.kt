@@ -7,12 +7,15 @@ import com.sportsapp.domain.goods.entity.Product
 import com.sportsapp.domain.goods.entity.ProductStatus
 import com.sportsapp.domain.goods.vo.ProductCategory
 import com.sportsapp.domain.goods.vo.SellerType
+import com.sportsapp.domain.user.gateway.JwtIssuer
 import com.sportsapp.infrastructure.goods.mysql.GoodsOrderItemJpaRepository
 import com.sportsapp.infrastructure.goods.mysql.GoodsOrderJpaRepository
 import com.sportsapp.infrastructure.goods.mysql.ProductJpaRepository
+import com.sportsapp.presentation.support.bearerTokenFor
 import java.math.BigDecimal
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.web.servlet.MockMvc
@@ -24,6 +27,8 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
  * GET /goods-orders/{orderId} — 주문 상세 응답 보강(Option A+) 검증.
  * 통합 주문내역 리스트(BE-08 `OrderCompositionService`가 소비하는 `GoodsOrderWithTitle`)만큼
  * 상세도 리치하도록, createdAt·대표 상품명(title)·항목별 productId를 함께 반환하는지 확인한다.
+ *
+ * AUTH-04 — `X-User-Id` 헤더 대신 `Authorization: Bearer JWT`로 본인 식별한다.
  */
 @AutoConfigureMockMvc
 class GoodsOrderApiControllerTest(
@@ -32,6 +37,7 @@ class GoodsOrderApiControllerTest(
     @Autowired private val goodsOrderItemJpaRepository: GoodsOrderItemJpaRepository,
     @Autowired private val productJpaRepository: ProductJpaRepository,
     @Autowired private val jdbcTemplate: JdbcTemplate,
+    @Autowired private val jwtIssuer: JwtIssuer,
 ) : BaseIntegrationTest() {
 
     private fun resetData() {
@@ -65,11 +71,11 @@ class GoodsOrderApiControllerTest(
                 GoodsOrderItem(orderId = order.id, productId = product.id, quantity = 1, unitPrice = BigDecimal("89000"))
             )
 
-            When("GET /goods-orders/{orderId}를 본인 X-User-Id로 호출하면") {
+            When("GET /goods-orders/{orderId}를 본인 JWT로 호출하면") {
                 Then("createdAt·대표 상품명(title)·항목별 productId가 함께 채워진 200 응답을 반환한다") {
                     mockMvc.perform(
                         get("/goods-orders/${order.id}")
-                            .header("X-User-Id", "1")
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(1L))
                             .accept(MediaType.APPLICATION_JSON)
                     )
                         .andExpect(status().isOk)
@@ -95,11 +101,11 @@ class GoodsOrderApiControllerTest(
                 )
             )
 
-            When("GET /goods-orders/{orderId}를 본인 X-User-Id로 호출하면") {
+            When("GET /goods-orders/{orderId}를 본인 JWT로 호출하면") {
                 Then("대표 상품명 + 외 N건으로 title이 구성된다") {
                     mockMvc.perform(
                         get("/goods-orders/${order.id}")
-                            .header("X-User-Id", "2")
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(2L))
                             .accept(MediaType.APPLICATION_JSON)
                     )
                         .andExpect(status().isOk)
@@ -117,11 +123,11 @@ class GoodsOrderApiControllerTest(
                 GoodsOrderItem(orderId = order.id, productId = product.id, quantity = 1, unitPrice = BigDecimal("89000"))
             )
 
-            When("GET /goods-orders/{orderId}를 타인 X-User-Id로 호출하면") {
+            When("GET /goods-orders/{orderId}를 타인 JWT로 호출하면") {
                 Then("403을 반환한다") {
                     mockMvc.perform(
                         get("/goods-orders/${order.id}")
-                            .header("X-User-Id", "999")
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(999L))
                             .accept(MediaType.APPLICATION_JSON)
                     )
                         .andExpect(status().isForbidden)
@@ -136,7 +142,7 @@ class GoodsOrderApiControllerTest(
                 Then("404를 반환한다") {
                     mockMvc.perform(
                         get("/goods-orders/999999")
-                            .header("X-User-Id", "1")
+                            .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(1L))
                             .accept(MediaType.APPLICATION_JSON)
                     )
                         .andExpect(status().isNotFound)

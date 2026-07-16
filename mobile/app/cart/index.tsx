@@ -24,6 +24,9 @@ import {
   useCurrentUserId,
   CartItemDto,
 } from '../../api/goods';
+import { useTheme } from '../../theme/useTheme';
+import { createStyles } from '../../theme/createStyles';
+import type { ThemeTokens } from '../../theme/tokens';
 
 /** RFC 4122 v4 UUID 생성 (crypto 미설치 환경 대응) */
 function generateUUID(): string {
@@ -43,8 +46,14 @@ interface CartItemRowProps {
 }
 
 function CartItemRow({ item, onIncrease, onDecrease, onRemove, isPending }: CartItemRowProps) {
+  const { tokens } = useTheme();
+  const styles = useStyles(tokens);
   return (
-    <View style={styles.itemRow} accessible accessibilityLabel={`상품 ID ${item.productId}, 수량 ${item.quantity}`}>
+    <View
+      style={styles.itemRow}
+      accessible
+      accessibilityLabel={`상품 ID ${item.productId}, 수량 ${item.quantity}`}
+    >
       <View style={styles.itemInfo}>
         <Text style={styles.itemProductId} accessibilityRole="text">
           상품 #{item.productId}
@@ -95,6 +104,8 @@ function CartItemRow({ item, onIncrease, onDecrease, onRemove, isPending }: Cart
 export default function CartScreen() {
   const router = useRouter();
   const userId = useCurrentUserId();
+  const { tokens } = useTheme();
+  const styles = useStyles(tokens);
 
   const { data: cart, isLoading, isError, refetch } = useCart(userId);
   const updateCartItem = useUpdateCartItem(userId);
@@ -146,7 +157,7 @@ export default function CartScreen() {
   if (isLoading) {
     return (
       <View style={styles.center} accessible accessibilityLabel="장바구니 로딩 중">
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={tokens.accent} />
       </View>
     );
   }
@@ -201,13 +212,21 @@ export default function CartScreen() {
             onRemove={() =>
               Alert.alert('항목 삭제', '이 상품을 장바구니에서 삭제하시겠습니까?', [
                 { text: '취소', style: 'cancel' },
-                { text: '삭제', style: 'destructive', onPress: () => removeCartItem.mutate(item.id) },
+                {
+                  text: '삭제',
+                  style: 'destructive',
+                  onPress: () => removeCartItem.mutate(item.id),
+                },
               ])
             }
           />
         )}
         ListEmptyComponent={
-          <View style={styles.emptyContainer} accessible accessibilityLabel="장바구니가 비어 있습니다">
+          <View
+            style={styles.emptyContainer}
+            accessible
+            accessibilityLabel="장바구니가 비어 있습니다"
+          >
             <Text style={styles.emptyText}>장바구니가 비어 있습니다.</Text>
             <TouchableOpacity
               style={styles.shopButton}
@@ -228,7 +247,10 @@ export default function CartScreen() {
             총 {totalQuantity}개 상품
           </Text>
           <TouchableOpacity
-            style={[styles.orderButton, (isMutating || createGoodsOrder.isPending) && styles.buttonDisabled]}
+            style={[
+              styles.orderButton,
+              (isMutating || createGoodsOrder.isPending) && styles.buttonDisabled,
+            ]}
             onPress={handleOrder}
             disabled={isMutating || createGoodsOrder.isPending}
             accessibilityRole="button"
@@ -245,166 +267,169 @@ export default function CartScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F2F2F7',
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  backText: {
-    color: '#007AFF',
-    fontSize: 16,
-    width: 60,
-  },
-  header: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1C1C1E',
-  },
-  headerSpacer: {
-    width: 60,
-  },
-  listContent: {
-    padding: 16,
-    flexGrow: 1,
-  },
-  itemRow: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 16,
-    marginBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  itemInfo: {
-    flex: 1,
-  },
-  itemProductId: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1C1C1E',
-    marginBottom: 4,
-  },
-  itemQuantityLabel: {
-    fontSize: 13,
-    color: '#8E8E93',
-  },
-  itemActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  quantityButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F2F2F7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quantityButtonText: {
-    fontSize: 18,
-    color: '#1C1C1E',
-    fontWeight: '600',
-  },
-  quantityValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1C1C1E',
-    minWidth: 24,
-    textAlign: 'center',
-  },
-  removeButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: '#FFE5E5',
-    borderRadius: 6,
-  },
-  removeButtonText: {
-    color: '#FF3B30',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 80,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#8E8E93',
-    marginBottom: 20,
-  },
-  shopButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 10,
-  },
-  shopButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  footer: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E5EA',
-  },
-  totalText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1C1C1E',
-    marginBottom: 12,
-    textAlign: 'right',
-  },
-  orderButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  buttonDisabled: {
-    backgroundColor: '#C7C7CC',
-  },
-  orderButtonText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#8E8E93',
-    marginBottom: 16,
-  },
-  retryButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-});
+const useStyles = createStyles((theme: ThemeTokens) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    center: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.background,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.surface,
+      paddingHorizontal: 16,
+      paddingTop: 16,
+      paddingBottom: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    backText: {
+      color: theme.accent,
+      fontSize: 16,
+      width: 60,
+    },
+    header: {
+      flex: 1,
+      textAlign: 'center',
+      fontSize: 18,
+      fontWeight: '700',
+      color: theme.textPrimary,
+    },
+    headerSpacer: {
+      width: 60,
+    },
+    listContent: {
+      padding: 16,
+      flexGrow: 1,
+    },
+    itemRow: {
+      backgroundColor: theme.surface,
+      borderRadius: 10,
+      padding: 16,
+      marginBottom: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    itemInfo: {
+      flex: 1,
+    },
+    itemProductId: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.textPrimary,
+      marginBottom: 4,
+    },
+    itemQuantityLabel: {
+      fontSize: 13,
+      color: theme.textMuted,
+    },
+    itemActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    quantityButton: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: theme.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    quantityButtonText: {
+      fontSize: 18,
+      color: theme.textPrimary,
+      fontWeight: '600',
+    },
+    quantityValue: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.textPrimary,
+      minWidth: 24,
+      textAlign: 'center',
+    },
+    removeButton: {
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      backgroundColor: theme.background,
+      borderRadius: 6,
+    },
+    removeButtonText: {
+      color: theme.danger,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    emptyContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingTop: 80,
+    },
+    emptyText: {
+      fontSize: 16,
+      color: theme.textMuted,
+      marginBottom: 20,
+    },
+    shopButton: {
+      backgroundColor: theme.accent,
+      paddingVertical: 12,
+      paddingHorizontal: 24,
+      borderRadius: 10,
+    },
+    shopButtonText: {
+      color: theme.accentText,
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    footer: {
+      backgroundColor: theme.surface,
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderTopWidth: 1,
+      borderTopColor: theme.border,
+    },
+    totalText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.textPrimary,
+      marginBottom: 12,
+      textAlign: 'right',
+    },
+    orderButton: {
+      backgroundColor: theme.accent,
+      paddingVertical: 16,
+      borderRadius: 12,
+      alignItems: 'center',
+    },
+    buttonDisabled: {
+      backgroundColor: theme.disabled,
+    },
+    orderButtonText: {
+      color: theme.accentText,
+      fontSize: 17,
+      fontWeight: '700',
+    },
+    errorText: {
+      fontSize: 16,
+      color: theme.textMuted,
+      marginBottom: 16,
+    },
+    retryButton: {
+      backgroundColor: theme.accent,
+      paddingVertical: 10,
+      paddingHorizontal: 20,
+      borderRadius: 8,
+    },
+    retryButtonText: {
+      color: theme.accentText,
+      fontWeight: '600',
+    },
+  })
+);
