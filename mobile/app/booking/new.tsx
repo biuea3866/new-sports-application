@@ -42,6 +42,9 @@ import { usePrograms } from '../../lib/useProgram';
 import { AirQualityWarning } from '../../components/AirQualityWarning';
 import { isBadOrWorse } from '../../lib/air-quality-format';
 import type { PaymentMethod, SlotResponse } from '../../api/types';
+import { useTheme } from '../../theme/useTheme';
+import { createStyles } from '../../theme/createStyles';
+import type { ThemeTokens } from '../../theme/tokens';
 
 const PAYMENT_METHODS: { method: PaymentMethod; label: string }[] = [
   { method: 'CREDIT_CARD', label: '신용카드' },
@@ -60,6 +63,8 @@ interface SlotItemProps {
 }
 
 function SlotItem({ slot, isSelected, onSelect }: SlotItemProps) {
+  const { tokens } = useTheme();
+  const styles = useStyles(tokens);
   const dateStr = new Date(slot.date).toLocaleDateString('ko-KR', {
     year: 'numeric',
     month: 'long',
@@ -89,6 +94,8 @@ export default function BookingNewScreen() {
     programId?: string;
   }>();
   const router = useRouter();
+  const { tokens } = useTheme();
+  const styles = useStyles(tokens);
 
   const resolvedFacilityId = facilityId ?? '';
   const resolvedProgramId =
@@ -172,7 +179,7 @@ export default function BookingNewScreen() {
   if (isLoading) {
     return (
       <View style={styles.centered} accessibilityLabel="슬롯 목록 로딩 중">
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={tokens.accent} />
       </View>
     );
   }
@@ -266,118 +273,120 @@ export default function BookingNewScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  airQualityWarningWrapper: {
-    marginBottom: 20,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingTop: 60,
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1C1C1E',
-    marginBottom: 24,
-  },
-  sectionLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#3C3C43',
-    marginBottom: 8,
-  },
-  slotList: {
-    maxHeight: 240,
-    marginBottom: 20,
-  },
-  slotListContent: {
-    gap: 8,
-  },
-  slotCard: {
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#E5E5EA',
-    padding: 14,
-    backgroundColor: '#F2F2F7',
-  },
-  slotCardSelected: {
-    borderColor: '#007AFF',
-    backgroundColor: '#EAF4FF',
-  },
-  slotTimeRange: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1C1C1E',
-    marginBottom: 2,
-  },
-  slotTimeRangeSelected: {
-    color: '#007AFF',
-  },
-  slotDate: {
-    fontSize: 13,
-    color: '#8E8E93',
-    marginBottom: 2,
-  },
-  slotCapacity: {
-    fontSize: 12,
-    color: '#8E8E93',
-  },
-  methodRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 32,
-  },
-  methodButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: '#E5E5EA',
-    backgroundColor: '#F2F2F7',
-  },
-  methodButtonSelected: {
-    borderColor: '#007AFF',
-    backgroundColor: '#EAF4FF',
-  },
-  methodLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#3C3C43',
-  },
-  methodLabelSelected: {
-    color: '#007AFF',
-  },
-  bookButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  bookButtonDisabled: {
-    backgroundColor: '#9E9E9E',
-  },
-  bookButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#8E8E93',
-    marginBottom: 20,
-  },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 15,
-  },
-});
+const useStyles = createStyles((theme: ThemeTokens) =>
+  StyleSheet.create({
+    airQualityWarningWrapper: {
+      marginBottom: 20,
+    },
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+      paddingHorizontal: 16,
+      paddingTop: 60,
+    },
+    centered: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.background,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: theme.textPrimary,
+      marginBottom: 24,
+    },
+    sectionLabel: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.textSecondary,
+      marginBottom: 8,
+    },
+    slotList: {
+      maxHeight: 240,
+      marginBottom: 20,
+    },
+    slotListContent: {
+      gap: 8,
+    },
+    slotCard: {
+      borderRadius: 10,
+      borderWidth: 1.5,
+      borderColor: theme.border,
+      padding: 14,
+      backgroundColor: theme.surface,
+    },
+    slotCardSelected: {
+      borderColor: theme.accent,
+      backgroundColor: theme.surfaceElevated,
+    },
+    slotTimeRange: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.textPrimary,
+      marginBottom: 2,
+    },
+    slotTimeRangeSelected: {
+      color: theme.accent,
+    },
+    slotDate: {
+      fontSize: 13,
+      color: theme.textMuted,
+      marginBottom: 2,
+    },
+    slotCapacity: {
+      fontSize: 12,
+      color: theme.textMuted,
+    },
+    methodRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginBottom: 32,
+    },
+    methodButton: {
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      borderRadius: 8,
+      borderWidth: 1.5,
+      borderColor: theme.border,
+      backgroundColor: theme.surface,
+    },
+    methodButtonSelected: {
+      borderColor: theme.accent,
+      backgroundColor: theme.surfaceElevated,
+    },
+    methodLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.textSecondary,
+    },
+    methodLabelSelected: {
+      color: theme.accent,
+    },
+    bookButton: {
+      backgroundColor: theme.accent,
+      borderRadius: 12,
+      paddingVertical: 16,
+      alignItems: 'center',
+      marginBottom: 40,
+    },
+    bookButtonDisabled: {
+      backgroundColor: theme.disabled,
+    },
+    bookButtonText: {
+      color: theme.accentText,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    emptyText: {
+      fontSize: 14,
+      color: theme.textMuted,
+      marginBottom: 20,
+    },
+    errorText: {
+      color: theme.danger,
+      fontSize: 15,
+    },
+  })
+);

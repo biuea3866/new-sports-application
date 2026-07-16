@@ -35,6 +35,9 @@ import {
 } from '../../../api/ticketOrders';
 import { ROUTES } from '../../../lib/navigation';
 import type { PaymentMethod, SeatInfo } from '../../../api/types';
+import { useTheme } from '../../../theme/useTheme';
+import { createStyles } from '../../../theme/createStyles';
+import type { ThemeTokens } from '../../../theme/tokens';
 
 type Phase = 'confirm' | 'selecting' | 'purchasing' | 'done';
 
@@ -52,6 +55,8 @@ interface SeatRowProps {
 }
 
 function SeatRow({ seat }: SeatRowProps) {
+  const { tokens } = useTheme();
+  const styles = useStyles(tokens);
   return (
     <View
       style={styles.seatRow}
@@ -82,6 +87,8 @@ export default function EventOrderScreen() {
   }, [seatIdsParam]);
 
   const { data: event } = useEvent(eventId);
+  const { tokens } = useTheme();
+  const styles = useStyles(tokens);
   const [phase, setPhase] = useState<Phase>('confirm');
   const [lockId, setLockId] = useState<string | null>(null);
   const lockIdRef = useRef<string | null>(null);
@@ -189,7 +196,7 @@ export default function EventOrderScreen() {
     const loadingLabel = phase === 'selecting' ? '좌석 선점 중...' : '주문 생성 중...';
     return (
       <View style={styles.center} accessibilityLabel={loadingLabel}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={tokens.accent} />
         <Text style={styles.loadingText}>{loadingLabel}</Text>
       </View>
     );
@@ -252,110 +259,113 @@ export default function EventOrderScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F2F2F7',
-    paddingTop: 56,
-  },
-  backButton: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
-  backButtonText: {
-    fontSize: 16,
-    color: '#007AFF',
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyText: {
-    fontSize: 15,
-    color: '#8E8E93',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#8E8E93',
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 40,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#1C1C1E',
-    marginBottom: 6,
-  },
-  eventName: {
-    fontSize: 14,
-    color: '#6C6C70',
-    marginBottom: 20,
-  },
-  seatList: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 16,
-  },
-  seatRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E5EA',
-  },
-  seatLabel: {
-    fontSize: 15,
-    color: '#1C1C1E',
-  },
-  seatPrice: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#C7C7CC',
-    marginBottom: 12,
-  },
-  totalLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1C1C1E',
-  },
-  totalAmount: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FF3B30',
-  },
-  notice: {
-    fontSize: 12,
-    color: '#8E8E93',
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  confirmButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  confirmButtonDisabled: {
-    backgroundColor: '#C7C7CC',
-  },
-  confirmButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-});
+const useStyles = createStyles((theme: ThemeTokens) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+      paddingTop: 56,
+    },
+    backButton: {
+      paddingHorizontal: 16,
+      paddingBottom: 8,
+    },
+    backButtonText: {
+      fontSize: 16,
+      color: theme.accent,
+    },
+    center: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.background,
+    },
+    emptyText: {
+      fontSize: 15,
+      color: theme.textMuted,
+    },
+    loadingText: {
+      marginTop: 12,
+      fontSize: 14,
+      color: theme.textMuted,
+    },
+    scrollContent: {
+      paddingHorizontal: 16,
+      paddingBottom: 40,
+    },
+    title: {
+      fontSize: 22,
+      fontWeight: 'bold',
+      color: theme.textPrimary,
+      marginBottom: 6,
+    },
+    eventName: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      marginBottom: 20,
+    },
+    seatList: {
+      backgroundColor: theme.surface,
+      borderRadius: 12,
+      overflow: 'hidden',
+      marginBottom: 16,
+    },
+    seatRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    seatLabel: {
+      fontSize: 15,
+      color: theme.textPrimary,
+    },
+    seatPrice: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.accent,
+    },
+    totalRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 16,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.disabled,
+      marginBottom: 12,
+    },
+    totalLabel: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.textPrimary,
+    },
+    totalAmount: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: theme.danger,
+    },
+    notice: {
+      fontSize: 12,
+      color: theme.textMuted,
+      marginBottom: 24,
+      textAlign: 'center',
+    },
+    confirmButton: {
+      backgroundColor: theme.accent,
+      paddingVertical: 16,
+      borderRadius: 12,
+      alignItems: 'center',
+    },
+    confirmButtonDisabled: {
+      backgroundColor: theme.disabled,
+    },
+    confirmButtonText: {
+      color: theme.accentText,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+  })
+);

@@ -15,7 +15,8 @@
  * 색은 항상 useTheme() 토큰을 경유합니다 (하드코딩 색 없음).
  */
 import { useQuery } from '@tanstack/react-query';
-import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
 
 import {
   getNearbyFacilities,
@@ -24,6 +25,7 @@ import {
   type Forecast,
 } from '../../api/external-features';
 import { ThemedText, ThemedView } from '../../components/ui';
+import { ROUTES } from '../../lib/navigation';
 import { useTheme } from '../../theme/useTheme';
 
 // 기본 좌표: 서울 강남(역삼). 후속으로 expo-location 의 현재 위치로 대체.
@@ -43,6 +45,7 @@ function currentSlot(forecast: Forecast | undefined) {
 
 export default function FacilitiesScreen() {
   const { tokens } = useTheme();
+  const router = useRouter();
   const facilitiesQuery = useQuery({
     queryKey: ['facilities', 'near', DEFAULT_LAT, DEFAULT_LNG, DEFAULT_RADIUS_METERS],
     queryFn: () => getNearbyFacilities(DEFAULT_LAT, DEFAULT_LNG, DEFAULT_RADIUS_METERS),
@@ -101,8 +104,10 @@ export default function FacilitiesScreen() {
             </ThemedText>
           }
           renderItem={({ item }) => (
-            <View
+            <Pressable
               style={[styles.row, { borderBottomColor: tokens.border }]}
+              onPress={() => router.push(ROUTES.facility.detail(item.id))}
+              accessibilityRole="button"
               accessibilityLabel={`${item.name} ${item.type}`}
             >
               <ThemedText variant="primary" style={styles.rowName}>
@@ -115,7 +120,7 @@ export default function FacilitiesScreen() {
               <ThemedText variant="secondary" style={styles.rowAddr}>
                 {item.address}
               </ThemedText>
-            </View>
+            </Pressable>
           )}
         />
       )}

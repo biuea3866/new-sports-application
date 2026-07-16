@@ -67,7 +67,10 @@ export default function HomeScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: tokens.background }]}
+      contentContainerStyle={styles.content}
+    >
       <View style={styles.header}>
         <View>
           <ThemedText variant="primary" style={styles.appTitle}>
@@ -129,14 +132,20 @@ export default function HomeScreen() {
         </ThemedText>
       ) : products.data && products.data.length > 0 ? (
         products.data.map((p) => (
-          <View key={p.id} style={[styles.card, { borderColor: tokens.border }]}>
+          <Pressable
+            key={p.id}
+            style={[styles.card, { borderColor: tokens.border }]}
+            onPress={() => router.push(ROUTES.product.detail(String(p.id)))}
+            accessibilityRole="button"
+            accessibilityLabel={`${p.name}, ${p.price.toLocaleString('ko-KR')}원, 상품 상세로 이동`}
+          >
             <ThemedText variant="primary" style={styles.cardTitle}>
               {p.name}
             </ThemedText>
             <ThemedText variant="secondary" style={styles.cardMeta}>
               {p.category} · {p.price.toLocaleString('ko-KR')}원
             </ThemedText>
-          </View>
+          </Pressable>
         ))
       ) : (
         <ThemedText variant="secondary" style={styles.empty}>

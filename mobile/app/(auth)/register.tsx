@@ -8,6 +8,9 @@ import { useRouter, Link } from 'expo-router';
 import { AxiosError } from 'axios';
 import { getBeClient } from '../../api/be-client';
 import { useAuthStore } from '../../lib/auth';
+import { useTheme } from '../../theme/useTheme';
+import { createStyles } from '../../theme/createStyles';
+import type { ThemeTokens } from '../../theme/tokens';
 
 interface LoginResponse {
   accessToken: string;
@@ -17,6 +20,8 @@ interface LoginResponse {
 export default function RegisterScreen() {
   const router = useRouter();
   const setTokens = useAuthStore((s) => s.setTokens);
+  const { tokens } = useTheme();
+  const styles = useStyles(tokens);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -73,6 +78,7 @@ export default function RegisterScreen() {
       <TextInput
         style={styles.input}
         placeholder="이메일"
+        placeholderTextColor={tokens.textTertiary}
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
@@ -83,6 +89,7 @@ export default function RegisterScreen() {
       <TextInput
         style={styles.input}
         placeholder="비밀번호 (8자 이상)"
+        placeholderTextColor={tokens.textTertiary}
         value={password}
         onChangeText={setPassword}
         secureTextEntry
@@ -97,7 +104,7 @@ export default function RegisterScreen() {
         accessibilityLabel="회원가입"
       >
         {submitting ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={tokens.accentText} />
         ) : (
           <Text style={styles.buttonText}>회원가입</Text>
         )}
@@ -113,30 +120,39 @@ export default function RegisterScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', padding: 24, justifyContent: 'center' },
-  title: { fontSize: 28, fontWeight: 'bold', color: '#1C1C1E', marginBottom: 4 },
-  subtitle: { fontSize: 14, color: '#8E8E93', marginBottom: 28 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#D1D1D6',
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    marginBottom: 12,
-  },
-  button: {
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  error: { color: '#FF3B30', fontSize: 13, marginBottom: 12 },
-  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
-  footerText: { color: '#8E8E93', fontSize: 14 },
-  link: { color: '#007AFF', fontSize: 14, fontWeight: '600' },
-});
+const useStyles = createStyles((theme: ThemeTokens) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+      padding: 24,
+      justifyContent: 'center',
+    },
+    title: { fontSize: 28, fontWeight: 'bold', color: theme.textPrimary, marginBottom: 4 },
+    subtitle: { fontSize: 14, color: theme.textMuted, marginBottom: 28 },
+    input: {
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontSize: 16,
+      marginBottom: 12,
+      backgroundColor: theme.surfaceElevated,
+      color: theme.textPrimary,
+    },
+    button: {
+      backgroundColor: theme.accent,
+      borderRadius: 8,
+      paddingVertical: 14,
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    buttonDisabled: { opacity: 0.6 },
+    buttonText: { color: theme.accentText, fontSize: 16, fontWeight: '600' },
+    error: { color: theme.danger, fontSize: 13, marginBottom: 12 },
+    footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
+    footerText: { color: theme.textMuted, fontSize: 14 },
+    link: { color: theme.accent, fontSize: 14, fontWeight: '600' },
+  })
+);

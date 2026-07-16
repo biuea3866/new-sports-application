@@ -8,6 +8,9 @@ import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { getPayment, PaymentDetailResponse, PaymentStatus } from '../../api/payment';
+import { useTheme } from '../../theme/useTheme';
+import { createStyles } from '../../theme/createStyles';
+import type { ThemeTokens } from '../../theme/tokens';
 
 const STATUS_LABEL: Record<PaymentStatus, string> = {
   PENDING: '대기',
@@ -46,6 +49,8 @@ interface DetailRowProps {
 }
 
 function DetailRow({ label, value }: DetailRowProps) {
+  const { tokens } = useTheme();
+  const styles = useStyles(tokens);
   return (
     <View style={styles.row} accessible={true} accessibilityLabel={`${label}: ${value}`}>
       <Text style={styles.rowLabel}>{label}</Text>
@@ -56,6 +61,8 @@ function DetailRow({ label, value }: DetailRowProps) {
 
 export default function PaymentDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { tokens } = useTheme();
+  const styles = useStyles(tokens);
 
   const [detail, setDetail] = useState<PaymentDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,7 +91,7 @@ export default function PaymentDetailScreen() {
   if (loading) {
     return (
       <View style={styles.centered} accessibilityLabel="결제 정보 불러오는 중">
-        <ActivityIndicator size="large" color="#1976D2" />
+        <ActivityIndicator size="large" color={tokens.accent} />
       </View>
     );
   }
@@ -109,7 +116,11 @@ export default function PaymentDetailScreen() {
         style={[styles.statusBadge, isSuccess ? styles.statusBadgeSuccess : styles.statusBadgeFail]}
         accessibilityLabel={`결제 상태: ${STATUS_LABEL[detail.status]}`}
       >
-        <Text style={styles.statusBadgeText}>{STATUS_LABEL[detail.status]}</Text>
+        <Text
+          style={[styles.statusBadgeText, { color: isSuccess ? tokens.success : tokens.danger }]}
+        >
+          {STATUS_LABEL[detail.status]}
+        </Text>
       </View>
 
       <View style={styles.card}>
@@ -118,10 +129,7 @@ export default function PaymentDetailScreen() {
           label="결제 금액"
           value={`${detail.amount.toLocaleString()}${detail.currency}`}
         />
-        <DetailRow
-          label="결제 수단"
-          value={METHOD_LABEL[detail.method] ?? detail.method}
-        />
+        <DetailRow label="결제 수단" value={METHOD_LABEL[detail.method] ?? detail.method} />
         <DetailRow label="주문 번호" value={String(detail.id)} />
         <DetailRow label="PG 거래 ID" value={detail.pgTransactionId ?? '-'} />
         <DetailRow label="결제 요청" value={formatDateTime(detail.createdAt)} />
@@ -131,72 +139,75 @@ export default function PaymentDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    padding: 24,
-    backgroundColor: '#FFFFFF',
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1C1C1E',
-    marginBottom: 16,
-  },
-  statusBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    marginBottom: 24,
-  },
-  statusBadgeSuccess: {
-    backgroundColor: '#E8F5E9',
-  },
-  statusBadgeFail: {
-    backgroundColor: '#FFEBEE',
-  },
-  statusBadgeText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1C1C1E',
-  },
-  card: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    overflow: 'hidden',
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
-  },
-  rowLabel: {
-    fontSize: 14,
-    color: '#757575',
-    flex: 1,
-  },
-  rowValue: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#1C1C1E',
-    flex: 2,
-    textAlign: 'right',
-  },
-  errorText: {
-    fontSize: 14,
-    color: '#F44336',
-    textAlign: 'center',
-  },
-});
+const useStyles = createStyles((theme: ThemeTokens) =>
+  StyleSheet.create({
+    container: {
+      flexGrow: 1,
+      padding: 24,
+      backgroundColor: theme.background,
+    },
+    centered: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.background,
+    },
+    title: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: theme.textPrimary,
+      marginBottom: 16,
+    },
+    statusBadge: {
+      alignSelf: 'flex-start',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 12,
+      marginBottom: 24,
+      backgroundColor: theme.surface,
+    },
+    statusBadgeSuccess: {
+      backgroundColor: theme.surface,
+    },
+    statusBadgeFail: {
+      backgroundColor: theme.surface,
+    },
+    statusBadgeText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.textPrimary,
+    },
+    card: {
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      overflow: 'hidden',
+    },
+    row: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    rowLabel: {
+      fontSize: 14,
+      color: theme.textMuted,
+      flex: 1,
+    },
+    rowValue: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: theme.textPrimary,
+      flex: 2,
+      textAlign: 'right',
+    },
+    errorText: {
+      fontSize: 14,
+      color: theme.danger,
+      textAlign: 'center',
+    },
+  })
+);

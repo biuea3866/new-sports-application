@@ -10,6 +10,7 @@
 import { useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Image } from 'expo-image';
 
 import { useProducts, type ProductWithStock } from '../../api/goods';
 import { useEvents } from '../../lib/useEvents';
@@ -44,6 +45,8 @@ interface ProductCardProps {
 function ProductCard({ product, onPress }: ProductCardProps) {
   const { tokens } = useTheme();
   const isOutOfStock = product.stockQuantity === 0;
+  const [imageLoadFailed, setImageLoadFailed] = useState(false);
+  const hasImage = product.imageUrl.length > 0 && !imageLoadFailed;
 
   return (
     <Pressable
@@ -52,14 +55,25 @@ function ProductCard({ product, onPress }: ProductCardProps) {
       accessibilityRole="button"
       accessibilityLabel={`${product.name}, ${product.price.toLocaleString()}원${isOutOfStock ? ', 품절' : ''}`}
     >
-      <View
-        style={[styles.productImagePlaceholder, { backgroundColor: tokens.border }]}
-        accessibilityElementsHidden
-      >
-        <ThemedText variant="muted" style={styles.productImageText}>
-          IMG
-        </ThemedText>
-      </View>
+      {hasImage ? (
+        <Image
+          testID={`product-image-${product.id}`}
+          source={{ uri: product.imageUrl }}
+          style={styles.productImage}
+          contentFit="cover"
+          accessibilityElementsHidden
+          onError={() => setImageLoadFailed(true)}
+        />
+      ) : (
+        <View
+          style={[styles.productImagePlaceholder, { backgroundColor: tokens.border }]}
+          accessibilityElementsHidden
+        >
+          <ThemedText variant="muted" style={styles.productImageText}>
+            IMG
+          </ThemedText>
+        </View>
+      )}
       <View style={styles.productInfo}>
         <ThemedText variant="primary" style={styles.productName} numberOfLines={2}>
           {product.name}
@@ -287,6 +301,10 @@ const styles = StyleSheet.create({
     margin: 4,
     borderRadius: 10,
     overflow: 'hidden',
+  },
+  productImage: {
+    height: 140,
+    width: '100%',
   },
   productImagePlaceholder: {
     height: 140,

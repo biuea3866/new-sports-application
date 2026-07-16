@@ -27,6 +27,9 @@ import { AirQualityCard, type AirQualityCardStatus } from '../../../components/A
 import { ProgramCard } from '../../../components/facility/ProgramCard';
 import { EmptyState, ErrorView, LoadingView, ThemedText } from '../../../components/ui';
 import type { FacilityResponse, FacilityType } from '../../../api/types';
+import { useTheme } from '../../../theme/useTheme';
+import { createStyles } from '../../../theme/createStyles';
+import type { ThemeTokens } from '../../../theme/tokens';
 
 const TYPE_LABEL: Record<FacilityType, string> = {
   INDOOR: '실내',
@@ -59,6 +62,8 @@ function resolveCoordinate(value: number | null | undefined): number | null {
 export default function FacilityDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const facilityId = id ?? '';
+  const { tokens } = useTheme();
+  const styles = useStyles(tokens);
 
   const { data, isLoading, isError, error } = useFacilityDetail(facilityId);
 
@@ -97,7 +102,7 @@ export default function FacilityDetailScreen() {
 
       {isLoading && (
         <View style={styles.centerBox} accessible={true} accessibilityLabel="로딩 중">
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator size="large" color={tokens.accent} />
         </View>
       )}
 
@@ -202,86 +207,88 @@ export default function FacilityDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F2F2F7',
-  },
-  backButton: {
-    paddingHorizontal: 16,
-    paddingTop: 56,
-    paddingBottom: 12,
-    backgroundColor: '#fff',
-  },
-  backText: {
-    fontSize: 16,
-    color: '#007AFF',
-  },
-  centerBox: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  errorText: {
-    fontSize: 14,
-    color: '#FF3B30',
-    textAlign: 'center',
-  },
-  scrollContent: {
-    padding: 16,
-  },
-  name: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#1C1C1E',
-    marginBottom: 20,
-  },
-  row: {
-    flexDirection: 'row',
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#C7C7CC',
-  },
-  label: {
-    width: 56,
-    fontSize: 14,
-    color: '#8E8E93',
-  },
-  value: {
-    flex: 1,
-    fontSize: 14,
-    color: '#1C1C1E',
-  },
-  phone: {
-    color: '#007AFF',
-  },
-  airQualitySection: {
-    marginTop: 16,
-  },
-  programSection: {
-    marginTop: 20,
-  },
-  programSectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 12,
-  },
-  bookingButtonContainer: {
-    padding: 16,
-    backgroundColor: '#fff',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#C7C7CC',
-  },
-  bookingButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  bookingButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-});
+const useStyles = createStyles((theme: ThemeTokens) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    backButton: {
+      paddingHorizontal: 16,
+      paddingTop: 56,
+      paddingBottom: 12,
+      backgroundColor: theme.surface,
+    },
+    backText: {
+      fontSize: 16,
+      color: theme.accent,
+    },
+    centerBox: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 24,
+    },
+    errorText: {
+      fontSize: 14,
+      color: theme.danger,
+      textAlign: 'center',
+    },
+    scrollContent: {
+      padding: 16,
+    },
+    name: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: theme.textPrimary,
+      marginBottom: 20,
+    },
+    row: {
+      flexDirection: 'row',
+      paddingVertical: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.disabled,
+    },
+    label: {
+      width: 56,
+      fontSize: 14,
+      color: theme.textMuted,
+    },
+    value: {
+      flex: 1,
+      fontSize: 14,
+      color: theme.textPrimary,
+    },
+    phone: {
+      color: theme.accent,
+    },
+    airQualitySection: {
+      marginTop: 16,
+    },
+    programSection: {
+      marginTop: 20,
+    },
+    programSectionTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      marginBottom: 12,
+    },
+    bookingButtonContainer: {
+      padding: 16,
+      backgroundColor: theme.surface,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.disabled,
+    },
+    bookingButton: {
+      backgroundColor: theme.accent,
+      borderRadius: 12,
+      paddingVertical: 16,
+      alignItems: 'center',
+    },
+    bookingButtonText: {
+      color: theme.accentText,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+  })
+);

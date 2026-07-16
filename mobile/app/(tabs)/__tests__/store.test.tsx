@@ -135,6 +135,26 @@ describe('스토어 탭 화면 — 굿즈|티켓 세그먼트', () => {
     expect(pushMock).toHaveBeenCalledWith('/event/10');
   });
 
+  it('상품에 imageUrl이 있으면 이미지를 렌더하고 IMG placeholder를 숨긴다', () => {
+    mockProducts({ data: [{ ...PRODUCT, imageUrl: 'https://cdn.test/product.png' }] });
+
+    render(<StoreTabScreen />);
+
+    expect(
+      screen.getByTestId(`product-image-${PRODUCT.id}`, { includeHiddenElements: true })
+    ).toBeTruthy();
+    expect(screen.queryByText('IMG')).toBeNull();
+  });
+
+  it('상품에 imageUrl이 없으면 IMG placeholder를 렌더한다', () => {
+    mockProducts({ data: [{ ...PRODUCT, imageUrl: '' }] });
+
+    render(<StoreTabScreen />);
+
+    expect(screen.getByText('IMG', { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.queryByTestId(`product-image-${PRODUCT.id}`)).toBeNull();
+  });
+
   it('굿즈 목록이 비어있으면 빈 상태를 표시한다', () => {
     mockProducts({ data: [] });
 

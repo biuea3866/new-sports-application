@@ -7,11 +7,14 @@
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
+import { Image } from 'expo-image';
 import { useProducts, useAddCartItem, useCurrentUserId } from '../../../api/goods';
 import { useStartGoodsChat } from '../../../lib/useChat';
 import { isFeatureEnabled } from '../../../lib/feature-flags';
 import { ROUTES } from '../../../lib/navigation';
 import { useTheme } from '../../../theme/useTheme';
+import { createStyles } from '../../../theme/createStyles';
+import type { ThemeTokens } from '../../../theme/tokens';
 import { Button } from '../../../components/ui/Button';
 
 export default function ProductDetailScreen() {
@@ -19,7 +22,9 @@ export default function ProductDetailScreen() {
   const router = useRouter();
   const userId = useCurrentUserId();
   const [quantity, setQuantity] = useState(1);
+  const [imageLoadFailed, setImageLoadFailed] = useState(false);
   const { tokens } = useTheme();
+  const styles = useStyles(tokens);
 
   const { data: products, isLoading, isError } = useProducts();
   const addCartItem = useAddCartItem(userId);
@@ -110,10 +115,21 @@ export default function ProductDetailScreen() {
         <Text style={styles.backButtonText}>{'< 뒤로'}</Text>
       </TouchableOpacity>
 
-      {/* 상품 이미지 플레이스홀더 */}
-      <View style={styles.imagePlaceholder} accessibilityElementsHidden>
-        <Text style={styles.imagePlaceholderText}>상품 이미지</Text>
-      </View>
+      {/* 상품 이미지 — imageUrl이 없거나 로드에 실패하면 placeholder로 대체 */}
+      {product.imageUrl.length > 0 && !imageLoadFailed ? (
+        <Image
+          testID="product-detail-image"
+          source={{ uri: product.imageUrl }}
+          style={styles.image}
+          contentFit="cover"
+          accessibilityElementsHidden
+          onError={() => setImageLoadFailed(true)}
+        />
+      ) : (
+        <View style={styles.imagePlaceholder} accessibilityElementsHidden>
+          <Text style={styles.imagePlaceholderText}>상품 이미지</Text>
+        </View>
+      )}
 
       <View style={styles.infoSection}>
         <Text style={styles.productName} accessibilityRole="header">
@@ -224,158 +240,165 @@ export default function ProductDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  chatCtaSection: {
-    marginHorizontal: 20,
-    marginTop: 24,
-  },
-  limitedDropBanner: {
-    marginHorizontal: 20,
-    marginTop: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  limitedDropBannerText: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  content: {
-    paddingBottom: 40,
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  imagePlaceholder: {
-    height: 280,
-    backgroundColor: '#E5E5EA',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  imagePlaceholderText: {
-    color: '#C7C7CC',
-    fontSize: 14,
-  },
-  infoSection: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  productName: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#1C1C1E',
-    marginBottom: 8,
-  },
-  productPrice: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#007AFF',
-    marginBottom: 6,
-  },
-  outOfStock: {
-    fontSize: 14,
-    color: '#FF3B30',
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  productDescription: {
-    fontSize: 15,
-    color: '#3A3A3C',
-    lineHeight: 22,
-    marginTop: 12,
-  },
-  quantitySection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  quantityLabel: {
-    fontSize: 16,
-    color: '#1C1C1E',
-  },
-  quantityControl: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  quantityButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F2F2F7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quantityButtonText: {
-    fontSize: 20,
-    color: '#1C1C1E',
-    fontWeight: '600',
-  },
-  quantityValue: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1C1C1E',
-    minWidth: 28,
-    textAlign: 'center',
-  },
-  addToCartButton: {
-    marginHorizontal: 20,
-    marginTop: 24,
-    backgroundColor: '#007AFF',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  buttonDisabled: {
-    backgroundColor: '#C7C7CC',
-  },
-  addToCartButtonText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  viewCartButton: {
-    marginHorizontal: 20,
-    marginTop: 12,
-    backgroundColor: '#F2F2F7',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  viewCartButtonText: {
-    color: '#007AFF',
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  backButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  backButtonText: {
-    color: '#007AFF',
-    fontSize: 16,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#8E8E93',
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#8E8E93',
-    marginBottom: 16,
-  },
-});
+const useStyles = createStyles((theme: ThemeTokens) =>
+  StyleSheet.create({
+    chatCtaSection: {
+      marginHorizontal: 20,
+      marginTop: 24,
+    },
+    limitedDropBanner: {
+      marginHorizontal: 20,
+      marginTop: 16,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      borderWidth: 1,
+      borderRadius: 10,
+      alignItems: 'center',
+    },
+    limitedDropBannerText: {
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    image: {
+      height: 280,
+      width: '100%',
+    },
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    content: {
+      paddingBottom: 40,
+    },
+    center: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 24,
+      backgroundColor: theme.background,
+    },
+    imagePlaceholder: {
+      height: 280,
+      backgroundColor: theme.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    imagePlaceholderText: {
+      color: theme.textMuted,
+      fontSize: 14,
+    },
+    infoSection: {
+      padding: 20,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    productName: {
+      fontSize: 22,
+      fontWeight: 'bold',
+      color: theme.textPrimary,
+      marginBottom: 8,
+    },
+    productPrice: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: theme.accent,
+      marginBottom: 6,
+    },
+    outOfStock: {
+      fontSize: 14,
+      color: theme.danger,
+      fontWeight: '600',
+      marginBottom: 8,
+    },
+    productDescription: {
+      fontSize: 15,
+      color: theme.textSecondary,
+      lineHeight: 22,
+      marginTop: 12,
+    },
+    quantitySection: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    quantityLabel: {
+      fontSize: 16,
+      color: theme.textPrimary,
+    },
+    quantityControl: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 16,
+    },
+    quantityButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: theme.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    quantityButtonText: {
+      fontSize: 20,
+      color: theme.textPrimary,
+      fontWeight: '600',
+    },
+    quantityValue: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: theme.textPrimary,
+      minWidth: 28,
+      textAlign: 'center',
+    },
+    addToCartButton: {
+      marginHorizontal: 20,
+      marginTop: 24,
+      backgroundColor: theme.accent,
+      paddingVertical: 16,
+      borderRadius: 12,
+      alignItems: 'center',
+    },
+    buttonDisabled: {
+      backgroundColor: theme.disabled,
+    },
+    addToCartButtonText: {
+      color: theme.accentText,
+      fontSize: 17,
+      fontWeight: '700',
+    },
+    viewCartButton: {
+      marginHorizontal: 20,
+      marginTop: 12,
+      backgroundColor: theme.background,
+      paddingVertical: 16,
+      borderRadius: 12,
+      alignItems: 'center',
+    },
+    viewCartButtonText: {
+      color: theme.accent,
+      fontSize: 17,
+      fontWeight: '600',
+    },
+    backButton: {
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+    },
+    backButtonText: {
+      color: theme.accent,
+      fontSize: 16,
+    },
+    loadingText: {
+      fontSize: 16,
+      color: theme.textMuted,
+    },
+    errorText: {
+      fontSize: 16,
+      color: theme.textMuted,
+      marginBottom: 16,
+    },
+  })
+);

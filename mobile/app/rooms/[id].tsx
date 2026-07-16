@@ -33,6 +33,7 @@ import {
   ThemedText,
   ThemedView,
 } from '../../components/ui';
+import { ScreenHeader } from '../../components/common/ScreenHeader';
 import { MessageBubble } from '../../components/chat/MessageBubble';
 import { TypingIndicator } from '../../components/chat/TypingIndicator';
 import { MessageComposer } from '../../components/chat/MessageComposer';
@@ -150,6 +151,7 @@ export default function RoomChatScreen() {
   if (isLoading) {
     return (
       <ThemedView style={styles.container}>
+        <ScreenHeader title="채팅" onBack={() => router.back()} />
         <LoadingView variant="skeleton" />
       </ThemedView>
     );
@@ -158,16 +160,20 @@ export default function RoomChatScreen() {
   if (isError) {
     if (isGuestEvictedError(error)) {
       return (
-        <ThemedView style={styles.centered} accessibilityLabel="게스트 참여 만료">
-          <ThemedText variant="primary" style={styles.evictedMessage} accessibilityRole="alert">
-            참여 기간이 만료되어 대화를 볼 수 없어요
-          </ThemedText>
-          <Button label="목록으로" onPress={handleGoToList} />
+        <ThemedView style={styles.container}>
+          <ScreenHeader title="채팅" onBack={() => router.back()} />
+          <ThemedView style={styles.centered} accessibilityLabel="게스트 참여 만료">
+            <ThemedText variant="primary" style={styles.evictedMessage} accessibilityRole="alert">
+              참여 기간이 만료되어 대화를 볼 수 없어요
+            </ThemedText>
+            <Button label="목록으로" onPress={handleGoToList} />
+          </ThemedView>
         </ThemedView>
       );
     }
     return (
       <ThemedView style={styles.container}>
+        <ScreenHeader title="채팅" onBack={() => router.back()} />
         <ErrorView message="메시지를 불러오지 못했어요" onRetry={() => void refetch()} />
       </ThemedView>
     );
@@ -180,6 +186,7 @@ export default function RoomChatScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <ThemedView background="background" style={styles.container}>
+        <ScreenHeader title="채팅" onBack={() => router.back()} />
         {isRealtimeEnabled ? (
           <ConnectionBanner isConnected={isConnected} pollingFallback={pollingFallback} />
         ) : null}

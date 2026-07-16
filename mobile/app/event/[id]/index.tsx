@@ -8,6 +8,8 @@
  * ON이면 대기실(`ticketing-event`, eventId 기준)을 경유하고, 대기실 뷰모델(`useWaitingRoom`,
  * FE-07)이 ADMITTED 시 `event order` 화면으로 전환한다(좌석은 대기실 통과 후 재확인).
  * OFF면 선택 좌석을 그대로 들고 기존처럼 order 화면으로 직접 이동한다.
+ *
+ * 색은 항상 useTheme() 토큰을 경유합니다 (하드코딩 색 없음, 다크모드 흰바탕/흰글씨 회귀 방지).
  */
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useCallback, useMemo, useState } from 'react';
@@ -16,6 +18,9 @@ import { useEvent } from '../../../lib/useEvent';
 import { isFeatureEnabled } from '../../../lib/feature-flags';
 import { ROUTES } from '../../../lib/navigation';
 import type { SeatInfo, SectionAvailability } from '../../../api/types';
+import { useTheme } from '../../../theme/useTheme';
+import { createStyles } from '../../../theme/createStyles';
+import type { ThemeTokens } from '../../../theme/tokens';
 
 function formatDate(iso: string): string {
   const date = new Date(iso);
@@ -43,6 +48,8 @@ interface SectionRowProps {
 }
 
 function SectionRow({ section }: SectionRowProps) {
+  const { tokens } = useTheme();
+  const styles = useStyles(tokens);
   return (
     <View
       style={styles.sectionRow}
@@ -62,6 +69,8 @@ interface SeatItemProps {
 }
 
 function SeatItem({ seat, selected, onToggle }: SeatItemProps) {
+  const { tokens } = useTheme();
+  const styles = useStyles(tokens);
   const isUnavailable = !seat.available;
   return (
     <Pressable
@@ -95,6 +104,8 @@ export default function EventDetailScreen() {
   const eventId = Number(id);
   const { data, isLoading, isError, refetch } = useEvent(eventId);
   const [selectedSeatIds, setSelectedSeatIds] = useState<number[]>([]);
+  const { tokens } = useTheme();
+  const styles = useStyles(tokens);
 
   const toggleSeat = useCallback((seatId: number) => {
     setSelectedSeatIds((prev) =>
@@ -127,7 +138,7 @@ export default function EventDetailScreen() {
 
       {isLoading && (
         <View style={styles.center} accessibilityLabel="이벤트 정보 로딩 중">
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator size="large" color={tokens.accent} />
         </View>
       )}
 
@@ -238,175 +249,177 @@ export default function EventDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F2F2F7',
-    paddingTop: 56,
-  },
-  backButton: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
-  backButtonText: {
-    fontSize: 16,
-    color: '#007AFF',
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
-  },
-  errorText: {
-    fontSize: 15,
-    color: '#FF3B30',
-    marginBottom: 12,
-  },
-  retryButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 40,
-  },
-  statusBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: '#E5E5EA',
-    marginBottom: 10,
-  },
-  statusBadgeOpen: {
-    backgroundColor: '#34C759',
-  },
-  statusBadgeClosed: {
-    backgroundColor: '#C7C7CC',
-  },
-  statusBadgeText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#1C1C1E',
-    marginBottom: 20,
-  },
-  infoSection: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-    gap: 12,
-  },
-  infoRow: {
-    flexDirection: 'row',
-  },
-  infoLabel: {
-    width: 48,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6C6C70',
-  },
-  infoValue: {
-    flex: 1,
-    fontSize: 14,
-    color: '#1C1C1E',
-  },
-  sectionHeading: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1C1C1E',
-    marginBottom: 12,
-  },
-  sectionList: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  sectionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E5EA',
-  },
-  sectionName: {
-    fontSize: 15,
-    color: '#1C1C1E',
-  },
-  sectionSeats: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: '#8E8E93',
-    fontSize: 15,
-    marginTop: 16,
-  },
-  seatGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 20,
-  },
-  seatItem: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: '#C7C7CC',
-    backgroundColor: '#FFFFFF',
-  },
-  seatItemSelected: {
-    borderColor: '#007AFF',
-    backgroundColor: '#E5F0FF',
-  },
-  seatItemText: {
-    fontSize: 13,
-    color: '#1C1C1E',
-    fontWeight: '500',
-  },
-  seatItemTextSelected: {
-    color: '#007AFF',
-    fontWeight: '700',
-  },
-  seatItemUnavailable: {
-    borderColor: '#E5E5EA',
-    backgroundColor: '#F2F2F7',
-    opacity: 0.5,
-  },
-  seatItemTextUnavailable: {
-    color: '#8E8E93',
-  },
-  orderButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  orderButtonDisabled: {
-    backgroundColor: '#C7C7CC',
-  },
-  orderButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-});
+const useStyles = createStyles((theme: ThemeTokens) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+      paddingTop: 56,
+    },
+    backButton: {
+      paddingHorizontal: 16,
+      paddingBottom: 8,
+    },
+    backButtonText: {
+      fontSize: 16,
+      color: theme.accent,
+    },
+    center: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 40,
+    },
+    errorText: {
+      fontSize: 15,
+      color: theme.danger,
+      marginBottom: 12,
+    },
+    retryButton: {
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      backgroundColor: theme.accent,
+      borderRadius: 8,
+    },
+    retryButtonText: {
+      color: theme.accentText,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    scrollContent: {
+      paddingHorizontal: 16,
+      paddingBottom: 40,
+    },
+    statusBadge: {
+      alignSelf: 'flex-start',
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 8,
+      backgroundColor: theme.border,
+      marginBottom: 10,
+    },
+    statusBadgeOpen: {
+      backgroundColor: theme.success,
+    },
+    statusBadgeClosed: {
+      backgroundColor: theme.disabled,
+    },
+    statusBadgeText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.accentText,
+    },
+    title: {
+      fontSize: 26,
+      fontWeight: 'bold',
+      color: theme.textPrimary,
+      marginBottom: 20,
+    },
+    infoSection: {
+      backgroundColor: theme.surface,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 24,
+      gap: 12,
+    },
+    infoRow: {
+      flexDirection: 'row',
+    },
+    infoLabel: {
+      width: 48,
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.textSecondary,
+    },
+    infoValue: {
+      flex: 1,
+      fontSize: 14,
+      color: theme.textPrimary,
+    },
+    sectionHeading: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: theme.textPrimary,
+      marginBottom: 12,
+    },
+    sectionList: {
+      backgroundColor: theme.surface,
+      borderRadius: 12,
+      overflow: 'hidden',
+    },
+    sectionRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    sectionName: {
+      fontSize: 15,
+      color: theme.textPrimary,
+    },
+    sectionSeats: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.accent,
+    },
+    emptyText: {
+      textAlign: 'center',
+      color: theme.textMuted,
+      fontSize: 15,
+      marginTop: 16,
+    },
+    seatGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginBottom: 20,
+    },
+    seatItem: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 8,
+      borderWidth: 1.5,
+      borderColor: theme.disabled,
+      backgroundColor: theme.surface,
+    },
+    seatItemSelected: {
+      borderColor: theme.accent,
+      backgroundColor: theme.surfaceElevated,
+    },
+    seatItemText: {
+      fontSize: 13,
+      color: theme.textPrimary,
+      fontWeight: '500',
+    },
+    seatItemTextSelected: {
+      color: theme.accent,
+      fontWeight: '700',
+    },
+    seatItemUnavailable: {
+      borderColor: theme.border,
+      backgroundColor: theme.background,
+      opacity: 0.5,
+    },
+    seatItemTextUnavailable: {
+      color: theme.textMuted,
+    },
+    orderButton: {
+      backgroundColor: theme.accent,
+      paddingVertical: 16,
+      borderRadius: 12,
+      alignItems: 'center',
+      marginTop: 4,
+    },
+    orderButtonDisabled: {
+      backgroundColor: theme.disabled,
+    },
+    orderButtonText: {
+      color: theme.accentText,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+  })
+);

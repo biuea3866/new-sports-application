@@ -14,10 +14,15 @@ import { router } from 'expo-router';
 import { useMyCartQuery } from '../../lib/useCart';
 import { useCreateGoodsOrderMutation } from '../../lib/useGoodsOrders';
 import { ROUTES } from '../../lib/navigation';
+import { useTheme } from '../../theme/useTheme';
+import { createStyles } from '../../theme/createStyles';
+import type { ThemeTokens } from '../../theme/tokens';
 
 export default function OrderNewScreen() {
   const { data: cart, isLoading: isCartLoading, isError: isCartError } = useMyCartQuery();
   const createOrderMutation = useCreateGoodsOrderMutation();
+  const { tokens } = useTheme();
+  const styles = useStyles(tokens);
 
   function handleOrder() {
     if (cart === undefined) return;
@@ -38,7 +43,7 @@ export default function OrderNewScreen() {
   if (isCartLoading) {
     return (
       <View style={styles.centered} accessibilityLabel="주문 정보 로딩 중">
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={tokens.accent} />
       </View>
     );
   }
@@ -95,9 +100,7 @@ export default function OrderNewScreen() {
                 {Number(item.unitPrice).toLocaleString()}원 × {item.quantity}
               </Text>
             </View>
-            <Text style={styles.itemSubtotal}>
-              {Number(item.subtotal).toLocaleString()}원
-            </Text>
+            <Text style={styles.itemSubtotal}>{Number(item.subtotal).toLocaleString()}원</Text>
           </View>
         ))}
 
@@ -105,10 +108,7 @@ export default function OrderNewScreen() {
 
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>결제 금액</Text>
-          <Text
-            style={styles.totalAmount}
-            accessibilityLabel={`결제 금액 ${cart.totalAmount}원`}
-          >
+          <Text style={styles.totalAmount} accessibilityLabel={`결제 금액 ${cart.totalAmount}원`}>
             {Number(cart.totalAmount).toLocaleString()}원
           </Text>
         </View>
@@ -124,7 +124,7 @@ export default function OrderNewScreen() {
           accessibilityState={{ disabled: isSubmitting }}
         >
           {isSubmitting ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={tokens.accentText} />
           ) : (
             <Text style={styles.orderButtonText}>
               {Number(cart.totalAmount).toLocaleString()}원 주문하기
@@ -136,110 +136,113 @@ export default function OrderNewScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 8,
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#1C1C1E',
-    marginBottom: 14,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    gap: 12,
-  },
-  itemInfo: {
-    flex: 1,
-  },
-  itemName: {
-    fontSize: 14,
-    color: '#1C1C1E',
-    fontWeight: '500',
-    marginBottom: 4,
-  },
-  itemMeta: {
-    fontSize: 13,
-    color: '#8E8E93',
-  },
-  itemSubtotal: {
-    fontSize: 14,
-    color: '#1C1C1E',
-    fontWeight: '600',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#E5E5EA',
-    marginVertical: 14,
-  },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingBottom: 8,
-  },
-  totalLabel: {
-    fontSize: 16,
-    color: '#3C3C43',
-    fontWeight: '600',
-  },
-  totalAmount: {
-    fontSize: 20,
-    color: '#007AFF',
-    fontWeight: '700',
-  },
-  footer: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E5EA',
-  },
-  orderButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  orderButtonDisabled: {
-    backgroundColor: '#C7C7CC',
-  },
-  orderButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 15,
-  },
-  emptyText: {
-    color: '#8E8E93',
-    fontSize: 15,
-  },
-  goCartButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: '#007AFF',
-  },
-  goCartButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-});
+const useStyles = createStyles((theme: ThemeTokens) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    centered: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 16,
+      backgroundColor: theme.background,
+    },
+    scrollContent: {
+      padding: 16,
+      paddingBottom: 8,
+    },
+    sectionTitle: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: theme.textPrimary,
+      marginBottom: 14,
+    },
+    itemRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      paddingVertical: 10,
+      gap: 12,
+    },
+    itemInfo: {
+      flex: 1,
+    },
+    itemName: {
+      fontSize: 14,
+      color: theme.textPrimary,
+      fontWeight: '500',
+      marginBottom: 4,
+    },
+    itemMeta: {
+      fontSize: 13,
+      color: theme.textMuted,
+    },
+    itemSubtotal: {
+      fontSize: 14,
+      color: theme.textPrimary,
+      fontWeight: '600',
+    },
+    divider: {
+      height: 1,
+      backgroundColor: theme.border,
+      marginVertical: 14,
+    },
+    totalRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingBottom: 8,
+    },
+    totalLabel: {
+      fontSize: 16,
+      color: theme.textSecondary,
+      fontWeight: '600',
+    },
+    totalAmount: {
+      fontSize: 20,
+      color: theme.accent,
+      fontWeight: '700',
+    },
+    footer: {
+      paddingHorizontal: 16,
+      paddingVertical: 16,
+      borderTopWidth: 1,
+      borderTopColor: theme.border,
+    },
+    orderButton: {
+      backgroundColor: theme.accent,
+      borderRadius: 10,
+      paddingVertical: 14,
+      alignItems: 'center',
+    },
+    orderButtonDisabled: {
+      backgroundColor: theme.disabled,
+    },
+    orderButtonText: {
+      color: theme.accentText,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    errorText: {
+      color: theme.danger,
+      fontSize: 15,
+    },
+    emptyText: {
+      color: theme.textMuted,
+      fontSize: 15,
+    },
+    goCartButton: {
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      borderRadius: 8,
+      backgroundColor: theme.accent,
+    },
+    goCartButtonText: {
+      color: theme.accentText,
+      fontWeight: '600',
+      fontSize: 14,
+    },
+  })
+);

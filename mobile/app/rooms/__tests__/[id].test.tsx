@@ -93,6 +93,7 @@ function mockUseChatSocketReturn(overrides: { isConnected?: boolean; pollingFall
 describe('RoomChatScreen', () => {
   let markReadMutate: jest.Mock;
   let pushMock: jest.Mock;
+  let backMock: jest.Mock;
 
   beforeEach(() => {
     jest.useFakeTimers();
@@ -100,10 +101,11 @@ describe('RoomChatScreen', () => {
     isFeatureEnabledMock.mockReturnValue(true);
     useLocalSearchParamsMock.mockReturnValue({ id: '10' });
     pushMock = jest.fn();
+    backMock = jest.fn();
     useRouterMock.mockReturnValue({
       push: pushMock,
       replace: jest.fn(),
-      back: jest.fn(),
+      back: backMock,
     } as unknown as ReturnType<typeof useRouter>);
     useMyProfileMock.mockReturnValue({
       data: {
@@ -286,6 +288,40 @@ describe('RoomChatScreen', () => {
     render(<RoomChatScreen />);
 
     expect(markReadMutate).toHaveBeenCalledWith({ roomId: 10, lastReadMessageId: 42 });
+  });
+
+  it('뒤로가기 버튼을 탭하면 이전 화면으로 이동한다', () => {
+    mockUseMessagesReturn({ data: buildMessages([]) });
+
+    render(<RoomChatScreen />);
+    fireEvent.press(screen.getByLabelText('뒤로 가기'));
+
+    expect(backMock).toHaveBeenCalled();
+  });
+
+  it('로딩 중에도 뒤로가기 버튼이 렌더된다', () => {
+    mockUseMessagesReturn({ isLoading: true });
+
+    render(<RoomChatScreen />);
+    fireEvent.press(screen.getByLabelText('뒤로 가기'));
+
+    expect(backMock).toHaveBeenCalled();
+  });
+
+  it('게스트 방출(403) 화면에도 뒤로가기 버튼이 렌더된다', () => {
+    const forbiddenError = new AxiosError('Forbidden', undefined, undefined, undefined, {
+      status: 403,
+      data: {},
+      statusText: 'Forbidden',
+      headers: {},
+      config: {} as never,
+    });
+    mockUseMessagesReturn({ isError: true, error: forbiddenError });
+
+    render(<RoomChatScreen />);
+    fireEvent.press(screen.getByLabelText('뒤로 가기'));
+
+    expect(backMock).toHaveBeenCalled();
   });
 
   it('메시지가 없으면 첫 메시지를 보내보세요 안내가 렌더된다', () => {

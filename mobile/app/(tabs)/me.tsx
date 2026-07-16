@@ -11,6 +11,9 @@ import { useAuthStore } from '../../lib/auth';
 import { ListItem } from '../../components/ui';
 import { isFeatureEnabled } from '../../lib/feature-flags';
 import { ROUTES } from '../../lib/navigation';
+import { useTheme } from '../../theme/useTheme';
+import { createStyles } from '../../theme/createStyles';
+import type { ThemeTokens } from '../../theme/tokens';
 
 interface JwtPayload {
   sub?: string;
@@ -38,6 +41,8 @@ export default function MeScreen() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const logout = useAuthStore((s) => s.logout);
   const isOrdersUnifiedEnabled = isFeatureEnabled('orders.unified.enabled');
+  const { tokens } = useTheme();
+  const styles = useStyles(tokens);
 
   const payload = decodeJwt(accessToken);
 
@@ -81,26 +86,28 @@ export default function MeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  entryPoint: { marginBottom: 16 },
-  container: { flex: 1, backgroundColor: '#fff', padding: 24, paddingTop: 64 },
-  title: { fontSize: 28, fontWeight: 'bold', color: '#1C1C1E', marginBottom: 24 },
-  card: {
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-  },
-  label: { fontSize: 12, color: '#8E8E93' },
-  value: { fontSize: 16, color: '#1C1C1E', marginTop: 2 },
-  mt: { marginTop: 14 },
-  logoutButton: {
-    borderWidth: 1,
-    borderColor: '#FF3B30',
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  logoutText: { color: '#FF3B30', fontSize: 16, fontWeight: '600' },
-});
+const useStyles = createStyles((theme: ThemeTokens) =>
+  StyleSheet.create({
+    entryPoint: { marginBottom: 16 },
+    container: { flex: 1, backgroundColor: theme.background, padding: 24, paddingTop: 64 },
+    title: { fontSize: 28, fontWeight: 'bold', color: theme.textPrimary, marginBottom: 24 },
+    card: {
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 24,
+    },
+    label: { fontSize: 12, color: theme.textMuted },
+    value: { fontSize: 16, color: theme.textPrimary, marginTop: 2 },
+    mt: { marginTop: 14 },
+    logoutButton: {
+      borderWidth: 1,
+      borderColor: theme.danger,
+      borderRadius: 8,
+      paddingVertical: 14,
+      alignItems: 'center',
+    },
+    logoutText: { color: theme.danger, fontSize: 16, fontWeight: '600' },
+  })
+);

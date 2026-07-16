@@ -17,6 +17,9 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { createPayment, PaymentMethod, OrderType, PaymentStatus } from '../../api/payment';
+import { useTheme } from '../../theme/useTheme';
+import { createStyles } from '../../theme/createStyles';
+import type { ThemeTokens } from '../../theme/tokens';
 
 type PaymentPhase = 'select' | 'loading' | 'done';
 
@@ -48,9 +51,7 @@ function generateUUID(): string {
 }
 
 function isValidOrderType(value: string | string[] | undefined): value is OrderType {
-  return (
-    typeof value === 'string' && ['BOOKING', 'TICKETING', 'GOODS'].includes(value)
-  );
+  return typeof value === 'string' && ['BOOKING', 'TICKETING', 'GOODS'].includes(value);
 }
 
 interface SelectPhaseProps {
@@ -61,6 +62,8 @@ interface SelectPhaseProps {
 }
 
 function SelectPhase({ amount, selectedMethod, onSelectMethod, onPay }: SelectPhaseProps) {
+  const { tokens } = useTheme();
+  const styles = useStyles(tokens);
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title} accessibilityRole="header">
@@ -111,13 +114,12 @@ interface DonePhaseProps {
 }
 
 function DonePhase({ doneState, onRetry, onGoBack }: DonePhaseProps) {
+  const { tokens } = useTheme();
+  const styles = useStyles(tokens);
   const isSuccess = doneState.status === 'COMPLETED';
   return (
     <View style={styles.container}>
-      <Text
-        style={[styles.resultIcon]}
-        accessibilityLabel={isSuccess ? '결제 성공' : '결제 실패'}
-      >
+      <Text style={[styles.resultIcon]} accessibilityLabel={isSuccess ? '결제 성공' : '결제 실패'}>
         {isSuccess ? '✓' : '✗'}
       </Text>
       <Text style={styles.resultTitle}>{isSuccess ? '결제 완료' : '결제 실패'}</Text>
@@ -153,13 +155,14 @@ function DonePhase({ doneState, onRetry, onGoBack }: DonePhaseProps) {
 export default function PaymentScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
+  const { tokens } = useTheme();
+  const styles = useStyles(tokens);
 
   const { orderType, orderId, amount: amountParam, method: methodParam } = params;
 
   const parsedAmount = typeof amountParam === 'string' ? parseInt(amountParam, 10) : NaN;
   const initialMethod =
-    typeof methodParam === 'string' &&
-    METHOD_OPTIONS.some((o) => o.method === methodParam)
+    typeof methodParam === 'string' && METHOD_OPTIONS.some((o) => o.method === methodParam)
       ? (methodParam as PaymentMethod)
       : null;
 
@@ -220,7 +223,7 @@ export default function PaymentScreen() {
   if (phase === 'loading') {
     return (
       <View style={styles.centered} accessibilityLabel="결제 처리 중">
-        <ActivityIndicator size="large" color="#1976D2" />
+        <ActivityIndicator size="large" color={tokens.accent} />
         <Text style={styles.loadingText}>결제 처리 중...</Text>
       </View>
     );
@@ -240,94 +243,96 @@ export default function PaymentScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    padding: 24,
-    backgroundColor: '#FFFFFF',
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1C1C1E',
-    marginBottom: 8,
-  },
-  amountText: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#1976D2',
-    marginBottom: 32,
-  },
-  methodGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 40,
-  },
-  methodButton: {
-    width: '47%',
-    paddingVertical: 16,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: '#E0E0E0',
-    alignItems: 'center',
-    backgroundColor: '#FAFAFA',
-  },
-  methodButtonSelected: {
-    borderColor: '#1976D2',
-    backgroundColor: '#E3F2FD',
-  },
-  methodLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#424242',
-  },
-  methodLabelSelected: {
-    color: '#1976D2',
-  },
-  payButton: {
-    backgroundColor: '#1976D2',
-    paddingVertical: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  payButtonDisabled: {
-    backgroundColor: '#9E9E9E',
-  },
-  payButtonLabel: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 14,
-    color: '#757575',
-  },
-  resultIcon: {
-    fontSize: 64,
-    textAlign: 'center',
-    marginBottom: 16,
-    marginTop: 80,
-  },
-  resultTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1C1C1E',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  resultDesc: {
-    fontSize: 14,
-    color: '#757575',
-    textAlign: 'center',
-    marginBottom: 40,
-    lineHeight: 22,
-  },
-});
+const useStyles = createStyles((theme: ThemeTokens) =>
+  StyleSheet.create({
+    container: {
+      flexGrow: 1,
+      padding: 24,
+      backgroundColor: theme.background,
+    },
+    centered: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.background,
+    },
+    title: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: theme.textPrimary,
+      marginBottom: 8,
+    },
+    amountText: {
+      fontSize: 32,
+      fontWeight: '800',
+      color: theme.accent,
+      marginBottom: 32,
+    },
+    methodGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 12,
+      marginBottom: 40,
+    },
+    methodButton: {
+      width: '47%',
+      paddingVertical: 16,
+      borderRadius: 8,
+      borderWidth: 1.5,
+      borderColor: theme.border,
+      alignItems: 'center',
+      backgroundColor: theme.surface,
+    },
+    methodButtonSelected: {
+      borderColor: theme.accent,
+      backgroundColor: theme.surfaceElevated,
+    },
+    methodLabel: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.textSecondary,
+    },
+    methodLabelSelected: {
+      color: theme.accent,
+    },
+    payButton: {
+      backgroundColor: theme.accent,
+      paddingVertical: 16,
+      borderRadius: 8,
+      alignItems: 'center',
+    },
+    payButtonDisabled: {
+      backgroundColor: theme.disabled,
+    },
+    payButtonLabel: {
+      color: theme.accentText,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    loadingText: {
+      marginTop: 16,
+      fontSize: 14,
+      color: theme.textMuted,
+    },
+    resultIcon: {
+      fontSize: 64,
+      textAlign: 'center',
+      marginBottom: 16,
+      marginTop: 80,
+    },
+    resultTitle: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: theme.textPrimary,
+      textAlign: 'center',
+      marginBottom: 8,
+    },
+    resultDesc: {
+      fontSize: 14,
+      color: theme.textMuted,
+      textAlign: 'center',
+      marginBottom: 40,
+      lineHeight: 22,
+    },
+  })
+);

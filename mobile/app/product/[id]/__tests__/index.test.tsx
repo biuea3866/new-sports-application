@@ -112,4 +112,26 @@ describe('ProductDetailScreen 한정판 진입점', () => {
 
     expect(pushMock).toHaveBeenCalledWith('/limited-drop/5');
   });
+
+  it('imageUrl이 있으면 상품 이미지를 렌더하고 placeholder 문구를 숨긴다', () => {
+    useLocalSearchParamsMock.mockReturnValue({ id: '1' });
+    mockUseProductsReturn([productWithDrop]);
+
+    render(<ProductDetailScreen />);
+
+    expect(
+      screen.getByTestId('product-detail-image', { includeHiddenElements: true })
+    ).toBeTruthy();
+    expect(screen.queryByText('상품 이미지')).toBeNull();
+  });
+
+  it('imageUrl이 없으면 placeholder 문구를 렌더한다', () => {
+    useLocalSearchParamsMock.mockReturnValue({ id: '2' });
+    mockUseProductsReturn([{ ...productWithoutDrop, imageUrl: '' }]);
+
+    render(<ProductDetailScreen />);
+
+    expect(screen.getByText('상품 이미지', { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.queryByTestId('product-detail-image')).toBeNull();
+  });
 });

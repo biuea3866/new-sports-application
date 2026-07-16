@@ -47,10 +47,18 @@ const UPCOMING_EVENT = {
   status: 'OPEN',
 };
 
-function mockQueries(events: unknown[] = []) {
+const UPCOMING_PRODUCT = {
+  id: 42,
+  name: '유니폼',
+  category: 'GOODS',
+  price: 59000,
+};
+
+function mockQueries(events: unknown[] = [], products: unknown[] = []) {
   useQueryMock.mockImplementation((options: unknown) => {
     const queryKey = (options as { queryKey: unknown[] }).queryKey;
-    const data = queryKey[0] === 'home-events' ? events : [];
+    const data =
+      queryKey[0] === 'home-events' ? events : queryKey[0] === 'home-products' ? products : [];
     return { data, isLoading: false, isError: false } as unknown as ReturnType<typeof useQuery>;
   });
 }
@@ -120,5 +128,22 @@ describe('홈 화면 — 통합 검색 진입점', () => {
     fireEvent.press(screen.getByText('결승전'));
 
     expect(pushMock).toHaveBeenCalledWith('/(tabs)/store?segment=tickets');
+  });
+
+  it('상품 카드를 탭하면 상품 상세로 이동한다', () => {
+    mockQueries([], [UPCOMING_PRODUCT]);
+
+    render(<HomeScreen />);
+    fireEvent.press(screen.getByText('유니폼'));
+
+    expect(pushMock).toHaveBeenCalledWith('/product/42');
+  });
+
+  it('상품 카드는 접근성 버튼 역할을 가진다', () => {
+    mockQueries([], [UPCOMING_PRODUCT]);
+
+    render(<HomeScreen />);
+
+    expect(screen.getByLabelText(/유니폼/)).toBeTruthy();
   });
 });
