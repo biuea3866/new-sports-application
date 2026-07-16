@@ -11,7 +11,9 @@ import kotlin.random.Random
 
 @Component
 class MockPaymentGateway(
-    @Value("\${app.payment.mock.pg-base-url:http://localhost:9090}") private val pgBaseUrl: String,
+    // 서버 호출 없이 자체 발급만 하지만, checkoutUrl은 브라우저가 접속하므로 공개 base-url을 쓴다
+    // (MockPgGatewayImpl과 동일 원칙 — app.payment.pg.public-base-url).
+    @Value("\${app.payment.pg.public-base-url:http://localhost:9090}") private val pgBaseUrl: String,
     @Value("\${app.payment.mock.success-rate:1.0}") private val successRate: Double,
 ) : PaymentGateway {
 

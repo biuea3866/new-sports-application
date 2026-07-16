@@ -32,7 +32,11 @@ services:
       EXTERNAL_WEATHER_BASE_URL: http://mock-data-go-kr:8080
       EXTERNAL_AIR_QUALITY_BASE_URL: http://mock-data-go-kr:8080
       EXTERNAL_SMS_BASE_URL: http://mock-solapi:8080
+      # 서버 호출용(내부 네트워크 — backend 컨테이너가 mock-pg 컨테이너를 호출).
       PG_MOCK_BASE_URL: http://mock-pg:9090
+      # 브라우저 리다이렉트용(공개 — checkoutUrl). 브라우저는 도커 내부 호스트명(mock-pg)을 resolve 할 수
+      # 없으므로, 위 mock-pg 서비스가 호스트에 노출한 포트(9190)로 지정한다.
+      PG_MOCK_PUBLIC_BASE_URL: http://localhost:9190
       # 가상 대기열 토큰 서명 키. 비어 있으면 HmacEntryTokenGateway 가 부팅을 실패시킨다
       # (약한 기본값으로 오배포되는 것을 막는 의도된 설계). base compose 가 이 값을 backend 로
       # 넘기지 않아 dev 부팅이 불가능했다. dev 전용 값이며 prod 는 별도 시크릿을 주입해야 한다.
@@ -62,8 +66,10 @@ services:
       - "9001:9001"
 
   mock-pg:
+    # 호스트 9090은 sports-qa mock-pg가 점유 중이라 충돌한다. backend는 내부 네트워크
+    # (mock-pg:9090)로 호출하므로 호스트 포트만 9190으로 옮겨 dev mock-pg를 띄운다.
     ports:
-      - "9090:9090"
+      - "9190:9090"
 
   mock-kakao-local:
     ports:
