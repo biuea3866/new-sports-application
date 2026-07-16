@@ -11,6 +11,9 @@ module.exports = {
     '^@/api/(.*)$': '<rootDir>/api/$1',
     '^@/lib/(.*)$': '<rootDir>/lib/$1',
     '^@/app/(.*)$': '<rootDir>/app/$1',
+    // FacilityMap.web.tsx가 import하는 leaflet CSS — jsdom 테스트 환경에는 스타일 로더가
+    // 없으므로 빈 모듈로 치환한다 (leaflet 모듈 자체는 각 테스트가 jest.mock으로 대체).
+    '\\.css$': '<rootDir>/jest.style-mock.js',
   },
   collectCoverageFrom: [
     'api/**/*.ts',

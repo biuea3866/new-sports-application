@@ -1,10 +1,16 @@
 /**
- * FacilitiesScreen — 내 주변 시설 + 날씨 화면 사용자 관점 동작 검증.
- * 근거: 사용자 피드백 "시설을 클릭해도 상세가 안 뜬다" — 목록 아이템이 순수 View라 탭이
- * 안 됐다. Pressable로 감싸 `/facility/{id}` 상세로 이동시킨다.
+ * FacilitiesScreen — 내 주변 시설 + 날씨 + 지도 화면 사용자 관점 동작 검증.
+ * 근거: 사용자 피드백 "search 탭 네이밍이 이해 안 된다" — 이 탭은 실제로 내 주변
+ * 시설 검색(`/facilities/near` + 날씨)이므로 라벨을 "시설"로, 라우트 파일명도
+ * `search.tsx` → `facilities.tsx`로 바꿨다.
  *
- * useQuery(@tanstack/react-query)를 직접 호출하는 화면이라 `app/(tabs)/index.test.tsx`와
- * 동일하게 useQuery 자체를 모킹해 queryKey로 분기한다.
+ * 사용자 요청 "UI에 맵도 띄워줘": 목록 상단에 FacilityMap을 추가했다. FacilityMap은
+ * 웹(Leaflet)/네이티브(react-native-maps) 구현이 갈리므로 이 화면 테스트에서는
+ * 실제 지도 라이브러리를 건드리지 않도록 컴포넌트 자체를 mock한다 — 지도 라이브러리별
+ * 마커·fallback 검증은 components/map/__tests__에 있다.
+ *
+ * useQuery(@tanstack/react-query)를 직접 호출하는 화면이라 useQuery 자체를 모킹해
+ * queryKey로 분기한다.
  */
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
@@ -18,13 +24,47 @@ jest.mock('expo-router', () => ({
   useRouter: jest.fn(),
 }));
 
+jest.mock('../../../lib/useCurrentLocation', () => ({
+  useCurrentLocation: jest.fn(),
+}));
+
+jest.mock('../../../components/map/FacilityMap', () => {
+  const ReactModule = require('react'); // eslint-disable-line @typescript-eslint/no-var-requires
+  const { View, Text, Pressable } = require('react-native'); // eslint-disable-line @typescript-eslint/no-var-requires
+  return {
+    __esModule: true,
+    FacilityMap: (props: {
+      facilities: { id: string; name: string }[];
+      onMarkerPress: (id: string) => void;
+    }) =>
+      ReactModule.createElement(
+        View,
+        { testID: 'mock-facility-map' },
+        ReactModule.createElement(Text, null, `markers:${props.facilities.length}`),
+        props.facilities.map((facility) =>
+          ReactModule.createElement(
+            Pressable,
+            {
+              key: facility.id,
+              testID: `mock-marker-${facility.id}`,
+              onPress: () => props.onMarkerPress(facility.id),
+            },
+            null
+          )
+        )
+      ),
+  };
+});
+
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
+import { useCurrentLocation } from '../../../lib/useCurrentLocation';
 import type { FacilitySummary, Forecast } from '../../../api/external-features';
 import FacilitiesScreen from '../facilities';
 
 const useQueryMock = useQuery as jest.MockedFunction<typeof useQuery>;
 const useRouterMock = useRouter as jest.MockedFunction<typeof useRouter>;
+const useCurrentLocationMock = useCurrentLocation as jest.MockedFunction<typeof useCurrentLocation>;
 
 const FACILITY: FacilitySummary = {
   id: '64f1a2b3c4d5e6f7a8b9c0d1',
@@ -71,12 +111,13 @@ function mockQueries(
   });
 }
 
-describe('시설 화면 — 내 주변 시설 + 날씨', () => {
+describe('시설 화면 — 내 주변 시설 + 날씨 + 지도', () => {
   const pushMock = jest.fn();
 
   beforeEach(() => {
     mockUseColorScheme.mockReturnValue('light');
     useRouterMock.mockReturnValue({ push: pushMock } as unknown as ReturnType<typeof useRouter>);
+    useCurrentLocationMock.mockReturnValue({ lat: 37.4979, lng: 127.0276, isDefault: true });
     mockQueries();
   });
 
@@ -153,5 +194,28 @@ describe('시설 화면 — 내 주변 시설 + 날씨', () => {
     render(<FacilitiesScreen />);
 
     expect(screen.getByText('한강 축구장')).toBeTruthy();
+  });
+
+  it('시설 조회 성공 시 시설 개수만큼 지도 마커를 요청한다', () => {
+    render(<FacilitiesScreen />);
+
+    expect(screen.getByTestId('mock-facility-map')).toBeTruthy();
+    expect(screen.getByText('markers:1')).toBeTruthy();
+  });
+
+  it('지도 마커를 탭하면 시설 상세 화면으로 이동한다', () => {
+    render(<FacilitiesScreen />);
+
+    fireEvent.press(screen.getByTestId(`mock-marker-${FACILITY.id}`));
+
+    expect(pushMock).toHaveBeenCalledWith(`/facility/${FACILITY.id}`);
+  });
+
+  it('시설 조회 중에는 지도를 렌더하지 않는다', () => {
+    mockQueries({ facilities: { isLoading: true, data: undefined } });
+
+    render(<FacilitiesScreen />);
+
+    expect(screen.queryByTestId('mock-facility-map')).toBeNull();
   });
 });
