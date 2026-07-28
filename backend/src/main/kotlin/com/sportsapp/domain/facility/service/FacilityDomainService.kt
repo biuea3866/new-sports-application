@@ -11,6 +11,7 @@ import com.sportsapp.domain.facility.repository.FacilityRepository
 import com.sportsapp.domain.facility.vo.FacilityAttributes
 import org.springframework.context.annotation.Profile
 import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 
@@ -40,6 +41,27 @@ class FacilityDomainService(
 
     fun getById(id: String): Facility =
         facilityRepository.findById(id) ?: throw FacilityNotFoundException(id)
+
+    // getById와 달리 없으면 null을 반환한다 — 호출부(소비 컨텍스트)가 자기 도메인 예외로 매핑한다.
+    fun findBy(id: String): Facility? =
+        facilityRepository.findById(id)
+
+    // 자동 슬롯 생성 스케줄 대상 시설 조회(BE-58). 운영시간이 등록되고 소유자가 있는 시설만 반환하며,
+    // 페이지네이션 루프를 이 공개 계약 안에 내장한다(no-business-flow-in-infra — infra는 DTO 변환만 담당).
+    fun findAllSchedulable(): List<Facility> =
+        fetchAllForBackfill().filter { it.ownerUserId != null && it.operatingHours.isNotEmpty() }
+
+    private fun fetchAllForBackfill(): List<Facility> {
+        val facilities = mutableListOf<Facility>()
+        var pageable: Pageable = PageRequest.of(0, SCHEDULABLE_PAGE_SIZE)
+        while (true) {
+            val page = facilityRepository.findAllForBackfill(pageable)
+            facilities += page.content
+            if (!page.hasNext()) break
+            pageable = pageable.next()
+        }
+        return facilities
+    }
 
     fun aggregateGuType(): List<GuTypeCount> =
         facilityRepository.aggregateGuType()
@@ -86,5 +108,9 @@ class FacilityDomainService(
     private fun resolveRegion(attributes: FacilityAttributes): FacilityAttributes {
         val region = regionResolveGateway.resolve(attributes.address, attributes.sidoHint)
         return attributes.copy(region = region)
+    }
+
+    companion object {
+        private const val SCHEDULABLE_PAGE_SIZE = 200
     }
 }
