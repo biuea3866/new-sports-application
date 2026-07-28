@@ -603,23 +603,29 @@ class GoodsDomainServiceTest : BehaviorSpec({
         every { productRepository.findByIdAndDeletedAtIsNull(999_999L) } returns null
 
         When("findOwnerIdBy(999999)를 호출하면") {
-            Then("ResourceNotFoundException(\"Product\", 999999)을 던진다") {
-                shouldThrow<com.sportsapp.domain.common.exceptions.ResourceNotFoundException> {
+            Then("resource와 id를 담은 ResourceNotFoundException을 던진다") {
+                val exception = shouldThrow<com.sportsapp.domain.common.exceptions.ResourceNotFoundException> {
                     service.findOwnerIdBy(999_999L)
                 }
+                // 예외 타입만 단언하면 구현이 ResourceNotFoundException("GoodsProduct", id)로 바뀌어도 통과한다.
+                // TDD "실패 경로"가 예외 인자 보존을 계약으로 명시했으므로 메시지로 인자까지 고정한다.
+                exception.message shouldBe "Product with id 999999 not found"
             }
         }
     }
 
-    Given("productId에 해당하는 Product가 소프트 삭제된 상태일 때") {
-        every { productRepository.findByIdAndDeletedAtIsNull(888L) } returns null
+    // 소프트 삭제 케이스는 삭제 조건이 쿼리(findByIdAndDeletedAtIsNull)에 있어 mock 으로는
+    // 미존재 케이스와 구분되지 않는다(같은 스텁 = 신호 0). 실제 커버리지는 실 DB 를 쓰는
+    // GoodsProductGatewayImplTest 가 담당하고, 여기서는 삭제 조건을 포함한 쿼리를 쓰는지만 고정한다.
+    Given("소유자 조회가 삭제되지 않은 상품만 대상으로 해야 할 때") {
+        When("findOwnerIdBy를 호출하면") {
+            Then("삭제 조건이 포함된 조회 메서드를 사용한다") {
+                every { productRepository.findByIdAndDeletedAtIsNull(888L) } returns null
 
-        When("findOwnerIdBy(888)를 호출하면") {
-            Then("삭제되지 않은 상품을 찾지 못해 ResourceNotFoundException을 던진다") {
                 shouldThrow<com.sportsapp.domain.common.exceptions.ResourceNotFoundException> {
                     service.findOwnerIdBy(888L)
                 }
-                verify(exactly = 1) { productRepository.findByIdAndDeletedAtIsNull(888L) }
+                verify { productRepository.findByIdAndDeletedAtIsNull(888L) }
             }
         }
     }

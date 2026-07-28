@@ -14,9 +14,10 @@ import org.springframework.beans.factory.annotation.Autowired
 import java.math.BigDecimal
 
 /**
- * `GoodsProductGateway` 구현체 — goods `ProductRepository`(내부 조회, Client 아님)로
- * `Product.ownerId`를 조회한다 (BE-11, TDD FR-18). infrastructure -> domain.goods 의존은
- * `FacilityOwnershipGatewayImpl`(booking -> facility)과 동일한 크로스 도메인 게이트웨이 패턴이다.
+ * `GoodsProductGateway` 구현체 — goods 의 공개 행위 계약인 `GoodsDomainService.findOwnerIdBy` 를
+ * 경유해 `Product.ownerId` 를 조회한다 (BE-11, TDD FR-18). goods 의 `ProductRepository`(=`products`
+ * 테이블)를 직접 알지 않는다. infrastructure -> domain.goods 의존은 `FacilityOwnershipGatewayImpl`
+ * (booking -> facility)과 동일한 크로스 도메인 게이트웨이 패턴이다.
  */
 class GoodsProductGatewayImplTest(
     @Autowired private val goodsProductGateway: GoodsProductGateway,
