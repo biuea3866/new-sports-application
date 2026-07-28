@@ -4,7 +4,7 @@ import com.sportsapp.domain.booking.dto.FacilitySchedule
 import com.sportsapp.domain.booking.dto.WeeklyHours
 import com.sportsapp.domain.booking.gateway.FacilityScheduleGateway
 import com.sportsapp.domain.facility.entity.Facility
-import com.sportsapp.domain.facility.repository.FacilityRepository
+import com.sportsapp.domain.facility.service.FacilityDomainService
 import com.sportsapp.domain.facility.vo.OperatingHours
 import com.sportsapp.domain.facility.vo.TimeRange
 import java.time.DayOfWeek
@@ -12,39 +12,27 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 import org.springframework.context.annotation.Profile
-import org.springframework.data.domain.PageRequest
-import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Component
 
 /**
  * FacilityScheduleGateway 구현체(BE-58).
  *
- * facility 도메인의 FacilityRepository(MongoDB)를 읽어 운영시간·휴무를 booking 소유 DTO로 변환한다.
- * FacilityRepository가 test-jpa 프로파일에서 비활성화되므로 동일 프로파일 조건을 따른다
+ * facility 도메인의 공개 계약인 FacilityDomainService가 반환하는 스케줄 대상 시설을 읽어
+ * 운영시간·휴무를 booking 소유 DTO로 변환한다. 페이지네이션 루프·대상 필터는 조회 정책이므로
+ * FacilityDomainService.findAllSchedulable()에 내장돼 있다(no-business-flow-in-infra) —
+ * 이 어댑터에는 DTO 변환만 남는다.
+ * FacilityDomainService가 test-jpa 프로파일에서 비활성화되므로 동일 프로파일 조건을 따른다
  * (FacilityOwnershipGatewayImpl 패턴).
  */
 @Component
 @Profile("!test-jpa")
 class FacilityScheduleGatewayImpl(
-    private val facilityRepository: FacilityRepository,
+    private val facilityDomainService: FacilityDomainService,
 ) : FacilityScheduleGateway {
 
     override fun findSchedulableFacilities(): List<FacilitySchedule> =
-        fetchAllFacilities()
-            .filter { it.ownerUserId != null && it.operatingHours.isNotEmpty() }
+        facilityDomainService.findAllSchedulable()
             .map { it.toFacilitySchedule() }
-
-    private fun fetchAllFacilities(): List<Facility> {
-        val facilities = mutableListOf<Facility>()
-        var pageable: Pageable = PageRequest.of(0, PAGE_SIZE)
-        while (true) {
-            val page = facilityRepository.findAllForBackfill(pageable)
-            facilities += page.content
-            if (!page.hasNext()) break
-            pageable = pageable.next()
-        }
-        return facilities
-    }
 
     private fun Facility.toFacilitySchedule(): FacilitySchedule = FacilitySchedule(
         facilityId = requireNotNull(id) { "Facility.id must not be null" },
@@ -67,7 +55,6 @@ class FacilityScheduleGatewayImpl(
         LocalDate.now().with(TemporalAdjusters.nextOrSame(dayOfWeek))
 
     companion object {
-        private const val PAGE_SIZE = 200
         private val TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
     }
 }
