@@ -1,72 +1,60 @@
 package com.sportsapp.infrastructure.facility.gateway
 
-import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.domain.booking.entity.Slot
+import com.sportsapp.domain.booking.repository.SlotRepository
+import com.sportsapp.domain.booking.service.SlotDomainService
 import com.sportsapp.domain.facility.gateway.SlotQueryGateway
-import com.sportsapp.infrastructure.booking.mysql.SlotJpaRepository
+import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.shouldBe
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.jdbc.core.JdbcTemplate
-import java.time.ZonedDateTime
+import io.mockk.every
+import io.mockk.mockk
+import kotlin.reflect.full.primaryConstructor
 
-class SlotQueryGatewayImplTest(
-    @Autowired private val slotQueryGateway: SlotQueryGateway,
-    @Autowired private val slotJpaRepository: SlotJpaRepository,
-    @Autowired private val jdbcTemplate: JdbcTemplate,
-) : BaseIntegrationTest() {
+/**
+ * [SlotQueryGatewayImpl] 공급자 DomainService 경유 전환 검증.
+ *
+ * 구현체 의존이 booking [SlotRepository](테이블) 가 아니라 [SlotDomainService](공개 행위 계약)로
+ * 교체됐는지를 검증한다.
+ */
+class SlotQueryGatewayImplTest : BehaviorSpec({
 
-    private fun createSlot(facilityId: String): Slot = slotJpaRepository.save(
-        Slot.create(
-            facilityId = facilityId,
-            date = ZonedDateTime.now(),
-            timeRange = "09:00-10:00",
-            capacity = 5,
-            ownerId = 1L,
-        )
-    )
+    val slotDomainService = mockk<SlotDomainService>()
+    val slotQueryGateway: SlotQueryGateway = SlotQueryGatewayImpl(slotDomainService)
 
-    init {
-        afterEach {
-            jdbcTemplate.execute("TRUNCATE TABLE bookings")
-            jdbcTemplate.execute("TRUNCATE TABLE slots")
-        }
+    Given("시설에 활성 슬롯이 존재할 때") {
+        every { slotDomainService.hasActiveSlots("FAC-ACTIVE") } returns true
 
-        Given("시설에 활성 슬롯이 존재할 때") {
-            createSlot("FAC-ACTIVE")
+        When("hasActiveSlots를 호출하면") {
+            val result = slotQueryGateway.hasActiveSlots("FAC-ACTIVE")
 
-            When("hasActiveSlots를 호출하면") {
-                val result = slotQueryGateway.hasActiveSlots("FAC-ACTIVE")
-
-                Then("true를 반환한다") {
-                    result shouldBe true
-                }
-            }
-        }
-
-        Given("시설에 슬롯이 하나도 없을 때") {
-            createSlot("FAC-OTHER")
-
-            When("다른 시설로 hasActiveSlots를 호출하면") {
-                val result = slotQueryGateway.hasActiveSlots("FAC-EMPTY")
-
-                Then("false를 반환한다") {
-                    result shouldBe false
-                }
-            }
-        }
-
-        Given("시설의 슬롯이 soft-delete 된 상태일 때") {
-            val slot = createSlot("FAC-DELETED")
-            slot.softDelete(1L)
-            slotJpaRepository.save(slot)
-
-            When("hasActiveSlots를 호출하면") {
-                val result = slotQueryGateway.hasActiveSlots("FAC-DELETED")
-
-                Then("false를 반환한다") {
-                    result shouldBe false
-                }
+            Then("true를 반환한다") {
+                result shouldBe true
             }
         }
     }
-}
+
+    Given("시설에 활성 슬롯이 하나도 없을 때") {
+        every { slotDomainService.hasActiveSlots("FAC-EMPTY") } returns false
+
+        When("hasActiveSlots를 호출하면") {
+            val result = slotQueryGateway.hasActiveSlots("FAC-EMPTY")
+
+            Then("false를 반환한다") {
+                result shouldBe false
+            }
+        }
+    }
+
+    Given("SlotQueryGatewayImpl 클래스") {
+        When("생성자 의존 타입을 확인하면") {
+            val constructorParameterTypes = SlotQueryGatewayImpl::class.primaryConstructor
+                ?.parameters
+                ?.map { it.type.classifier }
+                .orEmpty()
+
+            Then("SlotRepository 타입 의존이 남아 있지 않다") {
+                constructorParameterTypes.contains(SlotRepository::class).shouldBeFalse()
+            }
+        }
+    }
+})

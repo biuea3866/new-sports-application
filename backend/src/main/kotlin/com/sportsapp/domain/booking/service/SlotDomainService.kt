@@ -93,4 +93,10 @@ class SlotDomainService(
         if (facilityIds.isEmpty()) return 0L
         return slotRepository.countTodayByFacilityIds(facilityIds)
     }
+
+    /** [slotId] 슬롯을 조회한다. 없으면 null을 반환한다(예외 전파 금지 — 소비자 ACL 계약). */
+    fun findBy(slotId: Long): Slot? = slotRepository.findById(slotId)
+
+    /** [facilityId] 시설에 활성 슬롯이 존재하는지 조회한다. */
+    fun hasActiveSlots(facilityId: String): Boolean = slotRepository.existsActiveByFacilityId(facilityId)
 }

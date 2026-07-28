@@ -215,6 +215,73 @@ class SlotDomainServiceTest : BehaviorSpec({
         }
     }
 
+    Given("존재하는 슬롯 ID로 조회하는 경우") {
+        val localSlotRepository = mockk<SlotRepository>()
+        val localGateway = mockk<FacilityOwnershipGateway>()
+        val localService = SlotDomainService(localSlotRepository, localGateway)
+        val slot = Slot.create(
+            facilityId = "FAC-FIND-01",
+            date = ZonedDateTime.parse("2026-07-01T09:00:00+09:00"),
+            timeRange = "09:00-10:00",
+            capacity = 5,
+            ownerId = 1L,
+        )
+        every { localSlotRepository.findById(1L) } returns slot
+
+        When("findBy(slotId)를 호출하면") {
+            val result = localService.findBy(1L)
+
+            Then("해당 슬롯을 반환한다") {
+                result shouldBe slot
+            }
+        }
+    }
+
+    Given("존재하지 않는 슬롯 ID로 조회하는 경우") {
+        val localSlotRepository = mockk<SlotRepository>()
+        val localGateway = mockk<FacilityOwnershipGateway>()
+        val localService = SlotDomainService(localSlotRepository, localGateway)
+        every { localSlotRepository.findById(999_999L) } returns null
+
+        When("findBy(slotId)를 호출하면") {
+            val result = localService.findBy(999_999L)
+
+            Then("예외 없이 null을 반환한다") {
+                result shouldBe null
+            }
+        }
+    }
+
+    Given("시설에 활성 슬롯이 존재하는 경우") {
+        val localSlotRepository = mockk<SlotRepository>()
+        val localGateway = mockk<FacilityOwnershipGateway>()
+        val localService = SlotDomainService(localSlotRepository, localGateway)
+        every { localSlotRepository.existsActiveByFacilityId("FAC-ACTIVE") } returns true
+
+        When("hasActiveSlots(facilityId)를 호출하면") {
+            val result = localService.hasActiveSlots("FAC-ACTIVE")
+
+            Then("true를 반환한다") {
+                result shouldBe true
+            }
+        }
+    }
+
+    Given("시설에 활성 슬롯이 존재하지 않는 경우") {
+        val localSlotRepository = mockk<SlotRepository>()
+        val localGateway = mockk<FacilityOwnershipGateway>()
+        val localService = SlotDomainService(localSlotRepository, localGateway)
+        every { localSlotRepository.existsActiveByFacilityId("FAC-EMPTY") } returns false
+
+        When("hasActiveSlots(facilityId)를 호출하면") {
+            val result = localService.hasActiveSlots("FAC-EMPTY")
+
+            Then("false를 반환한다") {
+                result shouldBe false
+            }
+        }
+    }
+
     Given("시설 소유자가 programId를 지정해 슬롯을 생성하는 경우") {
         val localSlotRepository = mockk<SlotRepository>()
         val localGateway = mockk<FacilityOwnershipGateway>()
