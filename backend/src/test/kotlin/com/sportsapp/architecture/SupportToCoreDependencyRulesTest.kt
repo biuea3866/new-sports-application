@@ -89,9 +89,16 @@ class SupportToCoreDependencyRulesTest : FunSpec({
 
     test("(위반 시나리오) application.partner 가 실제로 의존하는 패키지를 금지 대상으로 지정하면 화이트리스트 규칙이 위반으로 탐지한다") {
         // partner 가 r3Whitelisted 로 일반 R3 루프에서 빠지면서, 위 "user 외 코어 접근 금지" 규칙이
-        // partner 의 유일한 방어선이 됐다. 그 규칙이 실제로 실패할 수 있는지(거부 능력) 고정하지 않으면,
-        // application.partner 클래스가 이동·리네임될 때 allowEmptyShould(true) 로 조용히 vacuous-pass 한다.
-        // application.partner 가 실제로 의존하는 domain.partner 를 금지 대상 대역으로 지정해 탐지를 확인한다.
+        // partner 의 유일한 방어선이 됐다. 그 규칙이 실제로 실패할 수 있는지(거부 능력)를 고정한다.
+        // application.partner 가 실제로 의존하는 domain.partner 를 금지 대상 대역으로 지정한다.
+        //
+        // 선행 단언이 필요한 이유: ArchUnit 기본값이 failOnEmptyShould=true 라, 검사 대상이 0개여도
+        // AssertionError 가 난다. 선행 단언 없이 shouldThrow 만 쓰면 "위반을 탐지했다"와 "검사 대상이
+        // 사라졌다"를 구분하지 못해, application.partner 가 이동·리네임돼도 그대로 통과한다.
+        importedClasses
+            .filter { javaClass -> javaClass.packageName.startsWith("com.sportsapp.application.partner") }
+            .shouldNotBeEmpty()
+
         val ruleTreatingOwnDomainAsForbidden = noClasses()
             .that().resideInAnyPackage("com.sportsapp.application.partner..")
             .should().dependOnClassesThat().resideInAnyPackage("com.sportsapp.domain.partner..")
@@ -170,7 +177,7 @@ class SupportToCoreDependencyRulesTest : FunSpec({
         }
     }
 
-    test("core + support + subsystem 분류 집합이 domain/ 하위 실제 패키지 집합(common 제외)과 정확히 일치한다 (커버리지 항등식)") {
+    test("core + support + subsystem 분류 집합이 domain/ 하위 실제 패키지 집합(common 제외)과 정확히 일치한다 (domain 축 커버리지 항등식)") {
         // domain/ 바로 하위 서브패키지 이름을 ArchUnit importedClasses 에서 직접 도출한다 (파일시스템 스캔 대신
         // 임포트된 클래스 기준으로 도출해야, 컴파일 대상에서 벗어난 죽은 디렉토리가 항등식을 왜곡하지 않는다).
         val actualDomainSubPackages = importedClasses
