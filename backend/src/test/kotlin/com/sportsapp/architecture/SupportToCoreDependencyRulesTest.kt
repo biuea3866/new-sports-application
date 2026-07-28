@@ -8,6 +8,8 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.collections.shouldNotBeEmpty
+import io.kotest.matchers.collections.shouldNotContain
+import io.kotest.matchers.shouldBe
 
 /**
  * TDD "컨텍스트 맵 — 5개 분류 확정" 기준 도메인 분류 상수.
@@ -17,8 +19,18 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
  */
 object DomainClassification {
     val core = listOf("booking", "facility", "goods", "payment", "ticketing", "user", "post", "message", "community", "recruitment")
-    val support = listOf("notification", "operator", "weather", "alerting")
+    val support = listOf(
+        "notification", "operator", "weather", "alerting",
+        "featureflag", "virtualqueue", "partner", "airquality", "featuredemo",
+    )
     val subsystem = listOf("mcp")
+
+    /**
+     * R3 일반 스캔에서 제외하고 전용 화이트리스트 테스트가 담당하는 도메인 (ADR-002 rule #4 예외 ②).
+     * partner → domain.user 는 B2B admin 프로비저닝 쓰기 오케스트레이션으로 사전 등록된 화이트리스트이며,
+     * 전용 테스트("application.partner 는 domain.user 를 제외한 코어 도메인을 동기 의존하지 않는다")가 담당한다.
+     */
+    val r3Whitelisted = listOf("partner")
 }
 
 private fun packagesOf(layer: String, domains: List<String>): Array<String> =
@@ -28,12 +40,14 @@ private fun packagesOf(layer: String, domains: List<String>): Array<String> =
  * [지원·서브시스템 → 코어 동기 의존 금지 규칙 (R3)]
  * 근거: TDD "FR-7 정적 검증 방법" R3 / ADR-005.
  *
- * 지원 도메인(notification/operator/weather/alerting)과 서브시스템(mcp)이 코어 도메인
+ * `DomainClassification.support + subsystem - r3Whitelisted` 로 스캔 대상을 상수에서 직접 구동한다 —
+ * 상수에 도메인을 추가하면 스캔 대상이 자동으로 늘어난다 (FR-8 컨텍스트 맵 갱신 절차의 실효성 보장).
+ * 지원·서브시스템 도메인이 코어 도메인
  * (booking/facility/goods/payment/ticketing/user/post/message/community/recruitment)을 동기 의존(import)하지 않음을 강제한다.
  *
  * 화이트리스트 예외 2건 (규칙 스캔 대상에는 포함하되 이 두 방향만 허용):
  *  ① application.dashboard → 코어 (읽기 전용 조합, Conformist read model)
- *  ② application.partner → domain.user (② B2B admin 프로비저닝 쓰기 오케스트레이션, 사전 등록)
+ *  ② application.partner → domain.user (② B2B admin 프로비저닝 쓰기 오케스트레이션, r3Whitelisted로 일반 루프 제외 + 전용 테스트로 검증)
  */
 class SupportToCoreDependencyRulesTest : FunSpec({
 
@@ -45,7 +59,9 @@ class SupportToCoreDependencyRulesTest : FunSpec({
     val corePackagesExceptUser =
         packagesOf("domain", DomainClassification.core - "user") + packagesOf("application", DomainClassification.core - "user")
 
-    listOf("notification", "operator", "weather", "mcp", "alerting").forEach { domain ->
+    val r3ScannedDomains = (DomainClassification.support + DomainClassification.subsystem) - DomainClassification.r3Whitelisted.toSet()
+
+    r3ScannedDomains.forEach { domain ->
         test("$domain 패키지는 코어 도메인을 동기 의존하지 않는다 (R3, 베이스라인 0건)") {
             noClasses()
                 .that().resideInAnyPackage(*packagesOf("application", listOf(domain)), *packagesOf("domain", listOf(domain)))
@@ -57,8 +73,8 @@ class SupportToCoreDependencyRulesTest : FunSpec({
     }
 
     test("application.partner 는 domain.user 를 제외한 코어 도메인을 동기 의존하지 않는다 (사전 등록 화이트리스트)") {
-        // application.partner 패키지는 아직 미존재(② 과제 신설 예정) — allowEmptyShould(true) 로 현재는 통과하되,
-        // ② 과제 착수 시 이 규칙이 자동으로 partner→user 외 코어 접근을 잡아낸다.
+        // application.partner는 CreatePartnerUseCase 등에서 domain.user.service.UserDomainService를 실제로 의존한다
+        // (admin 프로비저닝 쓰기 오케스트레이션, ADR-002 rule #4 사전 등록 예외) — user를 제외한 코어 접근만 금지 대상이다.
         noClasses()
             .that().resideInAnyPackage("com.sportsapp.application.partner..")
             .should().dependOnClassesThat().resideInAnyPackage(*corePackagesExceptUser)
@@ -134,5 +150,35 @@ class SupportToCoreDependencyRulesTest : FunSpec({
         shouldThrow<AssertionError> {
             ruleTreatingCommonAsForbidden.check(importedClasses)
         }
+    }
+
+    test("core + support + subsystem 분류 집합이 domain/ 하위 실제 패키지 집합(common 제외)과 정확히 일치한다 (커버리지 항등식)") {
+        // domain/ 바로 하위 서브패키지 이름을 ArchUnit importedClasses 에서 직접 도출한다 (파일시스템 스캔 대신
+        // 임포트된 클래스 기준으로 도출해야, 컴파일 대상에서 벗어난 죽은 디렉토리가 항등식을 왜곡하지 않는다).
+        val actualDomainSubPackages = importedClasses
+            .map { javaClass -> javaClass.packageName }
+            .filter { packageName -> packageName.startsWith("com.sportsapp.domain.") }
+            .mapNotNull { packageName -> packageName.removePrefix("com.sportsapp.domain.").substringBefore(".").ifBlank { null } }
+            .toSet()
+            .minus("common")
+
+        val classifiedDomains = (DomainClassification.core + DomainClassification.support + DomainClassification.subsystem).toSet()
+
+        classifiedDomains shouldBe actualDomainSubPackages
+    }
+
+    test("분류 합계가 20이다") {
+        (DomainClassification.core.size + DomainClassification.support.size + DomainClassification.subsystem.size) shouldBe 20
+    }
+
+    test("R3 스캔 대상은 하드코딩 목록이 아니라 DomainClassification 상수에서 구동된다 — 신규 편입 4건이 포함된다") {
+        r3ScannedDomains.shouldContainAll(
+            listOf("notification", "operator", "weather", "mcp", "alerting", "featureflag", "virtualqueue", "airquality", "featuredemo"),
+        )
+    }
+
+    test("partner는 r3Whitelisted로 일반 R3 루프의 스캔 대상에서 제외된다 (전용 화이트리스트 테스트가 담당)") {
+        r3ScannedDomains.shouldNotContain("partner")
+        DomainClassification.r3Whitelisted.shouldContainAll(listOf("partner"))
     }
 })
