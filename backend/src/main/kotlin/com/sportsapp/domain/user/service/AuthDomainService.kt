@@ -25,6 +25,7 @@ class AuthDomainService(
     fun authenticate(email: String, rawPassword: String): TokenPair {
         val user = userRepository.findByEmail(email) ?: throw InvalidCredentialsException()
         if (!passwordEncoder.matches(rawPassword, user.passwordHash)) throw InvalidCredentialsException()
+        user.validateActiveForLogin()
         val roles = userDomainService.getRolesForUser(user.id).map { it.name }
         return issueTokenPair(user.id, user.email, roles)
     }
