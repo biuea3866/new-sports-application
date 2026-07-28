@@ -1,10 +1,10 @@
 package com.sportsapp.infrastructure.security
 
-import com.sportsapp.domain.common.PermissionRepository
 import com.sportsapp.domain.mcp.vo.McpScope
 import com.sportsapp.domain.mcp.service.McpTokenDomainService
 import com.sportsapp.domain.mcp.repository.McpTokenRepository
 import com.sportsapp.domain.mcp.repository.McpTokenScopeRepository
+import com.sportsapp.domain.user.service.PermissionDomainService
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -22,7 +22,7 @@ import org.springframework.web.filter.OncePerRequestFilter
 class McpTokenAuthenticationFilter(
     private val mcpTokenRepository: McpTokenRepository,
     private val mcpTokenScopeRepository: McpTokenScopeRepository,
-    private val permissionRepository: PermissionRepository,
+    private val permissionDomainService: PermissionDomainService,
     private val passwordEncoder: PasswordEncoder,
     private val mcpTokenDomainService: McpTokenDomainService,
 ) : OncePerRequestFilter() {
@@ -90,11 +90,10 @@ class McpTokenAuthenticationFilter(
     private fun resolveScopes(tokenId: Long): Set<McpScope> {
         val tokenScopes = mcpTokenScopeRepository.findByTokenId(tokenId)
         val permissionIds = tokenScopes.map { it.permissionId }
-        val permissions = permissionRepository.findAllByIds(permissionIds)
-        val permissionMap = permissions.associateBy { it.id }
+        val permissionNames = permissionDomainService.findNamesByIds(permissionIds)
         return tokenScopes.mapNotNull { tokenScope ->
-            val permission = permissionMap[tokenScope.permissionId] ?: return@mapNotNull null
-            parseScopeFromPermissionName(permission.name)
+            val permissionName = permissionNames[tokenScope.permissionId] ?: return@mapNotNull null
+            parseScopeFromPermissionName(permissionName)
         }.toSet()
     }
 

@@ -1,11 +1,11 @@
 package com.sportsapp.domain.mcp.service
 
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
-import com.sportsapp.domain.common.PermissionRepository
 import com.sportsapp.domain.mcp.dto.IssueMcpTokenCommand
 import com.sportsapp.domain.mcp.entity.McpToken
 import com.sportsapp.domain.mcp.entity.McpTokenScope
 import com.sportsapp.domain.mcp.exception.McpScopeNotFoundException
+import com.sportsapp.domain.mcp.gateway.McpPermissionGateway
 import com.sportsapp.domain.mcp.repository.McpTokenCustomRepository
 import com.sportsapp.domain.mcp.repository.McpTokenRepository
 import com.sportsapp.domain.mcp.repository.McpTokenScopeRepository
@@ -21,7 +21,7 @@ class McpTokenDomainService(
     private val mcpTokenRepository: McpTokenRepository,
     private val mcpTokenScopeRepository: McpTokenScopeRepository,
     private val mcpTokenCustomRepository: McpTokenCustomRepository,
-    private val permissionRepository: PermissionRepository,
+    private val mcpPermissionGateway: McpPermissionGateway,
     private val passwordEncoder: PasswordEncoder,
 ) {
     data class IssueResult(val plainToken: String, val token: McpToken)
@@ -77,7 +77,7 @@ class McpTokenDomainService(
     private fun resolvePermissionIds(scopes: List<String>): List<Long> =
         scopes.map { scope ->
             val permissionName = McpScope.of(scope).toPermissionName()
-            permissionRepository.findByName(permissionName)?.id
+            mcpPermissionGateway.findPermissionIdBy(permissionName)
                 ?: throw McpScopeNotFoundException(permissionName)
         }
 

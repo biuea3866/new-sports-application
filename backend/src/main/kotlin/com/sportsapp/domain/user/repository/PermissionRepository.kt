@@ -1,4 +1,6 @@
-package com.sportsapp.domain.common
+package com.sportsapp.domain.user.repository
+
+import com.sportsapp.domain.user.entity.Permission
 
 interface PermissionRepository {
     fun findByName(name: String): Permission?

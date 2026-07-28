@@ -6,8 +6,7 @@ import com.sportsapp.domain.mcp.service.McpTokenDomainService
 import com.sportsapp.domain.mcp.repository.McpTokenRepository
 import com.sportsapp.domain.mcp.repository.McpTokenScopeRepository
 import com.sportsapp.domain.mcp.entity.McpTokenStatus
-import com.sportsapp.domain.common.Permission
-import com.sportsapp.domain.common.PermissionRepository
+import com.sportsapp.domain.user.service.PermissionDomainService
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -28,14 +27,14 @@ class McpTokenAuthenticationFilterTest : BehaviorSpec({
 
     val mcpTokenRepository = mockk<McpTokenRepository>()
     val mcpTokenScopeRepository = mockk<McpTokenScopeRepository>()
-    val permissionRepository = mockk<PermissionRepository>()
+    val permissionDomainService = mockk<PermissionDomainService>()
     val passwordEncoder = mockk<PasswordEncoder>()
     val mcpTokenDomainService = mockk<McpTokenDomainService>(relaxed = true)
 
     val filter = McpTokenAuthenticationFilter(
         mcpTokenRepository = mcpTokenRepository,
         mcpTokenScopeRepository = mcpTokenScopeRepository,
-        permissionRepository = permissionRepository,
+        permissionDomainService = permissionDomainService,
         passwordEncoder = passwordEncoder,
         mcpTokenDomainService = mcpTokenDomainService,
     )
@@ -66,24 +65,10 @@ class McpTokenAuthenticationFilterTest : BehaviorSpec({
         return token
     }
 
-    fun makePermission(name: String, id: Long = 100L): Permission {
-        val permission = Permission(name = name)
-        val idField = Permission::class.java.getDeclaredField("id")
-        idField.isAccessible = true
-        idField.set(permission, id)
-        val superclass = permission.javaClass.superclass
-        listOf("createdAt", "updatedAt").forEach { fieldName ->
-            val field = superclass.getDeclaredField(fieldName)
-            field.isAccessible = true
-            field.set(permission, ZonedDateTime.now())
-        }
-        return permission
-    }
-
     beforeEach {
         SecurityContextHolder.setStrategyName(SecurityContextHolder.MODE_INHERITABLETHREADLOCAL)
         SecurityContextHolder.clearContext()
-        clearMocks(mcpTokenRepository, mcpTokenScopeRepository, permissionRepository, passwordEncoder, mcpTokenDomainService, answers = false)
+        clearMocks(mcpTokenRepository, mcpTokenScopeRepository, permissionDomainService, passwordEncoder, mcpTokenDomainService, answers = false)
     }
 
     afterEach {
@@ -94,7 +79,6 @@ class McpTokenAuthenticationFilterTest : BehaviorSpec({
     Given("[U-01] 유효한 Bearer 토큰으로 /mcp/** 요청이 들어오면") {
         val plainToken = "mcp_1_validrandomsecretstring1234567890"
         val token = makeToken(id = 1L, userId = 10L)
-        val permission = makePermission("mcp.facility.read.own", 100L)
         val scope = com.sportsapp.domain.mcp.entity.McpTokenScope.create(1L, 100L).also { s ->
             val superclass = s.javaClass.superclass
             listOf("createdAt", "updatedAt").forEach { fieldName ->
@@ -107,7 +91,7 @@ class McpTokenAuthenticationFilterTest : BehaviorSpec({
         every { mcpTokenRepository.findById(1L) } returns token
         every { passwordEncoder.matches(plainToken, "bcrypt-hashed") } returns true
         every { mcpTokenScopeRepository.findByTokenId(1L) } returns listOf(scope)
-        every { permissionRepository.findAllByIds(listOf(100L)) } returns listOf(permission)
+        every { permissionDomainService.findNamesByIds(listOf(100L)) } returns mapOf(100L to "mcp.facility.read.own")
 
         val request = MockHttpServletRequest().apply {
             requestURI = "/mcp/tools/list"
@@ -278,6 +262,50 @@ class McpTokenAuthenticationFilterTest : BehaviorSpec({
             Then("[U-08] 401 응답이 반환된다") {
                 response.status shouldBe 401
                 verify(exactly = 0) { filterChain.doFilter(any(), any()) }
+            }
+        }
+    }
+
+    Given("[U-09] 토큰 스코프에 알 수 없는 권한 id가 섞여 있으면") {
+        val plainToken = "mcp_1_validrandomsecretstring1234567890"
+        val token = makeToken(id = 1L, userId = 10L)
+        fun makeScope(permissionId: Long) = com.sportsapp.domain.mcp.entity.McpTokenScope.create(1L, permissionId).also { s ->
+            val superclass = s.javaClass.superclass
+            listOf("createdAt", "updatedAt").forEach { fieldName ->
+                val field = superclass.getDeclaredField(fieldName)
+                field.isAccessible = true
+                field.set(s, ZonedDateTime.now())
+            }
+        }
+        val knownScope = makeScope(100L)
+        val unknownScope = makeScope(999L)
+
+        every { mcpTokenRepository.findById(1L) } returns token
+        every { passwordEncoder.matches(plainToken, "bcrypt-hashed") } returns true
+        every { mcpTokenScopeRepository.findByTokenId(1L) } returns listOf(knownScope, unknownScope)
+        every { permissionDomainService.findNamesByIds(listOf(100L, 999L)) } returns mapOf(100L to "mcp.facility.read.own")
+
+        val request = MockHttpServletRequest().apply {
+            requestURI = "/mcp/tools/list"
+            addHeader("Authorization", "Bearer $plainToken")
+        }
+        val response = MockHttpServletResponse()
+        val filterChain = mockk<FilterChain>(relaxed = true)
+
+        var capturedAuthentication: org.springframework.security.core.Authentication? = null
+        every { filterChain.doFilter(any(), any()) } answers {
+            capturedAuthentication = SecurityContextHolder.getContext().authentication
+        }
+
+        When("filter를 통과하면") {
+            filter.doFilter(request, response, filterChain)
+
+            Then("[U-09] 알려진 권한만 파싱되어 principal에 담기고 나머지는 건너뛴다 (엣지)") {
+                capturedAuthentication.shouldNotBeNull()
+                val principal = requireNotNull(capturedAuthentication).principal as McpUserPrincipal
+                principal.grantedScopes.size shouldBe 1
+                principal.grantedScopes.first().domain shouldBe "facility"
+                verify(exactly = 1) { filterChain.doFilter(request, response) }
             }
         }
     }

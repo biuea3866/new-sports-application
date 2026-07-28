@@ -1,7 +1,7 @@
 package com.sportsapp.infrastructure.user.mysql
 
-import com.sportsapp.domain.common.Permission
-import com.sportsapp.domain.common.PermissionRepository
+import com.sportsapp.domain.user.entity.Permission
+import com.sportsapp.domain.user.repository.PermissionRepository
 import org.springframework.stereotype.Component
 
 @Component

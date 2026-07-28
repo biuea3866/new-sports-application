@@ -1,6 +1,6 @@
 package com.sportsapp.infrastructure.user.mysql
 
-import com.sportsapp.domain.common.Permission
+import com.sportsapp.domain.user.entity.Permission
 import org.springframework.data.jpa.repository.JpaRepository
 
 interface PermissionJpaRepository : JpaRepository<Permission, Long> {
