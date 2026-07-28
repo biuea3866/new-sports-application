@@ -12,6 +12,7 @@ import com.sportsapp.domain.partner.gateway.ApiKeyGenerator
 import com.sportsapp.domain.partner.repository.PartnerApiKeyRepository
 import com.sportsapp.domain.partner.repository.PartnerRepository
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 data class IssuedApiKey(val plainKey: String, val apiKey: PartnerApiKey) {
     val keyId: Long get() = requireNotNull(apiKey.id) { "PartnerApiKey id must exist after save" }
@@ -34,6 +35,16 @@ class PartnerDomainService(
     private val apiKeyGenerator: ApiKeyGenerator,
 ) {
 
+    /**
+     * SAGA tx2 — partner 컨텍스트의 로컬 트랜잭션 경계.
+     *
+     * 내부에서 3회 쓰기(partner 저장 + 키 placeholder 저장 + 실 해시 재저장)가 일어나므로
+     * 경계가 없으면 각각 auto-commit 되어, 마지막 쓰기 실패 시 `partners` 1행과 **아무도 쓸 수 없는
+     * placeholder 해시 ACTIVE 키 1행**이 영구 잔존한다. 호출부(`CreatePartnerUseCase`)가
+     * `@Transactional`을 갖지 않는 SAGA 구조이므로 이 경계는 여기서 소유해야 한다.
+     * 기존 `@Transactional` UseCase(재발급·폐기·상태변경)에서 호출되면 REQUIRED 로 정상 참여한다.
+     */
+    @Transactional
     fun createPartner(name: String, linkedUserId: Long): Pair<Partner, IssuedApiKey> {
         val partner = partnerRepository.save(Partner.create(name, linkedUserId))
         val partnerId = requireNotNull(partner.id) { "Partner id must exist after save" }
