@@ -234,6 +234,17 @@ class GoodsDomainService(
         return product to stock
     }
 
+    /**
+     * message 도메인의 `GoodsProductGateway`(ACL) 가 호출하는 소유자 id 전용 조회 (PH0-03).
+     * [getProductWithStock]을 재사용하지 않는다 — 소유자 id 하나를 얻으려고 재고까지 조회하는
+     * 불필요한 결합과 `ProductWithStock` 래퍼 노출(no-getter-chain-behavior 유발)을 막는다.
+     */
+    fun findOwnerIdBy(productId: Long): Long {
+        val product = productRepository.findByIdAndDeletedAtIsNull(productId)
+            ?: throw ResourceNotFoundException("Product", productId)
+        return product.ownerId
+    }
+
     fun getProductWithStock(productId: Long): ProductWithStock {
         val product = productRepository.findByIdAndDeletedAtIsNull(productId)
             ?: throw ResourceNotFoundException("Product", productId)

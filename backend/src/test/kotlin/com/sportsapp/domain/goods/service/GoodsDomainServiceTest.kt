@@ -575,6 +575,61 @@ class GoodsDomainServiceTest : BehaviorSpec({
         }
     }
 
+    Given("owner_id=555인 Product(id=777)가 삭제되지 않은 상태로 존재할 때") {
+        val product = forceId(
+            Product(
+                name = "축구화",
+                category = ProductCategory.FOOTWEAR,
+                price = BigDecimal("30000"),
+                description = "설명",
+                imageUrl = "https://example.com/shoes.jpg",
+                status = ProductStatus.ACTIVE,
+                ownerId = 555L,
+            ),
+            777L,
+        )
+        every { productRepository.findByIdAndDeletedAtIsNull(777L) } returns product
+
+        When("findOwnerIdBy(777)을 호출하면") {
+            val ownerId = service.findOwnerIdBy(777L)
+
+            Then("Product.ownerId(555)를 반환한다") {
+                ownerId shouldBe 555L
+            }
+        }
+    }
+
+    Given("productId에 해당하는 Product가 존재하지 않을 때") {
+        every { productRepository.findByIdAndDeletedAtIsNull(999_999L) } returns null
+
+        When("findOwnerIdBy(999999)를 호출하면") {
+            Then("resource와 id를 담은 ResourceNotFoundException을 던진다") {
+                val exception = shouldThrow<com.sportsapp.domain.common.exceptions.ResourceNotFoundException> {
+                    service.findOwnerIdBy(999_999L)
+                }
+                // 예외 타입만 단언하면 구현이 ResourceNotFoundException("GoodsProduct", id)로 바뀌어도 통과한다.
+                // TDD "실패 경로"가 예외 인자 보존을 계약으로 명시했으므로 메시지로 인자까지 고정한다.
+                exception.message shouldBe "Product with id 999999 not found"
+            }
+        }
+    }
+
+    // 소프트 삭제 케이스는 삭제 조건이 쿼리(findByIdAndDeletedAtIsNull)에 있어 mock 으로는
+    // 미존재 케이스와 구분되지 않는다(같은 스텁 = 신호 0). 실제 커버리지는 실 DB 를 쓰는
+    // GoodsProductGatewayImplTest 가 담당하고, 여기서는 삭제 조건을 포함한 쿼리를 쓰는지만 고정한다.
+    Given("소유자 조회가 삭제되지 않은 상품만 대상으로 해야 할 때") {
+        When("findOwnerIdBy를 호출하면") {
+            Then("삭제 조건이 포함된 조회 메서드를 사용한다") {
+                every { productRepository.findByIdAndDeletedAtIsNull(888L) } returns null
+
+                shouldThrow<com.sportsapp.domain.common.exceptions.ResourceNotFoundException> {
+                    service.findOwnerIdBy(888L)
+                }
+                verify { productRepository.findByIdAndDeletedAtIsNull(888L) }
+            }
+        }
+    }
+
     // @Transactional은 UseCase 레이어에서만 선언한다(DomainService 메서드에는 선언하지 않음).
     Given("GoodsDomainService 메서드 시그니처") {
         When("public 메서드 어노테이션을 검사하면") {
