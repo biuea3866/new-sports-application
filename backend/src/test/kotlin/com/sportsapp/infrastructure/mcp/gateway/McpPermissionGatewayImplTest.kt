@@ -17,26 +17,26 @@ class McpPermissionGatewayImplTest : BehaviorSpec({
     val permissionDomainService = mockk<PermissionDomainService>()
     val gateway = McpPermissionGatewayImpl(permissionDomainService)
 
-    Given("[U-01] 존재하는 권한명으로 findPermissionIdBy를 호출하면") {
+    Given("존재하는 권한명으로 findPermissionIdBy를 호출하면") {
         every { permissionDomainService.findIdByName("mcp.facility.read.own") } returns 10L
 
         When("findPermissionIdBy를 호출하면") {
             val result = gateway.findPermissionIdBy("mcp.facility.read.own")
 
-            Then("[U-01] 해당 권한 id가 반환된다") {
+            Then("해당 권한 id가 반환된다") {
                 result shouldBe 10L
                 verify(exactly = 1) { permissionDomainService.findIdByName("mcp.facility.read.own") }
             }
         }
     }
 
-    Given("[U-02] 존재하지 않는 권한명으로 findPermissionIdBy를 호출하면") {
+    Given("존재하지 않는 권한명으로 findPermissionIdBy를 호출하면") {
         every { permissionDomainService.findIdByName("mcp.unknown.read.own") } returns null
 
         When("findPermissionIdBy를 호출하면") {
             val result = gateway.findPermissionIdBy("mcp.unknown.read.own")
 
-            Then("[U-02] null이 반환된다") {
+            Then("null이 반환된다") {
                 result.shouldBeNull()
             }
         }

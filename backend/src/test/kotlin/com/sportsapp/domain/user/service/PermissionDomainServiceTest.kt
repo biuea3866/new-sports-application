@@ -29,31 +29,31 @@ class PermissionDomainServiceTest : BehaviorSpec({
     val permissionRepository = mockk<PermissionRepository>()
     val permissionDomainService = PermissionDomainService(permissionRepository)
 
-    Given("[U-01] 존재하는 권한명으로 findIdByName을 호출하면") {
+    Given("존재하는 권한명으로 findIdByName을 호출하면") {
         every { permissionRepository.findByName("mcp.facility.read.own") } returns makePermission("mcp.facility.read.own", 10L)
 
         When("findIdByName을 호출하면") {
             val result = permissionDomainService.findIdByName("mcp.facility.read.own")
 
-            Then("[U-01] 해당 권한 id가 반환된다") {
+            Then("해당 권한 id가 반환된다") {
                 result shouldBe 10L
             }
         }
     }
 
-    Given("[U-02] 존재하지 않는 권한명으로 findIdByName을 호출하면") {
+    Given("존재하지 않는 권한명으로 findIdByName을 호출하면") {
         every { permissionRepository.findByName("mcp.unknown.read.own") } returns null
 
         When("findIdByName을 호출하면") {
             val result = permissionDomainService.findIdByName("mcp.unknown.read.own")
 
-            Then("[U-02] null이 반환된다") {
+            Then("null이 반환된다") {
                 result.shouldBeNull()
             }
         }
     }
 
-    Given("[U-03] 여러 권한 id로 findNamesByIds를 호출하면") {
+    Given("여러 권한 id로 findNamesByIds를 호출하면") {
         every { permissionRepository.findAllByIds(listOf(10L, 20L)) } returns listOf(
             makePermission("mcp.facility.read.own", 10L),
             makePermission("mcp.booking.write.own", 20L),
@@ -62,13 +62,13 @@ class PermissionDomainServiceTest : BehaviorSpec({
         When("findNamesByIds를 호출하면") {
             val result = permissionDomainService.findNamesByIds(listOf(10L, 20L))
 
-            Then("[U-03] id-이름 매핑이 반환된다") {
+            Then("id-이름 매핑이 반환된다") {
                 result.shouldContainExactly(mapOf(10L to "mcp.facility.read.own", 20L to "mcp.booking.write.own"))
             }
         }
     }
 
-    Given("[U-04] 존재하지 않는 id가 섞인 목록으로 findNamesByIds를 호출하면") {
+    Given("존재하지 않는 id가 섞인 목록으로 findNamesByIds를 호출하면") {
         every { permissionRepository.findAllByIds(listOf(10L, 999L)) } returns listOf(
             makePermission("mcp.facility.read.own", 10L),
         )
@@ -76,7 +76,7 @@ class PermissionDomainServiceTest : BehaviorSpec({
         When("findNamesByIds를 호출하면") {
             val result = permissionDomainService.findNamesByIds(listOf(10L, 999L))
 
-            Then("[U-04] 존재하는 id만 담긴 매핑이 반환된다 (엣지)") {
+            Then("존재하는 id만 담긴 매핑이 반환된다 (엣지)") {
                 result.shouldContainExactly(mapOf(10L to "mcp.facility.read.own"))
             }
         }

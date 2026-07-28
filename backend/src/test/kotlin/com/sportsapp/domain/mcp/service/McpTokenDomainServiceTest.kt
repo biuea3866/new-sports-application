@@ -138,9 +138,10 @@ class McpTokenDomainServiceTest : BehaviorSpec({
             expiresAt = null,
         )
         val savedToken = makeToken(userId = 1L, id = 1L)
-        // 이 테스트의 issueToken 호출로 인한 save만 캡처한다 — mockk 는 전 Given 블록이 spec 트리
-        // 구성 시점에 함께 실행되는 공유 mock 이므로, 전체 호출 횟수(verify exactly=0)는 다른
-        // Given 블록의 호출과 뒤섞여 신뢰할 수 없다. 이 stub 등록 이후의 호출만 로컬 리스트로 격리한다.
+        // 이 테스트의 issueToken 호출로 인한 save만 캡처한다 — Kotest 기본 IsolationMode.SingleInstance
+        // 는 spec 인스턴스 1개를 모든 Given 이 공유하므로 mock 호출 이력이 Given 간에 누적된다.
+        // 따라서 전체 호출 횟수(verify exactly=0)는 신뢰할 수 없고, 이 stub 등록 이후의 호출만
+        // 로컬 리스트로 격리한다.
         val savedScopesForThisToken = mutableListOf<McpTokenScope>()
 
         every { passwordEncoder.encode(any()) } returns "bcrypt-hashed"

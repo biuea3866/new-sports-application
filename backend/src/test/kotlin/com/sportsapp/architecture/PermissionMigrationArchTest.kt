@@ -47,16 +47,15 @@ class PermissionMigrationArchTest : FunSpec({
     }
 
     test("domain.mcp 패키지는 domain.user 패키지를 import하지 않는다 (R1·R3 회귀 방지)") {
-        // 양성 앵커 — allowEmptyShould(true) 라 domain.mcp 가 리네임·소멸하면 vacuous pass 한다.
-        importedClasses
-            .filter { javaClass -> javaClass.packageName.startsWith("com.sportsapp.domain.mcp") }
-            .shouldNotBeEmpty()
-
+        // allowEmptyShould(true) 를 붙이지 않는다. archunit.properties 가 없어 fail.on.empty.should
+        // 기본값이 true 이므로, domain.mcp 가 리네임·소멸해 대상이 0건이 되면 룰이 **자기 술어 그대로**
+        // 실패한다. 별도 양성 앵커를 두면 앵커(문자열 startsWith)와 룰(패키지 경계) 술어가 달라
+        // domain.mcpserver 같은 접두사 보존 리네임에서 앵커만 통과하는 구멍이 생긴다.
+        // 레포의 다른 allowEmptyShould(true) 는 '아직 없는 패키지'용 관례인데 domain.mcp 는 실재한다.
         noClasses()
             .that().resideInAPackage("com.sportsapp.domain.mcp..")
             .should().dependOnClassesThat().resideInAPackage("com.sportsapp.domain.user..")
             .because("mcp(subsystem)는 user(core)를 동기 의존할 수 없다 — McpPermissionGateway ACL로 경유한다")
-            .allowEmptyShould(true)
             .check(importedClasses)
     }
 })

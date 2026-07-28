@@ -79,12 +79,12 @@ class McpTokenAuthenticationFilterTest : BehaviorSpec({
     Given("[U-01] 유효한 Bearer 토큰으로 /mcp/** 요청이 들어오면") {
         val plainToken = "mcp_1_validrandomsecretstring1234567890"
         val token = makeToken(id = 1L, userId = 10L)
-        val scope = com.sportsapp.domain.mcp.entity.McpTokenScope.create(1L, 100L).also { s ->
-            val superclass = s.javaClass.superclass
+        val scope = com.sportsapp.domain.mcp.entity.McpTokenScope.create(1L, 100L).also { scope ->
+            val superclass = scope.javaClass.superclass
             listOf("createdAt", "updatedAt").forEach { fieldName ->
                 val field = superclass.getDeclaredField(fieldName)
                 field.isAccessible = true
-                field.set(s, ZonedDateTime.now())
+                field.set(scope, ZonedDateTime.now())
             }
         }
 
@@ -269,12 +269,12 @@ class McpTokenAuthenticationFilterTest : BehaviorSpec({
     Given("[U-09] 토큰 스코프에 알 수 없는 권한 id가 섞여 있으면") {
         val plainToken = "mcp_1_validrandomsecretstring1234567890"
         val token = makeToken(id = 1L, userId = 10L)
-        fun makeScope(permissionId: Long) = com.sportsapp.domain.mcp.entity.McpTokenScope.create(1L, permissionId).also { s ->
-            val superclass = s.javaClass.superclass
+        fun makeScope(permissionId: Long) = com.sportsapp.domain.mcp.entity.McpTokenScope.create(1L, permissionId).also { scope ->
+            val superclass = scope.javaClass.superclass
             listOf("createdAt", "updatedAt").forEach { fieldName ->
                 val field = superclass.getDeclaredField(fieldName)
                 field.isAccessible = true
-                field.set(s, ZonedDateTime.now())
+                field.set(scope, ZonedDateTime.now())
             }
         }
         val knownScope = makeScope(100L)
