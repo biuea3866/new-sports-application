@@ -5,7 +5,7 @@ import com.sportsapp.domain.facility.gateway.SlotQueryGateway
 import org.springframework.stereotype.Component
 
 /**
- * SlotQueryGateway 구현체 (PH0-02 공급자 경유 전환).
+ * SlotQueryGateway 구현체 — booking 공급자 DomainService 경유.
  *
  * booking 도메인의 공개 행위 계약인 [SlotDomainService]를 통해 시설의 활성 슬롯 존재 여부를
  * 조회한다. booking의 `SlotRepository`(테이블)를 직접 알지 못한다.

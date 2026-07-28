@@ -79,5 +79,71 @@ class SlotRepositoryImplIntegrationTest(
                 }
             }
         }
+
+        // existsActiveByFacilityId 는 SlotJpaRepository#existsByFacilityIdAndDeletedAtIsNull 로 내려간다.
+        // 이 3케이스가 `AndDeletedAtIsNull` 의미론과 facilityId 필터를 실 DB 로 검증하는 유일한 지점이다 —
+        // 상위 호출부(FacilityOwnerDomainService 의 시설 삭제 가드)는 전부 게이트웨이를 모킹하므로,
+        // 여기가 비면 삭제 조건이 빠져도 전체 테스트가 GREEN 이 된다.
+        Given("시설에 활성 슬롯이 존재할 때") {
+            slotRepository.save(
+                Slot.create(
+                    facilityId = "FAC-ACTIVE",
+                    date = ZonedDateTime.now(),
+                    timeRange = "09:00-10:00",
+                    capacity = 5,
+                    ownerId = 1L,
+                )
+            )
+
+            When("existsActiveByFacilityId를 호출하면") {
+                val result = slotRepository.existsActiveByFacilityId("FAC-ACTIVE")
+
+                Then("true를 반환한다") {
+                    result shouldBe true
+                }
+            }
+        }
+
+        Given("다른 시설에만 슬롯이 존재할 때") {
+            slotRepository.save(
+                Slot.create(
+                    facilityId = "FAC-OTHER",
+                    date = ZonedDateTime.now(),
+                    timeRange = "09:00-10:00",
+                    capacity = 5,
+                    ownerId = 1L,
+                )
+            )
+
+            When("슬롯이 없는 시설로 existsActiveByFacilityId를 호출하면") {
+                val result = slotRepository.existsActiveByFacilityId("FAC-EMPTY")
+
+                Then("false를 반환한다 (facilityId 필터가 동작한다)") {
+                    result shouldBe false
+                }
+            }
+        }
+
+        Given("시설의 슬롯이 전부 soft-delete 된 상태일 때") {
+            val slot = slotRepository.save(
+                Slot.create(
+                    facilityId = "FAC-DELETED",
+                    date = ZonedDateTime.now(),
+                    timeRange = "09:00-10:00",
+                    capacity = 5,
+                    ownerId = 1L,
+                )
+            )
+            slot.softDelete(1L)
+            slotRepository.save(slot)
+
+            When("existsActiveByFacilityId를 호출하면") {
+                val result = slotRepository.existsActiveByFacilityId("FAC-DELETED")
+
+                Then("false를 반환한다 (삭제된 슬롯은 활성으로 세지 않는다)") {
+                    result shouldBe false
+                }
+            }
+        }
     }
 }

@@ -11,7 +11,7 @@ import io.mockk.mockk
 import kotlin.reflect.full.primaryConstructor
 
 /**
- * [SlotQueryGatewayImpl] 전환 검증 (PH0-02).
+ * [SlotQueryGatewayImpl] 공급자 DomainService 경유 전환 검증.
  *
  * 구현체 의존이 booking [SlotRepository](테이블) 가 아니라 [SlotDomainService](공개 행위 계약)로
  * 교체됐는지를 검증한다.
