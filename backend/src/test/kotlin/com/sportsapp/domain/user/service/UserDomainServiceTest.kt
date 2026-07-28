@@ -124,4 +124,28 @@ class UserDomainServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("존재하는 사용자 ID로 이메일 조회를 요청하면") {
+        every { userRepository.findById(10L) } returns testUser
+
+        When("findEmailBy를 호출하면") {
+            val email = userDomainService.findEmailBy(10L)
+
+            Then("해당 사용자의 이메일을 반환한다") {
+                email shouldBe "test@example.com"
+            }
+        }
+    }
+
+    Given("존재하지 않는 사용자 ID로 이메일 조회를 요청하면") {
+        every { userRepository.findById(999L) } returns null
+
+        When("findEmailBy를 호출하면") {
+            val email = userDomainService.findEmailBy(999L)
+
+            Then("예외 없이 null을 반환한다 (알림 발송 경로가 상위 트랜잭션을 깨뜨리지 않아야 한다)") {
+                email shouldBe null
+            }
+        }
+    }
 })

@@ -39,6 +39,12 @@ class UserDomainService(
     fun findById(userId: Long): User =
         userRepository.findById(userId) ?: throw ResourceNotFoundException("User", userId)
 
+    /**
+     * 사용자의 이메일을 조회한다. 사용자가 없으면 예외가 아니라 null 을 반환한다 ([findById] 와의 차이).
+     */
+    fun findEmailBy(userId: Long): String? =
+        userRepository.findById(userId)?.email
+
     fun findByEmail(email: String): User =
         userRepository.findByEmail(email) ?: throw ResourceNotFoundException("User", email)
 
