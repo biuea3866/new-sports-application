@@ -8,6 +8,7 @@ import com.sportsapp.domain.goods.vo.ProductCategory
 import com.sportsapp.domain.message.gateway.GoodsProductGateway
 import com.sportsapp.infrastructure.goods.mysql.ProductJpaRepository
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import java.math.BigDecimal
@@ -53,6 +54,30 @@ class GoodsProductGatewayImplTest(
                     shouldThrow<ResourceNotFoundException> {
                         goodsProductGateway.findOwnerId(999_999L)
                     }
+                }
+            }
+        }
+
+        Given("소프트 삭제된 상품이 존재할 때") {
+            val product = seedProduct(777L)
+            product.softDelete(null)
+            productJpaRepository.save(product)
+
+            When("findOwnerId 를 호출하면") {
+                Then("삭제된 상품은 없는 것으로 취급해 ResourceNotFoundException 이 발생한다") {
+                    shouldThrow<ResourceNotFoundException> {
+                        goodsProductGateway.findOwnerId(product.id)
+                    }
+                }
+            }
+        }
+
+        Given("GoodsProductGatewayImpl 의 생성자 의존") {
+            When("선언된 필드 타입을 검사하면") {
+                Then("ProductRepository 타입 의존이 남아있지 않다 (GoodsDomainService 경유 전환)") {
+                    val fieldTypeNames = GoodsProductGatewayImpl::class.java.declaredFields
+                        .map { it.type.name }
+                    fieldTypeNames shouldNotContain "com.sportsapp.domain.goods.repository.ProductRepository"
                 }
             }
         }

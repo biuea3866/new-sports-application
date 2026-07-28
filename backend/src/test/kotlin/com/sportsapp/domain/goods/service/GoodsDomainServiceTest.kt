@@ -575,6 +575,55 @@ class GoodsDomainServiceTest : BehaviorSpec({
         }
     }
 
+    Given("owner_id=555인 Product(id=777)가 삭제되지 않은 상태로 존재할 때") {
+        val product = forceId(
+            Product(
+                name = "축구화",
+                category = ProductCategory.FOOTWEAR,
+                price = BigDecimal("30000"),
+                description = "설명",
+                imageUrl = "https://example.com/shoes.jpg",
+                status = ProductStatus.ACTIVE,
+                ownerId = 555L,
+            ),
+            777L,
+        )
+        every { productRepository.findByIdAndDeletedAtIsNull(777L) } returns product
+
+        When("findOwnerIdBy(777)을 호출하면") {
+            val ownerId = service.findOwnerIdBy(777L)
+
+            Then("Product.ownerId(555)를 반환한다") {
+                ownerId shouldBe 555L
+            }
+        }
+    }
+
+    Given("productId에 해당하는 Product가 존재하지 않을 때") {
+        every { productRepository.findByIdAndDeletedAtIsNull(999_999L) } returns null
+
+        When("findOwnerIdBy(999999)를 호출하면") {
+            Then("ResourceNotFoundException(\"Product\", 999999)을 던진다") {
+                shouldThrow<com.sportsapp.domain.common.exceptions.ResourceNotFoundException> {
+                    service.findOwnerIdBy(999_999L)
+                }
+            }
+        }
+    }
+
+    Given("productId에 해당하는 Product가 소프트 삭제된 상태일 때") {
+        every { productRepository.findByIdAndDeletedAtIsNull(888L) } returns null
+
+        When("findOwnerIdBy(888)를 호출하면") {
+            Then("삭제되지 않은 상품을 찾지 못해 ResourceNotFoundException을 던진다") {
+                shouldThrow<com.sportsapp.domain.common.exceptions.ResourceNotFoundException> {
+                    service.findOwnerIdBy(888L)
+                }
+                verify(exactly = 1) { productRepository.findByIdAndDeletedAtIsNull(888L) }
+            }
+        }
+    }
+
     // @Transactional은 UseCase 레이어에서만 선언한다(DomainService 메서드에는 선언하지 않음).
     Given("GoodsDomainService 메서드 시그니처") {
         When("public 메서드 어노테이션을 검사하면") {
