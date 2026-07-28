@@ -4,17 +4,19 @@ import com.sportsapp.domain.notification.entity.Notification
 import com.sportsapp.domain.notification.gateway.RecipientContactGateway
 import com.sportsapp.domain.notification.vo.NotificationChannel
 import com.sportsapp.domain.notification.vo.NotificationPayload
-import com.sportsapp.domain.user.repository.UserRepository
 import io.kotest.core.spec.style.BehaviorSpec
-import io.kotest.matchers.collections.shouldNotContain
+import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kotlin.reflect.KClass
 import kotlin.reflect.full.primaryConstructor
 
 /**
- * [PH0-04] RecipientContactResolver — UserRepository 직접 의존을 제거하고
+ * RecipientContactResolver — user 컨텍스트 저장소 직접 의존을 제거하고
  * RecipientContactGateway(ACL)로 위임하는지 검증한다.
  */
 class RecipientContactResolverTest : BehaviorSpec({
@@ -58,7 +60,7 @@ class RecipientContactResolverTest : BehaviorSpec({
         When("phoneOf를 호출하면") {
             val phone = resolver.phoneOf(notification)
 
-            Then("[기존 동작 보존] payload의 phone 값을 그대로 반환한다") {
+            Then("payload의 phone 값을 그대로 반환한다") {
                 phone shouldBe "010-1234-5678"
             }
         }
@@ -75,21 +77,56 @@ class RecipientContactResolverTest : BehaviorSpec({
         When("phoneOf를 호출하면") {
             val phone = resolver.phoneOf(notification)
 
-            Then("[기존 동작 보존] null을 반환한다") {
+            Then("null을 반환한다") {
                 phone shouldBe null
             }
         }
     }
 
-    Given("RecipientContactResolver의 생성자 시그니처를 검사하면") {
-        When("primary constructor 파라미터 타입을 조회하면") {
-            val constructorParameterTypes = RecipientContactResolver::class.primaryConstructor
-                ?.parameters
-                ?.map { it.type.classifier }
-                .orEmpty()
+    // 전환 회귀 가드. 음성 단언만 두면 vacuous 하게 통과한다 — 생성자를 못 읽어 빈 리스트가 되거나
+    // (필드 주입 회귀), 검사하지 않은 우회 타입(UserJpaRepository·UserCustomRepositoryImpl·
+    // UserDomainService 직접 주입)으로 결합이 되살아나도 잡히지 않는다. 그래서 ① 파라미터를 실제로
+    // 읽었다는 양성 단언 ② 기대 의존을 포함한다는 양성 단언 ③ 타입 단건이 아니라 user 컨텍스트
+    // 패키지 전체를 금지하는 단언을 함께 건다. 신설 어댑터(GatewayImpl)도 같은 가드로 덮는다.
+    Given("notification infrastructure 어댑터들의 생성자 시그니처를 검사하면") {
+        val userContextPackages = listOf(
+            "com.sportsapp.domain.user.repository",
+            "com.sportsapp.domain.user.service",
+            "com.sportsapp.infrastructure.user",
+        )
 
-            Then("[전환 자체 검증] UserRepository 타입 의존이 남아 있지 않다") {
-                constructorParameterTypes shouldNotContain UserRepository::class
+        When("RecipientContactResolver의 생성자 파라미터 타입을 조회하면") {
+            val parameters = requireNotNull(RecipientContactResolver::class.primaryConstructor) {
+                "RecipientContactResolver must expose a primary constructor"
+            }.parameters
+            val parameterTypes = parameters.mapNotNull { it.type.classifier as? KClass<*> }
+
+            Then("파라미터를 실제로 읽었고 ACL 게이트웨이만 의존한다") {
+                parameterTypes.shouldNotBeEmpty()
+                parameterTypes.shouldContain(RecipientContactGateway::class)
+            }
+
+            Then("user 컨텍스트 패키지의 어떤 타입에도 의존하지 않는다") {
+                parameterTypes
+                    .filter { type -> userContextPackages.any { type.qualifiedName.orEmpty().startsWith(it) } }
+                    .shouldBeEmpty()
+            }
+        }
+
+        When("RecipientContactGatewayImpl의 생성자 파라미터 타입을 조회하면") {
+            val parameters = requireNotNull(RecipientContactGatewayImpl::class.primaryConstructor) {
+                "RecipientContactGatewayImpl must expose a primary constructor"
+            }.parameters
+            val parameterTypes = parameters.mapNotNull { it.type.classifier as? KClass<*> }
+
+            Then("공급자 저장소가 아니라 공급자 DomainService만 의존한다") {
+                parameterTypes.shouldNotBeEmpty()
+                parameterTypes
+                    .filter { type -> type.qualifiedName.orEmpty().startsWith("com.sportsapp.domain.user.repository") }
+                    .shouldBeEmpty()
+                parameterTypes
+                    .filter { type -> type.qualifiedName.orEmpty().startsWith("com.sportsapp.infrastructure.user") }
+                    .shouldBeEmpty()
             }
         }
     }

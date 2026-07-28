@@ -9,10 +9,11 @@ import io.mockk.confirmVerified
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import org.springframework.mail.SimpleMailMessage
 import org.springframework.mail.javamail.JavaMailSender
 
 /**
- * [PH0-04] EmailChannelGateway — RecipientContactResolver가 수신처를 찾지 못하면
+ * EmailChannelGateway — RecipientContactResolver가 수신처를 찾지 못하면
  * 발송을 시도하지 않는다 (엣지 케이스).
  */
 class EmailChannelGatewayTest : BehaviorSpec({
@@ -34,10 +35,10 @@ class EmailChannelGatewayTest : BehaviorSpec({
         When("send를 호출하면") {
             val result = gateway.send(notification)
 
-            Then("[엣지] 실패 결과를 반환하고 메일 발송을 시도하지 않는다") {
+            Then("실패 결과를 반환하고 메일 발송을 시도하지 않는다") {
                 result.success.shouldBeFalse()
                 verify(exactly = 1) { contactResolver.emailOf(999L) }
-                verify(exactly = 0) { mailSender.send(any<org.springframework.mail.SimpleMailMessage>()) }
+                verify(exactly = 0) { mailSender.send(any<SimpleMailMessage>()) }
                 confirmVerified(mailSender)
             }
         }

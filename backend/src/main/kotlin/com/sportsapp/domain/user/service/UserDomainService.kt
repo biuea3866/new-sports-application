@@ -40,10 +40,7 @@ class UserDomainService(
         userRepository.findById(userId) ?: throw ResourceNotFoundException("User", userId)
 
     /**
-     * 사용자의 이메일을 조회한다. [findById] 와 달리 사용자가 없으면 예외가 아니라 null 을 반환한다.
-     *
-     * 알림 발송 경로(notification 의 `RecipientContactGateway`)가 호출하며, 여기서 예외가 전파되면
-     * 채널 게이트웨이의 발송 실패 처리 흐름이 아니라 상위 트랜잭션이 깨진다.
+     * 사용자의 이메일을 조회한다. 사용자가 없으면 예외가 아니라 null 을 반환한다 ([findById] 와의 차이).
      */
     fun findEmailBy(userId: Long): String? =
         userRepository.findById(userId)?.email

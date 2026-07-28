@@ -8,7 +8,7 @@ import io.mockk.mockk
 import io.mockk.verify
 
 /**
- * [PH0-04] RecipientContactGatewayImpl — notification이 user 컨텍스트를 직접 읽지 않고
+ * RecipientContactGatewayImpl — notification이 user 컨텍스트를 직접 읽지 않고
  * 공급자 UserDomainService.findEmailBy를 경유하는지 검증한다. Repository가 아니라
  * DomainService를 모킹하는 것이 이 전환의 본질이다.
  */
