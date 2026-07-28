@@ -40,14 +40,18 @@ private fun packagesOf(layer: String, domains: List<String>): Array<String> =
  * [지원·서브시스템 → 코어 동기 의존 금지 규칙 (R3)]
  * 근거: TDD "FR-7 정적 검증 방법" R3 / ADR-005.
  *
- * `DomainClassification.support + subsystem - r3Whitelisted` 로 스캔 대상을 상수에서 직접 구동한다 —
- * 상수에 도메인을 추가하면 스캔 대상이 자동으로 늘어난다 (FR-8 컨텍스트 맵 갱신 절차의 실효성 보장).
  * 지원·서브시스템 도메인이 코어 도메인
  * (booking/facility/goods/payment/ticketing/user/post/message/community/recruitment)을 동기 의존(import)하지 않음을 강제한다.
  *
- * 화이트리스트 예외 2건 (규칙 스캔 대상에는 포함하되 이 두 방향만 허용):
- *  ① application.dashboard → 코어 (읽기 전용 조합, Conformist read model)
- *  ② application.partner → domain.user (② B2B admin 프로비저닝 쓰기 오케스트레이션, r3Whitelisted로 일반 루프 제외 + 전용 테스트로 검증)
+ * 스캔 대상은 `DomainClassification.support + subsystem - r3Whitelisted` 로 상수에서 직접 구동한다 —
+ * 상수에 도메인을 추가하면 스캔 대상이 자동으로 늘어난다 (FR-8 컨텍스트 맵 갱신 절차의 실효성 보장).
+ *
+ * 화이트리스트 예외 2건 — 둘 다 일반 R3 루프의 스캔 대상이 아니며, 각자 전용 테스트가 담당한다:
+ *  ① application.dashboard → 코어 (읽기 전용 조합, Conformist read model).
+ *     dashboard 는 support/subsystem 어디에도 속하지 않아 애초에 루프에 들어오지 않는다.
+ *  ② application.partner → domain.user (B2B admin 프로비저닝 쓰기 오케스트레이션, ADR-002 rule #4).
+ *     partner 는 support 이지만 r3Whitelisted 로 루프에서 제외하고, 아래 전용 규칙이 "user 를 제외한
+ *     코어 접근"만 금지한다. 그 전용 규칙의 거부 능력은 stand-in sanity check 로 고정한다.
  */
 class SupportToCoreDependencyRulesTest : FunSpec({
 
@@ -81,6 +85,20 @@ class SupportToCoreDependencyRulesTest : FunSpec({
             .because("partner→user 는 admin 프로비저닝 쓰기 오케스트레이션으로 사전 등록된 예외 — user 외 코어 접근은 여전히 금지")
             .allowEmptyShould(true)
             .check(importedClasses)
+    }
+
+    test("(위반 시나리오) application.partner 가 실제로 의존하는 패키지를 금지 대상으로 지정하면 화이트리스트 규칙이 위반으로 탐지한다") {
+        // partner 가 r3Whitelisted 로 일반 R3 루프에서 빠지면서, 위 "user 외 코어 접근 금지" 규칙이
+        // partner 의 유일한 방어선이 됐다. 그 규칙이 실제로 실패할 수 있는지(거부 능력) 고정하지 않으면,
+        // application.partner 클래스가 이동·리네임될 때 allowEmptyShould(true) 로 조용히 vacuous-pass 한다.
+        // application.partner 가 실제로 의존하는 domain.partner 를 금지 대상 대역으로 지정해 탐지를 확인한다.
+        val ruleTreatingOwnDomainAsForbidden = noClasses()
+            .that().resideInAnyPackage("com.sportsapp.application.partner..")
+            .should().dependOnClassesThat().resideInAnyPackage("com.sportsapp.domain.partner..")
+
+        shouldThrow<AssertionError> {
+            ruleTreatingOwnDomainAsForbidden.check(importedClasses)
+        }
     }
 
     test("application.partner 가 domain.user 를 호출해도(admin 프로비저닝) 사전 등록된 화이트리스트로 규칙이 통과한다") {
@@ -171,7 +189,7 @@ class SupportToCoreDependencyRulesTest : FunSpec({
         (DomainClassification.core.size + DomainClassification.support.size + DomainClassification.subsystem.size) shouldBe 20
     }
 
-    test("R3 스캔 대상은 하드코딩 목록이 아니라 DomainClassification 상수에서 구동된다 — 신규 편입 4건이 포함된다") {
+    test("R3 스캔 대상에 기존 5개와 신규 편입 4개를 합한 9개 도메인이 모두 포함된다") {
         r3ScannedDomains.shouldContainAll(
             listOf("notification", "operator", "weather", "mcp", "alerting", "featureflag", "virtualqueue", "airquality", "featuredemo"),
         )
