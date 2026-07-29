@@ -10,6 +10,7 @@ import com.sportsapp.domain.user.repository.RoleRepository
 import com.sportsapp.domain.user.repository.UserRepository
 import com.sportsapp.domain.user.repository.UserRoleRepository
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -202,8 +203,9 @@ class IntegrationAccountDomainServiceTest : BehaviorSpec({
         every { userRepository.findById(404L) } returns null
 
         When("abandon 을 호출하면") {
-            Then("예외 없이 멱등하게 완료된다") {
-                service.abandon(404L)
+            Then("예외 없이 멱등하게 완료되고 쓰기를 시도하지 않는다") {
+                shouldNotThrowAny { service.abandon(404L) }
+                verify(exactly = 0) { userRepository.save(any()) }
             }
         }
     }

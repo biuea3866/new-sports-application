@@ -59,6 +59,12 @@ class PartnerDomainService(
         return IssuedApiKey(plainKey = plainKey, apiKey = issued)
     }
 
+    /**
+     * 폐기 + 재발급으로 최대 3회 쓴다. 경계가 호출부(`ReissueApiKeyUseCase`)에만 있으면
+     * `createPartner` 가 회귀했던 것과 같은 배치가 된다 — 다중 쓰기와 경계가 다른 파일에 있다.
+     * REQUIRED 라 `@Transactional` UseCase 에서 호출돼도 동작 변화가 없다.
+     */
+    @Transactional
     fun reissueKey(partnerId: Long): IssuedApiKey {
         revokeActiveKeyIfExists(partnerId)
         return issueKey(partnerId)

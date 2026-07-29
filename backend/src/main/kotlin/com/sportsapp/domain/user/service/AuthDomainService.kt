@@ -34,6 +34,10 @@ class AuthDomainService(
         val userId = refreshTokenRepository.findUserIdByToken(incomingRefreshToken)
             ?: throw InvalidRefreshTokenException()
         val user = userRepository.findById(userId) ?: throw ResourceNotFoundException("User", userId)
+        // 로그인 경로와 동일한 semantic lock. 이게 없으면 SUSPENDED 로 전환된 사용자가 refresh token
+        // 만료까지 access token 을 계속 발급받는다. 현재 데이터는 전원 ACTIVE 라(비-ACTIVE 사용자 0명)
+        // 기존 사용자 동작 변화는 없다.
+        user.validateActiveForLogin()
         val roles = userDomainService.getRolesForUser(userId).map { it.name }
         refreshTokenRepository.invalidate(incomingRefreshToken)
         return issueTokenPair(user.id, user.email, roles)

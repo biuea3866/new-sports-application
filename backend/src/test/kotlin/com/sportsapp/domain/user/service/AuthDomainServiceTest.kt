@@ -156,6 +156,25 @@ class AuthDomainServiceTest : BehaviorSpec({
         }
     }
 
+    Given("정지(SUSPENDED) 상태로 전환된 사용자가 유효한 Refresh Token 으로 재발급을 시도할 때") {
+        val suspendedUser = User(
+            email = "suspended-refresh@example.com",
+            passwordHash = hashedPassword,
+            status = UserStatus.SUSPENDED,
+        )
+        every { refreshTokenRepository.findUserIdByToken("suspended-refresh-token") } returns 77L
+        every { userRepository.findById(77L) } returns suspendedUser
+
+        When("refresh 를 호출하면") {
+            Then("재발급이 거부되고 기존 토큰도 폐기되지 않는다") {
+                shouldThrow<InvalidCredentialsException> {
+                    authDomainService.refresh("suspended-refresh-token")
+                }
+                verify(exactly = 0) { refreshTokenRepository.invalidate("suspended-refresh-token") }
+            }
+        }
+    }
+
     Given("Redis 에 존재하지 않는 Refresh Token 으로 재발급 시도 시") {
         every { refreshTokenRepository.findUserIdByToken("nonexistent-token") } returns null
 

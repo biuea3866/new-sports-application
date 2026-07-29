@@ -55,8 +55,10 @@ class IntegrationAccountDomainService(
      * tx2 실패 보상 — INACTIVE 유지 확정. User는 tx1에서 이미 INACTIVE로 커밋돼 있으므로
      * 추가 쓰기가 필요 없다. 존재하지 않아도(멱등) 예외를 던지지 않는다.
      */
-    @Transactional
+    @Transactional(readOnly = true)
     fun abandon(userId: Long) {
+        // 쓰기가 없는 것이 의도다 — tx1 이 이미 INACTIVE 로 커밋했으므로 그 상태를 유지하는 것이
+        // 곧 보상이다. 존재 확인만 하고, 없으면(멱등) 조용히 끝낸다.
         userRepository.findById(userId) ?: return
     }
 
