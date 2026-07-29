@@ -4,17 +4,19 @@ import com.sportsapp.domain.mcp.exception.McpScopeNotFoundException
 import com.sportsapp.domain.mcp.dto.IssueMcpTokenCommand
 import com.sportsapp.domain.mcp.entity.McpTokenStatus
 import com.sportsapp.domain.mcp.entity.McpToken
+import com.sportsapp.domain.mcp.entity.McpTokenScope
+import com.sportsapp.domain.mcp.gateway.McpPermissionGateway
 import com.sportsapp.domain.mcp.repository.McpTokenCustomRepository
 import com.sportsapp.domain.mcp.repository.McpTokenScopeRepository
 import com.sportsapp.domain.mcp.repository.McpTokenRepository
 
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
-import com.sportsapp.domain.common.Permission
-import com.sportsapp.domain.common.PermissionRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.string.shouldHaveMinLength
 import io.mockk.every
 import io.mockk.mockk
@@ -28,14 +30,14 @@ class McpTokenDomainServiceTest : BehaviorSpec({
     val mcpTokenRepository = mockk<McpTokenRepository>()
     val mcpTokenScopeRepository = mockk<McpTokenScopeRepository>()
     val mcpTokenCustomRepository = mockk<McpTokenCustomRepository>()
-    val permissionRepository = mockk<PermissionRepository>()
+    val mcpPermissionGateway = mockk<McpPermissionGateway>()
     val passwordEncoder = mockk<PasswordEncoder>()
 
     val domainService = McpTokenDomainService(
         mcpTokenRepository = mcpTokenRepository,
         mcpTokenScopeRepository = mcpTokenScopeRepository,
         mcpTokenCustomRepository = mcpTokenCustomRepository,
-        permissionRepository = permissionRepository,
+        mcpPermissionGateway = mcpPermissionGateway,
         passwordEncoder = passwordEncoder,
     )
 
@@ -58,20 +60,6 @@ class McpTokenDomainServiceTest : BehaviorSpec({
         return token
     }
 
-    fun makePermission(name: String, id: Long = 10L): Permission {
-        val permission = Permission(name = name)
-        val idField = Permission::class.java.getDeclaredField("id")
-        idField.isAccessible = true
-        idField.set(permission, id)
-        val superclass = permission.javaClass.superclass
-        listOf("createdAt", "updatedAt").forEach { fieldName ->
-            val field = superclass.getDeclaredField(fieldName)
-            field.isAccessible = true
-            field.set(permission, ZonedDateTime.now())
-        }
-        return permission
-    }
-
     Given("[U-01] 유효한 scope 목록으로 토큰 발급을 요청하면") {
         val command = IssueMcpTokenCommand(
             userId = 1L,
@@ -79,10 +67,9 @@ class McpTokenDomainServiceTest : BehaviorSpec({
             scopes = listOf("read:facility"),
             expiresAt = null,
         )
-        val permission = makePermission("mcp.facility.read.own", 10L)
         val savedToken = makeToken(userId = 1L, id = 1L)
 
-        every { permissionRepository.findByName("mcp.facility.read.own") } returns permission
+        every { mcpPermissionGateway.findPermissionIdBy("mcp.facility.read.own") } returns 10L
         every { passwordEncoder.encode(any()) } returns "bcrypt-hashed"
         every { mcpTokenRepository.save(any()) } returns savedToken
         every { mcpTokenScopeRepository.save(any()) } answers { firstArg() }
@@ -107,13 +94,66 @@ class McpTokenDomainServiceTest : BehaviorSpec({
             expiresAt = null,
         )
 
-        every { permissionRepository.findByName("mcp.nonexistent.read.own") } returns null
+        every { mcpPermissionGateway.findPermissionIdBy("mcp.nonexistent.read.own") } returns null
 
         When("issueToken을 호출하면") {
             Then("[U-02] McpScopeNotFoundException이 발생한다") {
                 shouldThrow<McpScopeNotFoundException> {
                     domainService.issueToken(command)
                 }
+            }
+        }
+    }
+
+    Given("[U-10] 여러 scope 목록으로 토큰 발급을 요청하면") {
+        val command = IssueMcpTokenCommand(
+            userId = 1L,
+            name = "multi-scope-token",
+            scopes = listOf("read:facility", "write:booking"),
+            expiresAt = null,
+        )
+        val savedToken = makeToken(userId = 1L, id = 1L)
+        val savedScopes = mutableListOf<McpTokenScope>()
+
+        every { mcpPermissionGateway.findPermissionIdBy("mcp.facility.read.own") } returns 10L
+        every { mcpPermissionGateway.findPermissionIdBy("mcp.booking.write.own") } returns 20L
+        every { passwordEncoder.encode(any()) } returns "bcrypt-hashed"
+        every { mcpTokenRepository.save(any()) } returns savedToken
+        every { mcpTokenScopeRepository.save(capture(savedScopes)) } answers { firstArg() }
+
+        When("issueToken을 호출하면") {
+            domainService.issueToken(command)
+
+            Then("[U-10] 요청 순서대로 권한 id 목록이 저장된다") {
+                savedScopes.map { it.permissionId }.shouldContainExactly(listOf(10L, 20L))
+            }
+        }
+    }
+
+    Given("[U-11] 빈 scope 목록으로 토큰 발급을 요청하면") {
+        val command = IssueMcpTokenCommand(
+            userId = 1L,
+            name = "no-scope-token",
+            scopes = emptyList(),
+            expiresAt = null,
+        )
+        val savedToken = makeToken(userId = 1L, id = 1L)
+        // 이 테스트의 issueToken 호출로 인한 save만 캡처한다 — Kotest 기본 IsolationMode.SingleInstance
+        // 는 spec 인스턴스 1개를 모든 Given 이 공유하므로 mock 호출 이력이 Given 간에 누적된다.
+        // 따라서 전체 호출 횟수(verify exactly=0)는 신뢰할 수 없고, 이 stub 등록 이후의 호출만
+        // 로컬 리스트로 격리한다.
+        val savedScopesForThisToken = mutableListOf<McpTokenScope>()
+
+        every { passwordEncoder.encode(any()) } returns "bcrypt-hashed"
+        every { mcpTokenRepository.save(any()) } returns savedToken
+        every { mcpTokenScopeRepository.save(capture(savedScopesForThisToken)) } answers { firstArg() }
+
+        When("issueToken을 호출하면") {
+            val result = domainService.issueToken(command)
+
+            Then("[U-11] 스코프 없이 정상 발급된다 (엣지)") {
+                result.token shouldBe savedToken
+                savedScopesForThisToken.shouldBeEmpty()
             }
         }
     }
