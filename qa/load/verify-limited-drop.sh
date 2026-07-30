@@ -7,9 +7,17 @@
 #           L77-83(HikariCP 로그)·L90(F1)·L92(F3)
 #
 # 세 판정을 산출한다 (전부 순수 함수 judge_* — 인프라 없이 --self-test로 독립 검증 가능):
-#   1. 누수(F1)          = 예약 마커 수 - 주문 수        (양수면 실패)
-#   2. 응답 불일치(F3)   = 주문 수 - k6 202 응답 수       (양수면 실패)
+#   1. 누수(F1)          = 예약 마커 수 - 주문 수  (양수=누수 실패 exit 1 / 0=통과 exit 0 /
+#                          음수=측정 불가 exit 2 — 예약 마커 TTL 만료(app.limited-drop.reservation.
+#                          marker-ttl-seconds 기본 600초. DropReservationStoreImpl.kt#confirmSuccess가
+#                          no-op이라 성공 건 마커도 남아 시간 경과 시 만료된다) 또는 DROP_ID 오기입 의심)
+#   2. 응답 불일치(F3)   = 주문 수 - k6 202 응답 수 (양수=응답 불일치 실패 exit 1 / 0=통과 exit 0 /
+#                          음수=유령 성공 실패 exit 1 — 202는 받았는데 DB 주문이 없음. F3와 원인이 달라
+#                          별도 메시지로 리포트한다. ORDER_SINCE_TIMESTAMP 측정 구간 오설정으로도 발생 가능)
 #   3. 오버셀(회귀 보호) = 주문 수 - limitedQuantity      (양수면 실패)
+#
+# 측정값(Redis/MySQL/k6 summary 조회 결과)은 정수 검증을 거친다 — 조회 실패로 빈 문자열이 반환되면
+# bash 산술이 0으로 강제 변환해 인프라 실패를 "누수 0건/불일치 0건"으로 오판할 수 있기 때문이다.
 #
 # 예약 키 열거는 SCAN만 사용한다 — KEYS 명령 금지(private-redis-convention "키 설계").
 #
@@ -38,7 +46,10 @@
 #   LIMITED_QUANTITY        (필수) 오버셀 판정 기준 한정 수량
 #   K6_SUMMARY_JSON          (필수) k6 --summary-export 산출 JSON 경로
 #   ORDER_SINCE_TIMESTAMP    (필수) 이 시각(“YYYY-MM-DD HH:MM:SS”, DATETIME 리터럴) 이후 생성된
-#                           주문만 카운트 — 같은 product를 재사용하는 반복 실행의 주문 오염 방지
+#                           주문만 카운트 — 같은 product를 재사용하는 반복 실행의 주문 오염 방지.
+#                           **MySQL 서버 세션 타임존 기준으로 해석된다(UTC 아님)** — 로컬/UTC와 서버
+#                           타임존이 다르면 리터럴을 서버 타임존에 맞춰 넣거나, k6 실행 직전 상대 구간
+#                           (예: `date -v-5M '+%Y-%m-%d %H:%M:%S'`)으로 계산해 오차를 없애라
 #   ACCEPTED_METRIC_NAME     (선택) k6 202 카운터 메트릭명. 기본값 LOAD_05_accepted_total
 #                           (goods-limited-drop-spike.js#acceptedCounter)
 #   MYSQL_HOST/PORT/USER/PASSWORD/ROOT_PASSWORD/DATABASE/SERVICE_NAME/COMPOSE_PROJECT_NAME
@@ -48,12 +59,15 @@
 #                           qa/load/reseed/reseed.sh와 동일 접속 계열
 #
 # 종료 코드:
-#   0  모든 판정 통과(누수 0·응답 불일치 0·오버셀 없음)
-#   1  하나 이상 판정 실패(누수>0 또는 응답 불일치>0 또는 오버셀>0)
-#   2  측정 불가(예약 키 0건 — 누수 0으로 오판하지 않기 위한 별도 코드. DROP_ID 오류·Redis 키
-#      만료·drop 미생성 등 실제 원인 확인 필요)
+#   0  모든 판정 통과(누수 등식 성립·응답 수 등식 성립·오버셀 없음)
+#   1  하나 이상 실제 실패 판정(누수>0, 응답 불일치(F3, order>accepted) 또는 유령 성공
+#      (order<accepted), 오버셀>0) — 측정 불가 판정이 함께 있어도 실패가 우선한다
+#   2  측정 불가(예약 마커 수<주문 수, k6 202 카운터·MySQL·Redis 조회 결과가 정수가 아님 등 —
+#      누수 0으로 오판하지 않기 위한 별도 코드. DROP_ID 오류·마커 TTL 만료·인프라 조회 실패
+#      등 실제 원인 확인 필요. 단 실패 판정이 함께 있으면 종료코드는 1)
 #
-# --self-test: 판정 함수 3종을 티켓 "테스트 케이스" 8개 샘플 입력으로 재현하고 종료한다
+# --self-test: 판정 함수 3종 + 정수 검증 헬퍼를 티켓 "테스트 케이스"와 코드 리뷰 재발 방지
+#              케이스(측정 불가 3분기·유령 성공·정수 검증)로 재현하고 종료한다
 #              (인프라 불필요 — MySQL/Redis/k6 산출물 없이 로직만 검증).
 
 set -u
@@ -90,30 +104,41 @@ warn() { echo "[verify-limited-drop][WARN] $*" >&2; }
 # 판정 함수 (순수 함수 — stdout에 차이값, 종료코드로 통과/실패) — 티켓 "테스트 케이스" 대응
 # ============================================================
 
-# "예약 마커 수와 주문 수가 같으면 누수 0건 판정" / "예약 마커 수가 주문 수보다 많으면 누수 리포트"
+# "예약 마커 수와 주문 수가 같으면 누수 0건 통과(exit 0)" /
+# "예약 마커 수가 주문 수보다 많으면 누수 건수를 리포트(exit 1)" /
+# "예약 마커 수가 주문 수보다 적으면 측정 불가로 판정(exit 2)" — 마커 TTL 만료 또는 DROP_ID 오기입을
+# 의심해야 하는 상태이며, 이걸 "누수 0건"으로 뭉개면 실제 누수를 놓친 채 통과시키는 false green이 된다.
 judge_leak() {
     local reserved_count="$1"
     local order_count="$2"
-    local leak=$((reserved_count - order_count))
-    if [ "${leak}" -gt 0 ]; then
-        echo "${leak}"
+    local diff=$((reserved_count - order_count))
+    if [ "${diff}" -gt 0 ]; then
+        echo "${diff}"
         return 1
+    fi
+    if [ "${diff}" -lt 0 ]; then
+        echo "${diff}"
+        return 2
     fi
     echo "0"
     return 0
 }
 
-# "주문 수가 k6 202 카운트보다 많으면 응답 불일치 건수를 리포트"
+# "주문 수가 k6 202 카운트보다 많으면 응답 불일치(F3) 건수를 리포트(exit 1)" /
+# "같으면 통과(exit 0)" /
+# "주문 수가 202 카운트보다 적으면 유령 성공을 리포트(exit 1)" — 202는 받았는데 DB 주문이 없는
+# 상태로, F3(주문은 있는데 202를 못 받음)와 원인이 반대라 호출부가 값의 부호로 구분해 별도 메시지를
+# 낸다. ORDER_SINCE_TIMESTAMP 측정 구간 오설정으로도 발생할 수 있다.
 judge_response_mismatch() {
     local order_count="$1"
     local accepted_count="$2"
-    local mismatch=$((order_count - accepted_count))
-    if [ "${mismatch}" -gt 0 ]; then
-        echo "${mismatch}"
-        return 1
+    local diff=$((order_count - accepted_count))
+    if [ "${diff}" -eq 0 ]; then
+        echo "0"
+        return 0
     fi
-    echo "0"
-    return 0
+    echo "${diff}"
+    return 1
 }
 
 # "주문 수가 한정 수량을 초과하면 오버셀로 판정" (기존 게이트 회귀 보호)
@@ -129,10 +154,11 @@ judge_oversell() {
     return 0
 }
 
-# "대상 drop의 예약 키가 0건이면 측정 불가로 판정하고 누수 0으로 오판하지 않는다" (엣지)
-is_leak_measurable() {
-    local reserved_count="$1"
-    [ "${reserved_count}" -gt 0 ]
+# "측정값이 음이 아닌 정수인지 검증한다" — MySQL/Redis/jq 조회가 실패하면 빈 문자열·에러 텍스트가
+# 반환되는데, bash 산술에 그대로 넣으면 0으로 강제 변환되어 인프라 실패가 "누수 0건"·"불일치 0건"
+# 같은 false green으로 둔갑한다. main()은 각 측정 직후 이 함수로 걸러 실패 시 exit 2로 보낸다.
+is_nonneg_integer() {
+    [[ "$1" =~ ^[0-9]+$ ]]
 }
 
 # ============================================================
@@ -153,7 +179,7 @@ run_self_test() {
         self_test_failures=$((self_test_failures + 1))
     fi
 
-    # 2) 예약 마커 수가 주문 수보다 많으면 누수 건수를 차이값으로, 비-0 종료코드
+    # 2) 예약 마커 수가 주문 수보다 많으면 누수 건수를 차이값으로, 종료코드 1(F1 실패)
     #    (실측-리포트.md L64-69: reserved=2000, goods_orders=1357 → leak=643)
     leak_output="$(judge_leak 2000 1357)"; leak_exit=$?
     if [ "${leak_output}" = "643" ] && [ "${leak_exit}" -eq 1 ]; then
@@ -163,7 +189,26 @@ run_self_test() {
         self_test_failures=$((self_test_failures + 1))
     fi
 
-    # 3) 주문 수가 k6 202 카운트보다 많으면 응답 불일치 건수를 리포트, 비-0 종료코드
+    # 2-1) 예약 마커 수가 주문 수보다 적으면 측정 불가로 판정, 종료코드 2 — 마커 TTL 만료 또는
+    #      DROP_ID 오기입 의심 시나리오이며 "누수 0건"으로 오판해선 안 된다 (p1 재발 방지 케이스)
+    leak_output="$(judge_leak 1357 2000)"; leak_exit=$?
+    if [ "${leak_output}" = "-643" ] && [ "${leak_exit}" -eq 2 ]; then
+        log "PASS: judge_leak(1357,2000) -> diff=${leak_output} exit=${leak_exit} (기대: -643/2, 측정 불가)"
+    else
+        warn "FAIL: judge_leak(1357,2000) -> diff=${leak_output} exit=${leak_exit} (기대: -643/2)"
+        self_test_failures=$((self_test_failures + 1))
+    fi
+
+    # 2-2) 대상 drop의 예약 키가 0건(reserved=0)이어도 위와 동일 원리로 측정 불가 판정 (티켓 엣지 케이스)
+    leak_output="$(judge_leak 0 5)"; leak_exit=$?
+    if [ "${leak_output}" = "-5" ] && [ "${leak_exit}" -eq 2 ]; then
+        log "PASS: judge_leak(0,5) -> diff=${leak_output} exit=${leak_exit} (기대: -5/2, 예약 키 0건 측정 불가)"
+    else
+        warn "FAIL: judge_leak(0,5) -> diff=${leak_output} exit=${leak_exit} (기대: -5/2)"
+        self_test_failures=$((self_test_failures + 1))
+    fi
+
+    # 3) 주문 수가 k6 202 카운트보다 많으면 응답 불일치(F3) 건수를 리포트, 종료코드 1
     #    (실측-리포트.md L92: goods_orders=1357, 202=228 → mismatch=1129)
     local mismatch_output mismatch_exit
     mismatch_output="$(judge_response_mismatch 1357 228)"; mismatch_exit=$?
@@ -174,12 +219,22 @@ run_self_test() {
         self_test_failures=$((self_test_failures + 1))
     fi
 
-    # 3-1) 응답 불일치 없음(주문 수 <= 202 카운트)이면 통과
-    mismatch_output="$(judge_response_mismatch 200 228)"; mismatch_exit=$?
+    # 3-1) 주문 수와 202 카운트가 같으면 응답 불일치 없음(통과), 종료코드 0
+    mismatch_output="$(judge_response_mismatch 228 228)"; mismatch_exit=$?
     if [ "${mismatch_output}" = "0" ] && [ "${mismatch_exit}" -eq 0 ]; then
-        log "PASS: judge_response_mismatch(200,228) -> mismatch=${mismatch_output} exit=${mismatch_exit} (기대: 0/0)"
+        log "PASS: judge_response_mismatch(228,228) -> mismatch=${mismatch_output} exit=${mismatch_exit} (기대: 0/0)"
     else
-        warn "FAIL: judge_response_mismatch(200,228) -> mismatch=${mismatch_output} exit=${mismatch_exit} (기대: 0/0)"
+        warn "FAIL: judge_response_mismatch(228,228) -> mismatch=${mismatch_output} exit=${mismatch_exit} (기대: 0/0)"
+        self_test_failures=$((self_test_failures + 1))
+    fi
+
+    # 3-2) 주문 수가 202 카운트보다 적으면 유령 성공(202는 받았는데 DB 주문이 없다) — F3와 원인이
+    #      반대인 별도 실패로, 종료코드는 똑같이 1이지만 값의 부호로 구분한다 (p1 재발 방지 케이스)
+    mismatch_output="$(judge_response_mismatch 200 228)"; mismatch_exit=$?
+    if [ "${mismatch_output}" = "-28" ] && [ "${mismatch_exit}" -eq 1 ]; then
+        log "PASS: judge_response_mismatch(200,228) -> mismatch=${mismatch_output} exit=${mismatch_exit} (기대: -28/1, 유령 성공)"
+    else
+        warn "FAIL: judge_response_mismatch(200,228) -> mismatch=${mismatch_output} exit=${mismatch_exit} (기대: -28/1)"
         self_test_failures=$((self_test_failures + 1))
     fi
 
@@ -202,18 +257,34 @@ run_self_test() {
         self_test_failures=$((self_test_failures + 1))
     fi
 
-    # 5) 대상 drop의 예약 키가 0건이면 측정 불가로 판정 — 누수 0으로 오판하지 않는다(엣지)
-    if is_leak_measurable 0; then
-        warn "FAIL: is_leak_measurable(0) -> true (기대: false/측정 불가)"
+    # 5) 측정값 정수 검증 — 빈 문자열(인프라 조회 실패)은 거부한다 (p2 재발 방지 케이스)
+    if is_nonneg_integer ""; then
+        warn "FAIL: is_nonneg_integer('') -> true (기대: false, 빈 문자열은 거부)"
         self_test_failures=$((self_test_failures + 1))
     else
-        log "PASS: is_leak_measurable(0) -> false (측정 불가로 판정, 누수 0 오판 방지)"
+        log "PASS: is_nonneg_integer('') -> false (빈 문자열 거부 — 인프라 조회 실패를 오진하지 않는다)"
     fi
-    if is_leak_measurable 5; then
-        log "PASS: is_leak_measurable(5) -> true (정상 측정 가능)"
+
+    # 5-1) 음이 아닌 정수는 통과
+    if is_nonneg_integer "2000"; then
+        log "PASS: is_nonneg_integer('2000') -> true"
     else
-        warn "FAIL: is_leak_measurable(5) -> false (기대: true)"
+        warn "FAIL: is_nonneg_integer('2000') -> false (기대: true)"
         self_test_failures=$((self_test_failures + 1))
+    fi
+
+    # 5-2) 음수·비정수 텍스트는 거부
+    if is_nonneg_integer "-5"; then
+        warn "FAIL: is_nonneg_integer('-5') -> true (기대: false, 음수 거부)"
+        self_test_failures=$((self_test_failures + 1))
+    else
+        log "PASS: is_nonneg_integer('-5') -> false (음수 거부)"
+    fi
+    if is_nonneg_integer "ERROR 1045"; then
+        warn "FAIL: is_nonneg_integer('ERROR 1045') -> true (기대: false, MySQL 에러 텍스트 거부)"
+        self_test_failures=$((self_test_failures + 1))
+    else
+        log "PASS: is_nonneg_integer('ERROR 1045') -> false (에러 텍스트 거부)"
     fi
 
     # 6) 예약 키 열거에 KEYS를 사용하지 않는다(SCAN만) — 이 스크립트 자신의 소스를 grep으로 검증
@@ -310,8 +381,13 @@ redis_exec() {
     if [ -n "${COMPOSE_PROJECT_NAME}" ]; then
         compose_project_flag=(-p "${COMPOSE_PROJECT_NAME}")
     fi
-    if (cd "${REPOSITORY_ROOT}" && docker compose "${compose_project_flag[@]+"${compose_project_flag[@]}"}" exec -T "${REDIS_SERVICE_NAME}" \
-            redis-cli "$@") 2>/dev/null; then
+    # stdout을 변수로 캡처만 하고, 성공했을 때만 출력한다 — docker compose exec가 stdout 일부를
+    # 쓴 뒤 비-0으로 종료하면(연결 끊김 등) 그대로 흘려보내던 예전 방식은 아래 컨테이너 직접 폴백이
+    # 같은 SCAN 결과를 다시 방출해 호출부(count_keys_matching)의 줄 수가 중복 집계될 수 있었다.
+    local compose_output
+    if compose_output="$(cd "${REPOSITORY_ROOT}" && docker compose "${compose_project_flag[@]+"${compose_project_flag[@]}"}" exec -T "${REDIS_SERVICE_NAME}" \
+            redis-cli "$@" 2>/dev/null)"; then
+        printf '%s\n' "${compose_output}"
         return 0
     fi
 
@@ -328,10 +404,13 @@ redis_exec() {
 }
 
 # SCAN 기반 키 카운트(KEYS 명령 금지 — private-redis-convention). 매칭 키가 없으면 0을 반환한다.
+# SCAN은 at-least-once만 보장한다 — 커서 순회 도중 슬롯 리해시가 일어나면 같은 키가 두 번 이상
+# 반환될 수 있다(Redis 공식 SCAN guarantees). 커서 페이지마다 줄 수를 그대로 누적하면 실제 키 수보다
+# 부풀려질 수 있으므로, 전체 매칭 키를 모아 정렬 후 중복 제거(sort -u)한 뒤에 센다.
 count_keys_matching() {
     local pattern="$1"
     local cursor="0"
-    local matched_count=0
+    local all_matched_keys=""
     while :; do
         local scan_result
         # 비-tty 파이프 실행 시 redis-cli는 raw 모드로 "커서\n키1\n키2..." 평평한 줄 단위 출력을 낸다.
@@ -343,15 +422,18 @@ count_keys_matching() {
         local matched_keys
         matched_keys="$(echo "${scan_result}" | tail -n +2 | tr -d '"')"
         if [ -n "${matched_keys}" ]; then
-            local line_count
-            line_count="$(echo "${matched_keys}" | grep -c . || true)"
-            matched_count=$((matched_count + line_count))
+            all_matched_keys="${all_matched_keys}
+${matched_keys}"
         fi
         if [ "${cursor}" = "0" ]; then
             break
         fi
     done
-    echo "${matched_count}"
+    if [ -z "${all_matched_keys}" ]; then
+        echo "0"
+        return 0
+    fi
+    echo "${all_matched_keys}" | sort -u | grep -c .
 }
 
 # ============================================================
@@ -370,6 +452,9 @@ measure_remaining() {
 # ============================================================
 # 실측정: DB 주문 수 — goods_orders는 drop_id를 보유하지 않으므로 goods_order_items.product_id로
 #   조인해 스코프를 좁히고, ORDER_SINCE_TIMESTAMP로 이전 실행의 주문 오염을 배제한다.
+#   상태(PENDING 등) 무관하게 전체를 센다 — 설계 §8-2 문구는 "PENDING 수"지만, 이 하네스의 목적은
+#   "이번 실행이 생성한 주문 수"이므로 이후 CONFIRMED 등으로 전이된 주문도 포함하는 것이 의도적
+#   이탈이다(계측 시점에 따라 일부가 이미 상태 전이됐다고 누수·오버셀 판정에서 빠지면 안 된다).
 # ============================================================
 measure_order_count() {
     local mysql_target="$1"
@@ -417,41 +502,72 @@ main() {
     fi
     log "MySQL 접속 경로: ${mysql_target}"
 
+    # 각 측정 직후 정수 검증(is_nonneg_integer)을 거친다 — MySQL/Redis/jq 조회 실패로 빈 문자열·
+    # 에러 텍스트가 반환되면 이후 산술이 0으로 강제 변환되어 인프라 실패를 "누수 0건"·"응답 불일치
+    # 0건" 같은 false green으로 오판할 수 있기 때문이다(p2).
     local reserved_count remaining_value order_count accepted_count
     reserved_count="$(measure_reserved_count)"
+    if ! is_nonneg_integer "${reserved_count}"; then
+        warn "측정 불가: 예약 마커 수(Redis SCAN) 결과가 정수가 아닙니다(값='${reserved_count}') — " \
+             "Redis 접속 실패를 의심하세요"
+        exit 2
+    fi
+
     remaining_value="$(measure_remaining)"
+
     order_count="$(measure_order_count "${mysql_target}")"
+    if ! is_nonneg_integer "${order_count}"; then
+        warn "측정 불가: DB 주문 수(MySQL 조회) 결과가 정수가 아닙니다(값='${order_count}') — " \
+             "MySQL 접속·쿼리 실패를 의심하세요"
+        exit 2
+    fi
+
     if ! accepted_count="$(measure_accepted_count)"; then
         warn "k6 202 카운터를 읽지 못했습니다 — 검증 불가"
+        exit 2
+    fi
+    if ! is_nonneg_integer "${accepted_count}"; then
+        warn "측정 불가: k6 202 카운터(summary JSON) 값이 정수가 아닙니다(값='${accepted_count}') — " \
+             "ACCEPTED_METRIC_NAME='${ACCEPTED_METRIC_NAME}' 오타를 의심하세요"
         exit 2
     fi
 
     log "관측값: reserved(Redis)=${reserved_count} remaining(Redis)=${remaining_value} order(DB)=${order_count} accepted(k6 202)=${accepted_count}"
 
-    local overall_exit=0
+    # 실패(exit 1)와 측정 불가(exit 2)를 분리 추적한다 — 둘 다 발생하면 실제 실패가 우선이다
+    # (측정 불가만 있고 실패가 없을 때만 최종 종료코드 2를 낸다).
+    local any_failure=0
+    local any_unmeasurable=0
 
-    if ! is_leak_measurable "${reserved_count}"; then
-        warn "측정 불가: dropId=${DROP_ID}의 예약 키(goods:limited-drop:${DROP_ID}:reserved:*)가 0건입니다 — " \
-             "누수 0건으로 오판하지 않습니다. dropId·TTL 만료·drop 미생성 여부를 확인하세요."
-        overall_exit=2
-    else
-        local leak_output leak_exit
-        leak_output="$(judge_leak "${reserved_count}" "${order_count}")"; leak_exit=$?
-        if [ "${leak_exit}" -eq 0 ]; then
+    local leak_output leak_exit
+    leak_output="$(judge_leak "${reserved_count}" "${order_count}")"; leak_exit=$?
+    case "${leak_exit}" in
+        0)
             log "판정 1/3 누수(F1): 0건 통과 (reserved=${reserved_count}, order=${order_count})"
-        else
+            ;;
+        1)
             warn "판정 1/3 누수(F1): ${leak_output}건 실패 (reserved=${reserved_count} - order=${order_count})"
-            overall_exit=1
-        fi
-    fi
+            any_failure=1
+            ;;
+        *)
+            warn "판정 1/3 누수(F1): 측정 불가 — reserved(${reserved_count}) < order(${order_count}), 차이=${leak_output}. " \
+                 "예약 마커 TTL 만료(app.limited-drop.reservation.marker-ttl-seconds, 기본 600초 — " \
+                 "confirmSuccess가 no-op이라 성공 건 마커도 남아 시간 경과 시 만료됨) 또는 DROP_ID 오기입을 의심하세요"
+            any_unmeasurable=1
+            ;;
+    esac
 
     local mismatch_output mismatch_exit
     mismatch_output="$(judge_response_mismatch "${order_count}" "${accepted_count}")"; mismatch_exit=$?
     if [ "${mismatch_exit}" -eq 0 ]; then
         log "판정 2/3 응답 불일치(F3): 0건 통과 (order=${order_count}, accepted=${accepted_count})"
-    else
+    elif [ "${mismatch_output}" -gt 0 ]; then
         warn "판정 2/3 응답 불일치(F3): ${mismatch_output}건 실패 (order=${order_count} - accepted=${accepted_count})"
-        overall_exit=1
+        any_failure=1
+    else
+        warn "판정 2/3 유령 성공: ${mismatch_output#-}건 실패 — 202는 받았는데 DB 주문이 없습니다 " \
+             "(order=${order_count}, accepted=${accepted_count}). ORDER_SINCE_TIMESTAMP 측정 구간 오설정도 의심하세요"
+        any_failure=1
     fi
 
     local oversell_output oversell_exit
@@ -460,7 +576,14 @@ main() {
         log "판정 3/3 오버셀(회귀 보호): 없음 통과 (order=${order_count}, limitedQuantity=${LIMITED_QUANTITY})"
     else
         warn "판정 3/3 오버셀(회귀 보호): ${oversell_output}건 실패 — 게이트 회귀! (order=${order_count} - limitedQuantity=${LIMITED_QUANTITY})"
+        any_failure=1
+    fi
+
+    local overall_exit=0
+    if [ "${any_failure}" -eq 1 ]; then
         overall_exit=1
+    elif [ "${any_unmeasurable}" -eq 1 ]; then
+        overall_exit=2
     fi
 
     log "=== 검증 종료 (종료코드 ${overall_exit}) ==="
