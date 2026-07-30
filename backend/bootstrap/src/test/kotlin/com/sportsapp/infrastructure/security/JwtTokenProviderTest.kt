@@ -23,7 +23,7 @@ import java.util.Date
  */
 class JwtTokenProviderTest : BehaviorSpec({
 
-    val hs256Secret = "test-secret-key-for-jwt-token-provider-unit-tests-at-least-32chars"
+    val hmacSecret = "test-secret-key-for-jwt-token-provider-unit-tests-at-least-32chars"
 
     fun generateRsaPemPair(): Pair<String, String> {
         val keyPair = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
@@ -59,7 +59,7 @@ class JwtTokenProviderTest : BehaviorSpec({
 
     Given("사설키·공개키가 모두 주입되고 발급 알고리즘이 RS256인 platform 인스턴스") {
         val (publicKeyPem, privateKeyPem) = generateRsaPemPair()
-        val provider = JwtTokenProvider(hs256Secret, publicKeyPem, privateKeyPem, environmentWithAlgorithm("RS256"))
+        val provider = JwtTokenProvider(hmacSecret, publicKeyPem, privateKeyPem, environmentWithAlgorithm("RS256"))
 
         When("generateAccessToken 으로 토큰을 발급하면") {
             val token = provider.generateAccessToken(userId = 42L, email = "user@example.com", roles = listOf("USER", "ADMIN"))
@@ -88,12 +88,12 @@ class JwtTokenProviderTest : BehaviorSpec({
 
     Given("공개키만 주입되고 사설키가 없는 인스턴스 (platform 외 서비스의 실제 배포 상태 — algorithm=HS256)") {
         val (publicKeyPem, privateKeyPem) = generateRsaPemPair()
-        val platformProvider = JwtTokenProvider(hs256Secret, publicKeyPem, privateKeyPem, environmentWithAlgorithm("RS256"))
+        val platformProvider = JwtTokenProvider(hmacSecret, publicKeyPem, privateKeyPem, environmentWithAlgorithm("RS256"))
         // platform 외 서비스는 발급하지 않으므로(검증 전용) algorithm은 기본값 HS256 그대로 둔다 —
         // RS256을 발급하지 않을 인스턴스에 algorithm=RS256을 주는 것은 그 자체로 오설정이며,
         // 그 경우(부팅 시점 거부)는 별도 Given("사설키 없이 algorithm=RS256로 잘못 구성된 인스턴스")에서 다룬다.
         val environment = environmentWithAlgorithm("HS256")
-        val publicOnlyProvider = JwtTokenProvider(hs256Secret, publicKeyPem, "", environment)
+        val publicOnlyProvider = JwtTokenProvider(hmacSecret, publicKeyPem, "", environment)
 
         When("platform 이 발급한 RS256 토큰을 검증하면") {
             val tokenFromPlatform = platformProvider.generateAccessToken(1L, "a@example.com", listOf("USER"))
@@ -122,7 +122,7 @@ class JwtTokenProviderTest : BehaviorSpec({
 
         When("JwtTokenProvider 를 생성하면") {
             val exceptionMessage = shouldThrow<IllegalStateException> {
-                JwtTokenProvider(hs256Secret, publicKeyPem, "", environmentWithAlgorithm("RS256"))
+                JwtTokenProvider(hmacSecret, publicKeyPem, "", environmentWithAlgorithm("RS256"))
             }.message.orEmpty()
 
             Then("부팅 시점에 즉시 실패한다 — 조용히 HS256으로 계속 발급하는 사고 방지") {
@@ -132,15 +132,15 @@ class JwtTokenProviderTest : BehaviorSpec({
             Then("예외 메시지에 시크릿·키 값이 그대로 노출되지 않는다 — 보안") {
                 exceptionMessage.contains(privateKeyPem) shouldBe false
                 exceptionMessage.contains(publicKeyPem) shouldBe false
-                exceptionMessage.contains(hs256Secret) shouldBe false
+                exceptionMessage.contains(hmacSecret) shouldBe false
             }
         }
     }
 
     Given("전환기 설정 (검증은 HS256+RS256 이중 지원)") {
         val (publicKeyPem, privateKeyPem) = generateRsaPemPair()
-        val hs256IssuingProvider = JwtTokenProvider(hs256Secret, publicKeyPem, privateKeyPem, environmentWithAlgorithm("HS256"))
-        val rs256IssuingProvider = JwtTokenProvider(hs256Secret, publicKeyPem, privateKeyPem, environmentWithAlgorithm("RS256"))
+        val hs256IssuingProvider = JwtTokenProvider(hmacSecret, publicKeyPem, privateKeyPem, environmentWithAlgorithm("HS256"))
+        val rs256IssuingProvider = JwtTokenProvider(hmacSecret, publicKeyPem, privateKeyPem, environmentWithAlgorithm("RS256"))
 
         When("기존 HS256 토큰과 신규 RS256 토큰이 함께 존재하면") {
             val legacyHs256Token = hs256IssuingProvider.generateAccessToken(7L, "legacy@example.com", listOf("USER"))
@@ -164,7 +164,7 @@ class JwtTokenProviderTest : BehaviorSpec({
         // 성립하는 인공적 상황이다.
         val (publicKeyPem, privateKeyPem) = generateRsaPemPair()
         val environment = environmentWithAlgorithm("RS256")
-        val provider = JwtTokenProvider(hs256Secret, publicKeyPem, privateKeyPem, environment)
+        val provider = JwtTokenProvider(hmacSecret, publicKeyPem, privateKeyPem, environment)
 
         When("설정값을 (테스트 안에서만) RS256 → HS256 으로 바꾸고 각각 발급하면") {
             val rs256Token = provider.generateAccessToken(9L, "rollback@example.com", listOf("USER"))
@@ -182,7 +182,7 @@ class JwtTokenProviderTest : BehaviorSpec({
         val (publicKeyPem, _) = generateRsaPemPair()
         val foreignKeyPair = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
         // 검증 전용 인스턴스(사설키 없음) — algorithm은 발급하지 않는 인스턴스의 기본값 HS256을 쓴다.
-        val provider = JwtTokenProvider(hs256Secret, publicKeyPem, "", environmentWithAlgorithm("HS256"))
+        val provider = JwtTokenProvider(hmacSecret, publicKeyPem, "", environmentWithAlgorithm("HS256"))
         val forgedToken = Jwts.builder()
             .subject("999")
             .id("forged-jti")
@@ -200,7 +200,7 @@ class JwtTokenProviderTest : BehaviorSpec({
 
     Given("만료된 토큰") {
         val (publicKeyPem, privateKeyPem) = generateRsaPemPair()
-        val provider = JwtTokenProvider(hs256Secret, publicKeyPem, privateKeyPem, environmentWithAlgorithm("RS256"))
+        val provider = JwtTokenProvider(hmacSecret, publicKeyPem, privateKeyPem, environmentWithAlgorithm("RS256"))
 
         When("만료 시각이 지난 RS256 토큰을 검증하면") {
             // provider 가 실제로 소유한 사설키로 서명하되 만료 시각만 과거로 강제한다
@@ -223,12 +223,12 @@ class JwtTokenProviderTest : BehaviorSpec({
         When("JwtTokenProvider 를 생성하면") {
             Then("부팅이 성공한다 — 키 미주입이 곧 부팅 실패가 아니다") {
                 shouldNotThrowAny {
-                    JwtTokenProvider(hs256Secret, "", "", environmentWithAlgorithm("HS256"))
+                    JwtTokenProvider(hmacSecret, "", "", environmentWithAlgorithm("HS256"))
                 }
             }
         }
 
-        val provider = JwtTokenProvider(hs256Secret, "", "", environmentWithAlgorithm("HS256"))
+        val provider = JwtTokenProvider(hmacSecret, "", "", environmentWithAlgorithm("HS256"))
 
         When("HS256 으로 토큰을 발급하고 검증하면") {
             val token = provider.generateAccessToken(3L, "hs-only@example.com", listOf("USER"))
@@ -258,8 +258,8 @@ class JwtTokenProviderTest : BehaviorSpec({
 
     Given("실서비스에 이미 발급된 레거시 HS384/HS512 토큰 (JJWT 키 길이 기반 알고리즘 자동선택 결함이 있던 시절의 실제 운영 토큰 형태)") {
         val (publicKeyPem, privateKeyPem) = generateRsaPemPair()
-        val provider = JwtTokenProvider(hs256Secret, publicKeyPem, privateKeyPem, environmentWithAlgorithm("HS256"))
-        val hmacKey = Keys.hmacShaKeyFor(hs256Secret.toByteArray(Charsets.UTF_8))
+        val provider = JwtTokenProvider(hmacSecret, publicKeyPem, privateKeyPem, environmentWithAlgorithm("HS256"))
+        val hmacKey = Keys.hmacShaKeyFor(hmacSecret.toByteArray(Charsets.UTF_8))
 
         listOf(Jwts.SIG.HS384, Jwts.SIG.HS512).forEach { legacyAlgorithm ->
             When("${legacyAlgorithm.id} 로 서명된 레거시 토큰을 검증하면") {
@@ -281,7 +281,7 @@ class JwtTokenProviderTest : BehaviorSpec({
 
     Given("빈 토큰 문자열") {
         val (publicKeyPem, privateKeyPem) = generateRsaPemPair()
-        val provider = JwtTokenProvider(hs256Secret, publicKeyPem, privateKeyPem, environmentWithAlgorithm("RS256"))
+        val provider = JwtTokenProvider(hmacSecret, publicKeyPem, privateKeyPem, environmentWithAlgorithm("RS256"))
 
         When("validateToken 을 호출하면") {
             Then("false 를 반환한다") {
@@ -292,7 +292,7 @@ class JwtTokenProviderTest : BehaviorSpec({
 
     Given("Refresh Token 생성 시") {
         val (publicKeyPem, privateKeyPem) = generateRsaPemPair()
-        val provider = JwtTokenProvider(hs256Secret, publicKeyPem, privateKeyPem, environmentWithAlgorithm("RS256"))
+        val provider = JwtTokenProvider(hmacSecret, publicKeyPem, privateKeyPem, environmentWithAlgorithm("RS256"))
 
         When("generateRefreshToken 을 두 번 호출하면") {
             val token1 = provider.generateRefreshToken()
