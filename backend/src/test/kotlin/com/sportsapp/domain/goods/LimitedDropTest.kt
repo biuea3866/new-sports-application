@@ -3,6 +3,7 @@ package com.sportsapp.domain.goods
 import com.sportsapp.domain.goods.entity.LimitedDrop
 import com.sportsapp.domain.goods.entity.LimitedDropStatus
 import com.sportsapp.domain.goods.event.LimitedDropOversoldEvent
+import com.sportsapp.domain.goods.event.LimitedDropUnderRestoredEvent
 import com.sportsapp.domain.goods.exception.InvalidLimitedDropStateException
 import com.sportsapp.domain.goods.exception.LimitedDropClosedException
 import com.sportsapp.domain.goods.exception.LimitedDropSoldOutException
@@ -300,6 +301,30 @@ class LimitedDropTest : BehaviorSpec({
             limitedDrop.pullDomainEvents()
 
             limitedDrop.pullDomainEvents().size shouldBe 0
+        }
+    }
+
+    Given("OPEN 상태의 회차에서 언더셀(고립 예약)이 복원된 상황") {
+        Then("[FIX-04] recordUnderRestored 호출 시 restoredCount·staleReservationCount를 담은 LimitedDropUnderRestoredEvent가 적재된다") {
+            val limitedDrop = LimitedDrop.reconstitute(
+                productId = 42L,
+                openAt = ZonedDateTime.now().minusMinutes(1),
+                closeAt = ZonedDateTime.now().plusDays(1),
+                limitedQuantity = 100,
+                perUserLimit = 1,
+                status = LimitedDropStatus.OPEN,
+            )
+
+            limitedDrop.recordUnderRestored(restoredCount = 2, staleReservationCount = 3)
+            val events = limitedDrop.pullDomainEvents()
+
+            events.size shouldBe 1
+            val event = events[0] as LimitedDropUnderRestoredEvent
+            event.productId shouldBe 42L
+            event.restoredCount shouldBe 2
+            event.staleReservationCount shouldBe 3
+            event.source shouldBe "under-sell-reconciliation"
+            event.severity shouldBe "warning"
         }
     }
 })

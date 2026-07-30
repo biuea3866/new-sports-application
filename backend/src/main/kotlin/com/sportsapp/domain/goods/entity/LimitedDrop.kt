@@ -3,6 +3,7 @@ package com.sportsapp.domain.goods.entity
 import com.sportsapp.domain.common.DomainEvent
 import com.sportsapp.domain.common.JpaAuditingBase
 import com.sportsapp.domain.goods.event.LimitedDropOversoldEvent
+import com.sportsapp.domain.goods.event.LimitedDropUnderRestoredEvent
 import com.sportsapp.domain.goods.exception.InvalidLimitedDropStateException
 import com.sportsapp.domain.goods.exception.LimitedDropClosedException
 import com.sportsapp.domain.goods.exception.LimitedDropSoldOutException
@@ -122,6 +123,24 @@ class LimitedDrop private constructor(
                 dropId = id,
                 productId = productId,
                 detectedQuantity = detectedQuantity,
+            )
+        )
+    }
+
+    /**
+     * 리컨실리에이션 언더셀 복원 시 이벤트를 적재한다(FIX-04) — 판정은
+     * [LimitedDropDomainService.reconcileDrift][com.sportsapp.domain.goods.service.LimitedDropDomainService]가
+     * 예약 마커는 있으나 대응 주문이 없고 유예 시간이 지난 "고립 예약"을 감지해
+     * [com.sportsapp.domain.goods.gateway.DropReservationStore.restoreOrphanedReservation]로
+     * 복원한 뒤 호출한다. DomainService가 이후 [pullDomainEvents]로 꺼내 발행한다.
+     */
+    fun recordUnderRestored(restoredCount: Int, staleReservationCount: Int) {
+        domainEvents.add(
+            LimitedDropUnderRestoredEvent(
+                dropId = id,
+                productId = productId,
+                restoredCount = restoredCount,
+                staleReservationCount = staleReservationCount,
             )
         )
     }

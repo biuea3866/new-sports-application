@@ -13,6 +13,7 @@ import com.sportsapp.domain.goods.exception.LimitedDropThrottledException
 import com.sportsapp.domain.goods.exception.LimitedDropTooEarlyException
 import com.sportsapp.domain.goods.gateway.DropReservationCompensator
 import com.sportsapp.domain.goods.gateway.DropReservationStore
+import com.sportsapp.domain.goods.gateway.PendingReservation
 import com.sportsapp.domain.goods.gateway.RejectKind
 import com.sportsapp.domain.goods.gateway.ReservationResult
 import com.sportsapp.domain.goods.repository.LimitedDropRepository
@@ -21,6 +22,7 @@ import java.math.BigDecimal
 import java.time.Duration
 import java.time.ZonedDateTime
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.dao.DataAccessException
 import org.springframework.stereotype.Service
 
@@ -40,6 +42,20 @@ class LimitedDropDomainService(
     private val goodsDomainService: GoodsDomainService,
     private val domainEventPublisher: DomainEventPublisher,
     private val dropReservationCompensator: DropReservationCompensator,
+    /**
+     * FIX-04 롤백 스위치 — OFF면 언더셀 복원을 건너뛰고 기존 오버셀 감지만 수행한다.
+     * `application.yml`에 키를 추가하지 않는다 — env(`APP_LIMITED_DROP_RECONCILIATION_UNDER_SELL_ENABLED`)로만
+     * 재정의한다(같은 wave의 yml 소유권 충돌 방지, FIX-02/FIX-03 선례).
+     */
+    @Value("\${app.limited-drop.reconciliation.under-sell-enabled:true}")
+    private val underSellReconciliationEnabled: Boolean = true,
+    /**
+     * 예약 생성 후 이 시간(초)이 지나야 "고립 예약" 후보로 본다. 진행 중인 요청을 오판해 취소하면
+     * 오버셀이 되므로, 백엔드 최대 요청 수명(풀 대기 5s + 재시도 예산 약 2s, FIX-03 기준 약 7s)보다
+     * 충분히 커야 한다. 기본 60초.
+     */
+    @Value("\${app.limited-drop.reconciliation.under-sell-grace-seconds:60}")
+    private val underSellGraceSeconds: Long = 60,
 ) {
     private val log = LoggerFactory.getLogger(LimitedDropDomainService::class.java)
 
@@ -118,11 +134,19 @@ class LimitedDropDomainService(
     }
 
     /**
-     * Redis remaining ↔ DB stock 드리프트를 판정해 오버셀 감지 시 이벤트를 적재·발행한다.
-     * 오버셀 판정: 계산된 판매량(limitedQuantity - remaining)이 limitedQuantity를 초과하거나,
-     * 상품 재고가 음수로 정합이 깨진 경우.
+     * Redis remaining ↔ DB stock/주문 드리프트를 판정한다 — 오버셀(FIX-04 이전부터, 초과 판매)과
+     * 언더셀(FIX-04, 예약-주문 불일치로 고립된 예약) 두 방향을 모두 감지한다.
      */
     private fun reconcileDrift(drop: LimitedDrop) {
+        reconcileOversell(drop)
+        reconcileUnderSell(drop)
+    }
+
+    /**
+     * 오버셀 판정: 계산된 판매량(limitedQuantity - remaining)이 limitedQuantity를 초과하거나,
+     * 상품 재고가 음수로 정합이 깨진 경우. 감지 시 이벤트를 적재·발행한다.
+     */
+    private fun reconcileOversell(drop: LimitedDrop) {
         val remaining = dropReservationStore.remaining(drop.id) ?: drop.limitedQuantity
         val stockQuantity = goodsDomainService.getProductWithStock(drop.productId).stockQuantity
         val computedSold = drop.limitedQuantity - remaining
@@ -132,6 +156,32 @@ class LimitedDropDomainService(
         drop.recordOversold(detectedQuantity)
         domainEventPublisher.publishAll(drop.pullDomainEvents())
     }
+
+    /**
+     * 언더셀(예약-주문 불일치) 판정 (FIX-04). 예약 마커는 있으나 대응 `goods_orders` 행이 없고
+     * 유예 시간([underSellGraceSeconds])이 지난 "고립 예약"만 [DropReservationStore.restoreOrphanedReservation]로
+     * 복원한다 — 진행 중인 요청(유예 이내)은 [DropReservationStore.scanStaleReservations]가 이미 제외한다.
+     *
+     * 복원 대상이 없으면 Redis 쓰기 명령을 발행하지 않는다(early return).
+     */
+    private fun reconcileUnderSell(drop: LimitedDrop) {
+        if (!underSellReconciliationEnabled) return
+        val staleReservations = dropReservationStore.scanStaleReservations(drop.id, underSellGraceSeconds)
+        if (staleReservations.isEmpty()) return
+        val orphaned = staleReservations.filterNot { goodsDomainService.hasOrderFor(it.idempotencyKey) }
+        if (orphaned.isEmpty()) return
+        val restoredCount = orphaned.count { restoreOrphan(drop.id, it) }
+        drop.recordUnderRestored(restoredCount, orphaned.size)
+        domainEventPublisher.publishAll(drop.pullDomainEvents())
+    }
+
+    private fun restoreOrphan(dropId: Long, reservation: PendingReservation): Boolean =
+        dropReservationStore.restoreOrphanedReservation(
+            dropId = dropId,
+            userId = reservation.userId,
+            quantity = reservation.quantity,
+            idempotencyKey = reservation.idempotencyKey,
+        )
 
     private fun findById(dropId: Long): LimitedDrop =
         limitedDropRepository.findById(dropId) ?: throw LimitedDropNotFoundException(dropId)

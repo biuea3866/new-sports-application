@@ -93,6 +93,20 @@ class DropReservationStoreTest : BehaviorSpec({
                 acquired shouldBe true
             }
         }
+
+        When("[FIX-04] scanStaleReservations/restoreOrphanedReservation 을 호출하면") {
+            Then("언더셀 대사 전용 시그니처가 계약과 일치함을 확인한다") {
+                every { store.scanStaleReservations(any(), any()) } returns
+                    listOf(PendingReservation(idempotencyKey = "idem-1", userId = 100L, quantity = 1))
+                every { store.restoreOrphanedReservation(any(), any(), any(), any()) } returns true
+
+                val staleReservations = store.scanStaleReservations(1L, 60L)
+                val restored = store.restoreOrphanedReservation(1L, 100L, 1, "idem-1")
+
+                staleReservations shouldBe listOf(PendingReservation(idempotencyKey = "idem-1", userId = 100L, quantity = 1))
+                restored shouldBe true
+            }
+        }
     }
 
     Given("컴파일된 com.sportsapp 클래스 전체") {

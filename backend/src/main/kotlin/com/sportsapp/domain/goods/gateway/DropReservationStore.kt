@@ -60,4 +60,20 @@ interface DropReservationStore {
 
     /** FR-9 거부 집계 조회. 카운터가 기록되지 않았으면 0으로 채워 반환한다. */
     fun rejectCounts(dropId: Long): RejectCounts
+
+    /**
+     * 언더셀 대사(reconciliation, FIX-04)용 — [dropId]의 활성 예약 마커를 열거한다.
+     * 반드시 `SCAN`으로 구현한다 (`KEYS` 금지, 프로덕션 블로킹 방지).
+     *
+     * 마커 생성 후 [graceSeconds] 이상 경과한 예약만 반환한다 — 진행 중인 요청(유예 시간 이내)을
+     * 오판해 취소하면 오버셀이 되므로, 아직 유예 시간이 지나지 않은 예약은 이 목록에서 제외한다.
+     */
+    fun scanStaleReservations(dropId: Long, graceSeconds: Long): List<PendingReservation>
+
+    /**
+     * 언더셀 대사(reconciliation, FIX-04) 전용 복원 — [cancel]과 동일한 `cancel.lua` 실행 경로를
+     * 재사용하되, 실제로 마커가 존재해 remaining이 복원됐는지 여부를 반환한다(관측 지표 산출용).
+     * 멱등 — 마커가 이미 없으면(레이스로 이미 처리됨) false를 반환하고 상태를 변경하지 않는다.
+     */
+    fun restoreOrphanedReservation(dropId: Long, userId: Long, quantity: Int, idempotencyKey: String): Boolean
 }

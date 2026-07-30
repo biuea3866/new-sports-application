@@ -158,6 +158,12 @@ class GoodsDomainService(
         return product
     }
 
+    /**
+     * 언더셀 대사(reconciliation, FIX-04)용 — idempotencyKey에 대응하는 `goods_orders` 행 존재 여부.
+     * [createPendingOrder]의 내부 멱등 조회와 동일한 유니크 인덱스(`idempotency_key`)를 사용한다.
+     */
+    fun hasOrderFor(idempotencyKey: String): Boolean = goodsOrderRepository.findByIdempotencyKey(idempotencyKey) != null
+
     fun cancelPendingOrder(orderId: Long) {
         val order = goodsOrderRepository.findById(orderId)
             ?: throw GoodsOrderNotFoundException(orderId)
