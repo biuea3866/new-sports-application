@@ -127,22 +127,24 @@ flowchart LR
 | community | CommunityCreatedEvent / CommunityMemberJoinedEvent / CommunityMemberLeftEvent | **message** → ProvisionContextRoom / JoinContextRoom / LeaveContextRoom (`CommunityChatIntegrationEventWorker`, 크로스 도메인) |
 | recruitment | ApplicationRefundRequestedEvent | recruitment → `RecruitmentRefundEventWorker` → `RecruitmentRefundGateway.requestRefund` (UseCase 미경유, 게이트웨이 직접 주입) |
 
-**③ 동기 호출 — application UseCase가 타 컨텍스트 DomainService 주입 (전수, 2026-07-30 실측)**
+**③ 동기 호출 — application 레이어가 타 컨텍스트 DomainService 주입 (전수, 2026-07-30 실측)**
 
 소비자 `application/{context}/**` 에서 `domain.{other}.service.*` 를 생성자 주입하는 쌍을 전수 스캔한 결과입니다(괄호 = 주입 파일 수). `domain.common` 은 공유 커널이라 제외합니다.
 
-| 소비자 → 공급자 | 파일 | 성격 |
+| 소비자 → 공급자 | 주입 지점 | 성격 |
 |---|---|---|
 | booking → payment (3) / goods → payment (1) / ticketing → payment (1) / recruitment → payment (1) | 6 | 결제 개시 (`createPending`·`findStatuses`) — Customer/Supplier |
-| post → community (5) | 5 | **쓰기 경로 인가** — `requireActiveMember`. 멤버십 검증을 community 가 소유 |
+| post → community (5) | 5 | 멤버십·가시성 인가 — **쓰기 2건**(`requireActiveMember`) + **읽기 3건**(`getCommunity` 가시성 재판정, `@Transactional(readOnly = true)`). 게시글 상세·목록이라는 **핫 읽기 경로가 요청마다 동기 호출**한다 |
 | community → message (3) | 3 | 채팅방 표시정보 조회 (`RoomContextQueryService`) |
 | recruitment → community (2) | 2 | 커뮤니티 조회 (Entity 참조 없이 `communityId` 로만 연결) |
 | facility → booking (1) | 1 | `CreateProgramSessionUseCase` — Program 회차를 Slot 으로 생성. **ACL 게이트웨이가 아니라 `SlotDomainService` 직접 주입** |
-| dashboard → booking(2)·goods(2)·ticketing(2)·facility(1)·user(1) | 8 | 읽기 집계 (R3 화이트리스트, Conformist) |
-| catalog → facility·goods·recruitment·ticketing (각 1) | 4 | 읽기 조합 파사드 |
-| order → booking·goods·recruitment·ticketing (각 1) | 4 | 읽기 조합 파사드 |
+| dashboard → booking(2)·goods(2)·ticketing(2)·facility(1)·user(1) | 8 (2개 파일) | 읽기 집계 (R3 화이트리스트, Conformist) |
+| catalog → facility·goods·recruitment·ticketing (각 1) | 4 (1개 파일) | 읽기 조합 파사드 |
+| order → booking·goods·recruitment·ticketing (각 1) | 4 (1개 파일) | 읽기 조합 파사드 |
 | partner → user (1) | 1 | 연동 계정 프로비저닝 **쓰기** (SAGA, R3 화이트리스트) |
 
+> `infrastructure/security/**` 의 인증 필터(`McpTokenAuthenticationFilter`·`PartnerApiKeyAuthenticationFilter`)도 타 컨텍스트 DomainService 를 주입하지만, 바운디드 컨텍스트가 아니라 **횡단 인증 레이어**라 이 표의 대상이 아닙니다.
+>
 > `facility → booking` 은 이 표(직접 주입)와 아래 ④(ACL `SlotQueryGateway`) **양쪽에 존재**합니다 — 조회는 게이트웨이 경유, Program 회차 생성은 DomainService 직접 주입으로 경로가 갈립니다.
 
 **④ 확정 흐름과 소비자 ACL 게이트웨이 (infra가 브리지)**
