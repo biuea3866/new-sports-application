@@ -50,18 +50,26 @@ APP_JWT_PUBLIC_KEY=$(awk 'BEGIN{ORS="\\n"} {print}' jwt_public.pem)
 ```yaml
 app:
   jwt:
-    algorithm: ${APP_JWT_ALGORITHM:HS256}   # 전환 단계별 값 — 표 참고
-    public-key: ${APP_JWT_PUBLIC_KEY}       # 기본값 없음 — 미주입 시 부팅 실패
+    algorithm: ${APP_JWT_ALGORITHM:HS256}   # 전환 단계별 값 — 표 참고. 값 변경은 컨테이너 재기동 필요
+    public-key: ${APP_JWT_PUBLIC_KEY:}      # 기본값 빈 문자열 — 미주입 시 RS256 검증 비활성(HS256만 검증, 부팅 정상)
     private-key: ${APP_JWT_PRIVATE_KEY:}    # 기본값 빈 문자열 — platform 외 서비스는 비움
 ```
+
+- `APP_JWT_ALGORITHM=RS256`으로 설정했는데 `APP_JWT_PRIVATE_KEY`가 없으면 부팅이 즉시 실패한다
+  (조용히 HS256으로 계속 발급하는 사고 방지).
 
 ## 4. 전환 단계별 `APP_JWT_ALGORITHM` 값
 
 | 단계 | 값 | 비고 |
 |---|---|---|
-| 1 | `HS256` | 기본값. 검증은 HS256+RS256 항상 이중 지원 |
+| 1 | `HS256` | 기본값. 공개키 미주입 상태에서도 부팅 정상(RS256 검증 비활성, HS256만 검증) |
 | 2 | `RS256` | 1단계 무사고 확인 후 platform에서만 전환 |
 | 3 | `RS256` (검증도 RS256 단독) | 기존 HS256 토큰 최대 유효기간(액세스 토큰 30분) 경과 후, `JwtTokenProvider.parseClaims`의 HS256 fallback 코드를 제거 |
+
+**전환에는 컨테이너 재기동이 필요하다.** 이 배포 형태(docker compose)는 config server·
+`@RefreshScope`를 도입하지 않아 `APP_JWT_ALGORITHM` 같은 OS 환경변수는 프로세스 시작 시점에
+고정된다 — 값을 바꾸려면 해당 서비스 컨테이너를 재기동해야 하고, 롤백도 동일하게 이전 값으로
+재기동한다("재기동으로 즉시 롤백"이지 "재기동 없는 전환"이 아니다).
 
 ## 5. 로컬 개발 기본 키 금지
 

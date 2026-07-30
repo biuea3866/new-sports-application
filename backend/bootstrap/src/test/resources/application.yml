@@ -144,45 +144,13 @@ app:
   jwt:
     secret: test-secret-key-for-integration-tests-that-is-at-least-32-chars-long
     algorithm: HS256
-    public-key: |
-      -----BEGIN PUBLIC KEY-----
-      MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu1udrfHT4UOBo+TcVO3P
-      EDhBeMMqW3E9a3S7tAlhTjolZ9FSqSl8h84u/BjV67Wx5ChpMFALCG65fTDgtTva
-      rzG8h/9uvlQzw5dB7SbRYJoaWTaZaFYpoFIsSl8p/fE06JhLv1/dl9vSSo3gzQIs
-      PLDbH08iYrVk6GIBCUqBwGJwPKrfpEe9yjNezZhh5ZROpmLLGEQRYDB2onVVW3xC
-      1lnlTke7fCyM+qY5JilPUK3RrefR7+Lw8zv6LEnriePCsI8W61pyX3SM+BB6smpM
-      spbtdwSZ+jtwemX/j+srLHy8FGxKWqQ5IdCipUabbbasPBNkuB86amnAKelYUiFz
-      mwIDAQAB
-      -----END PUBLIC KEY-----
-    private-key: |
-      -----BEGIN PRIVATE KEY-----
-      MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7W52t8dPhQ4Gj
-      5NxU7c8QOEF4wypbcT1rdLu0CWFOOiVn0VKpKXyHzi78GNXrtbHkKGkwUAsIbrl9
-      MOC1O9qvMbyH/26+VDPDl0HtJtFgmhpZNploVimgUixKXyn98TTomEu/X92X29JK
-      jeDNAiw8sNsfTyJitWToYgEJSoHAYnA8qt+kR73KM17NmGHllE6mYssYRBFgMHai
-      dVVbfELWWeVOR7t8LIz6pjkmKU9QrdGt59Hv4vDzO/osSeuJ48KwjxbrWnJfdIz4
-      EHqyakyylu13BJn6O3B6Zf+P6yssfLwUbEpapDkh0KKlRptttqw8E2S4HzpqacAp
-      6VhSIXObAgMBAAECggEAG0QSdul+FcbOu4zHWd6/5xLgyFPSursInrY+yM0iqZFB
-      t1GZr3+XnWXupYZxv1tSV6tf34WOjXwbp3HxCb77rMpWrw4HzlAPtnOxRvOCvgW/
-      NuOAwNPlO+0pf+tIf6nWMtFTGLc5VuvJN0tdf0hFKtHsGarZDLdsR3tXvkPnDRmm
-      j4ac8yPFvhvyM4DYfqqnrl3+5Z+qSvjietOX4QsV9vQ2yNYwj3zub0WkQnMvhPLu
-      wHjCWwohUO9SnCPz91/Kh4FaUTe0XyG2yl2ixSACkbf2a96q8s/cHv2FYN5l9ebK
-      Zf4DLQ0pYlF/s40aDIZbqei5nHYS0Uojbn2k1ig76QKBgQDdLoMvt6YeQUhhf55Z
-      CPM64FOOZEaT+VwdL0a6PxpztGuPRqvdooklYXZMTjo/Zp/5wnKPzytg9NxwYMpB
-      wj5AH4+Un0kazVKTrijwy8L8V02X2FcqIokVuvVKA14evuGQztrHePQvEr6pTOKO
-      qZ+SQG1XyB63CqwMoNV/kD198wKBgQDY2gY645RvDIsMx7AWKVMUhk5xCmeK4sPU
-      bn8LSng/kfZXgTAPkbCqmj7SQS41GXUR9BZWmYtHK8/eTlzAyaA5kC69v72AIfJb
-      9KGZh3P2B3JKawTPgYOZOaip468nt8MguplwOZ/ee3xfctya+1iFuw7JAqNu3u4k
-      5Y6+qNGVuQKBgATW8bPnltDuqMDJZBOaqIfPRMTG2Ox/9k4FLM0CeHezqO7XowcU
-      eV/CBC6jP48HldSHNq6C3/YdJX2oAITz1RzeE+wymAzoFTh6BRdPvhJ7bo02BKI9
-      YzaAgsF91V9i2dirTgozUVR+WoGl1wc8Guu+USYskM98gks8ca963n2VAoGBAI5a
-      Yaia6UAVDdrv44pIyn84w5m1aM9lmYSEnOW+lz20BfDfn7s4uq7j3sWLgFffRFjq
-      0Rc8aI/qFOUsr/rm4UWofuaVTkMlBcKTztnIb7lcngx4QIovzUHy9ePA0aTTH0cG
-      998SFP6qNbU649LhmPUBHO2by8nmkpKqF5DVpfARAoGAPWWKjygEX21NS9guQWnj
-      D0KmeaLMwwDVflAAooEKxFf3ip++cQsT4O4Qq1uhOz2h2Bdifmc4axyelTM1pGPi
-      kQNs73ufrIQ0NulSvuls9T5xqhpBfkNw3X4zs2xo8NmaTBANoVnNiUVlSTk+ZCbp
-      qOL/HXM2vnrJdgNU+z5ocGo=
-      -----END PRIVATE KEY-----
+    # W1-05: 실 RSA 키를 저장소에 커밋하지 않는다(티켓 "로컬 개발용 기본 키를 커밋하지 않는다").
+    # 기본값은 빈 문자열 — algorithm이 HS256(위)인 이 테스트 스위트는 RS256 검증을 시도하지 않으므로
+    # 발급·검증 모두 영향 없다. BaseIntegrationTest(공용 Mongo 기반 베이스)를 사용하는 스펙은
+    # ApplicationContextInitializer가 매 컨텍스트마다 새로 생성한 RSA 키를 인라인 프로퍼티로
+    # override한다 — BaseJpaIntegrationTest 등 그 외 베이스는 이 빈 기본값을 그대로 쓴다.
+    public-key: ""
+    private-key: ""
   limited-drop:
     reservation:
       semaphore-permits: 200

@@ -19,20 +19,19 @@ import org.springframework.security.core.context.SecurityContextHolder
  * 확인하는 회귀 테스트다. 필터 자체는 알고리즘을 모른다 — [JwtIssuer] 구현(RS256/HS256)에
  * 무관하게 jti 기준 블랙리스트 조회만 수행해야 한다.
  *
- * SecurityContextHolder 전략을 MODE_INHERITABLETHREADLOCAL 로 전환한다 — Kotest 테스트 실행 스레드와
- * 필터가 doFilterInternal 을 실행하는 스레드가 달라질 수 있어(McpTokenAuthenticationFilterTest 선례와 동일)
- * 기본 MODE_THREADLOCAL 로는 Then 블록에서 컨텍스트를 읽지 못한다. 인증 성공 케이스는 filterChain.doFilter
- * 모킹 콜백 시점에 SecurityContext 를 캡처해 검증한다(같은 실행 스택 안에서 읽기 위함).
+ * SecurityContext 는 `filterChain.doFilter` 모킹 콜백 안에서 캡처한다 — `filter.doFilter(...)` 호출과
+ * 캡처가 같은 호출 스택(같은 스레드) 안에서 일어나므로 `SecurityContextHolder`의 기본 전략
+ * (`MODE_THREADLOCAL`)만으로 충분하다(제거 후에도 GREEN 확인 — `McpTokenAuthenticationFilterTest`의
+ * `MODE_INHERITABLETHREADLOCAL` 전환은 이 스펙에는 필요하지 않았다). `beforeEach`/`afterEach`는
+ * 컨텍스트 격리만 담당한다.
  */
 class JwtAuthenticationFilterTest : BehaviorSpec({
 
     beforeEach {
-        SecurityContextHolder.setStrategyName(SecurityContextHolder.MODE_INHERITABLETHREADLOCAL)
         SecurityContextHolder.clearContext()
     }
     afterEach {
         SecurityContextHolder.clearContext()
-        SecurityContextHolder.setStrategyName(SecurityContextHolder.MODE_THREADLOCAL)
     }
 
     fun requestWithBearerToken(token: String): MockHttpServletRequest =
