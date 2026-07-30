@@ -251,7 +251,16 @@ app:
       marker-ttl-seconds: ${LIMITED_DROP_MARKER_TTL_SECONDS:600}
   jwt:
     # 로컬 개발 기본값. 운영에서는 반드시 APP_JWT_SECRET 환경변수로 override 한다.
+    # W1-05: HS256 검증은 무중단 전환(3단계) 종료 전까지 유지한다 — JwtTokenProvider 참고.
     secret: ${APP_JWT_SECRET:local-dev-only-jwt-secret-key-change-me-0123456789abcdef0123456789abcdef}
+    # W1-05: 발급 알고리즘 전환 스위치. HS256(1단계 기본) → RS256(2·3단계) — 재기동만으로 즉시 롤백 가능.
+    algorithm: ${APP_JWT_ALGORITHM:HS256}
+    # W1-05: RS256 검증용 공개키(PEM). 기본값을 두지 않는다 — 미주입 시 부팅 실패(조용한 fallback 금지).
+    # 키 생성 절차: backend/docs/security/jwt-rs256-key-generation.md
+    public-key: ${APP_JWT_PUBLIC_KEY}
+    # W1-05: RS256 발급용 사설키(PEM). platform 서비스만 보유 — 나머지 서비스는 비워 발급을 비활성화한다
+    # (검증은 공개키만으로 계속 동작). 기본값은 빈 문자열(정상 상태), 로컬 개발용 기본 키를 커밋하지 않는다.
+    private-key: ${APP_JWT_PRIVATE_KEY:}
   notifications:
     templates:
       payment-completed:
