@@ -45,6 +45,7 @@ flowchart LR
         booking
         goods
         ticketing
+        recruitment
     end
     subgraph Alert["알림·이벤트"]
         notification
@@ -73,9 +74,10 @@ flowchart LR
     ticketing -->|createPending 동기| payment
     recruitment -->|createPending 동기| payment
 
-    payment -.->|Kafka event.payment.payment.v1 확정구독| booking
-    payment -.->|Kafka event.payment.payment.v1 확정구독| goods
-    payment -.->|Kafka event.payment.payment.v1 확정구독| ticketing
+    payment -.->|확정구독| booking
+    payment -.->|확정구독| goods
+    payment -.->|확정구독| ticketing
+    payment -.->|확정구독| recruitment
     payment -.->|Kafka event.payment.payment.v1| notification
     booking -.->|Kafka event.booking.booking.v1| notification
     ticketing -.->|Kafka event.ticketing.ticket.v1| notification
@@ -96,7 +98,9 @@ flowchart LR
 - 실선 `→` : 동기 호출 (DomainService 주입 / Gateway)
 - 점선 `-.->` : 비동기 이벤트 (Kafka Layer 2 / Spring ApplicationEvent Layer 1)
 - `weather`·`airquality`·`operator`·`post`는 강결합 없는 독립 도메인, `featuredemo`·`image`는 부가 도메인(생략).
-- `recruitment`는 payment 연동(`createPending` + `event.payment.payment.v1` 구독)과 community ID 참조가 모두 **배선 완료**됐습니다. 다이어그램 노드 15개 제한([mermaid 규칙](../.claude/rules/mermaid.md)) 때문에 이 구현 관점 그림에는 표기하지 않고, 아래 연결 방식 표와 바운디드 컨텍스트 정의에 반영합니다.
+- `event.payment.payment.v1` 확정구독 점선 4개가 **제거된 동기 콜백 허브를 대체한 팬아웃**입니다 — payment는 발행만 하고 각 주문 컨텍스트가 자기 `*PaymentEventWorker`로 확정합니다(컨슈머 그룹은 notification 포함 5개, 아래 ① 표 참조).
+- `recruitment`는 payment 연동(`createPending` + 확정 구독)과 community ID 참조가 모두 **배선 완료**돼 이 그림에 포함했습니다.
+- 이 그림은 컨텍스트 수가 많아 [mermaid 규칙](../.claude/rules/mermaid.md)의 노드 15개 권장을 넘습니다(18개). 컨텍스트 맵의 성격상 전체 조망이 목적이라 `subgraph` 그룹핑으로 가독성을 확보했습니다.
 
 ### 연결 방식 5종
 
@@ -189,8 +193,10 @@ flowchart LR
     booking -->|"C/S 결제요청"| payment
     goods -->|"C/S 결제요청"| payment
     ticketing -->|"C/S 결제요청"| payment
-    payment -.->|"OHS/PL Kafka 확정"| booking
-    payment -.->|"OHS/PL Kafka 확정"| goods
+    payment -.->|"OHS/PL 확정"| booking
+    payment -.->|"OHS/PL 확정"| goods
+    payment -.->|"OHS/PL 확정"| ticketing
+    payment -.->|"OHS/PL 확정"| recruitment
     payment -.->|"OHS/PL Kafka"| notification
     booking -.->|"OHS/PL Kafka"| notification
     ticketing -.->|"OHS/PL Kafka"| notification
