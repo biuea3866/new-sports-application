@@ -97,8 +97,8 @@ flowchart LR
 
 - 실선 `→` : 동기 호출 (DomainService 주입 / Gateway)
 - 점선 `-.->` : 비동기 이벤트 (Kafka Layer 2 / Spring ApplicationEvent Layer 1)
-- `weather`·`airquality`·`operator`·`post`·`mcp`는 이 그림에 엣지가 없습니다 — `mcp`만은 독립이 아니라 `McpPermissionGateway`(mcp→user)를 갖습니다(④ 참조). `featuredemo`·`image`는 부가 도메인으로 생략.
-- **엣지 생략 기준**: 가독성을 위해 이 그림은 결제·확정·알림 등 주요 흐름만 그립니다. ACL 게이트웨이 7종과 소프트 참조는 아래 ④·⑤ 표에 전수 기재합니다.
+- 이 그림에 엣지가 없는 노드는 `weather`·`airquality`·`operator`·`post`·`mcp` 5개입니다. 이 중 **`weather`·`airquality`·`operator` 만 실제로 독립**이고, `post`는 community 에 동기 결합(인가 5건, ③ 참조), `mcp`는 `McpPermissionGateway`(mcp→user, ④ 참조)를 갖습니다. `featuredemo`·`image`는 부가 도메인으로 생략.
+- **엣지 생략 기준**: 이 그림은 가독성을 위해 컨텍스트 간 흐름을 **선별 표기**합니다(결제 개시·확정 팬아웃·알림·집계 등). 동기 호출·ACL 게이트웨이·소프트 참조의 **전수 목록은 아래 ③·④·⑤ 표**가 담습니다 — 그림에 없는 결합이 표에는 있습니다.
 - `event.payment.payment.v1` 확정구독 점선 4개가 **제거된 동기 콜백 허브를 대체한 팬아웃**입니다 — payment는 발행만 하고 각 주문 컨텍스트가 자기 `*PaymentEventWorker`로 확정합니다(컨슈머 그룹은 notification 포함 5개, 아래 ① 표 참조).
 - `recruitment`는 payment 연동(`createPending` + 확정 구독)과 community ID 참조가 모두 **배선 완료**돼 이 그림에 포함했습니다.
 - 이 그림은 컨텍스트 수가 많아 mermaid 가이드의 노드 15개 권장을 넘습니다(18개). 컨텍스트 맵의 성격상 전체 조망이 목적이라 `subgraph` 그룹핑으로 가독성을 확보했습니다.
@@ -127,11 +127,23 @@ flowchart LR
 | community | CommunityCreatedEvent / CommunityMemberJoinedEvent / CommunityMemberLeftEvent | **message** → ProvisionContextRoom / JoinContextRoom / LeaveContextRoom (`CommunityChatIntegrationEventWorker`, 크로스 도메인) |
 | recruitment | ApplicationRefundRequestedEvent | recruitment → `RecruitmentRefundEventWorker` → `RecruitmentRefundGateway.requestRefund` (UseCase 미경유, 게이트웨이 직접 주입) |
 
-**③ 동기 호출 — UseCase가 타 도메인 DomainService 주입**
-- `booking`·`goods`·`ticketing` → **payment** (`paymentDomainService.createPending` / `findStatuses`)
-- `dashboard` → **booking·facility·goods·ticketing·user** (읽기 집계)
-- `recruitment` → **payment** (`createPending`)
-- `partner` → **user** (연동 계정 프로비저닝 쓰기)
+**③ 동기 호출 — application UseCase가 타 컨텍스트 DomainService 주입 (전수, 2026-07-30 실측)**
+
+소비자 `application/{context}/**` 에서 `domain.{other}.service.*` 를 생성자 주입하는 쌍을 전수 스캔한 결과입니다(괄호 = 주입 파일 수). `domain.common` 은 공유 커널이라 제외합니다.
+
+| 소비자 → 공급자 | 파일 | 성격 |
+|---|---|---|
+| booking → payment (3) / goods → payment (1) / ticketing → payment (1) / recruitment → payment (1) | 6 | 결제 개시 (`createPending`·`findStatuses`) — Customer/Supplier |
+| post → community (5) | 5 | **쓰기 경로 인가** — `requireActiveMember`. 멤버십 검증을 community 가 소유 |
+| community → message (3) | 3 | 채팅방 표시정보 조회 (`RoomContextQueryService`) |
+| recruitment → community (2) | 2 | 커뮤니티 조회 (Entity 참조 없이 `communityId` 로만 연결) |
+| facility → booking (1) | 1 | `CreateProgramSessionUseCase` — Program 회차를 Slot 으로 생성. **ACL 게이트웨이가 아니라 `SlotDomainService` 직접 주입** |
+| dashboard → booking(2)·goods(2)·ticketing(2)·facility(1)·user(1) | 8 | 읽기 집계 (R3 화이트리스트, Conformist) |
+| catalog → facility·goods·recruitment·ticketing (각 1) | 4 | 읽기 조합 파사드 |
+| order → booking·goods·recruitment·ticketing (각 1) | 4 | 읽기 조합 파사드 |
+| partner → user (1) | 1 | 연동 계정 프로비저닝 **쓰기** (SAGA, R3 화이트리스트) |
+
+> `facility → booking` 은 이 표(직접 주입)와 아래 ④(ACL `SlotQueryGateway`) **양쪽에 존재**합니다 — 조회는 게이트웨이 경유, Program 회차 생성은 DomainService 직접 주입으로 경로가 갈립니다.
 
 **④ 확정 흐름과 소비자 ACL 게이트웨이 (infra가 브리지)**
 - **payment → 주문 4종**: `OrderConfirmationGateway`류 동기 디스패치 허브는 **존재하지 않습니다**(제거됨). payment는 `event.payment.payment.v1`에 발행만 하고, 각 주문 컨텍스트(booking·goods·ticketing·recruitment)가 **자기 `*PaymentEventWorker`로 확정**합니다 — 공용 컨텍스트가 주문 컨텍스트를 역참조하지 않습니다.
@@ -243,6 +255,7 @@ flowchart LR
 | **Ops & Insight** | Supporting | dashboard, operator, featureflag | 집계, Inbox, Flag |
 | **Identity & Access** | Generic | user, partner | User, Role, Permission, Partner |
 | **Environment Info** | Generic | weather, airquality | Forecast, AirQuality |
+| **Ingress Admission** | Generic | virtualqueue | 대기열, 입장토큰(HMAC). Redis 전용이라 소유 테이블 없음. `EntryTokenGuard`(공유 커널)로만 노출되고 코어 역참조 0건 |
 
 > `featuredemo`·`image`는 Generic 서브도메인(데모·스토리지)이라 컨텍스트 맵에서 생략했습니다.
 > **Community & Chat**은 기존 Supporting에서 **Core**로 정정했습니다 — `message`·`post`는 `DomainClassification.core`(`SupportToCoreDependencyRulesTest.kt:18`)에 이미 등록돼 있고, `community`도 같은 상수에 등록돼 있습니다. 세 도메인 모두 사용자 대상 핵심 자산(채팅방·게시글·멤버십)을 소유해 Core 분류가 실제 코드 기준과 일치합니다.
