@@ -20,6 +20,7 @@ import io.kotest.matchers.string.shouldStartWith
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import org.springframework.transaction.annotation.Transactional
 
 class PartnerDomainServiceTest : BehaviorSpec({
 
@@ -328,6 +329,24 @@ class PartnerDomainServiceTest : BehaviorSpec({
                 shouldThrow<ResourceNotFoundException> {
                     domainService.recordKeyUsage(keyId = 999L)
                 }
+            }
+        }
+    }
+
+    // createPartner 는 partner 저장 + 키 placeholder 저장 + 실 해시 재저장으로 3회 쓴다.
+    // 호출부(CreatePartnerUseCase)가 SAGA 구조라 @Transactional 을 갖지 않으므로, 이 경계가
+    // 사라지면 3개 쓰기가 독립 auto-commit 되어 마지막 실패 시 아무도 쓸 수 없는 placeholder
+    // 해시 ACTIVE 키가 영구 잔존한다. 실제로 한 번 회귀했던 지점이라 애노테이션 자체를 잠근다.
+    // (호출부의 '없음'은 CreatePartnerUseCaseTest 가 이미 리플렉션으로 잠가둔 것과 대칭이다.)
+    Given("createPartner 의 트랜잭션 경계를 검사할 때") {
+        When("리플렉션으로 애노테이션을 조회하면") {
+            Then("createPartner 메서드에 @Transactional 이 선언돼 있다") {
+                val createPartnerMethod = PartnerDomainService::class.java.getDeclaredMethod(
+                    "createPartner",
+                    String::class.java,
+                    Long::class.java,
+                )
+                createPartnerMethod.isAnnotationPresent(Transactional::class.java) shouldBe true
             }
         }
     }

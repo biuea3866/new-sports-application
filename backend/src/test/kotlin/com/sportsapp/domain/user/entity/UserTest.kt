@@ -1,6 +1,9 @@
 package com.sportsapp.domain.user.entity
 
+import com.sportsapp.domain.user.exception.InvalidCredentialsException
 import com.sportsapp.domain.user.exception.InvalidEmailException
+import com.sportsapp.domain.user.exception.InvalidUserStatusTransitionException
+import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -58,6 +61,96 @@ class UserTest : BehaviorSpec({
             user.changePassword(newHash)
             Then("[U-04] passwordHash 가 60자 BCrypt 포맷으로 변경된다") {
                 user.passwordHash shouldHaveLength 60
+            }
+        }
+    }
+
+    Given("연동 계정용 이메일과 비밀번호 해시가 주어졌을 때") {
+        When("createInactive 를 호출하면") {
+            val user = User.createInactive("partner+abc@integration.local", "hashed-password")
+
+            Then("INACTIVE 상태의 User 가 생성된다") {
+                user.status shouldBe UserStatus.INACTIVE
+            }
+        }
+
+        When("잘못된 이메일 형식으로 createInactive 를 호출하면") {
+            Then("InvalidEmailException 을 던진다") {
+                shouldThrow<InvalidEmailException> {
+                    User.createInactive("not-an-email", "hashed-password")
+                }
+            }
+        }
+    }
+
+    Given("INACTIVE 상태의 User 가 있을 때") {
+        val user = User.createInactive("partner+activate@integration.local", "hashed-password")
+
+        When("activate 를 호출하면") {
+            user.activate()
+
+            Then("ACTIVE 상태로 전이된다") {
+                user.status shouldBe UserStatus.ACTIVE
+            }
+        }
+    }
+
+    Given("이미 ACTIVE 상태인 User 가 있을 때") {
+        val user = User.create("already-active@example.com", "hashed-password")
+
+        When("activate 를 다시 호출하면") {
+            Then("예외 없이 ACTIVE 상태가 유지된다 (멱등)") {
+                shouldNotThrowAny { user.activate() }
+                user.status shouldBe UserStatus.ACTIVE
+            }
+        }
+    }
+
+    Given("SUSPENDED 상태의 User 가 있을 때") {
+        val user = User(
+            email = "suspended@example.com",
+            passwordHash = "hashed-password",
+            status = UserStatus.SUSPENDED,
+        )
+
+        When("activate 를 호출하면") {
+            Then("InvalidUserStatusTransitionException 이 발생하고 상태가 유지된다") {
+                shouldThrow<InvalidUserStatusTransitionException> { user.activate() }
+                user.status shouldBe UserStatus.SUSPENDED
+            }
+        }
+    }
+
+    Given("ACTIVE 상태의 User 가 있을 때") {
+        val user = User.create("login-active@example.com", "hashed-password")
+
+        When("validateActiveForLogin 을 호출하면") {
+            Then("예외 없이 통과한다") {
+                shouldNotThrowAny { user.validateActiveForLogin() }
+            }
+        }
+    }
+
+    Given("INACTIVE 상태의 연동 User 가 있을 때") {
+        val user = User.createInactive("partner+login@integration.local", "hashed-password")
+
+        When("validateActiveForLogin 을 호출하면") {
+            Then("InvalidCredentialsException 이 발생한다") {
+                shouldThrow<InvalidCredentialsException> { user.validateActiveForLogin() }
+            }
+        }
+    }
+
+    Given("SUSPENDED 상태의 User 로 로그인 가능 여부를 검증할 때") {
+        val user = User(
+            email = "suspended-login@example.com",
+            passwordHash = "hashed-password",
+            status = UserStatus.SUSPENDED,
+        )
+
+        When("validateActiveForLogin 을 호출하면") {
+            Then("InvalidCredentialsException 이 발생한다") {
+                shouldThrow<InvalidCredentialsException> { user.validateActiveForLogin() }
             }
         }
     }

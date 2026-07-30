@@ -87,6 +87,52 @@ class AuthDomainServiceTest : BehaviorSpec({
         }
     }
 
+    Given("비활성(INACTIVE) 상태의 연동 계정으로 올바른 비밀번호를 입력했을 때") {
+        val inactiveUser = User.createInactive("partner+login@integration.local", hashedPassword)
+        every { userRepository.findByEmail("partner+login@integration.local") } returns inactiveUser
+
+        When("authenticate 를 호출하면") {
+            Then("로그인이 거부되고 InvalidCredentialsException 이 발생한다") {
+                shouldThrow<InvalidCredentialsException> {
+                    authDomainService.authenticate("partner+login@integration.local", rawPassword)
+                }
+            }
+        }
+    }
+
+    Given("정지(SUSPENDED) 상태의 사용자로 올바른 비밀번호를 입력했을 때") {
+        val suspendedUser = User(
+            email = "suspended-login@example.com",
+            passwordHash = hashedPassword,
+            status = UserStatus.SUSPENDED,
+        )
+        every { userRepository.findByEmail("suspended-login@example.com") } returns suspendedUser
+
+        When("authenticate 를 호출하면") {
+            Then("로그인이 거부되고 InvalidCredentialsException 이 발생한다") {
+                shouldThrow<InvalidCredentialsException> {
+                    authDomainService.authenticate("suspended-login@example.com", rawPassword)
+                }
+            }
+        }
+    }
+
+    Given("활성(ACTIVE) 상태의 기존 사용자로 올바른 비밀번호를 입력했을 때") {
+        every { userRepository.findByEmail("test@example.com") } returns testUser
+        every { userDomainService.getRolesForUser(any()) } returns emptyList()
+        every { jwtIssuer.generateAccessToken(any(), any(), any()) } returns "access-token"
+        every { jwtIssuer.generateRefreshToken() } returns "refresh-token"
+        every { jwtIssuer.accessTokenExpiresInSeconds() } returns 1800L
+        every { refreshTokenRepository.save(any(), any()) } returns Unit
+
+        When("authenticate 를 호출하면") {
+            Then("기존과 동일하게 로그인에 성공한다 (회귀)") {
+                val tokenPair = authDomainService.authenticate("test@example.com", rawPassword)
+                tokenPair.accessToken shouldBe "access-token"
+            }
+        }
+    }
+
     Given("유효한 Refresh Token 으로 재발급 시도 시") {
         every { refreshTokenRepository.findUserIdByToken("valid-refresh-token") } returns 1L
         every { userRepository.findById(1L) } returns testUser
@@ -106,6 +152,25 @@ class AuthDomainServiceTest : BehaviorSpec({
                 tokenPair shouldNotBe null
                 verify(exactly = 1) { refreshTokenRepository.invalidate("valid-refresh-token") }
                 verify(exactly = 1) { refreshTokenRepository.save(any(), "new-refresh-token") }
+            }
+        }
+    }
+
+    Given("정지(SUSPENDED) 상태로 전환된 사용자가 유효한 Refresh Token 으로 재발급을 시도할 때") {
+        val suspendedUser = User(
+            email = "suspended-refresh@example.com",
+            passwordHash = hashedPassword,
+            status = UserStatus.SUSPENDED,
+        )
+        every { refreshTokenRepository.findUserIdByToken("suspended-refresh-token") } returns 77L
+        every { userRepository.findById(77L) } returns suspendedUser
+
+        When("refresh 를 호출하면") {
+            Then("재발급이 거부되고 기존 토큰도 폐기되지 않는다") {
+                shouldThrow<InvalidCredentialsException> {
+                    authDomainService.refresh("suspended-refresh-token")
+                }
+                verify(exactly = 0) { refreshTokenRepository.invalidate("suspended-refresh-token") }
             }
         }
     }
