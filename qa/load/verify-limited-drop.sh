@@ -52,6 +52,9 @@
 #                           (예: `date -v-5M '+%Y-%m-%d %H:%M:%S'`)으로 계산해 오차를 없애라
 #   ACCEPTED_METRIC_NAME     (선택) k6 202 카운터 메트릭명. 기본값 LOAD_05_accepted_total
 #                           (goods-limited-drop-spike.js#acceptedCounter)
+#   REQUESTS_METRIC_NAME     (선택) k6 총 요청 수 카운터 메트릭명. 기본값 LOAD_05_requests_total
+#                           (goods-limited-drop-spike.js:75 requestCounter) — "이 실행이 실제로
+#                           트래픽을 냈는가" 무활동 게이트(judge 전 선행 검증)에 사용한다
 #   MYSQL_HOST/PORT/USER/PASSWORD/ROOT_PASSWORD/DATABASE/SERVICE_NAME/COMPOSE_PROJECT_NAME
 #                           qa/load/provision/provision.sh와 동일 접속 계열(호스트 직접 접속 우선 →
 #                           docker compose exec 폴백 → 라벨 기반 컨테이너 탐색 최종 폴백)
@@ -62,13 +65,18 @@
 #   0  모든 판정 통과(누수 등식 성립·응답 수 등식 성립·오버셀 없음)
 #   1  하나 이상 실제 실패 판정(누수>0, 응답 불일치(F3, order>accepted) 또는 유령 성공
 #      (order<accepted), 오버셀>0) — 측정 불가 판정이 함께 있어도 실패가 우선한다
-#   2  측정 불가(예약 마커 수<주문 수, k6 202 카운터·MySQL·Redis 조회 결과가 정수가 아님 등 —
-#      누수 0으로 오판하지 않기 위한 별도 코드. DROP_ID 오류·마커 TTL 만료·인프라 조회 실패
-#      등 실제 원인 확인 필요. 단 실패 판정이 함께 있으면 종료코드는 1)
+#   2  측정 불가(예약 마커 수<주문 수, k6 202 카운터·MySQL·Redis 조회 결과가 정수가 아님,
+#      **또는 이 실행 자체가 트래픽을 못 냈음**(k6 총 요청 수=0 또는 reserved·order·accepted
+#      전부 0 — QA_JWT_SECRET 불일치로 전 요청이 401 처리되는 등, is_execution_measurable
+#      게이트) 등 — 누수 0/불일치 0으로 오판하지 않기 위한 별도 코드. DROP_ID 오류·마커 TTL
+#      만료·인증 실패·인프라 조회 실패 등 실제 원인 확인 필요. 단 실패 판정이 함께 있으면
+#      종료코드는 1)
 #
-# --self-test: 판정 함수 3종 + 정수 검증 헬퍼를 티켓 "테스트 케이스"와 코드 리뷰 재발 방지
-#              케이스(측정 불가 3분기·유령 성공·정수 검증)로 재현하고 종료한다
-#              (인프라 불필요 — MySQL/Redis/k6 산출물 없이 로직만 검증).
+# --self-test: 판정 함수 3종 + 정수 검증 헬퍼 + 무활동 게이트(is_execution_measurable) +
+#              종료코드 합성(resolve_overall_exit) + SCAN 커서 무한 루프 회귀를 티켓 "테스트 케이스"와
+#              코드 리뷰 재발 방지 케이스(측정 불가 3분기·유령 성공·정수 검증·무활동 오판·커서 파싱)로
+#              재현하고 종료한다 (인프라 불필요 — MySQL/Redis/k6 산출물 없이 로직만 검증. 단 SCAN 커서
+#              케이스는 mktemp + 백그라운드 프로세스를 사용한다).
 
 set -u
 set -o pipefail
@@ -96,6 +104,7 @@ LIMITED_QUANTITY="${LIMITED_QUANTITY:-}"
 K6_SUMMARY_JSON="${K6_SUMMARY_JSON:-}"
 ORDER_SINCE_TIMESTAMP="${ORDER_SINCE_TIMESTAMP:-}"
 ACCEPTED_METRIC_NAME="${ACCEPTED_METRIC_NAME:-LOAD_05_accepted_total}"
+REQUESTS_METRIC_NAME="${REQUESTS_METRIC_NAME:-LOAD_05_requests_total}"
 
 log() { echo "[verify-limited-drop] $*"; }
 warn() { echo "[verify-limited-drop][WARN] $*" >&2; }
@@ -161,6 +170,48 @@ is_nonneg_integer() {
     [[ "$1" =~ ^[0-9]+$ ]]
 }
 
+# "이 실행이 실제로 트래픽을 냈는가" 무활동 게이트 (신규 회귀 방지, code-review p1) — 1차 수정에서
+# 이 게이트를 제거하고 judge_leak(0,0)=통과로만 판정한 탓에, QA_JWT_SECRET 불일치로 전 요청이 401
+# 처리되면(goods-limited-drop-spike.js:23-27이 문서화한 실패 모드) reserved=0, order=0, accepted=0이
+# 되어 판정 3종이 전부 등식(0=0)을 이뤄 "누수 없음·불일치 없음·오버셀 없음"으로 오판됐다
+# (exit 0 — 수정 전 a225d94f는 exit 2였다). 아래 둘 중 하나라도 해당하면 무활동(측정 불가)으로
+# 판단해 false(1)를 반환한다. 이미 is_nonneg_integer로 정수 검증된 값을 입력으로 받는다는 전제다.
+#   1. k6 총 요청 수(requests_total)가 0 — k6 실행 자체가 트래픽을 못 냈다
+#   2. reserved·order·accepted 세 값이 모두 0 — 요청은 나갔어도 관측된 게 아무것도 없다
+is_execution_measurable() {
+    local requests_total="$1"
+    local reserved_count="$2"
+    local order_count="$3"
+    local accepted_count="$4"
+    if [ "${requests_total}" -eq 0 ]; then
+        return 1
+    fi
+    if [ "${reserved_count}" -eq 0 ] && [ "${order_count}" -eq 0 ] && [ "${accepted_count}" -eq 0 ]; then
+        return 1
+    fi
+    return 0
+}
+
+# "실패(any_failure)와 측정 불가(any_unmeasurable) 두 플래그로 최종 종료코드를 합성한다" —
+# 실패가 있으면 측정 불가 여부와 무관하게 항상 1, 실패 없이 측정 불가만 있으면 2, 둘 다 없으면 0.
+# main()의 핵심 신규 분기이자 이번 p1 회귀가 발생한 지점이라 순수 함수로 분리해 self-test로
+# 4가지 조합을 전수 검증한다(code-review p2 재발 방지 — 이 로직은 1차 수정에서 self-test 커버가
+# 전혀 없었다).
+resolve_overall_exit() {
+    local any_failure="$1"
+    local any_unmeasurable="$2"
+    if [ "${any_failure}" -eq 1 ]; then
+        echo 1
+        return 0
+    fi
+    if [ "${any_unmeasurable}" -eq 1 ]; then
+        echo 2
+        return 0
+    fi
+    echo 0
+    return 0
+}
+
 # ============================================================
 # --self-test: 인프라 없이 판정 함수 3종을 티켓 샘플 입력으로 재현
 # ============================================================
@@ -199,12 +250,27 @@ run_self_test() {
         self_test_failures=$((self_test_failures + 1))
     fi
 
-    # 2-2) 대상 drop의 예약 키가 0건(reserved=0)이어도 위와 동일 원리로 측정 불가 판정 (티켓 엣지 케이스)
+    # 2-2) 예약 키가 0건(reserved=0)인데 주문은 있으면(order>0) 위와 동일 원리로 측정 불가 판정.
+    #      단 이 판정은 order>0일 때만 성립한다 — reserved도 order도 0인 완전 무활동은 diff=0이
+    #      되어 이 함수만으로는 "누수 0건 통과"로 나온다(아래 2-3, is_execution_measurable 참고).
     leak_output="$(judge_leak 0 5)"; leak_exit=$?
     if [ "${leak_output}" = "-5" ] && [ "${leak_exit}" -eq 2 ]; then
         log "PASS: judge_leak(0,5) -> diff=${leak_output} exit=${leak_exit} (기대: -5/2, 예약 키 0건 측정 불가)"
     else
         warn "FAIL: judge_leak(0,5) -> diff=${leak_output} exit=${leak_exit} (기대: -5/2)"
+        self_test_failures=$((self_test_failures + 1))
+    fi
+
+    # 2-3) reserved=0, order=0(완전 무활동 — 예: QA_JWT_SECRET 불일치로 전 요청 401)이면
+    #      judge_leak 단독으로는 diff=0/exit=0(누수 없음 "통과")으로 나온다 — 이것이 정확히
+    #      code-review에서 지적된 신규 회귀(exit 0 오판)의 뿌리이며, judge_leak 만으로는 무활동을
+    #      구분할 수 없다는 사실 자체를 문서화하는 케이스다. 실제 무활동 차단은 main()이 판정
+    #      전에 호출하는 is_execution_measurable 게이트가 담당한다(아래 7번 케이스).
+    leak_output="$(judge_leak 0 0)"; leak_exit=$?
+    if [ "${leak_output}" = "0" ] && [ "${leak_exit}" -eq 0 ]; then
+        log "PASS: judge_leak(0,0) -> leak=${leak_output} exit=${leak_exit} (기대: 0/0, 함수 단독으로는 무활동 구분 불가 — 게이트는 is_execution_measurable)"
+    else
+        warn "FAIL: judge_leak(0,0) -> leak=${leak_output} exit=${leak_exit} (기대: 0/0)"
         self_test_failures=$((self_test_failures + 1))
     fi
 
@@ -293,6 +359,108 @@ run_self_test() {
         self_test_failures=$((self_test_failures + 1))
     else
         log "PASS: Redis KEYS 명령 미사용 확인(SCAN 기반 count_keys_matching만 사용)"
+    fi
+
+    # 7) 무활동 게이트(is_execution_measurable) — 신규 회귀(p1) 재발 방지 케이스.
+    #    티켓 재현표: reserved=0/order=0/accepted=0/limitedQuantity=2000 실행에서 수정 전(a225d94f)은
+    #    exit 2였는데, 1차 수정에서 exit 0(전부 통과)으로 퇴행했다. 아래 세 조합으로 게이트를 검증한다.
+    if is_execution_measurable 0 0 0 0; then
+        warn "FAIL: is_execution_measurable(requests=0,reserved=0,order=0,accepted=0) -> true (기대: false, k6 총 요청 0)"
+        self_test_failures=$((self_test_failures + 1))
+    else
+        log "PASS: is_execution_measurable(requests=0,reserved=0,order=0,accepted=0) -> false (k6 총 요청 수 0 — 무활동)"
+    fi
+
+    # 7-1) k6 총 요청 수는 있지만(요청 자체는 나갔지만) reserved·order·accepted가 전부 0인 경우 —
+    #      QA_JWT_SECRET 불일치로 전 요청이 401 처리된 티켓 재현표 시나리오와 동일 신호
+    if is_execution_measurable 500 0 0 0; then
+        warn "FAIL: is_execution_measurable(requests=500,reserved=0,order=0,accepted=0) -> true (기대: false, 관측값 전부 0)"
+        self_test_failures=$((self_test_failures + 1))
+    else
+        log "PASS: is_execution_measurable(requests=500,reserved=0,order=0,accepted=0) -> false (관측값 전부 0 — 무활동)"
+    fi
+
+    # 7-2) 정상 실행(요청·예약·주문·응답 모두 관측됨)이면 게이트 통과
+    if is_execution_measurable 1500 2000 1357 228; then
+        log "PASS: is_execution_measurable(requests=1500,reserved=2000,order=1357,accepted=228) -> true (정상 실행)"
+    else
+        warn "FAIL: is_execution_measurable(requests=1500,reserved=2000,order=1357,accepted=228) -> false (기대: true)"
+        self_test_failures=$((self_test_failures + 1))
+    fi
+
+    # 8) 종료코드 합성(resolve_overall_exit) — 실패·측정 불가 플래그 4조합 전수 (p2 재발 방지,
+    #    이 로직이 정확히 p1 회귀가 발생한 지점이다)
+    local resolve_exit_output
+    resolve_exit_output="$(resolve_overall_exit 0 0)"
+    if [ "${resolve_exit_output}" = "0" ]; then
+        log "PASS: resolve_overall_exit(any_failure=0,any_unmeasurable=0) -> ${resolve_exit_output} (기대: 0)"
+    else
+        warn "FAIL: resolve_overall_exit(0,0) -> ${resolve_exit_output} (기대: 0)"
+        self_test_failures=$((self_test_failures + 1))
+    fi
+    resolve_exit_output="$(resolve_overall_exit 1 0)"
+    if [ "${resolve_exit_output}" = "1" ]; then
+        log "PASS: resolve_overall_exit(any_failure=1,any_unmeasurable=0) -> ${resolve_exit_output} (기대: 1)"
+    else
+        warn "FAIL: resolve_overall_exit(1,0) -> ${resolve_exit_output} (기대: 1)"
+        self_test_failures=$((self_test_failures + 1))
+    fi
+    resolve_exit_output="$(resolve_overall_exit 0 1)"
+    if [ "${resolve_exit_output}" = "2" ]; then
+        log "PASS: resolve_overall_exit(any_failure=0,any_unmeasurable=1) -> ${resolve_exit_output} (기대: 2)"
+    else
+        warn "FAIL: resolve_overall_exit(0,1) -> ${resolve_exit_output} (기대: 2)"
+        self_test_failures=$((self_test_failures + 1))
+    fi
+    resolve_exit_output="$(resolve_overall_exit 1 1)"
+    if [ "${resolve_exit_output}" = "1" ]; then
+        log "PASS: resolve_overall_exit(any_failure=1,any_unmeasurable=1) -> ${resolve_exit_output} (기대: 1, 실패 우선)"
+    else
+        warn "FAIL: resolve_overall_exit(1,1) -> ${resolve_exit_output} (기대: 1)"
+        self_test_failures=$((self_test_failures + 1))
+    fi
+
+    # 9) SCAN 커서 무한 루프 회귀 재현 — redis-cli 에러 텍스트(NOAUTH/DENIED 등)가 커서 자리에 그대로
+    #    반환되면(REDIS_HOST 미설정 + requirepass/protected-mode 환경) 숫자 비교가 영원히 거짓이 되어
+    #    무한 대기에 빠지는 회귀가 있었다(code-review p2). redis_exec를 이 케이스 한정으로 오버라이드해
+    #    재현하고, GNU timeout 커맨드에 의존하지 않는 순수 bash 워치독(백그라운드 kill)으로 유한 시간
+    #    내 종료·비정상 반환을 검증한다.
+    local original_redis_exec_definition
+    original_redis_exec_definition="$(declare -f redis_exec)"
+    # shellcheck disable=SC2317  # self-test 한정 오버라이드 — 아래에서 즉시 호출된다
+    redis_exec() { printf 'NOAUTH Authentication required.\n'; }
+
+    local scan_hang_capture_file
+    scan_hang_capture_file="$(mktemp)"
+    count_keys_matching "goods:limited-drop:1:reserved:*" > "${scan_hang_capture_file}" 2>/dev/null &
+    local scan_hang_pid=$!
+    local scan_hang_waited_ticks=0
+    local scan_hang_timed_out=0
+    while kill -0 "${scan_hang_pid}" 2>/dev/null; do
+        sleep 0.2
+        scan_hang_waited_ticks=$((scan_hang_waited_ticks + 1))
+        if [ "${scan_hang_waited_ticks}" -gt 25 ]; then # 5초(0.2s x 25) 상한
+            kill -9 "${scan_hang_pid}" 2>/dev/null
+            scan_hang_timed_out=1
+            break
+        fi
+    done
+    wait "${scan_hang_pid}" 2>/dev/null
+
+    eval "${original_redis_exec_definition}" # redis_exec 원복
+
+    local scan_hang_output
+    scan_hang_output="$(cat "${scan_hang_capture_file}" 2>/dev/null || true)"
+    rm -f "${scan_hang_capture_file}"
+
+    if [ "${scan_hang_timed_out}" -eq 1 ]; then
+        warn "FAIL: count_keys_matching이 에러 텍스트 커서 입력에 5초 내 종료되지 않았습니다(무한 루프 회귀)"
+        self_test_failures=$((self_test_failures + 1))
+    elif [ -z "${scan_hang_output}" ]; then
+        log "PASS: count_keys_matching이 에러 텍스트 커서를 무한 루프 없이 즉시 거부(빈 값 반환, 대기 ${scan_hang_waited_ticks}x0.2s)"
+    else
+        warn "FAIL: count_keys_matching이 에러 텍스트 커서에서 예상 밖 출력을 반환했습니다(값='${scan_hang_output}')"
+        self_test_failures=$((self_test_failures + 1))
     fi
 
     log "=== --self-test 종료: 실패 ${self_test_failures}건 ==="
@@ -407,18 +575,43 @@ redis_exec() {
 # SCAN은 at-least-once만 보장한다 — 커서 순회 도중 슬롯 리해시가 일어나면 같은 키가 두 번 이상
 # 반환될 수 있다(Redis 공식 SCAN guarantees). 커서 페이지마다 줄 수를 그대로 누적하면 실제 키 수보다
 # 부풀려질 수 있으므로, 전체 매칭 키를 모아 정렬 후 중복 제거(sort -u)한 뒤에 센다.
+#
+# 실패(접속 불가·커서 파싱 불가)는 "0"이 아니라 빈 문자열을 stdout에 남기고 비정상 종료한다(exit 1) —
+# 호출부(measure_reserved_count → main의 is_nonneg_integer 검증)가 인프라 실패와 "실제 키 0건"을
+# 구분하게 하기 위함이다(code-review p2). 또한 REDIS_HOST 미설정 + requirepass/protected-mode
+# 환경에서는 redis-cli가 NOAUTH/DENIED 같은 에러 텍스트를 stdout 첫 줄(커서 자리)에 그대로 반환하는데,
+# 예전 구현은 이를 숫자로 취급하지 않고도 cursor="0"이 될 때까지 무한 대기했다(신규 회귀, code-review
+# p2) — 매 반복 커서를 is_nonneg_integer로 검증해 실패 시 즉시 반환하고, 반복 횟수 상한도 둔다.
 count_keys_matching() {
     local pattern="$1"
     local cursor="0"
     local all_matched_keys=""
+    local scan_iterations=0
+    local max_scan_iterations=10000
     while :; do
+        scan_iterations=$((scan_iterations + 1))
+        if [ "${scan_iterations}" -gt "${max_scan_iterations}" ]; then
+            warn "SCAN 반복 상한(${max_scan_iterations}) 초과 — 커서 순회가 종료되지 않습니다(pattern='${pattern}')"
+            return 1
+        fi
+
         local scan_result
         # 비-tty 파이프 실행 시 redis-cli는 raw 모드로 "커서\n키1\n키2..." 평평한 줄 단위 출력을 낸다.
         scan_result="$(redis_exec SCAN "${cursor}" MATCH "${pattern}" COUNT 200 2>/dev/null || true)"
         if [ -z "${scan_result}" ]; then
-            break
+            # 접속 실패 또는 SCAN 미응답 — "0"으로 뭉개면 인프라 실패가 "키 0건"으로 둔갑한다(p2)
+            return 1
         fi
-        cursor="$(echo "${scan_result}" | sed -n '1p' | tr -d '"')"
+
+        local next_cursor
+        next_cursor="$(echo "${scan_result}" | sed -n '1p' | tr -d '"\r')"
+        if ! is_nonneg_integer "${next_cursor}"; then
+            # redis-cli 에러 텍스트(NOAUTH/DENIED 등)가 커서 자리에 반환된 경우 — 무한 루프 대신 즉시 실패
+            warn "SCAN 커서가 정수가 아닙니다(값='${next_cursor}') — Redis 인증·접속 실패를 의심하세요"
+            return 1
+        fi
+        cursor="${next_cursor}"
+
         local matched_keys
         matched_keys="$(echo "${scan_result}" | tail -n +2 | tr -d '"')"
         if [ -n "${matched_keys}" ]; then
@@ -469,6 +662,9 @@ WHERE i.product_id = ${PRODUCT_ID}
 # ============================================================
 # 실측정: k6 202 카운터 — --summary-export JSON의 metrics.<name>.count
 # ============================================================
+# 메트릭 부재(오타 등)와 실제 count=0을 구분한다 — `// 0` 기본값만 쓰면 오타로 인한 부재가
+# 실제 0건으로 둔갑해 is_nonneg_integer 검증을 무의미하게 만들고, 엉뚱한 결함("F3 응답 불일치")으로
+# 오보고된다(code-review p2). has() 존재 검사를 먼저 거친다.
 measure_accepted_count() {
     if ! command -v jq >/dev/null 2>&1; then
         warn "jq가 설치돼 있지 않습니다 — k6 summary JSON 파싱 불가"
@@ -478,7 +674,31 @@ measure_accepted_count() {
         warn "K6_SUMMARY_JSON 파일을 찾을 수 없습니다: ${K6_SUMMARY_JSON}"
         return 1
     fi
+    if ! jq -e --arg name "${ACCEPTED_METRIC_NAME}" '.metrics | has($name)' "${K6_SUMMARY_JSON}" >/dev/null 2>&1; then
+        warn "측정 불가: k6 summary JSON에 메트릭 '${ACCEPTED_METRIC_NAME}'이 없습니다 — ACCEPTED_METRIC_NAME 오타를 의심하세요"
+        return 1
+    fi
     jq -r --arg name "${ACCEPTED_METRIC_NAME}" '.metrics[$name].count // 0' "${K6_SUMMARY_JSON}"
+}
+
+# ============================================================
+# 실측정: k6 총 요청 수 — 무활동 게이트(is_execution_measurable)의 입력. 마찬가지로 메트릭 부재와
+# 실제 count=0을 구분한다.
+# ============================================================
+measure_requests_total() {
+    if ! command -v jq >/dev/null 2>&1; then
+        warn "jq가 설치돼 있지 않습니다 — k6 summary JSON 파싱 불가"
+        return 1
+    fi
+    if [ ! -f "${K6_SUMMARY_JSON}" ]; then
+        warn "K6_SUMMARY_JSON 파일을 찾을 수 없습니다: ${K6_SUMMARY_JSON}"
+        return 1
+    fi
+    if ! jq -e --arg name "${REQUESTS_METRIC_NAME}" '.metrics | has($name)' "${K6_SUMMARY_JSON}" >/dev/null 2>&1; then
+        warn "측정 불가: k6 summary JSON에 메트릭 '${REQUESTS_METRIC_NAME}'이 없습니다 — REQUESTS_METRIC_NAME 오타를 의심하세요"
+        return 1
+    fi
+    jq -r --arg name "${REQUESTS_METRIC_NAME}" '.metrics[$name].count // 0' "${K6_SUMMARY_JSON}"
 }
 
 # ============================================================
@@ -505,7 +725,17 @@ main() {
     # 각 측정 직후 정수 검증(is_nonneg_integer)을 거친다 — MySQL/Redis/jq 조회 실패로 빈 문자열·
     # 에러 텍스트가 반환되면 이후 산술이 0으로 강제 변환되어 인프라 실패를 "누수 0건"·"응답 불일치
     # 0건" 같은 false green으로 오판할 수 있기 때문이다(p2).
-    local reserved_count remaining_value order_count accepted_count
+    local requests_total reserved_count remaining_value order_count accepted_count
+    if ! requests_total="$(measure_requests_total)"; then
+        warn "k6 총 요청 수(${REQUESTS_METRIC_NAME}) 카운터를 읽지 못했습니다 — 검증 불가"
+        exit 2
+    fi
+    if ! is_nonneg_integer "${requests_total}"; then
+        warn "측정 불가: k6 총 요청 수(summary JSON) 값이 정수가 아닙니다(값='${requests_total}') — " \
+             "REQUESTS_METRIC_NAME='${REQUESTS_METRIC_NAME}' 오타를 의심하세요"
+        exit 2
+    fi
+
     reserved_count="$(measure_reserved_count)"
     if ! is_nonneg_integer "${reserved_count}"; then
         warn "측정 불가: 예약 마커 수(Redis SCAN) 결과가 정수가 아닙니다(값='${reserved_count}') — " \
@@ -532,7 +762,18 @@ main() {
         exit 2
     fi
 
-    log "관측값: reserved(Redis)=${reserved_count} remaining(Redis)=${remaining_value} order(DB)=${order_count} accepted(k6 202)=${accepted_count}"
+    log "관측값: requests(k6)=${requests_total} reserved(Redis)=${reserved_count} remaining(Redis)=${remaining_value} order(DB)=${order_count} accepted(k6 202)=${accepted_count}"
+
+    # 무활동 게이트(신규 회귀 방지, code-review p1) — k6 총 요청 수가 0이거나 reserved·order·
+    # accepted가 전부 0이면(예: QA_JWT_SECRET 불일치로 전 요청 401) 판정 3종이 전부 등식(0=0)을
+    # 이뤄 "통과"로 오판된다. 판정 실행 전에 무활동 실행을 걸러 exit 2로 보낸다.
+    if ! is_execution_measurable "${requests_total}" "${reserved_count}" "${order_count}" "${accepted_count}"; then
+        warn "측정 불가: 이 실행이 트래픽을 내지 못했습니다(requests=${requests_total}, reserved=${reserved_count}, " \
+             "order=${order_count}, accepted=${accepted_count}) — QA_JWT_SECRET 불일치로 전 요청이 401 처리됐을 " \
+             "가능성을 의심하세요(goods-limited-drop-spike.js:23-27 참고). 판정 3종을 등식 통과(0=0)로 " \
+             "오판하지 않기 위해 실행 자체를 측정 불가로 차단합니다"
+        exit 2
+    fi
 
     # 실패(exit 1)와 측정 불가(exit 2)를 분리 추적한다 — 둘 다 발생하면 실제 실패가 우선이다
     # (측정 불가만 있고 실패가 없을 때만 최종 종료코드 2를 낸다).
@@ -566,7 +807,9 @@ main() {
         any_failure=1
     else
         warn "판정 2/3 유령 성공: ${mismatch_output#-}건 실패 — 202는 받았는데 DB 주문이 없습니다 " \
-             "(order=${order_count}, accepted=${accepted_count}). ORDER_SINCE_TIMESTAMP 측정 구간 오설정도 의심하세요"
+             "(order=${order_count}, accepted=${accepted_count}). ORDER_SINCE_TIMESTAMP 측정 구간 오설정, 또는 " \
+             "measure_order_count 쿼리의 o.deleted_at IS NULL 조건으로 인해 검증 시점까지 취소·소프트 삭제된 " \
+             "주문이 카운트에서 빠졌을 가능성도 의심하세요"
         any_failure=1
     fi
 
@@ -579,12 +822,8 @@ main() {
         any_failure=1
     fi
 
-    local overall_exit=0
-    if [ "${any_failure}" -eq 1 ]; then
-        overall_exit=1
-    elif [ "${any_unmeasurable}" -eq 1 ]; then
-        overall_exit=2
-    fi
+    local overall_exit
+    overall_exit="$(resolve_overall_exit "${any_failure}" "${any_unmeasurable}")"
 
     log "=== 검증 종료 (종료코드 ${overall_exit}) ==="
     exit "${overall_exit}"
