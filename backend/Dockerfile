@@ -57,4 +57,9 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
     CMD wget -q -O- http://127.0.0.1:8080/actuator/health | grep -q '"status":"UP"' || exit 1
 
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+# [W1-02] JVM 옵션 외부화 — 이미지에 -Xmx 등 값을 박지 않는다(위 :49-50 주석의 env 주입 원칙과 동일).
+# 기본값 빈 문자열은 "값"이 아니라 변수 존재 문서화 목적 — 실제 상한은 compose(mem_limit·JAVA_OPTS)가 부여한다.
+# docker-compose.yml backend 서비스가 JAVA_OPTS=-Xmx768m을 주입하고, docker-compose.services.yml(2단계)이
+# 서비스별 값을 override한다.
+ENV JAVA_OPTS=""
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/app.jar"]
