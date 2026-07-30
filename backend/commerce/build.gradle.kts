@@ -31,7 +31,10 @@ dependencies {
     implementation("org.springframework.retry:spring-retry")
     implementation("org.springframework:spring-aspects")
 
-    // Micrometer — DropReservationStoreImpl 관측 지표(MeterRegistry)
+    // Micrometer — DropReservationStoreImpl 관측 지표(MeterRegistry). commerce 는
+    // spring-boot-starter-actuator 를 갖지 않아 MeterRegistry 빈을 스스로 오토컨픽하지 못한다 —
+    // 실행 시점에 이 빈을 조립자(현재 bootstrap)가 공급해야 한다는 암묵 계약이 있다. 2단계에서
+    // commerce 가 독립 서비스로 물리 분리되면 자기 actuator 를 직접 소유해야 한다.
     implementation("io.micrometer:micrometer-core")
 
     // JSON Column — TicketOrder 등 snapshot data class 매핑(JsonStringType)

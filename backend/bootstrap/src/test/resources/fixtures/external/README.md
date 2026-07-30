@@ -17,9 +17,12 @@ fixtures/external/{issuer}/{service}.json
 
 | Gateway | fixture 경로 (예정, BE-02/03/04) |
 |---|---|
-| `KakaoGeocodingGatewayImpl` | `external/kakao-local/address.json` |
-| `DataGoKrPublicFacilityGatewayImpl` | `external/data-go-kr/public-facility.json` |
 | `KmaWeatherGatewayImpl` | `external/kma/short-forecast.json` |
+
+> `KakaoGeocodingGatewayImpl`·`DataGoKrPublicFacilityGatewayImpl` fixture는 W1-01b 이관으로
+> `facility-booking` 모듈이 소유한다 — `facility-booking/src/test/resources/fixtures/external/`
+> (`kakao-local/address.json`, `data-go-kr/public-sports-facility.json`) 참고. 이 README는 bootstrap이
+> 여전히 소유하는 fixture(위 표)만 다룬다.
 
 ## fixture 채우는 방법
 

@@ -470,9 +470,12 @@ class DropReservationStoreImplTest @Autowired constructor(
 }) {
     // [W1-01b 리뷰 후속 — 회귀 수정 부수 발견] TestApp 은 자기 패키지(com.sportsapp.infrastructure.goods.
     // redis)를 기준으로 컴포넌트 스캔하므로 같은 패키지의 @Component DropReservationStoreImpl 도
-    // 스캔 대상에 포함된다(테스트는 buildStore()로 별도 인스턴스를 수동 생성해 쓰지만, 스캔 자체는
-    // 막을 수 없다). commerce 모듈은 spring-boot-starter-actuator 를 갖지 않아 MeterRegistry 오토컨픽이
-    // 없으므로, DropReservationStoreImpl 빈 생성 시점에 필요한 MeterRegistry 를 직접 공급한다.
+    // 스캔 대상에 포함된다(테스트는 buildStore()로 별도 인스턴스를 수동 생성해 쓰지만, 같은 패키지에
+    // 두는 한 스캔은 걸린다 — 전용 패키지로 분리하거나 @ComponentScan.Filter 로 제외해 막을 수도
+    // 있지만, 이 테스트 범위에서는 막는 것보다 스캔되는 빈이 필요로 하는 MeterRegistry 를 그냥
+    // 공급하는 쪽이 더 단순하다). commerce 모듈은 spring-boot-starter-actuator 를 갖지 않아
+    // MeterRegistry 오토컨픽이 없으므로, DropReservationStoreImpl 빈 생성 시점에 필요한 MeterRegistry
+    // 를 직접 공급한다.
     @SpringBootApplication
     class TestApp {
         @Bean

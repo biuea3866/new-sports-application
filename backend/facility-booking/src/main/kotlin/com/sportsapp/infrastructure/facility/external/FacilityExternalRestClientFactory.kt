@@ -15,7 +15,10 @@ import java.time.Duration
  * 대상이다. facility-booking 은 platform 을 의존할 수 없으므로(경계 위반), 원본이 platform 으로
  * 옮겨가도 facility-booking 은 여전히 그것을 참조할 수 없다 — 즉 이 복제본은 원본과 통합되는 것이
  * 아니라, "2단계 물리 분리 후에는 각 서비스가 자기 아웃바운드 HTTP 설정을 소유한다"는 목표 상태로
- * 수렴하는 방향이다. 두 구현이 어긋나지 않도록 타임아웃 값은 테스트로 고정한다.
+ * 수렴하는 방향이다. [FacilityExternalRestClientFactoryTest] 는 이 팩토리가 생성한 RestClient 가
+ * read 타임아웃(5초)을 실제로 적용하는지를 MockWebServer 지연 응답으로 동작 검증한다 — facility-booking
+ * 은 bootstrap 을 의존할 수 없어(모듈 방향 위반) bootstrap 원본과 값이 동치인지는 이 테스트만으로
+ * 보장되지 않는다. 두 구현의 타임아웃 값을 바꿀 때는 서로를 나란히 확인해야 한다.
  */
 @Component
 class FacilityExternalRestClientFactory {
