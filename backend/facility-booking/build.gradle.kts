@@ -31,13 +31,15 @@ dependencies {
     kapt("jakarta.persistence:jakarta.persistence-api")
 
     // 단위 테스트 — standalone MockMvc(Booking·Facility ApiControllerTest), ArchUnit
-    // (BookingOrderQueryRepositoryBoundaryTest), mockwebserver 계약 테스트(DataGoKr·Kakao — 자체
-    // 로컬 ExternalContractSupport 테스트 전용 복제본 사용, 아래 참고).
+    // (BookingOrderQueryRepositoryBoundaryTest), mockwebserver 계약 테스트(DataGoKr·Kakao). GlobalException
+    // Handler·ProblemDetailBuilder·fixedPrincipalResolver·ExternalContractSupport 는 [W1-01b 리뷰 ①] 로컬
+    // 복제본을 제거하고 common 의 testFixtures 로 통합해 참조한다.
     testImplementation("org.springframework.boot:spring-boot-starter-test") {
         exclude(group = "org.junit.vintage", module = "junit-vintage-engine")
     }
     testImplementation("com.tngtech.archunit:archunit-junit5:1.3.0")
     testImplementation("com.squareup.okhttp3:mockwebserver")
+    testImplementation(testFixtures(project(":common")))
 }
 
 kapt {

@@ -6,8 +6,8 @@ import com.sportsapp.application.goods.usecase.GetMyCartUseCase
 import com.sportsapp.application.goods.usecase.RemoveCartItemUseCase
 import com.sportsapp.application.goods.usecase.UpdateCartItemUseCase
 import com.sportsapp.domain.goods.entity.Cart
-import com.sportsapp.presentation.exception.GlobalExceptionHandler
-import com.sportsapp.presentation.support.fixedPrincipalResolver
+import com.sportsapp.testkit.presentation.exception.GlobalExceptionHandler
+import com.sportsapp.testkit.presentation.support.fixedPrincipalResolver
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every
 import io.mockk.mockk

@@ -4,8 +4,8 @@ import com.sportsapp.application.facility.dto.ProgramResponse
 import com.sportsapp.application.facility.usecase.ListProgramsUseCase
 import com.sportsapp.application.facility.usecase.RegisterProgramUseCase
 import com.sportsapp.domain.facility.exception.UnauthorizedFacilityAccessException
-import com.sportsapp.presentation.exception.GlobalExceptionHandler
-import com.sportsapp.presentation.support.fixedPrincipalResolver
+import com.sportsapp.testkit.presentation.exception.GlobalExceptionHandler
+import com.sportsapp.testkit.presentation.support.fixedPrincipalResolver
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every
 import io.mockk.mockk

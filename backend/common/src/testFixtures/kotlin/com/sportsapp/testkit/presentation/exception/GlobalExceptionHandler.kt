@@ -1,8 +1,7 @@
-package com.sportsapp.presentation.exception
+package com.sportsapp.testkit.presentation.exception
 
 import com.sportsapp.domain.common.BusinessException
 import com.sportsapp.domain.common.ErrorStatus
-import com.sportsapp.domain.goods.exception.LimitedDropTooEarlyException
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail
@@ -24,18 +23,33 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.servlet.resource.NoResourceFoundException
 
 /**
- * [W1-01b] commerce 소유 standalone MockMvc 컨트롤러 테스트(Cart·TicketOrder·Event ApiControllerTest)
- * 전용 테스트 하네스 로컬 복제본.
+ * [W1-01b 리뷰 ①] payment·commerce·facility-booking 이 각자 `src/test`에 복제해 쓰던 standalone
+ * MockMvc 컨트롤러 테스트(예: PaymentApiControllerTest·CartApiControllerTest·BookingApiControllerTest)
+ * 전용 테스트 하네스를 `common`의 `testFixtures`로 통합한 버전이다. `bootstrap`의 main 소스셋에 있는
+ * `com.sportsapp.presentation.exception.GlobalExceptionHandler`(운영 배포 원본)와 매핑 로직이 동일하다.
  *
- * bootstrap 의 `com.sportsapp.presentation.exception.GlobalExceptionHandler` 와 매핑 로직이 동일하다.
- * 원본은 bootstrap 의 main 소스셋에 있어 commerce 모듈이 참조할 수 없다(모듈 의존 방향상
- * commerce → bootstrap 은 성립하지 않는다 — bootstrap 이 commerce 를 의존한다). 이 클래스를 쓰는
- * 3개 컨트롤러 테스트는 `MockMvcBuilders.standaloneSetup(controller, GlobalExceptionHandler())` 로
- * 컨트롤러 어드바이스를 직접 구성하므로, Spring 컨텍스트 기동 없이 test 소스셋에만 존재하면 된다
- * (test 소스셋은 모듈 간 공유되지 않아 split-package 제약 대상이 아니다). 원본과 동일 패키지·클래스명을
- * 사용해 이관된 테스트 파일들의 import 를 한 줄도 고치지 않고 그대로 컴파일되게 한다.
+ * 원본은 bootstrap 의 main 소스셋에 있어 다른 모듈이 참조할 수 없다(모듈 의존 방향상 payment/commerce/
+ * facility-booking → bootstrap 은 성립하지 않는다 — bootstrap 이 이들을 의존하는 방향이다). 이 클래스를
+ * 쓰는 컨트롤러 테스트들은 `MockMvcBuilders.standaloneSetup(controller, GlobalExceptionHandler())` 로
+ * 컨트롤러 어드바이스를 직접 구성하므로, Spring 컨텍스트 기동 없이 testFixtures 소스셋에만 존재하면 된다.
  *
- * 원본이 변경되면 이 복제본도 함께 갱신해야 한다 — 완료 보고 "미해결·후속" 참고
+ * **패키지를 원본과 다르게(`com.sportsapp.testkit.presentation.exception`) 가져간 이유** — 기존 3개
+ * 모듈 로컬 복제본은 각자의 테스트 클래스패스에만 존재해 원본과 부딪히지 않았지만, 이 클래스는
+ * `common`의 testFixtures 아티팩트로 이동한다. `bootstrap`도 `testImplementation(testFixtures(project(
+ * ":common")))`로 `common`의 testFixtures 를 이미 참조하므로(`BaseIntegrationTest` 등을 쓰기 위해),
+ * 원본과 동일 패키지·클래스명(`com.sportsapp.presentation.exception.GlobalExceptionHandler`)을 그대로
+ * 썼다면 bootstrap 의 test 런타임 클래스패스에 **동일 FQCN 클래스가 두 개**(bootstrap 자신의 main 출력 +
+ * common-testFixtures 아티팩트) 존재하게 되어, 클래스패스 순서에 따라 어느 쪽이 로드될지 결정되는
+ * 조용한 섀도잉 위험이 생긴다(이 버전은 goods 핸들러가 빠져 있어 원본과 동작이 달라, 잘못 로드되면
+ * bootstrap 자신의 검증을 무력화할 수 있다). `testkit` 하위 패키지로 분리해 이 충돌을 원천 차단한다.
+ *
+ * goods 전용 핸들러(`LimitedDropTooEarlyException`)는 이 공용 버전에서 **제외**한다 — commerce 를 제외한
+ * payment·facility-booking 모듈에는 goods 도메인이 없고, commerce 자신의 컨트롤러 테스트도 이 예외를
+ * HTTP 레이어에서 검증하지 않는다(BusinessException 상위 핸들러로 폴백되는 원본과 동작 차이는 없다 —
+ * `LimitedDropTooEarlyException` 은 `BusinessException` 의 하위 타입이라 `status`/`errorCode`/`message`
+ * 는 동일하게 매핑되고, 원본에만 추가되는 `openAt` 필드만 응답 본문에서 빠진다).
+ *
+ * 원본(bootstrap main)이 변경되면 이 공용 복제본도 함께 갱신해야 한다 — 완료 보고 "미해결·후속" 참고
  * (2단계 물리 분리 시 서비스별 실제 소유 GlobalExceptionHandler 로 전환).
  */
 @RestControllerAdvice
@@ -50,17 +64,6 @@ class GlobalExceptionHandler {
             code = exception.errorCode,
             detail = exception.message
         )
-        return ResponseEntity.status(exception.status.httpStatus).body(problemDetail)
-    }
-
-    @ExceptionHandler(LimitedDropTooEarlyException::class)
-    fun handleLimitedDropTooEarlyException(exception: LimitedDropTooEarlyException): ResponseEntity<ProblemDetail> {
-        val problemDetail = ProblemDetailBuilder.build(
-            status = exception.status,
-            code = exception.errorCode,
-            detail = exception.message
-        )
-        problemDetail.setProperty("openAt", exception.openAt.toString())
         return ResponseEntity.status(exception.status.httpStatus).body(problemDetail)
     }
 

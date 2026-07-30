@@ -43,6 +43,21 @@ dependencies {
     "testFixturesImplementation"("org.testcontainers:mongodb")
     "testFixturesImplementation"("org.testcontainers:junit-jupiter")
     "testFixturesImplementation"("io.kotest:kotest-runner-junit5:5.9.1")
+
+    // [W1-01b 리뷰 ①] payment·commerce·facility-booking 3모듈이 각자 복제하던 standalone MockMvc
+    // 테스트 하네스(GlobalExceptionHandler·ProblemDetailBuilder·PrincipalArgumentResolver)와 외부 계약
+    // 테스트 하네스(ExternalContractSupport)를 여기 하나로 통합한다. 소비 모듈은 이미 자기 main
+    // dependencies(spring-boot-starter-web/-security/-data-jpa 등)로 같은 타입을 testCompileClasspath에
+    // 올려두고 있지만, common 자신의 testFixtures 소스셋을 컴파일하려면 이 모듈이 직접 선언해야 한다.
+    "testFixturesImplementation"("org.springframework:spring-web")
+    "testFixturesImplementation"("org.springframework:spring-webmvc")
+    "testFixturesImplementation"("org.springframework:spring-tx")
+    "testFixturesImplementation"("org.springframework:spring-orm")
+    "testFixturesImplementation"("org.springframework.security:spring-security-core")
+    "testFixturesImplementation"("jakarta.validation:jakarta.validation-api")
+    "testFixturesImplementation"("jakarta.servlet:jakarta.servlet-api")
+    "testFixturesImplementation"("org.slf4j:slf4j-api")
+    "testFixturesImplementation"("com.squareup.okhttp3:mockwebserver")
 }
 
 kapt {

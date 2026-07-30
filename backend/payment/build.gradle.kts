@@ -30,10 +30,13 @@ dependencies {
     kapt("jakarta.persistence:jakarta.persistence-api")
 
     // 단위 테스트(14) — standalone MockMvc(PaymentApiControllerTest) + mockwebserver(MockPgGatewayImplTest).
+    // GlobalExceptionHandler·ProblemDetailBuilder·fixedPrincipalResolver·ExternalContractSupport 는
+    // [W1-01b 리뷰 ①] 로컬 복제본을 제거하고 common 의 testFixtures 로 통합해 참조한다.
     testImplementation("org.springframework.boot:spring-boot-starter-test") {
         exclude(group = "org.junit.vintage", module = "junit-vintage-engine")
     }
     testImplementation("com.squareup.okhttp3:mockwebserver")
+    testImplementation(testFixtures(project(":common")))
 }
 
 kapt {

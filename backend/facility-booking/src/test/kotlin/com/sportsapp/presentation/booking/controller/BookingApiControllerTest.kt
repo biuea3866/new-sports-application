@@ -11,8 +11,8 @@ import com.sportsapp.domain.booking.entity.Booking
 import com.sportsapp.domain.booking.entity.BookingStatus
 import com.sportsapp.domain.booking.exception.UnauthorizedBookingAccessException
 import com.sportsapp.domain.payment.vo.PaymentMethod
-import com.sportsapp.presentation.exception.GlobalExceptionHandler
-import com.sportsapp.presentation.support.fixedPrincipalResolver
+import com.sportsapp.testkit.presentation.exception.GlobalExceptionHandler
+import com.sportsapp.testkit.presentation.support.fixedPrincipalResolver
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every
 import io.mockk.mockk

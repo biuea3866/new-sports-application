@@ -8,13 +8,14 @@ import java.time.Duration
 /**
  * [W1-01b] facility 소유 외부 Open API(Kakao Local·data.go.kr) 호출용 RestClient 생성기.
  *
- * bootstrap 의 `com.sportsapp.infrastructure.external.ExternalRestClientFactory` 와 동일한 역할이지만,
- * 그 클래스는 bootstrap 에 남는 airquality·alerting·notification·weather(W1-01c 대상) 4개 컨텍스트가
- * 여전히 참조하고 있어 이관할 수 없다 — bootstrap 이 facility-booking 을 의존하는 방향(상위→하위)이라
- * facility-booking 이 bootstrap 클래스를 참조하면 순환 의존이 된다. common 모듈에 공용 배치하는 것이
- * 정공법이나 build.gradle.kts 수정 범위가 이 티켓의 "타 모듈 build 파일 수정 금지" 제약을 벗어나므로,
- * facility 소유 패키지(`infrastructure.facility.external`)에 동일 계약의 로컬 복제본을 둔다.
- * (완료 보고 "미해결·후속" 참고 — W1-01c/공용 인프라 정리 시 통합 검토 대상)
+ * bootstrap 의 `com.sportsapp.infrastructure.external.ExternalRestClientFactory` 와 동일한 역할·타임아웃
+ * 정책(connect 3s / read 5s, [FacilityExternalRestClientFactoryTest] 로 값 고정)을 갖는다. 이 복제는
+ * "언젠가 원본과 통합될 임시 상태"가 아니다 — bootstrap 에 남는 원본은 alerting·notification(3)·
+ * airquality·weather 5개 게이트웨이가 참조하며, 이 5개는 모두 W1-01c 에서 platform 모듈로 이관될
+ * 대상이다. facility-booking 은 platform 을 의존할 수 없으므로(경계 위반), 원본이 platform 으로
+ * 옮겨가도 facility-booking 은 여전히 그것을 참조할 수 없다 — 즉 이 복제본은 원본과 통합되는 것이
+ * 아니라, "2단계 물리 분리 후에는 각 서비스가 자기 아웃바운드 HTTP 설정을 소유한다"는 목표 상태로
+ * 수렴하는 방향이다. 두 구현이 어긋나지 않도록 타임아웃 값은 테스트로 고정한다.
  */
 @Component
 class FacilityExternalRestClientFactory {
