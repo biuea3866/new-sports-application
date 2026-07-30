@@ -17,6 +17,7 @@ import com.sportsapp.domain.goods.exception.LimitedDropQuantityExceedsStockExcep
 import com.sportsapp.domain.goods.exception.LimitedDropSoldOutException
 import com.sportsapp.domain.goods.exception.LimitedDropThrottledException
 import com.sportsapp.domain.goods.exception.LimitedDropTooEarlyException
+import com.sportsapp.domain.goods.gateway.DropReservationCompensator
 import com.sportsapp.domain.goods.gateway.DropReservationStore
 import com.sportsapp.domain.goods.gateway.RejectCounts
 import com.sportsapp.domain.goods.gateway.RejectKind
@@ -61,11 +62,13 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         dropReservationStore: DropReservationStore = mockk(),
         goodsDomainService: GoodsDomainService = mockk(),
         domainEventPublisher: DomainEventPublisher = mockk(),
+        dropReservationCompensator: DropReservationCompensator = mockk(relaxed = true),
     ) = LimitedDropDomainService(
         limitedDropRepository = limitedDropRepository,
         dropReservationStore = dropReservationStore,
         goodsDomainService = goodsDomainService,
         domainEventPublisher = domainEventPublisher,
+        dropReservationCompensator = dropReservationCompensator,
     )
 
     fun command(): PurchaseLimitedDropCommand = PurchaseLimitedDropCommand(
@@ -79,7 +82,13 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         val limitedDropRepository = mockk<LimitedDropRepository>()
         val dropReservationStore = mockk<DropReservationStore>()
         val goodsDomainService = mockk<GoodsDomainService>()
-        val service = buildService(limitedDropRepository, dropReservationStore, goodsDomainService)
+        val dropReservationCompensator = mockk<DropReservationCompensator>()
+        val service = buildService(
+            limitedDropRepository,
+            dropReservationStore,
+            goodsDomainService,
+            dropReservationCompensator = dropReservationCompensator,
+        )
         val drop = openDrop()
         val order = GoodsOrder.create(userId = USER_ID, totalAmount = BigDecimal("1000"), idempotencyKey = IDEMPOTENCY_KEY)
 
@@ -93,6 +102,9 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
             goodsDomainService.createPendingOrder(USER_ID, listOf(OrderItemInput(PRODUCT_ID, QUANTITY)), IDEMPOTENCY_KEY)
         } returns order
         every { dropReservationStore.confirmSuccess(DROP_ID, USER_ID, IDEMPOTENCY_KEY) } returns Unit
+        every {
+            dropReservationCompensator.registerCancelOnRollback(DROP_ID, USER_ID, QUANTITY, IDEMPOTENCY_KEY, admittedThisAttempt = true)
+        } returns Unit
 
         When("purchase를 호출하면") {
             val result = service.purchase(command())
@@ -105,6 +117,18 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
                 }
                 verify(exactly = 1) { dropReservationStore.confirmSuccess(DROP_ID, USER_ID, IDEMPOTENCY_KEY) }
                 verify(exactly = 1) { dropReservationStore.releaseThrottle() }
+            }
+
+            Then("[FIX-02] 커밋 단계 실패까지 포괄하는 롤백 보상을 admittedThisAttempt=true로 등록한다") {
+                verify(exactly = 1) {
+                    dropReservationCompensator.registerCancelOnRollback(
+                        DROP_ID,
+                        USER_ID,
+                        QUANTITY,
+                        IDEMPOTENCY_KEY,
+                        admittedThisAttempt = true,
+                    )
+                }
             }
         }
     }
@@ -160,7 +184,13 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         val limitedDropRepository = mockk<LimitedDropRepository>()
         val dropReservationStore = mockk<DropReservationStore>()
         val goodsDomainService = mockk<GoodsDomainService>()
-        val service = buildService(limitedDropRepository, dropReservationStore, goodsDomainService)
+        val dropReservationCompensator = mockk<DropReservationCompensator>()
+        val service = buildService(
+            limitedDropRepository,
+            dropReservationStore,
+            goodsDomainService,
+            dropReservationCompensator = dropReservationCompensator,
+        )
         val drop = openDrop()
 
         every { limitedDropRepository.findById(DROP_ID) } returns drop
@@ -177,6 +207,10 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
                 verify(exactly = 0) { dropReservationStore.cancel(any(), any(), any(), any()) }
                 verify(exactly = 0) { goodsDomainService.createPendingOrder(any(), any(), any()) }
                 verify(exactly = 0) { dropReservationStore.releaseThrottle() }
+            }
+
+            Then("[FIX-02] 예약이 없으므로 롤백 보상을 등록하지 않는다") {
+                verify(exactly = 0) { dropReservationCompensator.registerCancelOnRollback(any(), any(), any(), any(), any()) }
             }
         }
     }
@@ -237,7 +271,13 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         val limitedDropRepository = mockk<LimitedDropRepository>()
         val dropReservationStore = mockk<DropReservationStore>()
         val goodsDomainService = mockk<GoodsDomainService>()
-        val service = buildService(limitedDropRepository, dropReservationStore, goodsDomainService)
+        val dropReservationCompensator = mockk<DropReservationCompensator>()
+        val service = buildService(
+            limitedDropRepository,
+            dropReservationStore,
+            goodsDomainService,
+            dropReservationCompensator = dropReservationCompensator,
+        )
         val drop = openDrop()
         val existingOrder = GoodsOrder.create(userId = USER_ID, totalAmount = BigDecimal("1000"), idempotencyKey = IDEMPOTENCY_KEY)
 
@@ -250,6 +290,9 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         every {
             goodsDomainService.createPendingOrder(USER_ID, listOf(OrderItemInput(PRODUCT_ID, QUANTITY)), IDEMPOTENCY_KEY)
         } returns existingOrder
+        every {
+            dropReservationCompensator.registerCancelOnRollback(DROP_ID, USER_ID, QUANTITY, IDEMPOTENCY_KEY, admittedThisAttempt = false)
+        } returns Unit
 
         When("purchase를 재호출하면") {
             val result = service.purchase(command())
@@ -261,6 +304,18 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
                 verify(exactly = 1) { dropReservationStore.releaseThrottle() }
                 verify(exactly = 0) { dropReservationStore.confirmSuccess(any(), any(), any()) }
                 verify(exactly = 0) { dropReservationStore.cancel(any(), any(), any(), any()) }
+            }
+
+            Then("[FIX-02] 롤백 보상은 admittedThisAttempt=false로 등록한다 (같은 시퀀스가 아니면 구현체가 무시)") {
+                verify(exactly = 1) {
+                    dropReservationCompensator.registerCancelOnRollback(
+                        DROP_ID,
+                        USER_ID,
+                        QUANTITY,
+                        IDEMPOTENCY_KEY,
+                        admittedThisAttempt = false,
+                    )
+                }
             }
         }
     }

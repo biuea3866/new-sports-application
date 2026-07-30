@@ -15,6 +15,7 @@ import io.mockk.every
 import io.mockk.mockk
 import java.math.BigDecimal
 import java.time.ZonedDateTime
+import org.springframework.orm.ObjectOptimisticLockingFailureException
 
 private const val DROP_ID = 1L
 private const val PRODUCT_ID = 10L
@@ -78,6 +79,23 @@ class PurchaseLimitedDropUseCaseTest : BehaviorSpec({
                 val constructor = PurchaseLimitedDropUseCase::class.constructors.first()
                 constructor.parameters shouldHaveSize 1
                 constructor.parameters[0].type.classifier shouldBe LimitedDropDomainService::class
+            }
+        }
+
+        When("execute 메서드의 @Retryable 설정을 확인하면") {
+            Then("[FIX-02] maxAttempts는 LimitedDropRetryProperties 빈을 SpEL로 참조하도록 예산이 외부화된다") {
+                val executeMethod = PurchaseLimitedDropUseCase::class.java.getMethod(
+                    "execute",
+                    com.sportsapp.domain.goods.dto.PurchaseLimitedDropCommand::class.java,
+                )
+                val retryable = executeMethod.getAnnotation(org.springframework.retry.annotation.Retryable::class.java)
+
+                retryable.maxAttemptsExpression shouldBe "#{@limitedDropRetryProperties.maxAttempts}"
+                retryable.retryFor.toList() shouldBe listOf(ObjectOptimisticLockingFailureException::class)
+                retryable.backoff.delay shouldBe 5L
+                retryable.backoff.maxDelay shouldBe 100L
+                retryable.backoff.multiplier shouldBe 1.5
+                retryable.backoff.random shouldBe true
             }
         }
     }
