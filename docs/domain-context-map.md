@@ -1,6 +1,6 @@
 # 도메인 · 바운디드 컨텍스트 맵
 
-sports-application 백엔드(`backend`, 단일 모듈)의 도메인 구성과 도메인 간 연결, 바운디드 컨텍스트 경계를 정리한 문서입니다. 코드베이스 조사(2026-07-06 최초 작성, 2026-07-07 BE-22 FR-8 정합 갱신)를 근거로 작성했습니다.
+sports-application 백엔드(`backend`, 단일 모듈)의 도메인 구성과 도메인 간 연결, 바운디드 컨텍스트 경계를 정리한 문서입니다. 코드베이스 조사(2026-07-06 최초 작성, 2026-07-07 BE-22 FR-8 정합 갱신, **2026-07-30 0단계 결합 해소 후 코드 실측 기준 전면 정정**)를 근거로 작성했습니다.
 
 ## 구조 개요
 
@@ -97,10 +97,11 @@ flowchart LR
 
 - 실선 `→` : 동기 호출 (DomainService 주입 / Gateway)
 - 점선 `-.->` : 비동기 이벤트 (Kafka Layer 2 / Spring ApplicationEvent Layer 1)
-- `weather`·`airquality`·`operator`·`post`는 강결합 없는 독립 도메인, `featuredemo`·`image`는 부가 도메인(생략).
+- `weather`·`airquality`·`operator`·`post`·`mcp`는 이 그림에 엣지가 없습니다 — `mcp`만은 독립이 아니라 `McpPermissionGateway`(mcp→user)를 갖습니다(④ 참조). `featuredemo`·`image`는 부가 도메인으로 생략.
+- **엣지 생략 기준**: 가독성을 위해 이 그림은 결제·확정·알림 등 주요 흐름만 그립니다. ACL 게이트웨이 7종과 소프트 참조는 아래 ④·⑤ 표에 전수 기재합니다.
 - `event.payment.payment.v1` 확정구독 점선 4개가 **제거된 동기 콜백 허브를 대체한 팬아웃**입니다 — payment는 발행만 하고 각 주문 컨텍스트가 자기 `*PaymentEventWorker`로 확정합니다(컨슈머 그룹은 notification 포함 5개, 아래 ① 표 참조).
 - `recruitment`는 payment 연동(`createPending` + 확정 구독)과 community ID 참조가 모두 **배선 완료**돼 이 그림에 포함했습니다.
-- 이 그림은 컨텍스트 수가 많아 [mermaid 규칙](../.claude/rules/mermaid.md)의 노드 15개 권장을 넘습니다(18개). 컨텍스트 맵의 성격상 전체 조망이 목적이라 `subgraph` 그룹핑으로 가독성을 확보했습니다.
+- 이 그림은 컨텍스트 수가 많아 mermaid 가이드의 노드 15개 권장을 넘습니다(18개). 컨텍스트 맵의 성격상 전체 조망이 목적이라 `subgraph` 그룹핑으로 가독성을 확보했습니다.
 
 ### 연결 방식 5종
 
@@ -210,7 +211,7 @@ flowchart LR
     dashboard -->|"CF 읽기집계"| user
 ```
 
-> `recruitment`는 payment 연동이 배선 완료된 Core 컨텍스트라 결제 요청 엣지를 표기했습니다. 이 DDD 관점 그림은 컨텍스트 수가 많아 [mermaid 규칙](../.claude/rules/mermaid.md)의 노드 15개 권장을 넘습니다 — 컨텍스트 맵의 성격상 전체 조망이 목적이므로 `subgraph` 그룹핑으로 가독성을 확보했습니다. 상세는 아래 "바운디드 컨텍스트 정의" 표를 보세요.
+> `recruitment`는 payment 연동이 배선 완료된 Core 컨텍스트라 결제 요청 엣지를 표기했습니다. 이 DDD 관점 그림은 컨텍스트 수가 많아 mermaid 가이드의 노드 15개 권장을 넘습니다(19개) — 컨텍스트 맵의 성격상 전체 조망이 목적이므로 `subgraph` 그룹핑으로 가독성을 확보했습니다. 상세는 아래 "바운디드 컨텍스트 정의" 표를 보세요.
 
 ### 도메인 분류 (ADR-001 / `DomainClassification`)
 
