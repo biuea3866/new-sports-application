@@ -11,6 +11,7 @@ import com.sportsapp.domain.goods.exception.LimitedDropPerUserLimitExceededExcep
 import com.sportsapp.domain.goods.exception.LimitedDropSoldOutException
 import com.sportsapp.domain.goods.exception.LimitedDropThrottledException
 import com.sportsapp.domain.goods.exception.LimitedDropTooEarlyException
+import com.sportsapp.domain.goods.gateway.DropReservationCompensator
 import com.sportsapp.domain.goods.gateway.DropReservationStore
 import com.sportsapp.domain.goods.gateway.RejectKind
 import com.sportsapp.domain.goods.gateway.ReservationResult
@@ -38,6 +39,7 @@ class LimitedDropDomainService(
     private val dropReservationStore: DropReservationStore,
     private val goodsDomainService: GoodsDomainService,
     private val domainEventPublisher: DomainEventPublisher,
+    private val dropReservationCompensator: DropReservationCompensator,
 ) {
     private val log = LoggerFactory.getLogger(LimitedDropDomainService::class.java)
 
@@ -199,9 +201,20 @@ class LimitedDropDomainService(
      */
     private fun admit(drop: LimitedDrop, command: PurchaseLimitedDropCommand): GoodsOrder =
         when (val result = tryReserve(drop, command)) {
+            // fail-open(Redis 장애)은 이번 시도가 슬롯을 새로 차감하지 않았으므로 registerCancelOnRollback을
+            // 호출하지 않는다 — 등록하지 않아도 보상 공백이 생기지 않는다: 이 시도가 이전에 이미 Admitted였던
+            // 같은 재시도 시퀀스의 마지막 시도라면, DropReservationCompensatorImpl이 이전 Admitted 시도의
+            // 취소 후보를 RetryContext에 이미 남겨 두었고, 그 후보는 이 시도가 실패해도 그대로 유지된다
+            // (재시도 시퀀스 종료 시 DropReservationCompensationRetryListener가 읽어 취소한다, code-review p3).
             null -> persistWithThrottle(drop, command, restoreOnFailure = false)
-            is ReservationResult.Admitted -> persistWithThrottle(drop, command, restoreOnFailure = true)
-            is ReservationResult.AlreadyReserved -> persistWithThrottle(drop, command, restoreOnFailure = false)
+            is ReservationResult.Admitted -> {
+                registerCancelOnRollback(drop.id, command, admittedThisAttempt = true)
+                persistWithThrottle(drop, command, restoreOnFailure = true)
+            }
+            is ReservationResult.AlreadyReserved -> {
+                registerCancelOnRollback(drop.id, command, admittedThisAttempt = false)
+                persistWithThrottle(drop, command, restoreOnFailure = false)
+            }
             is ReservationResult.SoldOut -> {
                 recordRejectSafely(drop.id, RejectKind.SOLD_OUT)
                 throw LimitedDropSoldOutException(drop.id)
@@ -209,6 +222,22 @@ class LimitedDropDomainService(
             is ReservationResult.PerUserLimitExceeded ->
                 throw LimitedDropPerUserLimitExceededException(drop.id, result.limit)
         }
+
+    /**
+     * 커밋 단계 실패까지 포괄하는 롤백 보상을 등록한다(FIX-02) — Redis 예약이 실제로 존재하는
+     * 두 경로(Admitted로 방금 차감했거나, 같은 재시도 시퀀스 안에서 AlreadyReserved로 이어지는
+     * 경우)에서만 호출한다. 재시도 예산이 소진되는 마지막 시도의 롤백에서만 실제 취소가 실행된다
+     * ([DropReservationCompensatorImpl] 참조).
+     */
+    private fun registerCancelOnRollback(dropId: Long, command: PurchaseLimitedDropCommand, admittedThisAttempt: Boolean) {
+        dropReservationCompensator.registerCancelOnRollback(
+            dropId = dropId,
+            userId = command.userId,
+            quantity = command.quantity,
+            idempotencyKey = command.idempotencyKey,
+            admittedThisAttempt = admittedThisAttempt,
+        )
+    }
 
     /** FR-9 거부 카운터 증가. Redis 장애는 fail-open — 구매 흐름(예외 전파)에 영향을 주지 않는다. */
     private fun recordRejectSafely(dropId: Long, kind: RejectKind) {

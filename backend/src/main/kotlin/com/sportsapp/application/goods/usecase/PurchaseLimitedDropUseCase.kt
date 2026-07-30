@@ -25,9 +25,11 @@ class PurchaseLimitedDropUseCase(
 ) {
     @Retryable(
         retryFor = [ObjectOptimisticLockingFailureException::class],
-        // Redis 완충 permit 상한(app.limited-drop.reservation.semaphore-permits 기본값 200)과 맞춘 값 —
-        // 최악의 경우 permit을 통과한 전원이 동시에 낙관적 락 경합에 들어와도 전부 재시도로 흡수한다.
-        maxAttempts = 200,
+        // 재시도 예산은 app.limited-drop.retry.max-attempts(LimitedDropRetryProperties, 기본 20)로
+        // 외부화한다(FIX-02 §③) — 서버측 요청 수명이 커넥션 풀 대기(5s)·LB proxy_read_timeout(30s)보다
+        // 확실히 짧아야 하므로 기존 200회(최악 약 20초)를 낮춘다. 빈 이름은 LimitedDropRetryPropertiesConfig가
+        // 고정 배선한다.
+        maxAttemptsExpression = "#{@limitedDropRetryProperties.maxAttempts}",
         backoff = Backoff(delay = 5, maxDelay = 100, multiplier = 1.5, random = true),
     )
     @Transactional
