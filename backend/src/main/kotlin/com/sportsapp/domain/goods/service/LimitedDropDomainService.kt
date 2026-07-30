@@ -201,6 +201,11 @@ class LimitedDropDomainService(
      */
     private fun admit(drop: LimitedDrop, command: PurchaseLimitedDropCommand): GoodsOrder =
         when (val result = tryReserve(drop, command)) {
+            // fail-open(Redis 장애)은 이번 시도가 슬롯을 새로 차감하지 않았으므로 registerCancelOnRollback을
+            // 호출하지 않는다 — 등록하지 않아도 보상 공백이 생기지 않는다: 이 시도가 이전에 이미 Admitted였던
+            // 같은 재시도 시퀀스의 마지막 시도라면, DropReservationCompensatorImpl이 이전 Admitted 시도의
+            // 취소 후보를 RetryContext에 이미 남겨 두었고, 그 후보는 이 시도가 실패해도 그대로 유지된다
+            // (재시도 시퀀스 종료 시 DropReservationCompensationRetryListener가 읽어 취소한다, code-review p3).
             null -> persistWithThrottle(drop, command, restoreOnFailure = false)
             is ReservationResult.Admitted -> {
                 registerCancelOnRollback(drop.id, command, admittedThisAttempt = true)

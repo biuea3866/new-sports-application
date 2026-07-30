@@ -19,6 +19,7 @@ import java.math.BigDecimal
 import java.time.ZonedDateTime
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
@@ -41,18 +42,23 @@ private const val BUYER_USER_ID = 9_200L
  * 모든 시도(AlreadyReserved로 이어지는 재시도 포함)를 빠짐없이 가로챌 수 있는 지점이다. 여기서
  * `beforeCommit`에 예외를 등록하면 "커밋 단계 실패"를 결정적으로 재현할 수 있다(FIX-02 티켓
  * 재현안 B) — 매 호출마다 [remainingFailures]를 소비해 실패 횟수를 정확히 통제한다.
+ *
+ * 주입할 예외는 [failureSupplier]로 제어한다 — `@Retryable(retryFor = [ObjectOptimisticLockingFailureException])`
+ * 대상(재시도됨)과 비대상(즉시 최종 실패, code-review p1) 두 경로를 모두 재현하기 위함이다.
  */
 class CommitFailureInjectingDropReservationStore(
     private val delegate: DropReservationStore,
     private val remainingFailures: AtomicInteger,
+    private val failureSupplier: AtomicReference<() -> RuntimeException>,
 ) : DropReservationStore by delegate {
 
     override fun releaseThrottle() {
         val shouldFail = remainingFailures.getAndUpdate { current -> if (current > 0) current - 1 else 0 } > 0
         if (shouldFail) {
+            val exceptionSupplier = failureSupplier.get()
             TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
                 override fun beforeCommit(readOnly: Boolean) {
-                    throw ObjectOptimisticLockingFailureException("Stock", 0L)
+                    throw exceptionSupplier()
                 }
             })
         }
@@ -67,11 +73,17 @@ class CommitFailureInjectionTestConfig {
     fun commitFailureBudget(): AtomicInteger = AtomicInteger(0)
 
     @Bean
+    fun commitFailureExceptionSupplier(): AtomicReference<() -> RuntimeException> =
+        AtomicReference { ObjectOptimisticLockingFailureException("Stock", 0L) }
+
+    @Bean
     @Primary
     fun commitFailureInjectingDropReservationStore(
         real: DropReservationStoreImpl,
         commitFailureBudget: AtomicInteger,
-    ): DropReservationStore = CommitFailureInjectingDropReservationStore(real, commitFailureBudget)
+        commitFailureExceptionSupplier: AtomicReference<() -> RuntimeException>,
+    ): DropReservationStore =
+        CommitFailureInjectingDropReservationStore(real, commitFailureBudget, commitFailureExceptionSupplier)
 }
 
 /**
@@ -91,6 +103,7 @@ class LimitedDropReservationCompensationScenarioTest(
     @Autowired private val redisTemplate: StringRedisTemplate,
     @Autowired private val jdbcTemplate: JdbcTemplate,
     @Autowired private val commitFailureBudget: AtomicInteger,
+    @Autowired private val commitFailureExceptionSupplier: AtomicReference<() -> RuntimeException>,
 ) : BaseIntegrationTest() {
 
     init {
@@ -129,6 +142,7 @@ class LimitedDropReservationCompensationScenarioTest(
             jdbcTemplate.execute("DELETE FROM stocks")
             jdbcTemplate.execute("DELETE FROM products")
             commitFailureBudget.set(0)
+            commitFailureExceptionSupplier.set { ObjectOptimisticLockingFailureException("Stock", 0L) }
         }
 
         Given("재시도 예산(3회)을 전부 소진할 만큼 커밋 단계 실패가 반복되는 회차") {
@@ -177,6 +191,36 @@ class LimitedDropReservationCompensationScenarioTest(
                     redisTemplate.opsForValue().get(buyerKey(dropId, BUYER_USER_ID)) shouldBe "1"
                     redisTemplate.hasKey(reservedKey(dropId, idempotencyKey)) shouldBe true
                     goodsOrderJpaRepository.count() shouldBe 1
+                }
+            }
+        }
+
+        Given("커밋 단계에서 재시도 대상이 아닌 예외(IllegalStateException)가 1회 발생하는 회차") {
+            When("PurchaseLimitedDropUseCase.execute를 호출하면") {
+                Then("[code-review p1][RED] retryFor 대상이 아니므로 재시도 없이 1회 만에 끝나고도 예약이 취소된다") {
+                    val dropId = createDropWithStock(limitedQuantity = 10)
+                    val idempotencyKey = UUID.randomUUID().toString()
+                    commitFailureBudget.set(1)
+                    commitFailureExceptionSupplier.set { IllegalStateException("non-retryable commit failure") }
+
+                    shouldThrow<IllegalStateException> {
+                        purchaseLimitedDropUseCase.execute(
+                            PurchaseLimitedDropCommand(
+                                dropId = dropId,
+                                userId = BUYER_USER_ID,
+                                quantity = 1,
+                                idempotencyKey = idempotencyKey,
+                            ),
+                        )
+                    }
+
+                    // 산술 기반(retryCount+1 >= maxAttempts) 판정이었다면 1번째 시도는 "마지막 시도"로
+                    // 계산되지 않아(1+1 >= 3 = false) 보상이 유실됐다(code-review p1 RED). 재시도
+                    // 시퀀스 종료(RetryListener.close) 시점 판정으로 고쳐야 아래 3개가 모두 원복된다.
+                    redisTemplate.opsForValue().get(remainingKey(dropId)) shouldBe "10"
+                    redisTemplate.opsForValue().get(buyerKey(dropId, BUYER_USER_ID)) shouldBe "0"
+                    redisTemplate.hasKey(reservedKey(dropId, idempotencyKey)) shouldBe false
+                    goodsOrderJpaRepository.count() shouldBe 0
                 }
             }
         }

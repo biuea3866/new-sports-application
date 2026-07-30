@@ -103,7 +103,13 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
         } returns order
         every { dropReservationStore.confirmSuccess(DROP_ID, USER_ID, IDEMPOTENCY_KEY) } returns Unit
         every {
-            dropReservationCompensator.registerCancelOnRollback(DROP_ID, USER_ID, QUANTITY, IDEMPOTENCY_KEY, admittedThisAttempt = true)
+            dropReservationCompensator.registerCancelOnRollback(
+                dropId = DROP_ID,
+                userId = USER_ID,
+                quantity = QUANTITY,
+                idempotencyKey = IDEMPOTENCY_KEY,
+                admittedThisAttempt = true,
+            )
         } returns Unit
 
         When("purchase를 호출하면") {
@@ -291,7 +297,13 @@ class LimitedDropDomainServiceTest : BehaviorSpec({
             goodsDomainService.createPendingOrder(USER_ID, listOf(OrderItemInput(PRODUCT_ID, QUANTITY)), IDEMPOTENCY_KEY)
         } returns existingOrder
         every {
-            dropReservationCompensator.registerCancelOnRollback(DROP_ID, USER_ID, QUANTITY, IDEMPOTENCY_KEY, admittedThisAttempt = false)
+            dropReservationCompensator.registerCancelOnRollback(
+                dropId = DROP_ID,
+                userId = USER_ID,
+                quantity = QUANTITY,
+                idempotencyKey = IDEMPOTENCY_KEY,
+                admittedThisAttempt = false,
+            )
         } returns Unit
 
         When("purchase를 재호출하면") {
