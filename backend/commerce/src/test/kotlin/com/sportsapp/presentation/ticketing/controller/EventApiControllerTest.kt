@@ -5,8 +5,8 @@ import com.sportsapp.application.ticketing.usecase.GetEventUseCase
 import com.sportsapp.application.ticketing.usecase.ListEventsUseCase
 import com.sportsapp.application.ticketing.usecase.ReleaseSeatsUseCase
 import com.sportsapp.application.ticketing.usecase.SelectSeatsUseCase
-import com.sportsapp.testkit.presentation.exception.GlobalExceptionHandler
-import com.sportsapp.testkit.presentation.support.fixedPrincipalResolver
+import sportsapp.testkit.presentation.exception.GlobalExceptionHandler
+import sportsapp.testkit.presentation.support.fixedPrincipalResolver
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every
 import io.mockk.mockk

@@ -1,4 +1,4 @@
-package com.sportsapp.testkit.presentation.support
+package sportsapp.testkit.presentation.support
 
 import com.sportsapp.domain.common.security.UserPrincipal
 import org.springframework.core.MethodParameter
@@ -21,10 +21,10 @@ import org.springframework.web.method.support.ModelAndViewContainer
  * bootstrap 은 `SecurityContextHolder`를 직접 읽는 컴포넌트 검증용 `withAuthenticatedPrincipal`도
  * 함께 갖고 있으나, payment·commerce·facility-booking 은 이를 쓰지 않아 이 공용 버전에는 포함하지 않는다.
  *
- * 패키지를 `com.sportsapp.testkit.presentation.support`로 분리한 이유는
- * `com.sportsapp.testkit.presentation.exception.GlobalExceptionHandler` KDoc 참고 — bootstrap 자신의
- * `com.sportsapp.presentation.support.PrincipalArgumentResolver` 원본과 FQCN 충돌(클래스패스 섀도잉)을
- * 피하기 위함이다.
+ * 패키지를 `sportsapp.testkit.presentation.support`(`com.sportsapp` 밖)로 분리한 이유는
+ * `sportsapp.testkit.presentation.exception.GlobalExceptionHandler` KDoc 참고 — bootstrap 자신의
+ * `com.sportsapp.presentation.support.PrincipalArgumentResolver` 원본과 FQCN 충돌(클래스패스 섀도잉)뿐
+ * 아니라, bootstrap 컴포넌트 스캔 오염까지 함께 차단하기 위함이다.
  */
 fun fixedPrincipalResolver(
     userId: Long?,

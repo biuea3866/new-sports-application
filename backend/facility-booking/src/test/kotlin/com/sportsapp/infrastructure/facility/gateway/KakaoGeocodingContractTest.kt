@@ -1,8 +1,8 @@
 package com.sportsapp.infrastructure.facility.gateway
 
-import com.sportsapp.testkit.infrastructure.external.ExternalContractSupport
+import sportsapp.testkit.infrastructure.external.ExternalContractSupport
 import com.sportsapp.infrastructure.facility.external.FacilityExternalRestClientFactory
-import com.sportsapp.testkit.infrastructure.external.Live
+import sportsapp.testkit.infrastructure.external.Live
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe

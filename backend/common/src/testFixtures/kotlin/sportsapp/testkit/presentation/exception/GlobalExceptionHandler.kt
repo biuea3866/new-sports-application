@@ -1,4 +1,4 @@
-package com.sportsapp.testkit.presentation.exception
+package sportsapp.testkit.presentation.exception
 
 import com.sportsapp.domain.common.BusinessException
 import com.sportsapp.domain.common.ErrorStatus
@@ -33,15 +33,26 @@ import org.springframework.web.servlet.resource.NoResourceFoundException
  * 쓰는 컨트롤러 테스트들은 `MockMvcBuilders.standaloneSetup(controller, GlobalExceptionHandler())` 로
  * 컨트롤러 어드바이스를 직접 구성하므로, Spring 컨텍스트 기동 없이 testFixtures 소스셋에만 존재하면 된다.
  *
- * **패키지를 원본과 다르게(`com.sportsapp.testkit.presentation.exception`) 가져간 이유** — 기존 3개
- * 모듈 로컬 복제본은 각자의 테스트 클래스패스에만 존재해 원본과 부딪히지 않았지만, 이 클래스는
- * `common`의 testFixtures 아티팩트로 이동한다. `bootstrap`도 `testImplementation(testFixtures(project(
- * ":common")))`로 `common`의 testFixtures 를 이미 참조하므로(`BaseIntegrationTest` 등을 쓰기 위해),
- * 원본과 동일 패키지·클래스명(`com.sportsapp.presentation.exception.GlobalExceptionHandler`)을 그대로
- * 썼다면 bootstrap 의 test 런타임 클래스패스에 **동일 FQCN 클래스가 두 개**(bootstrap 자신의 main 출력 +
- * common-testFixtures 아티팩트) 존재하게 되어, 클래스패스 순서에 따라 어느 쪽이 로드될지 결정되는
- * 조용한 섀도잉 위험이 생긴다(이 버전은 goods 핸들러가 빠져 있어 원본과 동작이 달라, 잘못 로드되면
- * bootstrap 자신의 검증을 무력화할 수 있다). `testkit` 하위 패키지로 분리해 이 충돌을 원천 차단한다.
+ * **패키지를 원본과 다르게, 그리고 `com.sportsapp.**` 밖으로(`sportsapp.testkit.presentation.exception`)
+ * 가져간 이유** — 기존 3개 모듈 로컬 복제본은 각자의 테스트 클래스패스에만 존재해 원본과 부딪히지
+ * 않았지만, 이 클래스는 `common`의 testFixtures 아티팩트로 이동한다. `bootstrap`도
+ * `testImplementation(testFixtures(project(":common")))`로 `common`의 testFixtures 를 이미 참조하므로
+ * (`BaseIntegrationTest` 등을 쓰기 위해), 원본과 동일 패키지·클래스명
+ * (`com.sportsapp.presentation.exception.GlobalExceptionHandler`)을 그대로 썼다면 bootstrap 의 test
+ * 런타임 클래스패스에 **동일 FQCN 클래스가 두 개**(bootstrap 자신의 main 출력 + common-testFixtures
+ * 아티팩트) 존재하게 되어, 클래스패스 순서에 따라 어느 쪽이 로드될지 결정되는 조용한 섀도잉 위험이
+ * 생긴다(이 버전은 goods 핸들러가 빠져 있어 원본과 동작이 달라, 잘못 로드되면 bootstrap 자신의 검증을
+ * 무력화할 수 있다).
+ *
+ * 단순히 `com.sportsapp.testkit.**`처럼 하위 패키지만 바꾸는 것으로는 **부족하다** — 이 클래스는
+ * `@RestControllerAdvice`(메타 애노테이션상 `@Component`)이고, `bootstrap`의 `SportsApplication`
+ * (`@SpringBootApplication`)의 컴포넌트 스캔 베이스가 `com.sportsapp`이므로 `com.sportsapp` 아래
+ * 있는 한 FQCN이 달라도 **bootstrap 풀부팅 컨텍스트에 두 번째 빈으로 스캔되어 등록**된다(빈 이름이
+ * `globalExceptionHandler`로 원본과 충돌해 `ConflictingBeanDefinitionException`을 일으키거나, 이름
+ * 충돌을 피해도 원본과 동작이 다른 advice가 조용히 함께 등록되는 문제가 남는다). 그래서 패키지 루트를
+ * `com.sportsapp` **밖으로**(`sportsapp.testkit.*`) 빼 컴포넌트 스캔 자체에서 제외한다 — 이 프로젝트는
+ * 아직 전용 패키지 이동·`@ComponentScan.Filter` 둘 다 가능하지만, 별도 아티팩트(testFixtures)이자
+ * 스캔 베이스 밖 패키지라 빈 공급을 더 단순하게 막을 수 있는 후자를 택했다.
  *
  * goods 전용 핸들러(`LimitedDropTooEarlyException`)는 이 공용 버전에서 **제외**한다 — commerce 를 제외한
  * payment·facility-booking 모듈에는 goods 도메인이 없고, commerce 자신의 컨트롤러 테스트도 이 예외를

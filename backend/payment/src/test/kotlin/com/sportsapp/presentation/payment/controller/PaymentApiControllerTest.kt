@@ -9,8 +9,8 @@ import com.sportsapp.application.payment.usecase.PreparePaymentUseCase
 import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.payment.entity.PaymentStatus
 import com.sportsapp.domain.payment.vo.PaymentMethod
-import com.sportsapp.testkit.presentation.exception.GlobalExceptionHandler
-import com.sportsapp.testkit.presentation.support.fixedPrincipalResolver
+import sportsapp.testkit.presentation.exception.GlobalExceptionHandler
+import sportsapp.testkit.presentation.support.fixedPrincipalResolver
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every
 import io.mockk.mockk

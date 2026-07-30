@@ -9,8 +9,8 @@ import com.sportsapp.domain.facility.entity.Facility
 import com.sportsapp.domain.facility.exception.UnauthorizedFacilityAccessException
 import com.sportsapp.domain.facility.vo.OperatingHours
 import com.sportsapp.domain.common.security.UserPrincipal
-import com.sportsapp.testkit.presentation.exception.GlobalExceptionHandler
-import com.sportsapp.testkit.presentation.support.fixedPrincipalResolver
+import sportsapp.testkit.presentation.exception.GlobalExceptionHandler
+import sportsapp.testkit.presentation.support.fixedPrincipalResolver
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every

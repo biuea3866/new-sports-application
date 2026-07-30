@@ -5,7 +5,7 @@ import com.sportsapp.application.facility.usecase.ImportLegacyFacilitiesUseCase
 import com.sportsapp.application.facility.usecase.ImportPublicFacilitiesUseCase
 import com.sportsapp.domain.facility.dto.BackfillResult
 import com.sportsapp.domain.facility.exception.FacilityRegionBackfillInProgressException
-import com.sportsapp.testkit.presentation.exception.GlobalExceptionHandler
+import sportsapp.testkit.presentation.exception.GlobalExceptionHandler
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every

@@ -6,7 +6,7 @@ import com.sportsapp.domain.payment.exception.PaymentGatewayException
 import com.sportsapp.domain.payment.vo.PaymentMethod
 import com.sportsapp.domain.payment.gateway.PgPrepareRequest
 import com.sportsapp.domain.payment.vo.toPgProviderName
-import com.sportsapp.testkit.infrastructure.external.ExternalContractSupport
+import sportsapp.testkit.infrastructure.external.ExternalContractSupport
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe

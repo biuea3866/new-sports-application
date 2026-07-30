@@ -8,8 +8,8 @@ import com.sportsapp.application.booking.usecase.OpenSlotUseCase
 import com.sportsapp.application.booking.usecase.UpdateSlotUseCase
 import com.sportsapp.domain.booking.entity.Slot
 import com.sportsapp.domain.booking.exception.UnauthorizedSlotAccessException
-import com.sportsapp.testkit.presentation.exception.GlobalExceptionHandler
-import com.sportsapp.testkit.presentation.support.fixedPrincipalResolver
+import sportsapp.testkit.presentation.exception.GlobalExceptionHandler
+import sportsapp.testkit.presentation.support.fixedPrincipalResolver
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every
 import io.mockk.mockk

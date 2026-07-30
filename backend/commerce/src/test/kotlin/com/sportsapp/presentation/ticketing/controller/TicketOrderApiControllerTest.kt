@@ -7,8 +7,8 @@ import com.sportsapp.application.ticketing.usecase.PurchaseTicketsUseCase
 import com.sportsapp.domain.payment.vo.PaymentMethod
 import com.sportsapp.domain.ticketing.entity.OrderStatus
 import com.sportsapp.domain.ticketing.exception.UnauthorizedTicketOrderAccessException
-import com.sportsapp.testkit.presentation.exception.GlobalExceptionHandler
-import com.sportsapp.testkit.presentation.support.fixedPrincipalResolver
+import sportsapp.testkit.presentation.exception.GlobalExceptionHandler
+import sportsapp.testkit.presentation.support.fixedPrincipalResolver
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every
 import io.mockk.mockk

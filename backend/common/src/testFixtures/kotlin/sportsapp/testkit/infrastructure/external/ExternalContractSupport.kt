@@ -1,4 +1,4 @@
-package com.sportsapp.testkit.infrastructure.external
+package sportsapp.testkit.infrastructure.external
 
 import io.kotest.core.Tag
 import okhttp3.mockwebserver.MockWebServer
@@ -13,11 +13,14 @@ import okhttp3.mockwebserver.MockWebServer
  * 동일 계약이다. 원본은 bootstrap 의 test 소스셋에만 있어 다른 모듈에서 참조할 수 없다(모듈 의존
  * 방향상 payment/facility-booking → bootstrap 은 성립하지 않는다).
  *
- * **패키지를 원본과 다르게(`com.sportsapp.testkit.infrastructure.external`) 가져간 이유** — bootstrap 이
- * `testImplementation(testFixtures(project(":common")))`로 이 testFixtures 아티팩트를 이미 참조하므로,
- * 원본과 동일 패키지·클래스명을 그대로 썼다면 bootstrap 의 test 런타임 클래스패스에 동일 FQCN 클래스가
- * 두 개(bootstrap 자신의 test 출력 + common-testFixtures 아티팩트) 존재해 클래스패스 순서에 따라 어느
- * 쪽이 로드될지 결정되는 조용한 섀도잉 위험이 생긴다. `testkit` 하위 패키지로 분리해 이를 차단한다.
+ * **패키지를 원본과 다르게, 그리고 `com.sportsapp.**` 밖으로(`sportsapp.testkit.infrastructure.external`)
+ * 가져간 이유** — bootstrap 이 `testImplementation(testFixtures(project(":common")))`로 이 testFixtures
+ * 아티팩트를 이미 참조하므로, 원본과 동일 패키지·클래스명을 그대로 썼다면 bootstrap 의 test 런타임
+ * 클래스패스에 동일 FQCN 클래스가 두 개(bootstrap 자신의 test 출력 + common-testFixtures 아티팩트)
+ * 존재해 클래스패스 순서에 따라 어느 쪽이 로드될지 결정되는 조용한 섀도잉 위험이 생긴다. 이 타입들은
+ * `@Component` 계열이 아니라 스캔 오염 위험은 없지만, `sportsapp.testkit.presentation.exception.
+ * GlobalExceptionHandler`(같은 testFixtures 소스셋)와 패키지 루트를 통일해 `com.sportsapp` 밖으로
+ * 뺐다 — bootstrap 컴포넌트 스캔 오염 차단은 [GlobalExceptionHandler] KDoc 참고.
  *
  * payment 는 [startMockServer] 만 사용하고 [loadFixture]·[requireLiveKey]·[Live] 는 쓰지 않는다 —
  * 통합 이전 payment 로컬 복제본에는 이 미사용 멤버가 죽은 코드로 남아 있었다(완료 보고 ⑤ 참고).
