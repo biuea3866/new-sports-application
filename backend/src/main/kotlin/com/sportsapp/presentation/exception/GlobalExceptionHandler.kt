@@ -12,6 +12,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.authorization.AuthorizationDeniedException
 import jakarta.validation.ConstraintViolationException
+import org.springframework.transaction.CannotCreateTransactionException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.MissingRequestHeaderException
 import org.springframework.web.bind.MissingServletRequestParameterException
@@ -180,6 +181,29 @@ class GlobalExceptionHandler {
             detail = "Requested resource does not exist"
         )
         return ResponseEntity.status(ErrorStatus.NOT_FOUND.httpStatus).body(problemDetail)
+    }
+
+    /**
+     * [FIX-03] HikariCP 커넥션 풀 고갈 — `@Transactional` 시작 시점에 JpaTransactionManager가
+     * 커넥션을 얻지 못하면 이 예외로 감싼다 (실측 리포트 L77-83, 구 기본값 풀 대기 30,018ms).
+     * 애플리케이션 버그(500)와 인프라 포화(503)를 분리해 판정 가능하게 하고, 커밋 이전에
+     * 트랜잭션 자체가 시작되지 않으므로 주문 등 쓰기는 발생하지 않는다. Retry-After 는
+     * [LoadSheddingFilter][com.sportsapp.infrastructure.loadshedding.LoadSheddingFilter] 와
+     * 동일한 503 계약(code=SERVICE_UNAVAILABLE, Retry-After=1s)을 따른다.
+     */
+    @ExceptionHandler(CannotCreateTransactionException::class)
+    fun handleCannotCreateTransactionException(
+        exception: CannotCreateTransactionException,
+    ): ResponseEntity<ProblemDetail> {
+        logger.warn("Connection pool exhausted while starting transaction: {}", exception.message)
+        val problemDetail = ProblemDetailBuilder.build(
+            status = ErrorStatus.SERVICE_UNAVAILABLE,
+            code = "SERVICE_UNAVAILABLE",
+            detail = "Server is under heavy load. Please retry shortly."
+        )
+        return ResponseEntity.status(ErrorStatus.SERVICE_UNAVAILABLE.httpStatus)
+            .header("Retry-After", "1")
+            .body(problemDetail)
     }
 
     @ExceptionHandler(Exception::class)

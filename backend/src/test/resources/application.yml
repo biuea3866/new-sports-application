@@ -39,6 +39,12 @@ spring:
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      # FIX-03: src/main/resources/application.yml 과 정합화 — 이 파일이 클래스패스
+      # application.yml 을 완전히 대체하므로(BE-11 선례) main 의 hikari 기본값을 그대로 반영한다.
+      # 개별 커넥션 풀 고갈 테스트는 @TestPropertySource 로 이 값을 오버라이드한다.
+      maximum-pool-size: ${DB_HIKARI_MAXIMUM_POOL_SIZE:30}
+      connection-timeout: ${DB_HIKARI_CONNECTION_TIMEOUT:5000}
   jpa:
     hibernate:
       ddl-auto: validate
