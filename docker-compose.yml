@@ -20,6 +20,22 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      # [W1-02] §7-2 실측 오버레이 값을 코드로 승격 — mem_limit(아래) 1.8g와 짝을 이룬다.
+      # 미지정 시에도 768m으로 기동(컨테이너 무제한 25%-추정 힙으로 되돌아가지 않는다).
+      JAVA_OPTS: ${JAVA_OPTS:--Xmx768m}
+      # ---- 1단계에서 새로 필요해지는 env 선배선 (W1-02 ⑤) ----
+      # 기본값 있는 통과 배선 — 소비 티켓이 값을 채우기 전까지는 무해하다.
+      # (과거 VIRTUAL_QUEUE_TOKEN_SECRET 미배선으로 dev/prod 부팅이 막힌 사고 재발 방지)
+      APP_JWT_ALGORITHM: ${APP_JWT_ALGORITHM:-HS256}   # 소비: W1-05
+      APP_JWT_PRIVATE_KEY: ${APP_JWT_PRIVATE_KEY:-}    # 소비: W1-05
+      APP_JWT_PUBLIC_KEY: ${APP_JWT_PUBLIC_KEY:-}      # 소비: W1-05
+      PLATFORM_INTERNAL_BASE_URL: ${PLATFORM_INTERNAL_BASE_URL:-http://backend:8080}   # 소비: W1-06b
+      SPRING_APPLICATION_NAME: ${SPRING_APPLICATION_NAME:-sports-application}          # 소비: W1-09
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-sports-application}                      # 소비: W1-09
+    # [W1-02] §7-2 실측 오버레이 값을 코드로 승격 — JVM -Xmx768m(위) + 컨테이너 실사용 오버헤드(~950m).
+    # 컨테이너 수 13 유지(§8-3 완료 판정 ⑧) — 1단계 런타임은 단일 backend 뿐이라 여기에만 적용한다.
+    mem_limit: 1.8g
+    cpus: 2.5
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
       interval: 10s
@@ -35,6 +51,9 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
     volumes:
       - mysql-data:/var/lib/mysql
+      # [W1-02] §7-6 — max_connections 500 (기본 151은 목표 구성 10인스턴스×풀40=400에 못 미침).
+      # 풀 크기 배분 자체는 W1-03 소유, 여기서는 서버측 상한만 연다.
+      - ./infra/mysql/my.cnf:/etc/mysql/conf.d/my.cnf:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-root}"]
       interval: 10s

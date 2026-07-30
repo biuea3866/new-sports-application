@@ -1,0 +1,85 @@
+# docker-compose.services.yml — 2단계(서비스 추출) 활성화 대상 자원 상한 선언 (W1-02)
+#
+# 근거: 아키텍트 실행설계 §7-4 최소 구성 표·§7-5 CPU 상한 표. 사용자 확정 —
+# "최소 구성(각 1 replica, 6 인스턴스, 예산 60%)으로 시작. 증설은 관측 후 별건."
+#
+# 현재 상태: 기본 미활성 — `docker compose up`(base만)은 이 파일을 참조하지 않는다.
+# 1단계는 컨테이너 수 13 유지(§8-3 완료 판정 ⑧)가 요구사항이라, 실제로 돌아가는 것은
+# 단일 backend(docker-compose.yml)뿐이다. 이 파일은 2단계(서비스 물리 분리) 시점에
+# 활성화되며, 그때 각 서비스 전용 이미지(commerce/payment/... 개별 빌드 산출물)로
+# `image:` 값을 교체한다 — 지금은 서비스 분리 전이라 sports-backend 단일 이미지를
+# placeholder로 참조한다(구현자가 다시 판단하지 않도록 §7-4·§7-5 수치만 먼저 코드로 고정).
+#
+# 활성화 예: docker compose -f docker-compose.yml -f docker-compose.services.yml up -d
+#
+# ---- 값 합계 검증 (§7-4·§7-5, 구현자가 다시 계산하지 않는다) ----
+# mem_limit 합: 920 + 650 + 920 + 790 + 920 + 650 = 4,850 MiB ≈ 4.74 GiB
+# cpus 합    : 2.5 + 1.0 + 2.5 + 1.5 + 1.0 + 1.0 = 9.5 (≤ 10)
+# 인프라 4.62 GiB + JVM 4.74 GiB = 9.36 GiB / 15.6 GiB = 60% (여유 6.2 GiB)
+#
+# 힙 축소 우선순위(자원 압박 시, §7-4) — 이 순서를 벗어나지 않는다:
+#   ① platform   640m → 512m
+#   ② social     512m → 448m
+#   ③ commerce·facility-booking은 줄이지 않는다
+#      (CPU 바운드·스파이크 대상 — 힙 압박 시 GC 지연으로 오히려 악화된다)
+#
+# replica: 전부 1. §7-4의 목표 구성(10 인스턴스 / 80.5%)은 이 티켓 범위 밖 —
+#   증설은 관측 후 별건 티켓으로 진행한다.
+#
+# 롤백: 병합 명령에서 `-f docker-compose.services.yml`을 제거하면 즉시 미참조 상태로 복귀.
+#   base(docker-compose.yml)의 backend 정의는 이 파일과 무관하게 그대로 유지된다.
+
+services:
+  commerce:
+    image: sports-backend:${DOCKER_TAG:-local}   # placeholder — 2단계 서비스 분리 시 전용 이미지로 교체
+    environment:
+      JAVA_OPTS: -Xmx640m
+    mem_limit: 920m
+    cpus: 2.5
+    deploy:
+      replicas: 1
+
+  payment:
+    image: sports-backend:${DOCKER_TAG:-local}
+    environment:
+      JAVA_OPTS: -Xmx384m
+    mem_limit: 650m
+    cpus: 1.0
+    deploy:
+      replicas: 1
+
+  facility-booking:
+    image: sports-backend:${DOCKER_TAG:-local}
+    environment:
+      JAVA_OPTS: -Xmx640m
+    mem_limit: 920m
+    cpus: 2.5
+    deploy:
+      replicas: 1
+
+  social:
+    image: sports-backend:${DOCKER_TAG:-local}
+    environment:
+      JAVA_OPTS: -Xmx512m
+    mem_limit: 790m
+    cpus: 1.5
+    deploy:
+      replicas: 1
+
+  platform:
+    image: sports-backend:${DOCKER_TAG:-local}
+    environment:
+      JAVA_OPTS: -Xmx640m
+    mem_limit: 920m
+    cpus: 1.0
+    deploy:
+      replicas: 1
+
+  edge:
+    image: sports-backend:${DOCKER_TAG:-local}
+    environment:
+      JAVA_OPTS: -Xmx384m
+    mem_limit: 650m
+    cpus: 1.0
+    deploy:
+      replicas: 1
