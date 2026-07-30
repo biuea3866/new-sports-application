@@ -14,11 +14,56 @@
 // 병목 지점(① Redis 입장 게이트 응답 지연 ② admissionSemaphore 완충 대기 ③ Stock.@Version
 // 낙관적 락 경합 ④ HikariCP 커넥션 풀 고갈)을 계측·기록하는 것이다 — 목표 미달은 스크립트
 // 실패가 아니라 관측 결과다.
+//
+// FIX-01: 실측-리포트.md(F1·F3, L60 측정 조건)를 그대로 재현하려면 open model(constant-arrival-rate,
+// 400 rps × 30s)이 필요하다 — 기본 executor(ramping-vus, closed model)는 서버 지연이 유입률 자체를
+// 늦춰 "수요 >> 한도"를 강제하지 못한다. QA_DROP_EXECUTOR로 선택 가능하게 하되, 기본값은
+// 기존 ramping-vus 그대로 둔다(회귀 보호 — env 없이 실행하면 이전과 동일하게 동작).
+//
+// FIX-01 추가 발견(범위 밖 선행 결함, 재현을 위해 최소 수정): `/limited-drops/**`(GET 제외)는
+// SecurityConfig.kt#configureAuthorization에 의해 AUTH-04(X-User-Id → JWT 전환)로 `authenticated()`
+// 다 — 이 스크립트가 쓰던 headerAuth()(X-User-Id)로는 더 이상 인증되지 않아 모든 요청이 401이 된다
+// (사전 존재 하네스 결함, F1·F3와 무관 — 완료 보고 "미해결·후속" 참고). lib/auth.js#jwtAuth로 전환해
+// QA_JWT_SECRET(백엔드 app.jwt.secret과 동일 값)으로 클라이언트가 직접 서명한 JWT를 사용한다.
+const DROP_EXECUTOR = __ENV.QA_DROP_EXECUTOR || "ramping-vus";
+const DROP_RATE = Number(__ENV.QA_DROP_RATE || 400);
+const DROP_DURATION = __ENV.QA_DROP_DURATION || "30s";
+// preAllocatedVUs/maxVUs: rate만큼 VU를 미리 할당하고, 응답 지연으로 VU가 남아돌 때를 대비해
+// 여유(×3)를 둔다. 근거 없는 수치가 아니라 "rate건/초를 응답 지연 없이도 소화할 최소 VU 수"다.
+const DROP_PRE_ALLOCATED_VUS = Number(__ENV.QA_DROP_PRE_ALLOCATED_VUS || DROP_RATE);
+const DROP_MAX_VUS = Number(__ENV.QA_DROP_MAX_VUS || DROP_RATE * 3);
+
+// 기본 executor(ramping-vus)는 기존 stages를 그대로 사용한다(회귀 보호). constant-arrival-rate는
+// 실측 리포트의 open model(400 rps 고정 도착률) 재현 전용이다.
+function buildScenario() {
+  if (DROP_EXECUTOR === "constant-arrival-rate") {
+    return {
+      executor: "constant-arrival-rate",
+      rate: DROP_RATE,
+      timeUnit: "1s",
+      duration: DROP_DURATION,
+      preAllocatedVUs: DROP_PRE_ALLOCATED_VUS,
+      maxVUs: DROP_MAX_VUS,
+    };
+  }
+  return {
+    executor: "ramping-vus",
+    // 단축 실행: LOAD-02(원 4m: warmup 30s + spike 30s + steady 2m + ramp-down 1m)와 동일 비율(1/5)로
+    // warmup 6s + spike 6s + steady 24s + ramp-down 12s = 48s. VU 상한 3000은 로컬 환경에서 실행
+    // 가능한 현실적 상한이며, 실제 20000 TPS 도달 여부는 http_reqs(k6 내장)·requestCounter로 사후 계측한다.
+    stages: [
+      { duration: "6s", target: 200 }, // warmup    (30s → 6s)
+      { duration: "6s", target: 3000 }, // spike     (30s → 6s) — 20000 TPS 도전 구간
+      { duration: "24s", target: 3000 }, // steady    (2m → 24s)
+      { duration: "12s", target: 0 }, // ramp-down (1m → 12s)
+    ],
+  };
+}
 
 import http from "k6/http";
 import { check, fail, group } from "k6";
 import { Counter } from "k6/metrics";
-import { assertSafeTarget, headerAuth, API_URL } from "./lib/auth.js";
+import { assertSafeTarget, jwtAuth, API_URL } from "./lib/auth.js";
 import { scenarioMetrics, thresholdsFor } from "./lib/metrics.js";
 
 const SCENARIO_ID = "LOAD-05";
@@ -41,15 +86,11 @@ export const options = {
     p99: 3000,
     errorRate: 0.01,
   }),
-  // 단축 실행: LOAD-02(원 4m: warmup 30s + spike 30s + steady 2m + ramp-down 1m)와 동일 비율(1/5)로
-  // warmup 6s + spike 6s + steady 24s + ramp-down 12s = 48s. VU 상한 3000은 로컬 환경에서 실행
-  // 가능한 현실적 상한이며, 실제 20000 TPS 도달 여부는 http_reqs(k6 내장)·requestCounter로 사후 계측한다.
-  stages: [
-    { duration: "6s", target: 200 }, // warmup    (30s → 6s)
-    { duration: "6s", target: 3000 }, // spike     (30s → 6s) — 20000 TPS 도전 구간
-    { duration: "24s", target: 3000 }, // steady    (2m → 24s)
-    { duration: "12s", target: 0 }, // ramp-down (1m → 12s)
-  ],
+  // scenarios.default 하나만 정의 — QA_DROP_EXECUTOR 미지정 시 기존 ramping-vus stages와
+  // 완전히 동일하게 동작한다(회귀 보호, buildScenario() 참고).
+  scenarios: {
+    default: buildScenario(),
+  },
 };
 
 const SEED_PRODUCT_ID = Number(__ENV.QA_LIMITED_DROP_PRODUCT_ID || 9000001);
@@ -76,7 +117,7 @@ export function setup() {
       limitedQuantity: LIMITED_QUANTITY,
       perUserLimit: 1,
     }),
-    { headers: headerAuth(OWNER_USER_ID) },
+    { headers: jwtAuth(OWNER_USER_ID) },
   );
   check(createRes, { "drop opened (201)": (r) => r.status === 201 }) ||
     fail(
@@ -84,10 +125,14 @@ export function setup() {
       `(qa/load/seeds/goods-limited-drop-spike.sql 시드가 선행됐는지 확인)`
     );
   const dropId = createRes.json("dropId");
+  // verify-limited-drop.sh가 Redis 예약 키(goods:limited-drop:{dropId}:reserved:*)를 SCAN하려면
+  // dropId가 필요하다 — k6 요약 JSON에는 setup() 반환값이 담기지 않으므로 stdout으로 남긴다.
+  console.log(`[${SCENARIO_ID}] dropId=${dropId}`);
 
-  // 캐시·커넥션 워밍업: 회차 상세 GET 5회 priming (LOAD-02 선례)
+  // 캐시·커넥션 워밍업: 회차 상세 GET 5회 priming (LOAD-02 선례). GET은 permitAll이라
+  // 인증 헤더가 필요 없지만 기존 동작(헤더 포함) 유지 차원에서 그대로 둔다.
   for (let i = 0; i < 5; i++) {
-    http.get(`${API_URL}/limited-drops/${dropId}`, { headers: headerAuth(1) });
+    http.get(`${API_URL}/limited-drops/${dropId}`, { headers: jwtAuth(1) });
   }
 
   return { dropId };
@@ -104,7 +149,7 @@ export default function (data) {
       `${API_URL}/limited-drops/${data.dropId}/orders`,
       JSON.stringify({ quantity: 1 }),
       {
-        headers: { ...headerAuth(userId), "Idempotency-Key": idempotencyKey },
+        headers: { ...jwtAuth(userId), "Idempotency-Key": idempotencyKey },
         tags: { scenario: SCENARIO_ID },
       },
     );
