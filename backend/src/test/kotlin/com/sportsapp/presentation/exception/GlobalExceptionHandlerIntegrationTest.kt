@@ -19,8 +19,10 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import org.springframework.transaction.CannotCreateTransactionException
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -29,6 +31,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.testcontainers.containers.MySQLContainer
 import org.testcontainers.junit.jupiter.Container
+import java.sql.SQLTransientConnectionException
 
 /**
  * S-01: 의도적 BusinessException 발생 시 Controller가 정확한 ProblemDetail + 매핑된 HTTP 상태를 반환한다.
@@ -276,6 +279,27 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
                 }
             }
         }
+
+        /**
+         * [FIX-03] HikariCP 풀 고갈(CannotCreateTransactionException)은 500이 아니라 503 +
+         * Retry-After로 응답해야 한다 — 애플리케이션 버그와 인프라 포화를 분리하는 분류 계약.
+         */
+        Given("커넥션 풀 고갈로 CannotCreateTransactionException이 발생하는 엔드포인트") {
+            When("GET /test/exceptions/connection-pool-exhausted 요청 시") {
+                Then("500 대신 503 + ProblemDetail (code=SERVICE_UNAVAILABLE) + Retry-After 헤더를 반환한다") {
+                    mockMvc.perform(
+                        get("/test/exceptions/connection-pool-exhausted")
+                            .with(user("testuser").roles("USER"))
+                            .accept(MediaType.APPLICATION_JSON)
+                    )
+                        .andExpect(status().isServiceUnavailable)
+                        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                        .andExpect(jsonPath("$.status").value(503))
+                        .andExpect(jsonPath("$.properties.code").value("SERVICE_UNAVAILABLE"))
+                        .andExpect(header().exists("Retry-After"))
+                }
+            }
+        }
     }
 }
 
@@ -321,6 +345,14 @@ class ExceptionTriggerController {
     @GetMapping("/required-param")
     fun receiveRequiredParam(@RequestParam category: String): String {
         return category
+    }
+
+    @GetMapping("/connection-pool-exhausted")
+    fun throwConnectionPoolExhausted(): String {
+        throw CannotCreateTransactionException(
+            "Could not open JPA EntityManager for transaction",
+            SQLTransientConnectionException("HikariPool-1 - Connection is not available, request timed out after 5000ms."),
+        )
     }
 }
 

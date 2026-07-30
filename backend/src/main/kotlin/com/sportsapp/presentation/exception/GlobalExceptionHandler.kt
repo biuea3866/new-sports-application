@@ -12,6 +12,9 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.authorization.AuthorizationDeniedException
 import jakarta.validation.ConstraintViolationException
+import org.springframework.dao.DataAccessResourceFailureException
+import org.springframework.dao.QueryTimeoutException
+import org.springframework.transaction.CannotCreateTransactionException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.MissingRequestHeaderException
 import org.springframework.web.bind.MissingServletRequestParameterException
@@ -180,6 +183,72 @@ class GlobalExceptionHandler {
             detail = "Requested resource does not exist"
         )
         return ResponseEntity.status(ErrorStatus.NOT_FOUND.httpStatus).body(problemDetail)
+    }
+
+    /**
+     * [FIX-03] HikariCP 커넥션 풀 고갈 — `@Transactional` 시작 시점에 JpaTransactionManager가
+     * 커넥션을 얻지 못하면 이 예외로 감싼다 (실측 리포트 L77-83, 구 기본값 풀 대기 30,018ms).
+     * 애플리케이션 버그(500)와 인프라 포화(503)를 분리해 판정 가능하게 하고, 커밋 이전에
+     * 트랜잭션 자체가 시작되지 않으므로 주문 등 쓰기는 발생하지 않는다. Retry-After 는
+     * [LoadSheddingFilter][com.sportsapp.infrastructure.loadshedding.LoadSheddingFilter] 와
+     * 동일한 503 계약(code=SERVICE_UNAVAILABLE, Retry-After=1s)을 따른다.
+     */
+    @ExceptionHandler(CannotCreateTransactionException::class)
+    fun handleCannotCreateTransactionException(
+        exception: CannotCreateTransactionException,
+    ): ResponseEntity<ProblemDetail> {
+        logger.warn("Connection pool exhausted while starting transaction: {}", exception.message)
+        val problemDetail = ProblemDetailBuilder.build(
+            status = ErrorStatus.SERVICE_UNAVAILABLE,
+            code = "SERVICE_UNAVAILABLE",
+            detail = "Server is under heavy load. Please retry shortly."
+        )
+        return ResponseEntity.status(ErrorStatus.SERVICE_UNAVAILABLE.httpStatus)
+            .header("Retry-After", "1")
+            .body(problemDetail)
+    }
+
+    /**
+     * [FIX-03][code-review p3] `@Transactional` 시작 시점(트랜잭션 밖)이 아니라, 트랜잭션이
+     * 이미 열린 상태에서 별도로 커넥션을 얻는 경로(독립 `@Repository` + QueryDSL 구현, 호출부
+     * UseCase가 `@Transactional` 없이 조회만 수행하는 경우 등)의 풀 고갈은
+     * [CannotCreateTransactionException]이 아니라 [DataAccessResourceFailureException]
+     * (그 하위 타입 [org.springframework.jdbc.CannotGetJdbcConnectionException] 포함)으로
+     * 표면화된다. 이 경로를 매핑하지 않으면 catch-all(500)로 떨어져 풀 고갈이 애플리케이션
+     * 버그로 오분류된다 — [LimitedDropConnectionPoolExhaustionScenarioTest]의 점유 상태 조회가
+     * 이 예외로 실패함을 근거로 명시한다.
+     */
+    @ExceptionHandler(DataAccessResourceFailureException::class)
+    fun handleDataAccessResourceFailureException(
+        exception: DataAccessResourceFailureException,
+    ): ResponseEntity<ProblemDetail> {
+        logger.warn("Connection pool exhausted while accessing data: {}", exception.message)
+        val problemDetail = ProblemDetailBuilder.build(
+            status = ErrorStatus.SERVICE_UNAVAILABLE,
+            code = "SERVICE_UNAVAILABLE",
+            detail = "Server is under heavy load. Please retry shortly."
+        )
+        return ResponseEntity.status(ErrorStatus.SERVICE_UNAVAILABLE.httpStatus)
+            .header("Retry-After", "1")
+            .body(problemDetail)
+    }
+
+    /**
+     * [FIX-03][code-review p3] 커넥션을 획득한 뒤 쿼리 실행 단계에서 풀 포화·DB 부하로
+     * 타임아웃되는 경로 — 위 [DataAccessResourceFailureException]과 마찬가지로 트랜잭션 밖
+     * catch-all(500)로 떨어지지 않도록 503(풀/DB 포화)로 분류한다.
+     */
+    @ExceptionHandler(QueryTimeoutException::class)
+    fun handleQueryTimeoutException(exception: QueryTimeoutException): ResponseEntity<ProblemDetail> {
+        logger.warn("Query timed out under load: {}", exception.message)
+        val problemDetail = ProblemDetailBuilder.build(
+            status = ErrorStatus.SERVICE_UNAVAILABLE,
+            code = "SERVICE_UNAVAILABLE",
+            detail = "Server is under heavy load. Please retry shortly."
+        )
+        return ResponseEntity.status(ErrorStatus.SERVICE_UNAVAILABLE.httpStatus)
+            .header("Retry-After", "1")
+            .body(problemDetail)
     }
 
     @ExceptionHandler(Exception::class)

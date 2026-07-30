@@ -39,6 +39,23 @@ spring:
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      # [FIX-03][code-review 후속] connection-timeout(5s)만 src/main/resources/application.yml 과
+      # 정합화한다 — 운영값 maximum-pool-size=30 은 main 전용이며 여기에 그대로 반영하지 않는다.
+      # 최초에 main과 동일하게 30을 반영했다가 실측으로 붕괴를 확인해 되돌린 값이다:
+      # HikariCP는 minimum-idle 미지정 시 minimum-idle=maximum-pool-size 로 동작해, 컨텍스트
+      # 기동 즉시 maximum-pool-size 만큼 idle 커넥션을 채운다. 이 테스트 스위트는
+      # @TestPropertySource 조합이 다른 여러 클래스가 각자 별도 Spring 컨텍스트로 캐시되는데,
+      # 30을 반영한 상태에서 캐시된 컨텍스트가 6개만 있어도 30*6=180 > Testcontainers MySQL의
+      # 기본 max_connections(151)을 넘어 "Too many connections"(1040)로 컨텍스트 기동 자체가
+      # 실패하며 전체 스위트가 붕괴했다(실측: UnsatisfiedDependencyException flywayInitializer,
+      # Too many connections 154건). 대부분의 테스트는 MockMvc 단일 스레드 호출이라 동시 커넥션
+      # 요구가 낮으므로 공용 기본값은 작게 유지하고(minimum-idle 도 명시해 즉시 최대치를 채우지
+      # 않게 한다), 풀 크기 자체가 시나리오의 본질인 테스트(LimitedDropConnectionPoolExhaustionScenarioTest·
+      # LimitedDropPurchaseConcurrencyScenarioTest)는 @TestPropertySource 로 개별 오버라이드한다.
+      maximum-pool-size: ${DB_HIKARI_MAXIMUM_POOL_SIZE:10}
+      minimum-idle: ${DB_HIKARI_MINIMUM_IDLE:2}
+      connection-timeout: ${DB_HIKARI_CONNECTION_TIMEOUT:5000}
   jpa:
     hibernate:
       ddl-auto: validate
