@@ -1,0 +1,50 @@
+// [W1-01a] common — 공유 커널. 어떤 컨텍스트 모듈도 참조하지 않는다 (SharedKernelPurityRulesTest R4).
+// domain.common 은 Spring Data 애노테이션(@CreatedDate 등)·jakarta.persistence(@MappedSuperclass)만
+// 예외로 사용한다(JpaAuditingBase — 도메인 layer 가 JPA 어노테이션을 import 하는 유일한 허용 지점).
+plugins {
+    id("sportsapp.kotlin-conventions")
+    kotlin("plugin.jpa")
+    kotlin("kapt")
+    `java-test-fixtures`
+}
+
+val springBootVersion: String by project
+
+// `io.spring.dependency-management`(dependencyManagement{imports{...}} DSL) 대신 Gradle 네이티브
+// platform() 을 쓴다 — io.spring.dependency-management 는 기본적으로 프로젝트의 "모든" 컨피규레이션에
+// BOM 제약을 적용해, kotlin-stdlib 를 1.9.23 -> 1.9.25 로 끌어올려 detekt 실행 커널(1.9.23 로 컴파일됨)과
+// 충돌시킨다(bootstrap 은 org.springframework.boot 플러그인만 쓰고 이 DSL 을 직접 호출하지 않아 영향이 없었다).
+// implementation(platform(...)) 은 그 설정을 상속하는 컨피규레이션(compileClasspath/runtimeClasspath/
+// testImplementation 계열)에만 적용되어 detekt/kapt 도구 컨피규레이션을 오염시키지 않는다.
+dependencies {
+    implementation(platform("org.springframework.boot:spring-boot-dependencies:$springBootVersion"))
+
+    implementation("org.springframework:spring-context")
+    implementation("org.springframework.data:spring-data-jpa")
+    implementation("jakarta.persistence:jakarta.persistence-api")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+
+    // JpaAuditingBase(@MappedSuperclass)가 common 소유라, 이를 상속하는 각 컨텍스트 모듈의 @Entity가
+    // 참조할 QJpaAuditingBase 도 common 자신의 kapt 실행에서 생성돼야 한다 — 그래야 bootstrap 등
+    // 하위 모듈의 kapt 가 컴파일된 클래스로 그것을 참조할 수 있다 (cross-module Q-supertype 문제).
+    implementation("com.querydsl:querydsl-jpa:5.1.0:jakarta")
+    kapt(platform("org.springframework.boot:spring-boot-dependencies:$springBootVersion"))
+    kapt("com.querydsl:querydsl-apt:5.1.0:jakarta")
+    kapt("jakarta.annotation:jakarta.annotation-api")
+    kapt("jakarta.persistence:jakarta.persistence-api")
+
+    // testFixtures(BaseIntegrationTest 등)가 Spring Boot Test + Testcontainers 를 사용한다.
+    "testFixturesImplementation"(platform("org.springframework.boot:spring-boot-dependencies:$springBootVersion"))
+    "testFixturesImplementation"("org.springframework.boot:spring-boot-starter-test") {
+        exclude(group = "org.junit.vintage", module = "junit-vintage-engine")
+    }
+    "testFixturesImplementation"("org.springframework.boot:spring-boot-testcontainers")
+    "testFixturesImplementation"("org.testcontainers:mysql")
+    "testFixturesImplementation"("org.testcontainers:mongodb")
+    "testFixturesImplementation"("org.testcontainers:junit-jupiter")
+    "testFixturesImplementation"("io.kotest:kotest-runner-junit5:5.9.1")
+}
+
+kapt {
+    correctErrorTypes = true
+}

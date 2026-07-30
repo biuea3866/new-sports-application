@@ -2,6 +2,11 @@
 build/
 .gradle/
 out/
+# Docker 패턴은 재귀가 아니므로(위 3개는 root-anchored), COPY buildSrc 등 하위 모듈 디렉토리가
+# 끌고 들어오는 로컬 빌드 산출물도 별도로 배제한다.
+**/build/
+**/.gradle/
+**/.kotlin/
 
 # IDE
 .idea/
