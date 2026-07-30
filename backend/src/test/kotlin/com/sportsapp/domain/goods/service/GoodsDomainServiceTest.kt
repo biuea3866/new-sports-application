@@ -630,6 +630,31 @@ class GoodsDomainServiceTest : BehaviorSpec({
         }
     }
 
+    // FIX-04: 언더셀 대사가 idempotencyKey로 주문 존재 여부를 확인하는 진입점.
+    Given("[FIX-04] idempotencyKey에 대응하는 주문이 존재하는 상황") {
+        When("hasOrderFor를 호출하면") {
+            Then("true를 반환한다") {
+                val existingOrder = forceId(
+                    GoodsOrder.create(userId = 1L, totalAmount = BigDecimal("1000"), idempotencyKey = "idem-exists"),
+                    1L,
+                )
+                every { goodsOrderRepository.findByIdempotencyKey("idem-exists") } returns existingOrder
+
+                service.hasOrderFor("idem-exists") shouldBe true
+            }
+        }
+    }
+
+    Given("[FIX-04] idempotencyKey에 대응하는 주문이 존재하지 않는 상황") {
+        When("hasOrderFor를 호출하면") {
+            Then("false를 반환한다") {
+                every { goodsOrderRepository.findByIdempotencyKey("idem-orphan") } returns null
+
+                service.hasOrderFor("idem-orphan") shouldBe false
+            }
+        }
+    }
+
     // @Transactional은 UseCase 레이어에서만 선언한다(DomainService 메서드에는 선언하지 않음).
     Given("GoodsDomainService 메서드 시그니처") {
         When("public 메서드 어노테이션을 검사하면") {

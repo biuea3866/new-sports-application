@@ -352,6 +352,101 @@ class DropReservationStoreImplTest @Autowired constructor(
         }
     }
 
+    // ---------------------------------------------------------------------------------------
+    // FIX-04: scanStaleReservations / restoreOrphanedReservation (언더셀 대사)
+    // ---------------------------------------------------------------------------------------
+
+    Given("[FIX-04] 방금 예약된 마커가 있고 유예 시간이 아직 지나지 않은 상황") {
+        val dropId = 1016L
+        val userId = 7L
+        cleanupDrop(dropId)
+        val store = buildStore()
+        store.seedIfAbsent(dropId, 10, Duration.ofMinutes(10))
+        store.reserve(dropId, userId, 2, 5, "idem-fresh") shouldBe ReservationResult.Admitted
+
+        When("markerTtlSeconds(600)에 가까운 유예 시간으로 scanStaleReservations를 호출하면") {
+            // staleThresholdTtlSeconds = 600 - 599 = 1. 방금 생성된 마커의 남은 TTL은 600에 가까워
+            // 1보다 크므로 제외된다 — 진행 중인 요청을 오판해 취소(오버셀 유발)하지 않는지 검증.
+            val result = store.scanStaleReservations(dropId, graceSeconds = 599L)
+
+            Then("고립 예약 후보에서 제외된다") {
+                result shouldBe emptyList()
+            }
+        }
+    }
+
+    Given("[FIX-04] 예약 마커가 있고 유예 시간이 0인 상황(즉시 대상)") {
+        val dropId = 1017L
+        val userId = 8L
+        cleanupDrop(dropId)
+        val store = buildStore()
+        store.seedIfAbsent(dropId, 10, Duration.ofMinutes(10))
+        store.reserve(dropId, userId, 3, 5, "idem-stale") shouldBe ReservationResult.Admitted
+
+        When("scanStaleReservations(graceSeconds=0)를 호출하면") {
+            val result = store.scanStaleReservations(dropId, graceSeconds = 0L)
+
+            Then("마커에 저장된 userId·quantity를 그대로 복원한 PendingReservation을 반환한다") {
+                result shouldBe listOf(
+                    com.sportsapp.domain.goods.gateway.PendingReservation(
+                        idempotencyKey = "idem-stale",
+                        userId = userId,
+                        quantity = 3,
+                    ),
+                )
+            }
+        }
+    }
+
+    Given("[FIX-04] 고립 예약을 restoreOrphanedReservation으로 복원하는 상황") {
+        val dropId = 1018L
+        val userId = 9L
+        cleanupDrop(dropId)
+        val store = buildStore()
+        store.seedIfAbsent(dropId, 10, Duration.ofMinutes(10))
+        store.reserve(dropId, userId, 2, 5, "idem-restore") shouldBe ReservationResult.Admitted
+
+        When("restoreOrphanedReservation을 호출하면") {
+            val restored = store.restoreOrphanedReservation(dropId, userId, 2, "idem-restore")
+
+            Then("remaining이 복원되고 true를 반환한다") {
+                restored shouldBe true
+                store.remaining(dropId) shouldBe 10
+            }
+
+            Then("[cancel.lua 멱등] 같은 idempotencyKey로 다시 호출하면 마커가 이미 없어 false를 반환하고 과복원하지 않는다") {
+                val secondRestore = store.restoreOrphanedReservation(dropId, userId, 2, "idem-restore")
+
+                secondRestore shouldBe false
+                store.remaining(dropId) shouldBe 10
+            }
+
+            Then("복원된 예약은 더 이상 scanStaleReservations 후보에 잡히지 않는다") {
+                store.scanStaleReservations(dropId, graceSeconds = 0L) shouldBe emptyList()
+            }
+        }
+    }
+
+    Given("[FIX-04] ARGV[4] 도입 이전 레거시 포맷(값 \"1\") 마커가 섞여 있는 상황") {
+        val dropId = 1019L
+        cleanupDrop(dropId)
+        val meterRegistry = SimpleMeterRegistry()
+        val store = buildStore(meterRegistry = meterRegistry)
+        store.seedIfAbsent(dropId, 10, Duration.ofMinutes(10))
+        // reserve()는 항상 "{userId}:{quantity}" 포맷으로 마커를 쓰므로, 배포 이전 잔존 마커를
+        // 재현하려면 레거시 값("1")을 직접 심어야 한다.
+        redisTemplate.opsForValue().set("goods:limited-drop:$dropId:reserved:idem-legacy", "1", Duration.ofMinutes(10))
+
+        When("scanStaleReservations(graceSeconds=0)를 호출하면") {
+            val result = store.scanStaleReservations(dropId, graceSeconds = 0L)
+
+            Then("레거시 마커는 복원 후보에서 제외되고 skip 지표가 증가한다") {
+                result shouldBe emptyList()
+                meterRegistry.counter("limited_drop.legacy_marker_skipped").count() shouldBe 1.0
+            }
+        }
+    }
+
     Given("buyer 키가 손상되어 Redis가 WRONGTYPE 오류를 반환하는 상황") {
         val dropId = 1014L
         val userId = 1L

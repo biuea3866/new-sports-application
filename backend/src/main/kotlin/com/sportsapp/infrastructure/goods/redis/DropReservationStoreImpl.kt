@@ -1,6 +1,7 @@
 package com.sportsapp.infrastructure.goods.redis
 
 import com.sportsapp.domain.goods.gateway.DropReservationStore
+import com.sportsapp.domain.goods.gateway.PendingReservation
 import com.sportsapp.domain.goods.gateway.RejectCounts
 import com.sportsapp.domain.goods.gateway.RejectKind
 import com.sportsapp.domain.goods.gateway.ReservationResult
@@ -8,9 +9,11 @@ import io.micrometer.core.instrument.MeterRegistry
 import java.time.Duration
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.ClassPathResource
 import org.springframework.dao.DataAccessException
+import org.springframework.data.redis.core.ScanOptions
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.data.redis.core.script.DefaultRedisScript
 import org.springframework.stereotype.Component
@@ -42,6 +45,8 @@ class DropReservationStoreImpl(
     @Value("\${app.limited-drop.reservation.marker-ttl-seconds:600}")
     private val markerTtlSeconds: Long,
 ) : DropReservationStore {
+
+    private val log = LoggerFactory.getLogger(DropReservationStoreImpl::class.java)
 
     private val admissionSemaphore = Semaphore(semaphorePermits)
 
@@ -96,6 +101,82 @@ class DropReservationStoreImpl(
 
     override fun cancel(dropId: Long, userId: Long, quantity: Int, idempotencyKey: String) {
         executeCancelScript(dropId, userId, quantity, idempotencyKey)
+    }
+
+    /**
+     * FIX-04 대사 전용 복원 — [cancel]과 동일한 [executeCancelScript]를 재사용하되, 반환 코드로
+     * 실제 복원 여부(Restored/NoOp)를 판별해 되돌려준다. 새 Lua 스크립트를 추가하지 않는다.
+     */
+    override fun restoreOrphanedReservation(dropId: Long, userId: Long, quantity: Int, idempotencyKey: String): Boolean =
+        executeCancelScript(dropId, userId, quantity, idempotencyKey) == CANCEL_RESTORED
+
+    /**
+     * [dropId]의 예약 마커를 `SCAN`으로 열거하고(`KEYS` 금지), 마커 생성 후 [graceSeconds] 이상
+     * 경과한(=TTL이 `markerTtlSeconds - graceSeconds` 이하로 남은) 예약만 반환한다. TTL 조회·값
+     * 조회 사이 레이스로 키가 사라지거나(만료·복원 완료), 마커 값이 파싱 불가한 레거시 포맷("1",
+     * ARGV[4] 도입 이전 예약)이면 조용히 건너뛴다 — 대사는 관측용이라 한 건의 이상으로 전체 스캔이
+     * 실패하면 안 된다.
+     *
+     * 레거시 포맷 skip은 [LEGACY_MARKER_SKIPPED_COUNTER]로 관측한다(조용한 통과 방지). 배포 직후
+     * `markerTtlSeconds`(기본 600초) 동안은 ARGV[4] 도입 이전 마커가 남아 있어 0이 아닐 수 있으나,
+     * 그 시간이 지나면 구 포맷 마커가 모두 자연 만료돼 0으로 수렴한다 — 배포 후 markerTtlSeconds가
+     * 지난 시점에도 이 값이 계속 0이 아니면 별도 조사가 필요하다.
+     */
+    override fun scanStaleReservations(dropId: Long, graceSeconds: Long): List<PendingReservation> {
+        val prefix = reservedKeyPrefix(dropId)
+        val staleThresholdTtlSeconds = (markerTtlSeconds - graceSeconds).coerceAtLeast(0)
+        return scanKeys("$prefix*").mapNotNull { key -> toPendingReservationIfStale(key, prefix, staleThresholdTtlSeconds) }
+    }
+
+    private fun toPendingReservationIfStale(key: String, prefix: String, staleThresholdTtlSeconds: Long): PendingReservation? {
+        val ttlSeconds = redisTemplate.getExpire(key, TimeUnit.SECONDS)
+        if (ttlSeconds < 0 || ttlSeconds > staleThresholdTtlSeconds) return null
+        val value = redisTemplate.opsForValue().get(key) ?: return null
+        val (userId, quantity) = parseMarkerValue(value) ?: run {
+            recordLegacyMarkerSkipped(key)
+            return null
+        }
+        return PendingReservation(idempotencyKey = key.removePrefix(prefix), userId = userId, quantity = quantity)
+    }
+
+    private fun parseMarkerValue(value: String): Pair<Long, Int>? {
+        val parts = value.split(':')
+        if (parts.size != 2) return null
+        val userId = parts[0].toLongOrNull() ?: return null
+        val quantity = parts[1].toIntOrNull() ?: return null
+        return userId to quantity
+    }
+
+    /**
+     * ARGV[4] 도입 이전 레거시 포맷 마커(값 "1")는 userId·quantity가 없어 [restoreOrphanedReservation]에
+     * 필요한 인자를 구성할 수 없다 — 복원 대상에서 조용히 제외하지 않도록 지표·로그로 남긴다.
+     * 값 전체는 찍지 않는다(마커 키만 남긴다).
+     */
+    private fun recordLegacyMarkerSkipped(key: String) {
+        log.warn("DropReservationStoreImpl: 레거시 포맷 마커라 언더셀 대사에서 건너뜁니다 key={}", key)
+        meterRegistry.counter(LEGACY_MARKER_SKIPPED_COUNTER).increment()
+    }
+
+    /**
+     * `SCAN MATCH pattern`으로 키를 열거한다 — 프로덕션 블로킹을 피하기 위해 `KEYS`를 쓰지 않는다.
+     * `RedisConnection`은 `java.io.Closeable`이 아니라 `AutoCloseable`이라 `use{}`를 쓸 수 없어
+     * try/finally로 직접 닫는다(`Cursor`는 `Closeable`이라 `use{}`를 그대로 쓴다).
+     */
+    private fun scanKeys(pattern: String): List<String> {
+        val keys = mutableListOf<String>()
+        val options = ScanOptions.scanOptions().match(pattern).count(SCAN_BATCH_SIZE).build()
+        val connectionFactory = requireNotNull(redisTemplate.connectionFactory) { "RedisConnectionFactory 를 사용할 수 없습니다" }
+        val connection = connectionFactory.connection
+        try {
+            connection.scan(options).use { cursor ->
+                while (cursor.hasNext()) {
+                    keys += String(cursor.next())
+                }
+            }
+        } finally {
+            connection.close()
+        }
+        return keys
     }
 
     override fun remaining(dropId: Long): Int? =
@@ -165,6 +246,7 @@ class DropReservationStoreImpl(
                 quantity.toString(),
                 perUserLimit.toString(),
                 markerTtlSeconds.toString(),
+                userId.toString(),
             ),
         ) { "reserve.lua 실행 결과가 null (dropId=$dropId)" }
     }
@@ -173,16 +255,22 @@ class DropReservationStoreImpl(
         meterRegistry.counter(REJECT_COUNTER, REJECT_TAG_KIND, kind).increment()
     }
 
-    private fun executeCancelScript(dropId: Long, userId: Long, quantity: Int, idempotencyKey: String) {
+    /**
+     * `cancel.lua`를 실행하고 반환 코드를 그대로 넘긴다 — [cancel]은 이 코드를 무시하고(기존 계약
+     * 유지), [restoreOrphanedReservation](FIX-04)은 이 코드로 실제 복원 여부를 판별한다.
+     */
+    private fun executeCancelScript(dropId: Long, userId: Long, quantity: Int, idempotencyKey: String): Long {
         val keys = listOf(remainingKey(dropId), buyerKey(dropId, userId), reservedKey(dropId, idempotencyKey))
-        redisTemplate.execute(cancelScript, keys, quantity.toString())
+        return redisTemplate.execute(cancelScript, keys, quantity.toString()) ?: CANCEL_NOOP
     }
 
     private fun remainingKey(dropId: Long) = "goods:limited-drop:$dropId:remaining"
 
     private fun buyerKey(dropId: Long, userId: Long) = "goods:limited-drop:$dropId:buyer:$userId"
 
-    private fun reservedKey(dropId: Long, idempotencyKey: String) = "goods:limited-drop:$dropId:reserved:$idempotencyKey"
+    private fun reservedKey(dropId: Long, idempotencyKey: String) = "${reservedKeyPrefix(dropId)}$idempotencyKey"
+
+    private fun reservedKeyPrefix(dropId: Long) = "goods:limited-drop:$dropId:reserved:"
 
     private fun rejectKey(dropId: Long, kind: RejectKind): String {
         val suffix = when (kind) {
@@ -201,6 +289,13 @@ class DropReservationStoreImpl(
         private const val RESERVE_ALREADY_RESERVED = 2L
         private const val RESERVE_PER_USER_LIMIT_EXCEEDED = 3L
 
+        /** cancel.lua 반환 코드 (FIX-04 — [restoreOrphanedReservation]이 판별에 사용). */
+        private const val CANCEL_RESTORED = 1L
+        private const val CANCEL_NOOP = 0L
+
+        /** FIX-04 [scanKeys] SCAN COUNT 힌트 — 배치 크기. */
+        private const val SCAN_BATCH_SIZE = 200L
+
         /** ⑦ 대시보드 지표 (Observability, BE-11). */
         private const val REJECT_COUNTER = "limited_drop.reject"
         private const val REJECT_TAG_KIND = "kind"
@@ -208,5 +303,8 @@ class DropReservationStoreImpl(
         private const val REJECT_KIND_THROTTLED = "throttled"
         private const val REJECT_KIND_PER_USER = "per_user"
         private const val REDIS_DEGRADED_COUNTER = "limited_drop.redis_degraded"
+
+        /** FIX-04 — ARGV[4] 도입 이전 레거시 포맷 마커라 언더셀 복원 대상에서 제외된 건수. */
+        private const val LEGACY_MARKER_SKIPPED_COUNTER = "limited_drop.legacy_marker_skipped"
     }
 }
