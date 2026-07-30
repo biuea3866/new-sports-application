@@ -3,6 +3,8 @@ package com.sportsapp.presentation.exception
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import org.springframework.dao.QueryTimeoutException
+import org.springframework.jdbc.CannotGetJdbcConnectionException
 import org.springframework.orm.ObjectOptimisticLockingFailureException
 import org.springframework.transaction.CannotCreateTransactionException
 import org.springframework.web.bind.MissingServletRequestParameterException
@@ -58,6 +60,55 @@ class GlobalExceptionHandlerUnitTest : BehaviorSpec({
                 SQLTransientConnectionException("HikariPool-1 - Connection is not available, request timed out after 5000ms."),
             )
             val response = handler.handleCannotCreateTransactionException(exception)
+
+            Then("HTTP 503 을 반환한다 (500 과 분리)") {
+                response.statusCode.value() shouldBe 503
+            }
+            Then("ProblemDetail 에 code=SERVICE_UNAVAILABLE 이 포함된다") {
+                val body = response.body ?: error("response body must not be null")
+                val properties = body.properties ?: error("properties must not be null")
+                properties["code"] shouldBe "SERVICE_UNAVAILABLE"
+            }
+            Then("Retry-After 헤더가 포함된다") {
+                response.headers.getFirst("Retry-After").shouldNotBeNull()
+            }
+        }
+
+        /**
+         * [code-review p3] 트랜잭션 시작 시점(JpaTransactionManager.doBegin)이 아니라, 이미 열린
+         * 트랜잭션 안에서 별도로 커넥션을 얻는 경로(독립 Repository·QueryDSL 구현 등)의 풀 고갈은
+         * CannotGetJdbcConnectionException(DataAccessResourceFailureException 하위 타입)으로
+         * 표면화된다 — 이 매핑이 없으면 catch-all(500)로 떨어져 풀 고갈이 애플리케이션 버그로
+         * 오분류된다.
+         */
+        When("DataAccessResourceFailureException(트랜잭션 밖 커넥션 획득 실패) 이 입력되면") {
+            val exception = CannotGetJdbcConnectionException(
+                "Failed to obtain JDBC Connection",
+                SQLTransientConnectionException("HikariPool-1 - Connection is not available, request timed out after 5000ms."),
+            )
+            val response = handler.handleDataAccessResourceFailureException(exception)
+
+            Then("HTTP 503 을 반환한다 (500 과 분리)") {
+                response.statusCode.value() shouldBe 503
+            }
+            Then("ProblemDetail 에 code=SERVICE_UNAVAILABLE 이 포함된다") {
+                val body = response.body ?: error("response body must not be null")
+                val properties = body.properties ?: error("properties must not be null")
+                properties["code"] shouldBe "SERVICE_UNAVAILABLE"
+            }
+            Then("Retry-After 헤더가 포함된다") {
+                response.headers.getFirst("Retry-After").shouldNotBeNull()
+            }
+        }
+
+        /**
+         * [code-review p3] 커넥션을 획득한 뒤 쿼리 실행 단계에서 풀/DB 포화로 타임아웃되는 경로 —
+         * DataAccessResourceFailureException과 별도 상속 계층(TransientDataAccessException)이라
+         * 별도 핸들러가 필요하다.
+         */
+        When("QueryTimeoutException(쿼리 실행 중 풀·DB 포화) 이 입력되면") {
+            val exception = QueryTimeoutException("Query did not complete within the configured timeout")
+            val response = handler.handleQueryTimeoutException(exception)
 
             Then("HTTP 503 을 반환한다 (500 과 분리)") {
                 response.statusCode.value() shouldBe 503

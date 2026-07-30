@@ -10,6 +10,7 @@ import com.sportsapp.domain.user.gateway.JwtIssuer
 import com.sportsapp.infrastructure.goods.mysql.ProductJpaRepository
 import com.sportsapp.infrastructure.goods.mysql.StockJpaRepository
 import com.sportsapp.presentation.support.bearerTokenFor
+import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.ints.shouldBeLessThanOrEqual
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
@@ -18,6 +19,7 @@ import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
@@ -43,8 +45,20 @@ private const val OWNER_USER_ID = 9_000L
  * 각 Then 블록 안에서 상품·회차를 생성한다 — Kotest BehaviorSpec은 Given 본문을 트리 구성 시
  * 1회만 평가하므로, beforeEach의 테이블 정리(리프마다 재실행)와 타이밍이 어긋나면 Given 레벨에서
  * 미리 만든 행이 실제 리프 실행 전에 삭제된다([LimitedDropApiControllerTest] 선례와 동일 원칙).
+ *
+ * [code-review 후속] 이 시나리오는 "500-동시 요청이 운영값과 같은 30-커넥션 풀을 놓고 경합한다"는
+ * 전제를 명시적으로 검증한다 — 공용 테스트 기본값(src/test/resources/application.yml)은 다른
+ * 테스트의 컨텍스트 캐시 누적을 막기 위해 작게(10) 유지하므로, 이 클래스만 별도 컨텍스트로
+ * 운영값을 오버라이드한다.
  */
 @AutoConfigureMockMvc
+@TestPropertySource(
+    properties = [
+        "spring.datasource.hikari.maximum-pool-size=30",
+        "spring.datasource.hikari.minimum-idle=30",
+        "spring.datasource.hikari.connection-timeout=5000",
+    ],
+)
 class LimitedDropPurchaseConcurrencyScenarioTest(
     @Autowired private val mockMvc: MockMvc,
     @Autowired private val productJpaRepository: ProductJpaRepository,
@@ -142,7 +156,16 @@ class LimitedDropPurchaseConcurrencyScenarioTest(
                  * 것이었고, 이제는 응답(202) 수와 생성된 주문 수가 정확히 일치하는지(핵심,
                  * PurchaseLimitedDropUseCase·LimitedDropDomainService는 FIX-02 소유라 미변경)와
                  * 오버셀이 없는지로 판정 기준을 옮긴다. 500/-1(설명되지 않은 예외)은 여전히 0이어야
-                 * 하고, 503은 애플리케이션 버그가 아니라 풀 고갈의 정상 분류이므로 별도로 허용한다.
+                 * 하고, 503은 애플리케이션 버그가 아니라 정상 분류이므로 별도로 허용한다.
+                 *
+                 * [code-review p3] 503=357 전체를 hikari 풀 고갈(connection-timeout 5s)만으로
+                 * 단정하지 않는다 — [LoadSheddingFilter]가 기본 `max-concurrent-requests=200`으로
+                 * 필터 체인 최전방(인증 이전)에서 동시 인플라이트 500건 중 200건 초과분을 별도
+                 * 503으로 즉시 거부하고, 이 테스트 yml에는 그 값을 오버라이드하지 않는다. 즉 503
+                 * 버킷에는 (a) 풀 고갈로 트랜잭션을 시작하지 못한 503과 (b) 로드셰딩으로 서블릿
+                 * 진입 자체가 거부된 503이 섞여 있을 수 있다 — 두 응답 모두 code=SERVICE_UNAVAILABLE·
+                 * detail 문구가 동일해 현재 응답 본문만으로는 구분되지 않는다. 이 테스트는 "503은
+                 * 정상 분류(500/-1이 아님)"만 단정하며, 503 내부 출처 비율은 판정 근거로 쓰지 않는다.
                  */
                 Then("202 응답 수와 생성된 주문 수가 정확히 일치하고, 재고 초과 판매가 발생하지 않는다") {
                     val productId = createProductWithStock(quantity = 100)
@@ -187,6 +210,9 @@ class LimitedDropPurchaseConcurrencyScenarioTest(
                     unexplainedErrorCount shouldBe 0
                     unexpectedStatuses shouldBe emptyList()
                     successCount shouldBeLessThanOrEqual 100
+                    // [code-review p2] 하한 없이는 successCount=0(전원 503/409)도 통과해 언더셀
+                    // 보호가 사라진다 — 이 시나리오의 존재 이유(재고 100 수렴)를 실제로 단정한다.
+                    successCount shouldBeGreaterThan 0
 
                     // 핵심(FIX-03) — 커밋 후 응답 유실 제거: 202 응답 수와 실제 생성된 주문 수가 정확히 일치한다.
                     countOrderItems(productId) shouldBe successCount.toLong()

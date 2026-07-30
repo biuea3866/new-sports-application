@@ -135,8 +135,13 @@ class LimitedDropConnectionPoolExhaustionScenarioTest(
                 Then("30초가 아니라 connection-timeout(5s) 남짓에 503 + Retry-After로 응답한다") {
                     val productId = createProductWithStock(quantity = 10)
 
-                    val heldConnections: List<Connection> = List(TEST_POOL_SIZE) { dataSource.connection }
+                    // [code-review p3] 획득 루프를 try 밖에 두면, 중간 인덱스에서 획득이 실패했을 때
+                    // 이미 얻은 커넥션이 close() 되지 않고 누수돼 이후 리프가 연쇄 실패한다.
+                    // acquire를 try 안으로 넣고 finally에서 누적 리스트를 닫는다.
+                    val heldConnections = mutableListOf<Connection>()
                     try {
+                        repeat(TEST_POOL_SIZE) { heldConnections.add(dataSource.connection) }
+
                         val start = System.currentTimeMillis()
                         val result = mockMvc.perform(
                             post("/limited-drops")
@@ -163,8 +168,11 @@ class LimitedDropConnectionPoolExhaustionScenarioTest(
 
                     // 풀(size=5) 전체를 raw JDBC 커넥션으로 점유 — 이후 어떤 트랜잭션도 커넥션을
                     // 얻지 못하고 connection-timeout(5s) 후 CannotCreateTransactionException.
-                    val heldConnections: List<Connection> = List(TEST_POOL_SIZE) { dataSource.connection }
+                    // [code-review p3] 획득 루프를 try 안으로 넣어, 중간 획득 실패 시에도 이미 얻은
+                    // 커넥션이 finally에서 확실히 반납되게 한다(누수 방지).
+                    val heldConnections = mutableListOf<Connection>()
                     val (elapsedMillis, result) = try {
+                        repeat(TEST_POOL_SIZE) { heldConnections.add(dataSource.connection) }
                         val start = System.currentTimeMillis()
                         val response = mockMvc.perform(
                             post("/limited-drops/$dropId/orders")
