@@ -123,7 +123,7 @@ class ContextMapBaselineTest : FunSpec({
         // :common 을 의존하므로 application.common(GuestRequester)도 이 클래스패스 스캔에 함께 잡힌다.
         val applicationTopLevelContexts = importedClasses
             .filter { javaClass -> javaClass.packageName.startsWith("com.sportsapp.application.") }
-            .mapNotNull { javaClass ->
+            .map { javaClass ->
                 javaClass.packageName.removePrefix("com.sportsapp.application.").substringBefore(".")
             }
             .toSet() - "common"

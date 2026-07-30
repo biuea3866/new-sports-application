@@ -58,6 +58,7 @@ detekt {
     source.setFrom(
         "src/main/kotlin",
         "src/test/kotlin",
+        "src/testFixtures/kotlin",
     )
 }
 

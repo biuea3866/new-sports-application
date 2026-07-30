@@ -23,8 +23,10 @@ COPY bootstrap/build.gradle.kts ./bootstrap/build.gradle.kts
 RUN chmod +x ./gradlew \
     && ./gradlew --no-daemon dependencies > /dev/null 2>&1 || true
 
-# 소스 복사 후 :bootstrap 의 bootJar만 산출 (plain jar는 Spring Boot Gradle Plugin이 기본 비활성화,
-# 다른 모듈은 org.springframework.boot 플러그인을 적용하지 않아 bootJar 자체가 없다)
+# 소스 복사 후 :bootstrap 의 bootJar만 산출 (Spring Boot Gradle Plugin 3.x는 plain jar와 bootJar를
+# 모두 기본 산출하지만, bootstrap/build.gradle.kts가 `tasks.named<Jar>("jar") { enabled = false }`로
+# plain jar를 명시적으로 비활성화해 bootJar 하나만 남긴다 — 다른 모듈은 org.springframework.boot
+# 플러그인을 적용하지 않아 bootJar 자체가 없다)
 COPY common/src ./common/src
 COPY payment/src ./payment/src
 COPY commerce/src ./commerce/src
