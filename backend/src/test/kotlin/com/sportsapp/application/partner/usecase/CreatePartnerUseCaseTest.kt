@@ -17,6 +17,7 @@ import com.sportsapp.domain.user.service.IntegrationAccountDomainService
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.mockk.Runs
 import io.mockk.every
 import io.mockk.just
@@ -191,8 +192,13 @@ class CreatePartnerUseCaseTest : BehaviorSpec({
                 val thrown = shouldThrow<IllegalStateException> { useCase.execute(command) }
 
                 thrown shouldBe originalFailure
-                val compensationLog = listAppender.list.find { it.level == Level.ERROR }
-                compensationLog?.formattedMessage?.contains(provisionedUser.id.toString()) shouldBe true
+                // 저엔트로피 토큰("0")만 확인하면 로그 어디든 0 한 글자가 있으면 통과한다.
+                // 설계 문서가 이 경로를 error 구조화 로그로 식별하기로 했으므로 식별자 구조를 고정한다.
+                val compensationLog = requireNotNull(listAppender.list.find { it.level == Level.ERROR }) {
+                    "보상 실패는 error 레벨 로그로 남아야 한다"
+                }
+                compensationLog.formattedMessage shouldContain "step=abandon-user"
+                compensationLog.formattedMessage shouldContain "userId=${provisionedUser.id}"
             }
         }
 
