@@ -18,8 +18,15 @@ web/.env.local
 mobile/.env
 
 # ===== backend/ Kotlin/Gradle =====
+# [W1-01a] 멀티모듈 전환 — 8모듈(common/payment/commerce/facility-booking/platform/social/edge/
+# bootstrap) + buildSrc 각각의 build/.gradle/.kotlin 산출물을 전부 커버한다.
 backend/.gradle/
 backend/build/
+backend/*/build/
+backend/*/.gradle/
+backend/*/.kotlin/
+backend/buildSrc/build/
+backend/buildSrc/.gradle/
 backend/!gradle-wrapper.jar
 backend/out/
 backend/.kotlin/
