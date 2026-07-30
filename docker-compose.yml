@@ -33,7 +33,13 @@ services:
       SPRING_APPLICATION_NAME: ${SPRING_APPLICATION_NAME:-sports-application}          # 소비: W1-09
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-sports-application}                      # 소비: W1-09
     # [W1-02] §7-2 실측 오버레이 값을 코드로 승격 — JVM -Xmx768m(위) + 컨테이너 실사용 오버헤드(~950m).
-    # 컨테이너 수 13 유지(§8-3 완료 판정 ⑧) — 1단계 런타임은 단일 backend 뿐이라 여기에만 적용한다.
+    # 런타임 컨테이너 증감 0 (base 12 → 12, §8-3 완료 판정 ⑧의 실제 요구는 "런타임 무변경"이다.
+    # "13"은 compose 서비스 정의 수가 아니라 §8-3의 실행 컨테이너 실측치(12~14개) 기준 숫자) —
+    # 1단계 런타임은 단일 backend 뿐이라 여기에만 적용한다.
+    # [W1-02] docker-compose.lb.yml 오버레이가 backend를 replicas:3으로 확장하면 cpus 상한은
+    # replica마다 적용된다 (합산 아님). §7-5 실측 모놀리스 3 replica 피크는 각 254~271% —
+    # 이 250%(2.5 cpus) 상한은 그 실측 피크보다 낮으므로, lb 오버레이 적용 시
+    # 상시 트래픽 시뮬레이터의 기존 베이스라인에 영향을 줄 수 있다.
     mem_limit: 1.8g
     cpus: 2.5
     healthcheck:
