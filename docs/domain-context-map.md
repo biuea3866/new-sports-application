@@ -147,8 +147,8 @@ flowchart LR
 
 > **읽기 경로 동기 결합 16지점** — post→community 3 / recruitment→community 2 / community→message 3 / dashboard→코어 8. 전부 `@Transactional(readOnly = true)` 로, 상세·목록·대시보드 조회가 매 요청 타 컨텍스트를 동기 호출합니다. 서비스 분리 시 원격 홉이 조회 지연에 직결되는 지점입니다. 파사드 8건(catalog·order)은 **이미 300ms 타임아웃 + 부분 저하 설계가 있어** 성격이 다릅니다.
 >
-> **presentation 레이어의 교차 컨텍스트 결합** — 이 표는 application 레이어 스코프라 아래 두 건이 빠집니다. ArchUnit R3 도 `domain`·`application` 만 스캔해 이 경로를 보지 않습니다.
-> - `presentation/mcp/**` 툴 **12파일**이 booking·ticketing·goods·facility·notification·dashboard **코어 6개 컨텍스트의 UseCase** 를 직접 주입합니다(import: booking 12·ticketing 5·goods 4·facility 4·notification 2·dashboard 2). 서브시스템 mcp 의 최대 결합 지점이며, `McpPermissionGateway`(④)보다 훨씬 큽니다.
+> **presentation 레이어의 교차 컨텍스트 결합** — 이 표는 application 레이어 스코프라 아래 **동기 결합** 두 건이 빠집니다(이벤트 경로인 `AlertDeliveryEventWorker`·`CommunityChatIntegrationEventWorker` 는 ②에 기재돼 있습니다). ArchUnit R3 도 `domain`·`application` 만 스캔해 이 경로를 보지 않습니다.
+> - `presentation/mcp/**` 툴 **12파일**이 **6개 컨텍스트의 UseCase** 를 직접 주입합니다 — 코어 4(booking·ticketing·goods·facility) / 지원 1(notification) / 조회·유틸 1(dashboard). (import 전체: booking 12·ticketing 5·goods 4·facility 4·notification 2·dashboard 2. UseCase 만 세면 6·2·2·3·1·1) 서브시스템 mcp 의 최대 결합 지점이며 `McpPermissionGateway`(④)보다 훨씬 큽니다. **코어 4개로 가는 결합이 application 레이어에 있었다면 R3 위반**입니다.
 > - `presentation/message/scheduler/GuestExpiryScheduler` 가 notification `SendRawNotificationUseCase` 를 주입합니다.
 >
 > `infrastructure/security/**` 의 인증 필터도 타 컨텍스트 DomainService 를 주입하지만(`McpTokenAuthenticationFilter` → user `PermissionDomainService`, `PartnerApiKeyAuthenticationFilter` → partner·user), 바운디드 컨텍스트가 아니라 **횡단 인증 레이어**라 이 표의 대상이 아닙니다. 전자는 자기 컨텍스트 Repository(`McpTokenRepository` 등)도 직접 주입합니다. application 레이어의 교차 컨텍스트 Repository 주입은 실측 **0건**입니다.
