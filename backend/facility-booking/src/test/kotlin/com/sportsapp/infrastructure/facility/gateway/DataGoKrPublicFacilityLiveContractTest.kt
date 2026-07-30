@@ -1,7 +1,7 @@
 package com.sportsapp.infrastructure.facility.gateway
 
 import com.sportsapp.infrastructure.external.ExternalContractSupport
-import com.sportsapp.infrastructure.external.ExternalRestClientFactory
+import com.sportsapp.infrastructure.facility.external.FacilityExternalRestClientFactory
 import com.sportsapp.infrastructure.external.Live
 import io.kotest.core.Tag
 import io.kotest.core.spec.style.BehaviorSpec
@@ -31,7 +31,7 @@ class DataGoKrPublicFacilityLiveContractTest : BehaviorSpec({
 
                 val liveBaseUrl = System.getenv(PUBLIC_FACILITY_BASE_URL_ENV) ?: DEFAULT_LIVE_BASE_URL
                 val properties = PublicFacilityProperties(baseUrl = liveBaseUrl, apiKey = liveServiceKey)
-                val gateway = DataGoKrPublicFacilityGatewayImpl(ExternalRestClientFactory(), properties)
+                val gateway = DataGoKrPublicFacilityGatewayImpl(FacilityExternalRestClientFactory(), properties)
 
                 val facilities = gateway.fetchPage(1, 10)
 

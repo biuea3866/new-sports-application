@@ -3,7 +3,7 @@ package com.sportsapp.infrastructure.facility.gateway
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.sportsapp.domain.facility.gateway.PublicSportsFacilityGateway
 import com.sportsapp.domain.facility.gateway.PublicFacility
-import com.sportsapp.infrastructure.external.ExternalRestClientFactory
+import com.sportsapp.infrastructure.facility.external.FacilityExternalRestClientFactory
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
@@ -15,7 +15,7 @@ import org.springframework.web.client.RestClientException
  */
 @Component
 class DataGoKrPublicFacilityGatewayImpl(
-    restClientFactory: ExternalRestClientFactory,
+    restClientFactory: FacilityExternalRestClientFactory,
     private val properties: PublicFacilityProperties,
 ) : PublicSportsFacilityGateway {
 

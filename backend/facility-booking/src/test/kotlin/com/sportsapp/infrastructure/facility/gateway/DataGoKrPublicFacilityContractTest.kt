@@ -1,7 +1,7 @@
 package com.sportsapp.infrastructure.facility.gateway
 
 import com.sportsapp.infrastructure.external.ExternalContractSupport
-import com.sportsapp.infrastructure.external.ExternalRestClientFactory
+import com.sportsapp.infrastructure.facility.external.FacilityExternalRestClientFactory
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
@@ -29,7 +29,7 @@ class DataGoKrPublicFacilityContractTest : BehaviorSpec({
             baseUrl = mockWebServer.url("/").toString().removeSuffix("/"),
             apiKey = "contract-test-service-key",
         )
-        return DataGoKrPublicFacilityGatewayImpl(ExternalRestClientFactory(), properties)
+        return DataGoKrPublicFacilityGatewayImpl(FacilityExternalRestClientFactory(), properties)
     }
 
     Given("data.go.kr 공공체육시설 fixture 응답이 준비된 상태에서") {

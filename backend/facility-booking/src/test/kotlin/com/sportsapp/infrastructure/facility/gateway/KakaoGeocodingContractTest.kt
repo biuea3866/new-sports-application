@@ -1,7 +1,7 @@
 package com.sportsapp.infrastructure.facility.gateway
 
 import com.sportsapp.infrastructure.external.ExternalContractSupport
-import com.sportsapp.infrastructure.external.ExternalRestClientFactory
+import com.sportsapp.infrastructure.facility.external.FacilityExternalRestClientFactory
 import com.sportsapp.infrastructure.external.Live
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -20,7 +20,7 @@ private fun gatewayFor(mockWebServer: MockWebServer, apiKey: String = TEST_API_K
         baseUrl = mockWebServer.url("/").toString(),
         apiKey = apiKey,
     )
-    return KakaoGeocodingGatewayImpl(ExternalRestClientFactory(), properties)
+    return KakaoGeocodingGatewayImpl(FacilityExternalRestClientFactory(), properties)
 }
 
 /**
@@ -141,7 +141,7 @@ class KakaoGeocodingLiveContractTest : BehaviorSpec({
                     val liveBaseUrl = System.getenv(LIVE_BASE_URL_ENV)?.takeIf { it.isNotBlank() }
                         ?: LIVE_DEFAULT_BASE_URL
                     val properties = GeocodingProperties(baseUrl = liveBaseUrl, apiKey = liveApiKey)
-                    val gateway = KakaoGeocodingGatewayImpl(ExternalRestClientFactory(), properties)
+                    val gateway = KakaoGeocodingGatewayImpl(FacilityExternalRestClientFactory(), properties)
 
                     val coordinate = gateway.geocode(SAMPLE_ADDRESS)
 
