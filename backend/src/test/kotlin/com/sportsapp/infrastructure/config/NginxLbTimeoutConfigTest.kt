@@ -1,10 +1,15 @@
 package com.sportsapp.infrastructure.config
 
+import com.sportsapp.application.goods.usecase.PurchaseLimitedDropUseCase
+import com.sportsapp.infrastructure.goods.retry.LimitedDropRetryProperties
 import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.ints.shouldBeGreaterThanOrEqual
 import io.kotest.matchers.shouldBe
+import org.springframework.retry.annotation.Retryable
 import org.yaml.snakeyaml.Yaml
 import java.io.File
+import kotlin.math.ceil
 
 /**
  * [FIX-03] `infra/nginx/lb.conf` 의 프록시 타임아웃이 "백엔드가 먼저 실패 응답을 내고,
@@ -16,12 +21,10 @@ import java.io.File
  *
  * [code-review p2] "FIX-02(재시도 예산 200회→20회 축소) 선행 필수" — 이 테스트가 검증하는
  * proxy_read_timeout=15s는 "백엔드 최대 요청 수명 = 풀 대기(connection-timeout, 5s) + 재시도
- * 예산" 을 전제로 세운 값이다. 이 브랜치의 base 시점(`PurchaseLimitedDropUseCase`)에는 아직
- * FIX-02가 반영되지 않아 재시도 예산이 과거 설정(maxAttempts=200, Backoff 누적 약 19~20초)
- * 그대로다 — 이 상태로 단독 머지하면 백엔드 최대 수명(약 25s) > LB 15s가 되어 이 테스트가
- * 세우는 불변식이 실제로는 깨진 채로 그린이 된다. FIX-02가 먼저 머지돼 재시도 예산이 축소된
- * 뒤에만 이 15s 값의 전제가 성립한다. FIX-02 머지 후 `LimitedDropRetryProperties`의 실제
- * 재시도 예산까지 반영한 완전한 불변식(LB 타임아웃 > 풀 대기 + 재시도 예산) 검증을 추가한다.
+ * 예산" 을 전제로 세운 값이다. FIX-02(재시도 예산 200회→20회 축소, `LimitedDropRetryProperties`)가
+ * 이 브랜치의 base(`origin/main`)에 먼저 머지돼 이 전제가 성립한다 — 아래 "완전한 불변식" 절이
+ * `LimitedDropRetryProperties`·`PurchaseLimitedDropUseCase`의 `@Retryable` 실제 값으로
+ * 재시도 예산 상한까지 반영해 검증한다 (하드코딩 금지 — 값이 드리프트하면 이 테스트가 깨진다).
  */
 class NginxLbTimeoutConfigTest : BehaviorSpec({
 
@@ -57,6 +60,28 @@ class NginxLbTimeoutConfigTest : BehaviorSpec({
         return defaultMillis / 1000
     }
 
+    /**
+     * [code-review p2 후속] `PurchaseLimitedDropUseCase.execute()`의 `@Retryable` 실제 설정
+     * (backoff maxDelay)과 `LimitedDropRetryProperties`의 실제 기본 `maxAttempts`로 재시도
+     * 예산 상한(밀리초)을 계산한다 — 숫자를 이 테스트에 하드코딩하지 않는다.
+     *
+     * Spring Retry `ExponentialRandomBackOffPolicy`(backoff `random = true`)는 각 재시도
+     * 간격에 지터(jitter)를 곱하되 `getSleepAndIncrement()`에서 `maxInterval`(=Backoff.maxDelay)로
+     * 상한을 고정한다(spring-retry 소스 확인) — 즉 지터를 포함해도 재시도 1회당 지연은
+     * `maxDelay`를 넘지 않는다. 따라서 최악의 재시도 예산 상한은
+     * `(maxAttempts - 1) * maxDelay`(최초 시도는 지연 없이 즉시 실행되므로 재시도 횟수는
+     * maxAttempts - 1)다.
+     */
+    fun retryBudgetUpperBoundMillisFromUseCase(): Long {
+        val executeMethod = PurchaseLimitedDropUseCase::class.java.methods.firstOrNull { it.name == "execute" }
+            ?: error("PurchaseLimitedDropUseCase 에 execute 메서드가 없습니다")
+        val retryable = executeMethod.getAnnotation(Retryable::class.java)
+            ?: error("PurchaseLimitedDropUseCase.execute 에 @Retryable 이 없습니다 — 재시도 예산 전제가 깨졌습니다")
+        val maxAttempts = LimitedDropRetryProperties().maxAttempts
+        val maxDelayMillis = retryable.backoff.maxDelay
+        return (maxAttempts - 1).toLong() * maxDelayMillis
+    }
+
     Given("infra/nginx/lb.conf 의 location / 블록") {
         val conf = readLbConf()
 
@@ -71,6 +96,17 @@ class NginxLbTimeoutConfigTest : BehaviorSpec({
             Then("proxy_read_timeout 이 백엔드 커넥션 대기 시간의 2배 이상이다 (설정 정합 검증)") {
                 val hikariConnectionTimeoutSeconds = hikariConnectionTimeoutSecondsFromApplicationYml()
                 secondsOf(conf, "proxy_read_timeout") shouldBeGreaterThanOrEqual hikariConnectionTimeoutSeconds * 2
+            }
+        }
+
+        When("HikariCP connection-timeout + PurchaseLimitedDropUseCase 재시도 예산 상한(둘 다 실제 값)을 합산하면") {
+            Then("proxy_read_timeout 이 백엔드 최대 요청 수명(풀 대기 + 재시도 예산)보다 크다 (완전한 불변식)") {
+                val hikariConnectionTimeoutSeconds = hikariConnectionTimeoutSecondsFromApplicationYml()
+                val retryBudgetUpperBoundSeconds =
+                    ceil(retryBudgetUpperBoundMillisFromUseCase() / 1000.0).toInt()
+                val backendMaxRequestLifetimeSeconds = hikariConnectionTimeoutSeconds + retryBudgetUpperBoundSeconds
+
+                secondsOf(conf, "proxy_read_timeout") shouldBeGreaterThan backendMaxRequestLifetimeSeconds
             }
         }
 
