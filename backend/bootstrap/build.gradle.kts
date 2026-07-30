@@ -2,11 +2,12 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 // [W1-01a] bootstrap — 전 7모듈 조립 + 전역 설정(config/security/persistence/messaging/audit/
 // external/loadshedding) + ArchUnit + application.yml/db-migration 단일 소유. bootJar 산출은 이 모듈만.
+// [W1-01b 리뷰 후속] kotlin("plugin.spring")은 sportsapp.kotlin-conventions 컨벤션 플러그인이
+// 8모듈 공통으로 적용한다 — 이 모듈에서 개별 선언하면 중복 적용이라 제거한다.
 plugins {
     id("sportsapp.kotlin-conventions")
     id("org.springframework.boot")
     id("io.spring.dependency-management")
-    kotlin("plugin.spring")
     kotlin("plugin.jpa")
     kotlin("kapt")
 }

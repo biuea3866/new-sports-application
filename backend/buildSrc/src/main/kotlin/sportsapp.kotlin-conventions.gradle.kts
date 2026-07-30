@@ -6,9 +6,26 @@ import java.time.Duration
 // 모듈별 build.gradle.kts 가 `id("sportsapp.kotlin-conventions")` 로 적용한다.
 // 기술별 의존성(spring-boot BOM, kafka, mongo, querydsl kapt 등)은 이 플러그인에 넣지 않는다 —
 // 각 모듈이 실제로 쓰는 것만 자기 build.gradle.kts 에 선언한다 (근거: 티켓 ⑤ dependencies 분리 원칙).
-
+//
+// [W1-01b 리뷰 후속 — 회귀 수정] kotlin("plugin.spring")(all-open)을 8모듈 공통으로 올린다.
+// Kotlin 클래스는 기본이 final 이라 @Configuration/@Component/@Service/@Transactional/@Async/
+// @Cacheable 이 붙은 클래스를 all-open 없이 두면 ① @Configuration 은 "may not be final" 로 즉시
+// 실패하고 ② @Transactional/@Retryable/@Async 는 CGLIB 프록시 생성이 안 돼 트랜잭션·재시도가
+// 조용히 무력화된다(기동은 되지만 AOP 가 안 걸린 채로). W1-01a 골격 추출 이후 bootstrap 모듈에만
+// 개별 선언돼 있어, 소스가 이관된 payment/commerce/facility-booking(및 앞으로 소스가 채워질
+// platform/social/edge)의 모든 UseCase/DomainService 가 이 보호를 받지 못하는 회귀가 있었다.
+// 개별 모듈마다 선언하게 두면 새 모듈이 추가될 때마다 같은 함정이 반복되므로 컨벤션 플러그인
+// 한 곳으로 강제한다.
+//
+// kotlin("plugin.jpa")(no-arg)는 이 컨벤션에 올리지 않고 @Entity 를 소유하는 모듈(common/payment/
+// commerce/facility-booking/bootstrap)이 각자 선언하는 현재 방식을 유지한다 — plugin.spring 과 달리
+// 이미 필요한 모듈 전부가 명시적으로 선언 중이라 발견된 회귀가 없고, @Entity 가 아직 없는 platform/
+// social/edge 에는 불필요한 플러그인 적용을 늘릴 이유가 없다(무해하지만 "이 모듈이 실제로 쓰는 것만
+// 선언한다" 는 이 파일 상단 원칙과도 맞는다). 이후 플랫폼 등에 @Entity 가 추가되면 그 모듈이 개별
+// 선언하면 된다.
 plugins {
     kotlin("jvm")
+    kotlin("plugin.spring")
     id("io.gitlab.arturbosch.detekt")
 }
 

@@ -10,6 +10,7 @@ import io.kotest.matchers.longs.shouldBeGreaterThan
 import io.kotest.matchers.longs.shouldBeLessThanOrEqual
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
+import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import java.time.Duration
 import java.util.concurrent.Executors
@@ -20,6 +21,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.ConfigurableApplicationContext
+import org.springframework.context.annotation.Bean
 import org.springframework.dao.DataAccessException
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.test.context.ContextConfiguration
@@ -466,8 +468,16 @@ class DropReservationStoreImplTest @Autowired constructor(
         }
     }
 }) {
+    // [W1-01b 리뷰 후속 — 회귀 수정 부수 발견] TestApp 은 자기 패키지(com.sportsapp.infrastructure.goods.
+    // redis)를 기준으로 컴포넌트 스캔하므로 같은 패키지의 @Component DropReservationStoreImpl 도
+    // 스캔 대상에 포함된다(테스트는 buildStore()로 별도 인스턴스를 수동 생성해 쓰지만, 스캔 자체는
+    // 막을 수 없다). commerce 모듈은 spring-boot-starter-actuator 를 갖지 않아 MeterRegistry 오토컨픽이
+    // 없으므로, DropReservationStoreImpl 빈 생성 시점에 필요한 MeterRegistry 를 직접 공급한다.
     @SpringBootApplication
-    class TestApp
+    class TestApp {
+        @Bean
+        fun meterRegistry(): MeterRegistry = SimpleMeterRegistry()
+    }
 
     class RedisInitializer : ApplicationContextInitializer<ConfigurableApplicationContext> {
         override fun initialize(applicationContext: ConfigurableApplicationContext) {
