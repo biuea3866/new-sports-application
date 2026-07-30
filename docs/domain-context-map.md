@@ -31,7 +31,7 @@ sports-application 백엔드(`backend`, 단일 모듈)의 도메인 구성과 �
 | | `featureflag` | FeatureFlag, FeatureFlagAuditLog — 기능 플래그 |
 | | `virtualqueue` | 가상 대기열 — 인그레스 입장 제어(HMAC 입장토큰). Redis 전용, 코어 역참조 0건. `EntryTokenGuard`(common)로만 노출 |
 | | `dashboard` | (집계) B2B 인사이트 대시보드 |
-| **정보·부가** | `facility` | Facility, Program, OperatingHours, Holiday — 시설 마스터(공공데이터 임포트) + 시설상품(Program) |
+| **정보·부가** | `facility` | Entity: Facility, Program — 시설 마스터(공공데이터 임포트) + 시설상품. VO: OperatingHours·Holiday 등 |
 | | `weather` / `airquality` | Forecast / AirQuality — 외부 API 게이트웨이 (VO 중심) |
 | | `featuredemo` / `image` | 데모 / 이미지 스토리지 |
 | **조회 조합(application 전용)** | `catalog` / `order` | 도메인 레이어 없는 **읽기 조합 파사드**. 코어 DomainService를 병렬 fan-out 하고 도메인당 300ms 타임아웃 + 실패 도메인 부분 저하(`failedDomains`)로 응답한다 |
@@ -97,7 +97,7 @@ flowchart LR
 
 - 실선 `→` : 동기 호출 (DomainService 주입 / Gateway)
 - 점선 `-.->` : 비동기 이벤트 (Kafka Layer 2 / Spring ApplicationEvent Layer 1)
-- 이 그림에 엣지가 없는 노드는 `weather`·`airquality`·`operator`·`post`·`mcp` 5개입니다. 이 중 **`weather`·`airquality`·`operator` 만 실제로 독립**이고, `post`는 community 에 동기 결합(인가 5건, ③ 참조), `mcp`는 `McpPermissionGateway`(mcp→user, ④ 참조)를 갖습니다. 이 그림이 담지 않은 도메인은 `featureflag`·`virtualqueue`·`featuredemo`·`image`와 파사드 `catalog`·`order` 입니다(각각 분류표·③·⑤에 기재).
+- 이 그림에 엣지가 없는 노드는 `weather`·`airquality`·`operator`·`post`·`mcp` 5개입니다. 이 중 **`weather`·`airquality`·`operator` 만 실제로 독립**이고, `post`는 community 에 동기 결합(인가 5건, ③ 참조), `mcp`는 `McpPermissionGateway`(mcp→user, ④ 참조)를 갖습니다. 이 그림이 담지 않은 도메인은 `featureflag`·`virtualqueue`·`featuredemo`·`image`와 파사드 `catalog`·`order` 입니다(각각 분류표·②·③에 기재).
 - **엣지 생략 기준**: 이 그림은 가독성을 위해 컨텍스트 간 흐름을 **선별 표기**합니다(결제 개시·확정 팬아웃·알림·집계 등). 동기 호출·ACL 게이트웨이·소프트 참조의 **전수 목록은 아래 ③·④·⑤ 표**가 담습니다 — 그림에 없는 결합이 표에는 있습니다.
 - `event.payment.payment.v1` 확정구독 점선 4개가 **제거된 동기 콜백 허브를 대체한 팬아웃**입니다 — payment는 발행만 하고 각 주문 컨텍스트가 자기 `*PaymentEventWorker`로 확정합니다(컨슈머 그룹은 notification 포함 5개, 아래 ① 표 참조).
 - `recruitment`는 payment 연동(`createPending` + 확정 구독)과 community ID 참조가 모두 **배선 완료**돼 이 그림에 포함했습니다.
@@ -126,8 +126,8 @@ flowchart LR
 | booking | BookingRefundRequested | booking → `BookingRefundEventWorker` → `PaymentRefundGateway` (UseCase 미경유, 게이트웨이 직접 주입) |
 | community | CommunityCreatedEvent / CommunityMemberJoinedEvent / CommunityMemberLeftEvent | **message** → ProvisionContextRoom / JoinContextRoom / LeaveContextRoom (`CommunityChatIntegrationEventWorker`, 크로스 도메인) |
 | recruitment | ApplicationRefundRequestedEvent | recruitment → `RecruitmentRefundEventWorker` → `RecruitmentRefundGateway.requestRefund` (UseCase 미경유, 게이트웨이 직접 주입) |
-| message | MessageSentEvent | message → `MessageBroadcastEventWorker` (`chat.realtime.enabled` 플래그 게이트) |
-| message | RoomReadEvent | message → `RoomReadEventWorker` (동일 플래그 게이트) |
+| message | MessageSentEvent | message → BroadcastMessage (`chat.realtime.enabled` 플래그 게이트) |
+| message | RoomReadEvent | message → BroadcastRead (동일 플래그 게이트) |
 
 **③ 동기 호출 — application 레이어가 타 컨텍스트 DomainService 주입 (전수, 2026-07-30 실측)**
 
@@ -145,9 +145,13 @@ flowchart LR
 | order → booking·goods·recruitment·ticketing (각 1) | 4 (1개 파일) | 읽기 조합 파사드 |
 | partner → user (1) | 1 | 연동 계정 프로비저닝 **쓰기** (SAGA, R3 화이트리스트) |
 
-> **읽기 경로 동기 결합 8지점** — post→community 3 / recruitment→community 2 / community→message 3. 전부 `@Transactional(readOnly = true)` 로, 상세·목록 조회가 매 요청 타 컨텍스트를 동기 호출합니다. 서비스 분리 시 원격 홉이 조회 지연에 직결되는 지점입니다(파사드 8건은 이미 타임아웃·부분 저하 설계가 있어 별개).
+> **읽기 경로 동기 결합 16지점** — post→community 3 / recruitment→community 2 / community→message 3 / dashboard→코어 8. 전부 `@Transactional(readOnly = true)` 로, 상세·목록·대시보드 조회가 매 요청 타 컨텍스트를 동기 호출합니다. 서비스 분리 시 원격 홉이 조회 지연에 직결되는 지점입니다. 파사드 8건(catalog·order)은 **이미 300ms 타임아웃 + 부분 저하 설계가 있어** 성격이 다릅니다.
 >
-> `infrastructure/security/**` 의 인증 필터(`McpTokenAuthenticationFilter`·`PartnerApiKeyAuthenticationFilter`)는 타 컨텍스트 DomainService **와 Repository 를 직접** 주입하지만, 바운디드 컨텍스트가 아니라 **횡단 인증 레이어**라 이 표의 대상이 아닙니다. application 레이어의 교차 컨텍스트 Repository 주입은 실측 **0건**이라 이 예외는 security 한 곳뿐입니다.
+> **presentation 레이어의 교차 컨텍스트 결합** — 이 표는 application 레이어 스코프라 아래 두 건이 빠집니다. ArchUnit R3 도 `domain`·`application` 만 스캔해 이 경로를 보지 않습니다.
+> - `presentation/mcp/**` 툴 **12파일**이 booking·ticketing·goods·facility·notification·dashboard **코어 6개 컨텍스트의 UseCase** 를 직접 주입합니다(import: booking 12·ticketing 5·goods 4·facility 4·notification 2·dashboard 2). 서브시스템 mcp 의 최대 결합 지점이며, `McpPermissionGateway`(④)보다 훨씬 큽니다.
+> - `presentation/message/scheduler/GuestExpiryScheduler` 가 notification `SendRawNotificationUseCase` 를 주입합니다.
+>
+> `infrastructure/security/**` 의 인증 필터도 타 컨텍스트 DomainService 를 주입하지만(`McpTokenAuthenticationFilter` → user `PermissionDomainService`, `PartnerApiKeyAuthenticationFilter` → partner·user), 바운디드 컨텍스트가 아니라 **횡단 인증 레이어**라 이 표의 대상이 아닙니다. 전자는 자기 컨텍스트 Repository(`McpTokenRepository` 등)도 직접 주입합니다. application 레이어의 교차 컨텍스트 Repository 주입은 실측 **0건**입니다.
 >
 > `facility → booking` 은 이 표(직접 주입)와 아래 ④(ACL `SlotQueryGateway`) **양쪽에 존재**합니다 — 조회는 게이트웨이 경유, Program 회차 생성은 DomainService 직접 주입으로 경로가 갈립니다.
 
