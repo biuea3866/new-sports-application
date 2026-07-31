@@ -44,6 +44,7 @@ class TicketingDomainServiceCatalogReadTest : BehaviorSpec({
         ticketOrderRepository = ticketOrderRepository,
         ticketRepository = ticketRepository,
         domainEventPublisher = domainEventPublisher,
+        featureFlagEvaluator = mockk(relaxed = true),
     )
 
     val startsAt = ZonedDateTime.of(2026, 12, 1, 18, 0, 0, 0, ZoneOffset.UTC)

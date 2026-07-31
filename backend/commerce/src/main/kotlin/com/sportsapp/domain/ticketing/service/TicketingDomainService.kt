@@ -1,10 +1,17 @@
 package com.sportsapp.domain.ticketing.service
 
 import com.sportsapp.domain.common.DomainEventPublisher
+import com.sportsapp.domain.common.FeatureContext
+import com.sportsapp.domain.common.FeatureFlagEvaluator
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
+import com.sportsapp.domain.common.payment.OrderPaymentLiveness
+import com.sportsapp.domain.ticketing.TicketingFeatureFlagKeys
 import com.sportsapp.domain.ticketing.dto.EventSalesInfo
 import com.sportsapp.domain.ticketing.dto.TicketKpiSummary
 import com.sportsapp.domain.ticketing.dto.TicketOrderDetail
+import com.sportsapp.domain.ticketing.dto.TicketOrderExpiryCandidate
+import com.sportsapp.domain.ticketing.dto.TicketOrderExpiryFilterResult
+import com.sportsapp.domain.ticketing.dto.TicketOrderExpiryTtlPolicy
 import com.sportsapp.domain.ticketing.dto.TicketOrderResult
 import com.sportsapp.domain.ticketing.dto.TicketOrderWithEventTitle
 import com.sportsapp.domain.ticketing.dto.TicketSalesSummary
@@ -15,6 +22,7 @@ import com.sportsapp.domain.ticketing.entity.Seat
 import com.sportsapp.domain.ticketing.entity.Ticket
 import com.sportsapp.domain.ticketing.entity.TicketOrder
 import com.sportsapp.domain.ticketing.event.TicketEvent
+import com.sportsapp.domain.ticketing.exception.InvalidOrderStateException
 import com.sportsapp.domain.ticketing.exception.LockExpiredException
 import com.sportsapp.domain.ticketing.exception.MalformedLockIdException
 import com.sportsapp.domain.ticketing.exception.SeatAlreadyLockedException
@@ -54,6 +62,7 @@ class TicketingDomainService(
     private val ticketOrderRepository: TicketOrderRepository,
     private val ticketRepository: TicketRepository,
     private val domainEventPublisher: DomainEventPublisher,
+    private val featureFlagEvaluator: FeatureFlagEvaluator,
 ) {
     fun createEvent(
         title: String,
@@ -168,24 +177,47 @@ class TicketingDomainService(
         return TicketOrderResult.of(saved)
     }
 
+    /**
+     * 결제 확정(webhook) — [TicketOrderRepository.tryConfirm] CAS(조건부 UPDATE, WHERE
+     * status='PENDING')로 전이한다(W1-11b 요건 2, 반대 방향 CAS). 비잠금 findById → confirm()
+     * → save() 경로는 만료 스위퍼([expireTicketOrders])가 먼저 커밋한 CANCELLED를 조건 없는
+     * dirty-checking UPDATE로 덮어쓰는 반대 방향 lost update(같은 좌석 이중 발권)를 만들 수
+     * 있어, booking(W1-11c)의 `confirmBooking`과 대칭으로 CAS로 닫는다. CAS 실패 시 재조회한
+     * 현재 상태로 원인을 가른다 — 이미 CONFIRMED면 멱등(webhook 중복), 그 외(CANCELLED 등)면
+     * InvalidOrderStateException을 던져 상태 머신 우회를 막는다.
+     *
+     * **호출 계약(KDoc contract)**: 이 메서드 호출 이전에 같은 트랜잭션에서 대상 TicketOrder를
+     * 먼저 로드하지 말 것. `tryConfirm`은 QueryDSL 벌크 UPDATE라 JPA 1차 캐시를 무효화하지
+     * 않는다 — 이미 로드된 TicketOrder가 있으면 아래 `findById`가 그 stale 인스턴스를 그대로
+     * 반환해 status가 실제 DB 값과 어긋날 수 있다. 현재 유일 호출부(webhook 확정 경로)는 이
+     * 계약을 지키고 있다.
+     *
+     * **티켓 발급**: CAS는 상태·paymentId만 원자적으로 바꾸므로, entity의 `confirm()`이 하던
+     * 티켓 발급(Ticket.issue)은 CAS 성공 시 이 메서드가 별도로 수행한다 — CAS 실패(이미
+     * CONFIRMED)면 중복 발급을 피하기 위해 재발급하지 않는다.
+     */
     fun confirmOrder(orderId: Long, paymentId: Long): TicketOrderResult {
-        val order = ticketOrderRepository.findById(orderId)
-            ?: throw ResourceNotFoundException("TicketOrder", orderId)
-        if (order.status == OrderStatus.CONFIRMED) {
-            return TicketOrderResult.of(order)
+        // named argument 강제 — orderId/paymentId가 인접한 동일 타입(Long)이라 위치 인자로
+        // 바꿔 넘겨도 컴파일이 통과해 다른 주문을 확정시키는 오동작이 조용히 재발할 수 있다.
+        val transitioned = ticketOrderRepository.tryConfirm(orderId = orderId, paymentId = paymentId)
+        val current = ticketOrderRepository.findById(orderId) ?: throw ResourceNotFoundException("TicketOrder", orderId)
+        if (!transitioned && current.status != OrderStatus.CONFIRMED) {
+            throw InvalidOrderStateException("Cannot transit from ${current.status} to ${OrderStatus.CONFIRMED}")
         }
-        order.confirm(paymentId, order.lockedSeatIds)
-        ticketOrderRepository.save(order)
-        val event = eventRepository.findById(order.lockedEventId)
-            ?: throw ResourceNotFoundException("Event", order.lockedEventId)
-        domainEventPublisher.publish(
-            TicketEvent.Issued(
-                ticketOrderId = order.id,
-                recipientUserId = order.userId,
-                eventTitle = event.title,
+        if (transitioned) {
+            val issued = current.lockedSeatIds.map { seatId -> Ticket.issue(ticketOrder = current, seatId = seatId) }
+            ticketRepository.saveAll(issued)
+            val event = eventRepository.findById(current.lockedEventId)
+                ?: throw ResourceNotFoundException("Event", current.lockedEventId)
+            domainEventPublisher.publish(
+                TicketEvent.Issued(
+                    ticketOrderId = current.id,
+                    recipientUserId = current.userId,
+                    eventTitle = event.title,
+                )
             )
-        )
-        return TicketOrderResult.of(order)
+        }
+        return TicketOrderResult.of(current)
     }
 
     @Transactional
@@ -222,6 +254,91 @@ class TicketingDomainService(
                 .onFailure { logger.warn("Failed to unlock seat $seatId for event ${order.lockedEventId}: ${it.message}") }
         }
     }
+
+    /**
+     * W1-11b 만료 스위퍼 — PENDING이며 createdAt < (now - ttlMinutes, 빠른 TTL)이고
+     * id > afterId(청크 커서)인 티켓 주문 후보를 최대 limit건 조회한다. 시간 계산은 이 메서드
+     * 내부에서 해결한다(no-time-parameter). booking(W1-11c)의
+     * [com.sportsapp.domain.booking.service.BookingDomainService.findExpirableBookingCandidates]와
+     * 동일한 구조 — createdAt을 포함한 [TicketOrderExpiryCandidate]를 반환하고,
+     * [filterExpirableTicketOrders]가 느린 TTL·빠른 TTL 판정 양쪽에 이 값을 앵커로 쓴다.
+     *
+     * **명명 인자 강제**: `ttlMinutes`(Long)와 `afterId`(Long)가 인접한 동일 타입이라 위치
+     * 인자로 바꿔 넘기면 컴파일은 통과하되 TTL↔커서가 뒤바뀌는 오동작이 조용히 재발할 수
+     * 있다 — 호출부는 반드시 named argument로 호출한다.
+     */
+    fun findExpirableTicketOrderCandidates(ttlMinutes: Long, afterId: Long, limit: Int): List<TicketOrderExpiryCandidate> {
+        val threshold = ZonedDateTime.now().minusMinutes(ttlMinutes)
+        return ticketOrderRepository.findPendingCreatedBefore(threshold, afterId, limit)
+    }
+
+    /**
+     * W1-11b 만료 스위퍼 — 만료 후보 중 실제로 만료시킬 대상을 최종 판정한다. payment로부터
+     * 받은 orderId별 판정([OrderPaymentLiveness] — domain.common 공유 커널)만으로 판단하므로
+     * 도메인 교차가 아니다. 크로스 컨텍스트 조합 자체(payment 조회 → 값 변환)는
+     * application([com.sportsapp.application.ticketing.usecase.ExpirePendingTicketOrdersUseCase])이
+     * 수행하고, 이 메서드는 ticketing 자신의 정책(두 TTL)만 적용한다.
+     *
+     * **판정을 재구현하지 않는다** — booking(W1-11c)이 8차 재설계까지 겪은 "단조성 불변식
+     * 누락"(live/attempting 두 창 중 한 항을 빠뜨리는 실수)이 여기서 재발하지 않도록,
+     * settled 우선 판정 이후의 AND 결합·단조성 계산은 전부
+     * [OrderPaymentLiveness.allowsExpiry]에 위임한다. 이 메서드는 settled 분기(항상 제외)만
+     * sealed `when` 없이 필터로 선처리하고, 나머지는 `allowsExpiry` 호출 하나로 끝난다.
+     */
+    fun filterExpirableTicketOrders(
+        candidates: List<TicketOrderExpiryCandidate>,
+        liveness: Map<Long, OrderPaymentLiveness>,
+        ttlPolicy: TicketOrderExpiryTtlPolicy,
+    ): TicketOrderExpiryFilterResult {
+        val now = ZonedDateTime.now()
+        val fastThreshold = now.minusMinutes(ttlPolicy.ttlMinutes)
+        val readyThreshold = now.minusMinutes(ttlPolicy.readyTtlMinutes)
+        val settled = candidates.filter { liveness[it.orderId] is OrderPaymentLiveness.Settled }
+        val expirableIds = candidates
+            .filterNot { liveness[it.orderId] is OrderPaymentLiveness.Settled }
+            .filter { candidate ->
+                val candidateLiveness = liveness[candidate.orderId] ?: OrderPaymentLiveness.None
+                candidateLiveness.allowsExpiry(candidate.createdAt, readyThreshold, fastThreshold)
+            }
+            .map { it.orderId }
+        return TicketOrderExpiryFilterResult(expirableIds = expirableIds, skippedSettledCount = settled.size)
+    }
+
+    /**
+     * W1-11b 만료 스위퍼 — 청크 단위로 PENDING → CANCELLED CAS 전이한다
+     * ([TicketOrderRepository.tryExpire]). 신규 상태(EXPIRED)를 추가하지 않고 기존
+     * CANCELLED로 전이한다 — 만료 여부는 지표·로그로만 구분한다(호출부
+     * [com.sportsapp.presentation.ticketing.scheduler.TicketOrderExpiryScheduler]가 계측).
+     *
+     * **좌석 락 해제**: ticketing의 PENDING 주문은 좌석 배타성을 DB가 아니라 Redis 좌석 락
+     * (`SeatLockStoreImpl`, TTL 300초)으로 유지한다 — 이 TTL(5분)은 스위퍼 TTL(15분)보다
+     * 훨씬 먼저 자연 만료되므로 대부분 이미 해제된 상태지만, 락이 갱신되는 등 예외적으로
+     * 남아있을 가능성을 방어하기 위해 CAS 성공 건에 한해 기존 [cancelOrder]와 동일한 해제
+     * 경로([registerSeatUnlockAfterCommit])를 재사용한다. PENDING 주문에는 아직 Ticket이
+     * 발급되지 않으므로(발급은 [confirmOrder] 시점) 티켓 회수는 필요 없다 — 새 보상 로직을
+     * 만들지 않는다.
+     *
+     * 트랜잭션 경계는 이 메서드를 호출하는 UseCase
+     * ([com.sportsapp.application.ticketing.usecase.ExpireTicketOrderChunkUseCase])가 소유한다
+     * — DomainService는 트랜잭션을 선언하지 않는다.
+     */
+    fun expireTicketOrders(orderIds: List<Long>): Int {
+        if (orderIds.isEmpty()) return 0
+        return orderIds.count { orderId ->
+            val transitioned = ticketOrderRepository.tryExpire(orderId)
+            if (transitioned) {
+                ticketOrderRepository.findById(orderId)?.let { registerSeatUnlockAfterCommit(it) }
+            }
+            transitioned
+        }
+    }
+
+    /**
+     * ticketing.expiry.enabled 운영 킬 스위치 판정 — 부팅 고정 설정이 아니라 매 스케줄 주기
+     * `FeatureFlagEvaluator`로 런타임 조회한다(no-conditional-on-property).
+     */
+    fun isExpiryEnabled(): Boolean =
+        featureFlagEvaluator.isEnabled(TicketingFeatureFlagKeys.EXPIRY_ENABLED, FeatureContext.anonymous(), true)
 
     fun calculateAmount(lockId: String): BigDecimal {
         val pairs = parseLockId(lockId)

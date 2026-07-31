@@ -1,17 +1,14 @@
 package com.sportsapp.domain.ticketing
 import com.sportsapp.domain.ticketing.dto.TicketOrderResult
 import com.sportsapp.domain.ticketing.entity.Event
-import com.sportsapp.domain.ticketing.entity.TicketStatus
 import com.sportsapp.domain.ticketing.entity.OrderStatus
 import com.sportsapp.domain.ticketing.entity.TicketOrder
-import com.sportsapp.domain.ticketing.event.TicketEvent
 import com.sportsapp.domain.ticketing.repository.EventRepository
 import com.sportsapp.domain.ticketing.repository.TicketRepository
 import com.sportsapp.domain.ticketing.repository.TicketOrderRepository
 import com.sportsapp.domain.ticketing.gateway.SeatLockStore
 import com.sportsapp.domain.ticketing.service.TicketingDomainService
 
-import com.sportsapp.domain.common.DomainEvent
 import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import com.sportsapp.domain.ticketing.exception.MalformedLockIdException
@@ -44,6 +41,7 @@ class TicketingDomainServiceOrderTest : BehaviorSpec({
         ticketOrderRepository = ticketOrderRepository,
         ticketRepository = ticketRepository,
         domainEventPublisher = domainEventPublisher,
+        featureFlagEvaluator = mockk(relaxed = true),
     )
 
     Given("유효한 lockId와 userId로 createPendingOrder를 호출할 때") {
@@ -77,53 +75,14 @@ class TicketingDomainServiceOrderTest : BehaviorSpec({
         }
     }
 
-    Given("존재하는 orderId와 paymentId로 confirmOrder를 호출할 때") {
-        val ticketOrderRepository = mockk<TicketOrderRepository>()
-        val ticketRepository = mockk<TicketRepository>()
-        val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
-        val eventRepository = mockk<EventRepository>()
-        val service = buildService(
-            ticketOrderRepository = ticketOrderRepository,
-            ticketRepository = ticketRepository,
-            domainEventPublisher = domainEventPublisher,
-            eventRepository = eventRepository,
-        )
-
-        val pendingOrder = TicketOrder(
-            userId = 7L,
-            status = OrderStatus.PENDING,
-            paymentId = null,
-            lockedEventId = 1L,
-            lockedSeatIds = listOf(10L, 20L),
-        )
-        every { ticketOrderRepository.findById(100L) } returns pendingOrder
-        every { ticketOrderRepository.save(any()) } returns pendingOrder
-        every { eventRepository.findById(1L) } returns
-            Event.create("월드컵 결승", "상암 월드컵 경기장", ZonedDateTime.now(), 3L)
-
-        val publishedSlot = slot<DomainEvent>()
-        every { domainEventPublisher.publish(capture(publishedSlot)) } answers { Unit }
-
-        When("confirmOrder(100L, 999L)를 호출하면") {
-            val result: TicketOrderResult = service.confirmOrder(100L, 999L)
-
-            Then("TicketOrderResult가 반환되고 status가 CONFIRMED이다") {
-                result.shouldBeInstanceOf<TicketOrderResult>()
-                result.status shouldBe OrderStatus.CONFIRMED
-            }
-
-            Then("수신자와 이벤트 제목을 담은 TicketEvent.Issued가 발행된다") {
-                val published = publishedSlot.captured.shouldBeInstanceOf<TicketEvent.Issued>()
-                published.recipientUserId shouldBe 7L
-                published.eventTitle shouldBe "월드컵 결승"
-            }
-        }
-    }
+    // confirmOrder의 CAS 전이(tryConfirm)·티켓 발급·멱등·상태 보호 회귀는
+    // TicketOrderConfirmDomainServiceTest에서 전담 검증한다(W1-11b 요건 2).
 
     Given("존재하지 않는 orderId로 confirmOrder를 호출할 때") {
         val ticketOrderRepository = mockk<TicketOrderRepository>()
         val service = buildService(ticketOrderRepository = ticketOrderRepository)
 
+        every { ticketOrderRepository.tryConfirm(orderId = 999L, paymentId = 1L) } returns false
         every { ticketOrderRepository.findById(999L) } returns null
 
         When("confirmOrder(999L, 1L)를 호출하면") {
