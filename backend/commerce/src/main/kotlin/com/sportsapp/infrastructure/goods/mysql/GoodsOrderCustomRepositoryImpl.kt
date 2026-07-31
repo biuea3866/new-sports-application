@@ -1,7 +1,9 @@
 package com.sportsapp.infrastructure.goods.mysql
 
 import com.querydsl.core.Tuple
+import com.querydsl.core.types.Projections
 import com.querydsl.jpa.impl.JPAQueryFactory
+import com.sportsapp.domain.goods.dto.GoodsOrderExpiryCandidate
 import com.sportsapp.domain.goods.dto.GoodsOrderWithTitle
 import com.sportsapp.domain.goods.entity.GoodsOrder
 import com.sportsapp.domain.goods.repository.GoodsOrderCustomRepository
@@ -128,5 +130,44 @@ class GoodsOrderCustomRepositoryImpl(
                     )
                     .fetchOne()
         return result ?: BigDecimal.ZERO
+    }
+
+    override fun findPendingCreatedBefore(before: ZonedDateTime, afterId: Long, limit: Int): List<GoodsOrderExpiryCandidate> {
+        return queryFactory.select(Projections.constructor(GoodsOrderExpiryCandidate::class.java, goodsOrder.id, goodsOrder.createdAt))
+                           .from(goodsOrder)
+                           .where(
+                               goodsOrder.status.eq(GoodsOrderStatus.PENDING),
+                               goodsOrder.createdAt.lt(before),
+                               goodsOrder.id.gt(afterId),
+                               goodsOrder.deletedAt.isNull,
+                           )
+                           .orderBy(goodsOrder.id.asc())
+                           .limit(limit.toLong())
+                           .fetch()
+    }
+
+    override fun tryExpire(orderId: Long): Boolean {
+        val affectedRows = queryFactory.update(goodsOrder)
+                                       .set(goodsOrder.status, GoodsOrderStatus.CANCELLED)
+                                       .set(goodsOrder.updatedAt, ZonedDateTime.now())
+                                       .where(
+                                           goodsOrder.id.eq(orderId),
+                                           goodsOrder.status.eq(GoodsOrderStatus.PENDING),
+                                       )
+                                       .execute()
+        return affectedRows > 0
+    }
+
+    override fun tryConfirm(orderId: Long, paymentId: Long): Boolean {
+        val affectedRows = queryFactory.update(goodsOrder)
+                                       .set(goodsOrder.status, GoodsOrderStatus.CONFIRMED)
+                                       .set(goodsOrder.paymentId, paymentId)
+                                       .set(goodsOrder.updatedAt, ZonedDateTime.now())
+                                       .where(
+                                           goodsOrder.id.eq(orderId),
+                                           goodsOrder.status.eq(GoodsOrderStatus.PENDING),
+                                       )
+                                       .execute()
+        return affectedRows > 0
     }
 }

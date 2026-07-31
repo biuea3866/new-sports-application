@@ -1,9 +1,16 @@
 package com.sportsapp.domain.goods.service
 
+import com.sportsapp.domain.common.FeatureContext
+import com.sportsapp.domain.common.FeatureFlagEvaluator
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
+import com.sportsapp.domain.common.payment.OrderPaymentLiveness
 import com.sportsapp.domain.common.security.AuthChannelResolver
+import com.sportsapp.domain.goods.GoodsFeatureFlagKeys
 import com.sportsapp.domain.goods.dto.GoodsKpiSummary
 import com.sportsapp.domain.goods.dto.GoodsOrderDetail
+import com.sportsapp.domain.goods.dto.GoodsOrderExpiryCandidate
+import com.sportsapp.domain.goods.dto.GoodsOrderExpiryFilterResult
+import com.sportsapp.domain.goods.dto.GoodsOrderExpiryTtlPolicy
 import com.sportsapp.domain.goods.dto.GoodsOrderWithTitle
 import com.sportsapp.domain.goods.dto.PopularProductSnapshot
 import com.sportsapp.domain.goods.dto.ProductWithStock
@@ -16,6 +23,7 @@ import com.sportsapp.domain.goods.entity.Stock
 import com.sportsapp.domain.goods.entity.LimitedDrop
 import com.sportsapp.domain.goods.exception.EmptyOrderException
 import com.sportsapp.domain.goods.exception.GoodsOrderNotFoundException
+import com.sportsapp.domain.goods.exception.InvalidGoodsOrderStateException
 import com.sportsapp.domain.goods.gateway.DropReservationStore
 import com.sportsapp.domain.goods.repository.GoodsOrderCustomRepository
 import com.sportsapp.domain.goods.repository.GoodsOrderItemRepository
@@ -49,6 +57,7 @@ class GoodsDomainService(
     private val limitedDropRepository: LimitedDropRepository,
     private val authChannelResolver: AuthChannelResolver,
     private val dropReservationStore: DropReservationStore,
+    private val featureFlagEvaluator: FeatureFlagEvaluator,
 ) {
     /**
      * catalog 통합검색(BE-07 예정)이 재사용하는 조회 — [sellerType]은 옵션 필터(B2B 브랜드 상품만
@@ -170,6 +179,16 @@ class GoodsDomainService(
         if (order.status == GoodsOrderStatus.CANCELLED) return
         order.cancel()
         goodsOrderRepository.save(order)
+        restoreStockAndSoftDeleteItems(orderId)
+    }
+
+    /**
+     * [cancelPendingOrder](결제 취소 webhook)와 [expireOrders](W1-11a 만료 스위퍼)가 공유하는
+     * 재고 복원 + 아이템 soft-delete 로직 — 티켓 "취소 시 재고 복원은 기존 cancelPendingOrder
+     * 경로를 재사용한다"의 실제 구현이다. 스위퍼 경로는 CAS(tryExpire) 성공 이후에만 이
+     * 메서드를 호출해 재고 이중 복원을 막는다(호출부가 원자성을 보장).
+     */
+    private fun restoreStockAndSoftDeleteItems(orderId: Long) {
         val items = goodsOrderItemRepository.findByOrderId(orderId)
         items.forEach { item ->
             val stock = stockRepository.findByProductId(item.productId)
@@ -181,12 +200,100 @@ class GoodsDomainService(
         if (items.isNotEmpty()) goodsOrderItemRepository.saveAll(items)
     }
 
+    /**
+     * **CAS가 프로덕션 전이 경로다.** 실제 확정은
+     * [GoodsOrderCustomRepository.tryConfirm](조건부 UPDATE, WHERE status='PENDING')이
+     * 수행한다 — 비잠금 find→mutate→save 경로는 만료 스위퍼([expireOrders])가 먼저 커밋한
+     * CANCELLED(+재고 복원)를 조건 없는 dirty-checking UPDATE로 덮어써, 이미 다른 곳에
+     * 풀린 재고를 CONFIRMED 주문이 차지한 것처럼 보이게 하는 반대 방향 lost update(재고
+     * 이중 차감)를 만들 수 있어 tryExpire와 대칭으로 CAS로 닫았다.
+     *
+     * CAS 실패 시 재조회한 현재 상태로 원인을 가른다 — 이미 같은 paymentId로 CONFIRMED면
+     * 멱등(webhook 중복), 그 외(CANCELLED 등)면 [InvalidGoodsOrderStateException]을 던져
+     * 상태 머신 우회를 막는다.
+     *
+     * **호출 계약(KDoc contract)**: 이 메서드 호출 **이전에 같은 트랜잭션에서 대상
+     * GoodsOrder를 먼저 로드하지 말 것.** [GoodsOrderCustomRepository.tryConfirm]은 QueryDSL
+     * 벌크 UPDATE라 JPA 1차 캐시를 무효화하지 않는다 — 이미 로드된 GoodsOrder가 있으면 아래
+     * `findById`가 그 stale 인스턴스를 그대로 반환해 status가 실제 DB 값과 어긋날 수 있다
+     * (`facility-booking`(W1-11c) `BookingDomainService.confirmBooking`과 동일 계약).
+     * 현재 유일 호출부(webhook 확정 경로)는 이 계약을 지키고 있다.
+     */
     fun markPaid(orderId: Long, paymentId: Long): GoodsOrder {
-        val order = goodsOrderRepository.findById(orderId)
-            ?: throw GoodsOrderNotFoundException(orderId)
-        order.markPaid(paymentId)
-        return goodsOrderRepository.save(order)
+        val transitioned = goodsOrderCustomRepository.tryConfirm(orderId = orderId, paymentId = paymentId)
+        val current = goodsOrderRepository.findById(orderId) ?: throw GoodsOrderNotFoundException(orderId)
+        if (!transitioned) {
+            if (current.status == GoodsOrderStatus.CONFIRMED && current.paymentId == paymentId) return current
+            throw InvalidGoodsOrderStateException(current.status, GoodsOrderStatus.CONFIRMED)
+        }
+        return current
     }
+
+    /**
+     * W1-11a 만료 스위퍼 — PENDING이며 createdAt < (now - ttlMinutes, 빠른 TTL)이고
+     * id > afterId(청크 커서)인 주문 후보를 최대 limit건 조회한다. 시간 계산은 이 메서드
+     * 내부에서 해결한다(no-time-parameter). `facility-booking`(W1-11c)
+     * `findExpirableBookingCandidates`와 동일한 이유로 named argument를 강제한다 —
+     * `ttlMinutes`(Long)와 `afterId`(Long)가 인접한 동일 타입이라 위치 인자로 바꿔 넘기면
+     * 컴파일은 통과하되 TTL↔커서가 뒤바뀌는 오동작이 조용히 재발할 수 있다.
+     */
+    fun findExpirableGoodsOrderCandidates(ttlMinutes: Long, afterId: Long, limit: Int): List<GoodsOrderExpiryCandidate> {
+        val threshold = ZonedDateTime.now().minusMinutes(ttlMinutes)
+        return goodsOrderCustomRepository.findPendingCreatedBefore(threshold, afterId, limit)
+    }
+
+    /**
+     * W1-11a 만료 스위퍼 — 만료 후보 중 실제로 만료시킬 대상을 최종 판정한다. 판정 로직
+     * (settled 우선 제외·Live의 두 창 AND 결합·단조성)은 이 메서드가 재구현하지 않고
+     * [OrderPaymentLiveness.allowsExpiry]로 전량 위임한다 — `facility-booking`(W1-11c)에서
+     * "승자 하나 고르기" 구조가 세 번(6차·7차·8차) 재발한 결함을 소비 도메인이 각자
+     * 재구현하지 못하도록 타입으로 강제한 결과이며, goods·ticketing·recruitment가 모두
+     * 이 위임 하나만 지키면 같은 결함이 재발할 수 없다.
+     */
+    fun filterExpirable(
+        candidates: List<GoodsOrderExpiryCandidate>,
+        liveness: Map<Long, OrderPaymentLiveness>,
+        ttlPolicy: GoodsOrderExpiryTtlPolicy,
+    ): GoodsOrderExpiryFilterResult {
+        val now = ZonedDateTime.now()
+        val fastThreshold = now.minusMinutes(ttlPolicy.ttlMinutes)
+        val readyThreshold = now.minusMinutes(ttlPolicy.readyTtlMinutes)
+        val settled = candidates.filter { liveness[it.orderId] is OrderPaymentLiveness.Settled }
+        val expirableIds = candidates
+            .filterNot { liveness[it.orderId] is OrderPaymentLiveness.Settled }
+            .filter { candidate ->
+                val candidateLiveness = liveness[candidate.orderId] ?: OrderPaymentLiveness.None
+                candidateLiveness.allowsExpiry(candidate.createdAt, readyThreshold, fastThreshold)
+            }
+            .map { it.orderId }
+        return GoodsOrderExpiryFilterResult(expirableIds = expirableIds, skippedSettledCount = settled.size)
+    }
+
+    /**
+     * W1-11a 만료 스위퍼 — 청크 단위로 PENDING → CANCELLED CAS 전이한다
+     * ([GoodsOrderCustomRepository.tryExpire]). booking과 달리 goods는 만료 시 **재고
+     * 복원**이 필요하므로(슬롯 점유처럼 상태만으로 파생되지 않는다), CAS가 실제로 성공한
+     * 건(이 호출이 PENDING→CANCELLED 전이를 이겼다는 뜻)에 한해서만
+     * [restoreStockAndSoftDeleteItems]를 호출한다 — CAS 경합에서 진 건(이미 다른
+     * 트랜잭션이 CONFIRMED로 전이시킨 건)은 재고를 건드리지 않아 이중 복원을 막는다.
+     * 트랜잭션 경계는 이 메서드를 호출하는 UseCase(`ExpireGoodsOrderChunkUseCase`)가
+     * 소유한다 — DomainService는 트랜잭션을 선언하지 않는다.
+     */
+    fun expireOrders(orderIds: List<Long>): Int {
+        if (orderIds.isEmpty()) return 0
+        return orderIds.count { orderId ->
+            val expired = goodsOrderCustomRepository.tryExpire(orderId)
+            if (expired) restoreStockAndSoftDeleteItems(orderId)
+            expired
+        }
+    }
+
+    /**
+     * goods.expiry.enabled 운영 킬 스위치 판정 — 부팅 고정 설정이 아니라 매 스케줄 주기
+     * `FeatureFlagEvaluator`로 런타임 조회한다(no-conditional-on-property).
+     */
+    fun isExpiryEnabled(): Boolean =
+        featureFlagEvaluator.isEnabled(GoodsFeatureFlagKeys.EXPIRY_ENABLED, FeatureContext.anonymous(), true)
 
     /**
      * 주문 상세 조회 — 통합 주문내역 리스트([listMyOrdersWithTitle])와 동일한 대표 상품명(title)을
