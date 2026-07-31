@@ -9,6 +9,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import java.time.ZonedDateTime
 
 /**
  * booking(W1-11c) 등 만료 스위퍼가 소비하는 [PaymentDomainService.findPaymentLiveness]를
@@ -32,7 +33,8 @@ class PaymentDomainServiceFindPaymentLivenessTest : BehaviorSpec({
     Given("주문 id 목록 중 live·settled 대상이 섞여 있을 때") {
         val paymentRepository = mockk<PaymentRepository>()
         val service = buildService(paymentRepository)
-        val expected = PaymentLivenessQueryResult(liveOrderIds = setOf(2L, 3L), settledOrderIds = setOf(3L))
+        val now = ZonedDateTime.now()
+        val expected = PaymentLivenessQueryResult(liveSince = mapOf(2L to now, 3L to now), settledOrderIds = setOf(3L))
         every {
             paymentRepository.findPaymentLiveness(OrderType.BOOKING, listOf(1L, 2L, 3L))
         } returns expected

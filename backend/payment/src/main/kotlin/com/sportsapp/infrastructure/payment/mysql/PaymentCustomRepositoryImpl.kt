@@ -1,9 +1,11 @@
 package com.sportsapp.infrastructure.payment.mysql
 
 import com.querydsl.core.BooleanBuilder
+import com.querydsl.core.types.Projections
 import com.querydsl.jpa.impl.JPAQueryFactory
 import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.payment.dto.PaymentLivenessQueryResult
+import com.sportsapp.domain.payment.dto.PaymentLivenessRow
 import com.sportsapp.domain.payment.repository.PaymentCustomRepository
 import com.sportsapp.domain.payment.entity.Payment
 import com.sportsapp.domain.payment.entity.PaymentStatus
@@ -21,27 +23,31 @@ class PaymentCustomRepositoryImpl(
 ) : PaymentCustomRepository {
 
     /**
-     * orderType·orderIds에 해당하는 payment 행을 전량 조회한 뒤, live/settled 판정
-     * ([PaymentLivenessClassifier])은 도메인 순수 함수에 위임한다 — SQL 조건과 판정 로직을
-     * 이중으로 유지하면(한쪽만 고쳐 드리프트) 재발 위험이 있으므로 이 메서드는 매핑·위임만
-     * 한다(no-business-flow-in-infra). 한 주문에 payment 행이 여러 건이어도(재시도로
-     * idempotencyKey를 바꿔 재개시한 경우 등) 그중 하나라도 해당 판정이면 그 orderId는
-     * 결과 Set에 포함된다.
+     * orderType·orderIds에 해당하는 payment 행을 orderId·status·createdAt 값 객체
+     * ([PaymentLivenessRow])로 전량 조회한 뒤, live/settled 판정과 liveSince(최댓값 앵커)
+     * 산출([PaymentLivenessClassifier])은 도메인 순수 함수에 위임한다 — SQL 조건과 판정
+     * 로직을 이중으로 유지하면(한쪽만 고쳐 드리프트) 재발 위험이 있으므로 이 메서드는
+     * 매핑·위임만 한다(no-business-flow-in-infra).
      */
     override fun findPaymentLiveness(orderType: OrderType, orderIds: List<Long>): PaymentLivenessQueryResult {
         if (orderIds.isEmpty()) return PaymentLivenessQueryResult.empty()
         val payment = QPayment.payment
-        val payments = queryFactory.selectFrom(payment)
-                                   .where(
-                                       payment.orderType.eq(orderType),
-                                       payment.orderId.`in`(orderIds),
-                                       payment.deletedAt.isNull,
-                                   )
-                                   .fetch()
-        return PaymentLivenessQueryResult(
-            liveOrderIds = payments.filter { PaymentLivenessClassifier.isLive(it.status) }.map { it.orderId }.toSet(),
-            settledOrderIds = payments.filter { PaymentLivenessClassifier.isSettled(it.status) }.map { it.orderId }.toSet(),
+        val rows = queryFactory.select(
+            Projections.constructor(
+                PaymentLivenessRow::class.java,
+                payment.orderId,
+                payment.status,
+                payment.createdAt,
+            )
         )
+                               .from(payment)
+                               .where(
+                                   payment.orderType.eq(orderType),
+                                   payment.orderId.`in`(orderIds),
+                                   payment.deletedAt.isNull,
+                               )
+                               .fetch()
+        return PaymentLivenessClassifier.classify(rows)
     }
 
     override fun findByUserIdAndConditions(

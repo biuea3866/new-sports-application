@@ -31,15 +31,24 @@ class BookingExpiryScheduler(
         val result = expirePendingBookingsUseCase.execute()
         meterRegistry.counter(EXPIRED_COUNTER).increment(result.expiredCount.toDouble())
         meterRegistry.counter(SKIPPED_COUNTER).increment(result.skippedCount.toDouble())
+        meterRegistry.counter(SKIPPED_SETTLED_COUNTER).increment(result.skippedSettledCount.toDouble())
         log.info(
-            "event=booking-expiry-completed expiredCount={} skippedCount={}",
+            "event=booking-expiry-completed expiredCount={} skippedCount={} skippedSettledCount={}",
             result.expiredCount,
             result.skippedCount,
+            result.skippedSettledCount,
         )
     }
 
     companion object {
         private const val EXPIRED_COUNTER = "booking_expiry_expired_total"
         private const val SKIPPED_COUNTER = "booking_expiry_skipped_total"
+
+        /**
+         * settled(결제 완료)로 건너뛴 건 전용 카운터 — 웹훅 유실·컨슈머 다운으로 "돈은
+         * 받았는데 예약이 여전히 PENDING"인 환불 판단 필요 신호다. live(결제 진행 중)로
+         * 건너뛴 정상 흐름과 [SKIPPED_COUNTER]에 뭉뚱그려지면 경보가 불가능해 분리했다.
+         */
+        private const val SKIPPED_SETTLED_COUNTER = "booking_expiry_skipped_settled_total"
     }
 }

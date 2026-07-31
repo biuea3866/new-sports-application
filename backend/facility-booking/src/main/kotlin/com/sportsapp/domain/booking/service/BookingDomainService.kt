@@ -3,6 +3,7 @@ package com.sportsapp.domain.booking.service
 import com.sportsapp.domain.booking.BookingFeatureFlagKeys
 import com.sportsapp.domain.booking.dto.BookingDetail
 import com.sportsapp.domain.booking.dto.BookingExpiryCandidate
+import com.sportsapp.domain.booking.dto.BookingExpiryFilterResult
 import com.sportsapp.domain.booking.dto.BookingOrderItem
 import com.sportsapp.domain.booking.dto.BookingResult
 import com.sportsapp.domain.booking.dto.FacilityKpiSummary
@@ -120,6 +121,12 @@ class BookingDomainService(
      * lost update(오버부킹)를 만들 수 있어, tryExpire와 대칭으로 CAS로 닫았다(p2-3).
      * CAS 실패 시 재조회한 현재 상태로 원인을 가른다 — 이미 CONFIRMED면 멱등(webhook 중복),
      * 그 외(EXPIRED 등)면 InvalidBookingStateException을 던져 상태 머신 우회를 막는다.
+     *
+     * **호출 계약(KDoc contract)**: 이 메서드 호출 **이전에 같은 트랜잭션에서 대상 Booking을
+     * 먼저 로드하지 말 것.** `tryConfirm`은 QueryDSL 벌크 UPDATE라 JPA 1차 캐시를 무효화하지
+     * 않는다 — 이미 로드된 Booking이 있으면 아래 `findById`가 그 stale 인스턴스를 그대로
+     * 반환해 status가 실제 DB 값과 어긋날 수 있다. 현재 유일 호출부(webhook 확정 경로)는
+     * 이 계약을 지키고 있다.
      */
     fun confirmBooking(bookingId: Long, paymentId: Long): Booking {
         val transitioned = bookingRepository.tryConfirm(bookingId, paymentId)
@@ -225,29 +232,45 @@ class BookingDomainService(
     }
 
     /**
-     * W1-11c 4차 재설계 — 만료 후보 중 실제로 만료시킬 대상을 최종 판정한다. payment로부터
-     * 받은 live(READY 이상)·settled(COMPLETED) 주문 id 집합(Set<Long>, PaymentStatus 노출
-     * 없음)만으로 판단하므로 도메인 교차가 아니다 — 크로스 컨텍스트 조합 자체(payment 조회 →
-     * 값 변환)는 application(ExpirePendingBookingsUseCase)이 수행하고, 이 메서드는 booking
-     * 자신의 정책(두 TTL)만 적용한다.
+     * W1-11c 5차 재설계 — 만료 후보 중 실제로 만료시킬 대상을 최종 판정한다. payment로부터
+     * 받은 [liveSince](orderId → live payment 발급 시각 최댓값)·[settledOrderIds](COMPLETED
+     * 주문 id 집합)만으로 판단하므로 도메인 교차가 아니다 — 크로스 컨텍스트 조합 자체(payment
+     * 조회 → 값 변환)는 application(ExpirePendingBookingsUseCase)이 수행하고, 이 메서드는
+     * booking 자신의 정책(두 TTL)만 적용한다.
+     *
+     * **앵커 정정(4차 → 5차)**: 4차는 느린 TTL을 `candidate.createdAt`(예약 생성 시각)에
+     * 적용했으나, `POST /payments/prepare`가 기존 주문에 새 payment 행을 만드는 가동 중
+     * 경로라 예약이 오래전에 생성됐어도 결제가 방금 살아날 수 있다 — 그 경우 예약 생성 시각
+     * 기준으로는 다음 주기에 오만료됐다. 앵커를 **payment 발급 시각의 최댓값**(liveSince)으로
+     * 옮겨 "결제가 언제 살아났는가"를 정확히 반영한다.
      *
      * - settled 포함: 돈을 받았다 — 항상 제외(절대 만료 금지).
-     * - live 포함 && createdAt이 느린 TTL(readyTtlMinutes)을 아직 지나지 않음: 결제창에
+     * - liveSince에 값이 있고 그 값이 느린 TTL(readyTtlMinutes)을 아직 지나지 않음: 결제창에
      *   머무는 사용자로 보아 제외.
-     * - 그 외(빠른 TTL 후보 조회 자체를 통과한 결제 미시작/실패/취소/환불 또는 readyTtl까지
-     *   지난 live): 만료 대상에 포함.
+     * - 그 외(liveSince에 없음 — 빠른 TTL 후보 조회 자체를 통과한 결제 미시작/실패/취소/환불,
+     *   또는 liveSince가 readyTtl까지 지난 live): 만료 대상에 포함.
      */
     fun filterExpirable(
         candidates: List<BookingExpiryCandidate>,
-        liveOrderIds: Set<Long>,
+        liveSince: Map<Long, ZonedDateTime>,
         settledOrderIds: Set<Long>,
         readyTtlMinutes: Long,
-    ): List<Long> {
+    ): BookingExpiryFilterResult {
         val readyThreshold = ZonedDateTime.now().minusMinutes(readyTtlMinutes)
-        return candidates.filter { candidate ->
-            !settledOrderIds.contains(candidate.bookingId) &&
-                (!liveOrderIds.contains(candidate.bookingId) || candidate.createdAt.isBefore(readyThreshold))
-        }.map { it.bookingId }
+        val settled = candidates.filter { settledOrderIds.contains(it.bookingId) }
+        val expirableIds = candidates.filterNot { settledOrderIds.contains(it.bookingId) }
+            .filter { candidate -> isExpirableByLiveness(candidate.bookingId, liveSince, readyThreshold) }
+            .map { it.bookingId }
+        return BookingExpiryFilterResult(expirableIds = expirableIds, skippedSettledCount = settled.size)
+    }
+
+    private fun isExpirableByLiveness(
+        bookingId: Long,
+        liveSince: Map<Long, ZonedDateTime>,
+        readyThreshold: ZonedDateTime,
+    ): Boolean {
+        val liveAnchor = liveSince[bookingId] ?: return true
+        return liveAnchor.isBefore(readyThreshold)
     }
 
     /**

@@ -78,62 +78,65 @@ class BookingExpiryDomainServiceTest : BehaviorSpec({
     Given("결제가 settled(완료)인 후보가 있을 때 (절대 만료 금지)") {
         val bookingRepository = mockk<BookingRepository>()
         val service = buildService(bookingRepository)
+        val settledAt = ZonedDateTime.now().minusMinutes(100)
         val candidates = listOf(
             BookingExpiryCandidate(bookingId = 1L, createdAt = ZonedDateTime.now().minusMinutes(100)),
         )
 
-        When("filterExpirable을 호출하면 (settled에 포함, createdAt이 아무리 오래돼도)") {
+        When("filterExpirable을 호출하면 (settled에 포함, liveSince가 아무리 오래돼도)") {
             val result = service.filterExpirable(
                 candidates = candidates,
-                liveOrderIds = setOf(1L),
+                liveSince = mapOf(1L to settledAt),
                 settledOrderIds = setOf(1L),
                 readyTtlMinutes = 60,
             )
 
-            Then("결과에서 제외된다") {
-                result shouldBe emptyList()
+            Then("만료 대상에서 제외되고 settled 건너뜀으로 집계된다") {
+                result.expirableIds shouldBe emptyList()
+                result.skippedSettledCount shouldBe 1
             }
         }
     }
 
-    Given("결제가 live(READY)이고 readyTtl을 아직 지나지 않았을 때 (오만료 방지 — 핵심 회귀)") {
+    Given("결제가 live(READY)이고 liveSince(payment 발급 시각)가 readyTtl을 아직 지나지 않았을 때 (오만료 방지 — 핵심 회귀)") {
         val bookingRepository = mockk<BookingRepository>()
         val service = buildService(bookingRepository)
         val candidates = listOf(
             BookingExpiryCandidate(bookingId = 2L, createdAt = ZonedDateTime.now().minusMinutes(20)),
         )
 
-        When("filterExpirable을 호출하면 (readyTtlMinutes=60, createdAt은 20분 전)") {
+        When("filterExpirable을 호출하면 (readyTtlMinutes=60, payment 발급 시각은 20분 전)") {
             val result = service.filterExpirable(
                 candidates = candidates,
-                liveOrderIds = setOf(2L),
+                liveSince = mapOf(2L to ZonedDateTime.now().minusMinutes(20)),
                 settledOrderIds = emptySet(),
                 readyTtlMinutes = 60,
             )
 
             Then("결제창에 머무는 사용자로 보아 만료 대상에서 제외된다") {
-                result shouldBe emptyList()
+                result.expirableIds shouldBe emptyList()
+                result.skippedSettledCount shouldBe 0
             }
         }
     }
 
-    Given("결제가 live(READY)이지만 readyTtl을 지났을 때 (무한 점유 방지 — 핵심 회귀)") {
+    Given("결제가 live(READY)이지만 liveSince(payment 발급 시각)가 readyTtl을 지났을 때 (무한 점유 방지 — 핵심 회귀)") {
         val bookingRepository = mockk<BookingRepository>()
         val service = buildService(bookingRepository)
         val candidates = listOf(
             BookingExpiryCandidate(bookingId = 3L, createdAt = ZonedDateTime.now().minusMinutes(70)),
         )
 
-        When("filterExpirable을 호출하면 (readyTtlMinutes=60, createdAt은 70분 전)") {
+        When("filterExpirable을 호출하면 (readyTtlMinutes=60, payment 발급 시각은 70분 전)") {
             val result = service.filterExpirable(
                 candidates = candidates,
-                liveOrderIds = setOf(3L),
+                liveSince = mapOf(3L to ZonedDateTime.now().minusMinutes(70)),
                 settledOrderIds = emptySet(),
                 readyTtlMinutes = 60,
             )
 
             Then("느린 TTL도 지나 만료 대상에 포함된다") {
-                result shouldBe listOf(3L)
+                result.expirableIds shouldBe listOf(3L)
             }
         }
     }
@@ -145,16 +148,60 @@ class BookingExpiryDomainServiceTest : BehaviorSpec({
             BookingExpiryCandidate(bookingId = 4L, createdAt = ZonedDateTime.now().minusMinutes(16)),
         )
 
-        When("filterExpirable을 호출하면 (live/settled 어디에도 없음, readyTtlMinutes=60 미도달이어도)") {
+        When("filterExpirable을 호출하면 (liveSince에 없음, readyTtlMinutes=60 미도달이어도)") {
             val result = service.filterExpirable(
                 candidates = candidates,
-                liveOrderIds = emptySet(),
+                liveSince = emptyMap(),
                 settledOrderIds = emptySet(),
                 readyTtlMinutes = 60,
             )
 
             Then("빠른 TTL(후보 조회 자체)로 이미 만료 대상이다") {
-                result shouldBe listOf(4L)
+                result.expirableIds shouldBe listOf(4L)
+            }
+        }
+    }
+
+    Given("70분 전 생성된 예약에 방금 새 READY payment가 생겼을 때 (5차 재설계 핵심 회귀 — 앵커 이전으로 인한 오만료 재발 방지)") {
+        val bookingRepository = mockk<BookingRepository>()
+        val service = buildService(bookingRepository)
+        // 예약(booking.createdAt)은 70분 전에 생성됐지만, 방금(1분 전) 새 payment가
+        // READY로 발급됐다 — 4차는 booking.createdAt만 보고 오만료시켰다.
+        val candidates = listOf(
+            BookingExpiryCandidate(bookingId = 6L, createdAt = ZonedDateTime.now().minusMinutes(70)),
+        )
+
+        When("filterExpirable을 호출하면 (readyTtlMinutes=60, liveSince는 1분 전 — payment 발급 시각 기준)") {
+            val result = service.filterExpirable(
+                candidates = candidates,
+                liveSince = mapOf(6L to ZonedDateTime.now().minusMinutes(1)),
+                settledOrderIds = emptySet(),
+                readyTtlMinutes = 60,
+            )
+
+            Then("예약 생성 시각과 무관하게 payment 발급 시각 기준으로 만료되지 않는다") {
+                result.expirableIds shouldBe emptyList()
+            }
+        }
+    }
+
+    Given("한 주문에 payment 2행(오래된 READY + 최근 READY)이 liveSince 최댓값으로 이미 집계돼 들어올 때 (최댓값 앵커 반영 확인)") {
+        val bookingRepository = mockk<BookingRepository>()
+        val service = buildService(bookingRepository)
+        val candidates = listOf(
+            BookingExpiryCandidate(bookingId = 7L, createdAt = ZonedDateTime.now().minusDays(3)),
+        )
+
+        When("filterExpirable을 호출하면 (liveSince는 PaymentLivenessClassifier가 이미 최댓값으로 계산해 넘긴 값 — 5분 전)") {
+            val result = service.filterExpirable(
+                candidates = candidates,
+                liveSince = mapOf(7L to ZonedDateTime.now().minusMinutes(5)),
+                settledOrderIds = emptySet(),
+                readyTtlMinutes = 60,
+            )
+
+            Then("최근 발급 시각 기준으로 아직 readyTtl을 지나지 않아 만료되지 않는다") {
+                result.expirableIds shouldBe emptyList()
             }
         }
     }
@@ -166,13 +213,14 @@ class BookingExpiryDomainServiceTest : BehaviorSpec({
         When("filterExpirable을 호출하면") {
             val result = service.filterExpirable(
                 candidates = emptyList(),
-                liveOrderIds = emptySet(),
+                liveSince = emptyMap(),
                 settledOrderIds = emptySet(),
                 readyTtlMinutes = 60,
             )
 
             Then("빈 목록을 반환한다") {
-                result shouldBe emptyList()
+                result.expirableIds shouldBe emptyList()
+                result.skippedSettledCount shouldBe 0
             }
         }
     }
