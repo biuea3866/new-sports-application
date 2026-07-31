@@ -18,7 +18,7 @@ class PaymentCustomRepositoryImpl(
     private val queryFactory: JPAQueryFactory,
 ) : PaymentCustomRepository {
 
-    override fun findCompletedOrderIds(orderType: OrderType, orderIds: List<Long>): Set<Long> {
+    override fun findUnexpirableOrderIds(orderType: OrderType, orderIds: List<Long>): Set<Long> {
         if (orderIds.isEmpty()) return emptySet()
         val payment = QPayment.payment
         return queryFactory.select(payment.orderId)
@@ -26,7 +26,7 @@ class PaymentCustomRepositoryImpl(
                            .where(
                                payment.orderType.eq(orderType),
                                payment.orderId.`in`(orderIds),
-                               payment.status.eq(PaymentStatus.COMPLETED),
+                               payment.status.notIn(PaymentStatus.CANCELLED, PaymentStatus.FAILED),
                                payment.deletedAt.isNull,
                            )
                            .fetch()

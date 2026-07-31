@@ -1,5 +1,6 @@
 package com.sportsapp.domain.booking.service
 
+import com.sportsapp.domain.booking.BookingFeatureFlagKeys
 import com.sportsapp.domain.booking.dto.BookingDetail
 import com.sportsapp.domain.booking.dto.BookingOrderItem
 import com.sportsapp.domain.booking.dto.BookingResult
@@ -16,6 +17,8 @@ import com.sportsapp.domain.booking.repository.BookingRepository
 import com.sportsapp.domain.booking.repository.SlotRepository
 import com.sportsapp.domain.common.DistributedLock
 import com.sportsapp.domain.common.DomainEventPublisher
+import com.sportsapp.domain.common.FeatureContext
+import com.sportsapp.domain.common.FeatureFlagEvaluator
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -41,6 +44,7 @@ class BookingDomainService(
     private val distributedLock: DistributedLock,
     private val domainEventPublisher: DomainEventPublisher,
     private val bookingOrderQueryRepository: BookingOrderQueryRepository,
+    private val featureFlagEvaluator: FeatureFlagEvaluator,
 ) {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun requestBooking(userId: Long, slotId: Long): BookingResult {
@@ -194,29 +198,32 @@ class BookingDomainService(
     }
 
     /**
-     * W1-11c 만료 스위퍼 — PENDING이며 createdAt < before인 예약 id를 최대 limit건 조회한다.
+     * W1-11c 만료 스위퍼 — PENDING이며 createdAt < (now - ttlMinutes)이고 id > afterId(청크
+     * 커서)인 예약 id를 최대 limit건 조회한다. 시간 계산은 이 메서드 내부에서 해결한다
+     * (no-time-parameter — 캡슐화 메서드에 시간을 인자로 넘기지 않는다).
      */
-    fun findExpirableBookingIds(before: ZonedDateTime, limit: Int): List<Long> =
-        bookingRepository.findPendingCreatedBefore(before, limit)
+    fun findExpirableBookingIds(ttlMinutes: Long, afterId: Long, limit: Int): List<Long> {
+        val threshold = ZonedDateTime.now().minusMinutes(ttlMinutes)
+        return bookingRepository.findPendingCreatedBefore(threshold, afterId, limit)
+    }
 
     /**
-     * W1-11c 만료 스위퍼 — 청크 단위로 PENDING → EXPIRED 전이한다. 슬롯 점유 해제는 별도
-     * 보상 로직 없이 이 전이만으로 완료된다(점유는 PENDING/CONFIRMED 카운트로 파생되므로).
-     * 청크 커밋을 위해 호출부(UseCase) 트랜잭션과 분리된 새 트랜잭션에서 실행한다.
+     * W1-11c 만료 스위퍼 — 청크 단위로 PENDING → EXPIRED CAS 전이한다([BookingRepository.tryExpire]).
+     * 슬롯 점유 해제는 별도 보상 로직 없이 이 전이만으로 완료된다(점유는 PENDING/CONFIRMED
+     * 카운트로 파생되므로). 트랜잭션 경계는 이 메서드를 호출하는 UseCase(`ExpireBookingChunkUseCase`)가
+     * 소유한다 — DomainService는 트랜잭션을 선언하지 않는다.
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun expireBookings(bookingIds: List<Long>): Int {
         if (bookingIds.isEmpty()) return 0
-        return bookingIds.count { expireIfPending(it) }
+        return bookingIds.count { bookingRepository.tryExpire(it) }
     }
 
-    private fun expireIfPending(bookingId: Long): Boolean {
-        val booking = bookingRepository.findById(bookingId) ?: return false
-        if (booking.status != BookingStatus.PENDING) return false
-        booking.expire()
-        bookingRepository.save(booking)
-        return true
-    }
+    /**
+     * booking.expiry.enabled 운영 킬 스위치 판정 — 부팅 고정 설정이 아니라 매 스케줄 주기
+     * `FeatureFlagEvaluator`로 런타임 조회한다(no-conditional-on-property).
+     */
+    fun isExpiryEnabled(): Boolean =
+        featureFlagEvaluator.isEnabled(BookingFeatureFlagKeys.EXPIRY_ENABLED, FeatureContext.anonymous(), true)
 
     fun refundBooking(bookingId: Long, callerUserId: Long, refundAmount: BigDecimal, reason: String): Booking {
         val booking = bookingRepository.findById(bookingId)

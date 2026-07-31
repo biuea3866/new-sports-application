@@ -226,12 +226,13 @@ class PaymentDomainService(
     }
 
     /**
-     * 만료 스위퍼(W1-11a~d)의 결제 성공 가드가 소비한다 — orderType·orderId 목록 중
-     * COMPLETED 상태인 orderId만 반환한다.
+     * 만료 스위퍼(W1-11a~d)의 만료 금지 가드가 소비한다 — orderType·orderId 목록 중
+     * "만료시키면 안 되는"(PENDING/READY/COMPLETED/REFUNDED) 상태인 orderId만 반환한다.
+     * CANCELLED·FAILED만 만료를 허용한다 — 상세 근거는 [PaymentCustomRepository.findUnexpirableOrderIds] 참고.
      */
-    fun findCompletedOrderIds(orderType: OrderType, orderIds: List<Long>): Set<Long> {
+    fun findUnexpirableOrderIds(orderType: OrderType, orderIds: List<Long>): Set<Long> {
         if (orderIds.isEmpty()) return emptySet()
-        return paymentRepository.findCompletedOrderIds(orderType, orderIds)
+        return paymentRepository.findUnexpirableOrderIds(orderType, orderIds)
     }
 
     fun getPayment(userId: Long, paymentId: Long): Payment {

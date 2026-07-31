@@ -10,6 +10,7 @@ import com.sportsapp.domain.booking.repository.SlotRepository
 import com.sportsapp.domain.booking.service.BookingDomainService
 import com.sportsapp.domain.common.DistributedLock
 import com.sportsapp.domain.common.DomainEventPublisher
+import com.sportsapp.domain.common.FeatureFlagEvaluator
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
@@ -26,6 +27,7 @@ class BookingDomainServiceGetBookingDetailTest : BehaviorSpec({
     val distributedLock = mockk<DistributedLock>()
     val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
     val bookingOrderQueryRepository = mockk<BookingOrderQueryRepository>()
+    val featureFlagEvaluator = mockk<FeatureFlagEvaluator>()
 
     val service = BookingDomainService(
         bookingRepository,
@@ -33,6 +35,7 @@ class BookingDomainServiceGetBookingDetailTest : BehaviorSpec({
         distributedLock,
         domainEventPublisher,
         bookingOrderQueryRepository,
+        featureFlagEvaluator,
     )
 
     Given("본인 소유 Booking과 해당 Slot이 모두 존재하는 상황") {

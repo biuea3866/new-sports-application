@@ -2,6 +2,7 @@ package com.sportsapp.domain.booking
 
 import com.sportsapp.domain.common.DistributedLock
 import com.sportsapp.domain.common.DomainEventPublisher
+import com.sportsapp.domain.common.FeatureFlagEvaluator
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
@@ -28,6 +29,7 @@ class BookingDomainServiceLockTest : BehaviorSpec({
     val distributedLock = mockk<DistributedLock>()
     val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
     val bookingOrderQueryRepository = mockk<BookingOrderQueryRepository>()
+    val featureFlagEvaluator = mockk<FeatureFlagEvaluator>()
 
     val service = BookingDomainService(
         bookingRepository,
@@ -35,6 +37,7 @@ class BookingDomainServiceLockTest : BehaviorSpec({
         distributedLock,
         domainEventPublisher,
         bookingOrderQueryRepository,
+        featureFlagEvaluator,
     )
 
     Given("[U-01] tryLock이 false를 반환하는 상황") {

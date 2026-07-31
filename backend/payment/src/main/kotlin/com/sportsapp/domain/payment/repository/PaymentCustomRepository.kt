@@ -17,8 +17,13 @@ interface PaymentCustomRepository {
     ): Page<Payment>
 
     /**
-     * 만료 스위퍼(W1-11a~d 공통 결제 성공 가드)가 소비한다 — orderType·orderId 목록 중
-     * COMPLETED 상태인 orderId만 반환한다. Payment 엔티티를 소비 컨텍스트에 노출하지 않는다.
+     * 만료 스위퍼(W1-11a~d 공통 만료 금지 가드)가 소비한다 — orderType·orderId 목록 중
+     * "만료시키면 안 되는" 주문의 orderId만 반환한다. PaymentStatus 전이는
+     * PENDING → READY → COMPLETED(→ REFUNDED)이고, 결제 개시 시점에 이미 PENDING 행이
+     * 생성되므로 사용자가 PG 결제창에 있는 동안(READY)도 만료 금지 대상이다 — COMPLETED만
+     * 보면 결제 진행 중인 예약이 새어나가 "돈은 받고 서비스는 없는" 상태가 된다.
+     * CANCELLED·FAILED(명확히 종료된 결제)만 만료를 허용하고, 그 외 전 상태(PENDING/READY/
+     * COMPLETED/REFUNDED)는 만료 금지로 취급한다. Payment 엔티티를 소비 컨텍스트에 노출하지 않는다.
      */
-    fun findCompletedOrderIds(orderType: OrderType, orderIds: List<Long>): Set<Long>
+    fun findUnexpirableOrderIds(orderType: OrderType, orderIds: List<Long>): Set<Long>
 }

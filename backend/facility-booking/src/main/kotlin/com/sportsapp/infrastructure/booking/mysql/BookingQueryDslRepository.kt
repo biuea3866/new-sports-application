@@ -20,5 +20,7 @@ interface BookingQueryDslRepository {
         pageable: Pageable,
     ): Page<Booking>
 
-    fun findPendingCreatedBefore(before: ZonedDateTime, limit: Int): List<Long>
+    fun findPendingCreatedBefore(before: ZonedDateTime, afterId: Long, limit: Int): List<Long>
+
+    fun tryExpire(bookingId: Long): Boolean
 }

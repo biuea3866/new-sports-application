@@ -30,8 +30,8 @@ class PaymentRepositoryImpl(
     override fun findAllByIdIn(ids: List<Long>): List<Payment> =
         paymentJpaRepository.findAllByIdIn(ids)
 
-    override fun findCompletedOrderIds(orderType: OrderType, orderIds: List<Long>): Set<Long> =
-        paymentCustomRepository.findCompletedOrderIds(orderType, orderIds)
+    override fun findUnexpirableOrderIds(orderType: OrderType, orderIds: List<Long>): Set<Long> =
+        paymentCustomRepository.findUnexpirableOrderIds(orderType, orderIds)
 
     override fun findByUserIdAndConditions(
         userId: Long,

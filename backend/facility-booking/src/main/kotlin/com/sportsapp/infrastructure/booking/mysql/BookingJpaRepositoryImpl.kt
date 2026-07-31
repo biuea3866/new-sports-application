@@ -61,15 +61,28 @@ class BookingJpaRepositoryImpl : BookingQueryDslRepository {
         return PageImpl(content, pageable, total)
     }
 
-    override fun findPendingCreatedBefore(before: ZonedDateTime, limit: Int): List<Long> {
+    override fun findPendingCreatedBefore(before: ZonedDateTime, afterId: Long, limit: Int): List<Long> {
         return queryFactory.select(booking.id)
                            .from(booking)
                            .where(
                                booking.status.eq(BookingStatus.PENDING),
                                booking.createdAt.lt(before),
+                               booking.id.gt(afterId),
+                               booking.deletedAt.isNull,
                            )
                            .orderBy(booking.id.asc())
                            .limit(limit.toLong())
                            .fetch()
+    }
+
+    override fun tryExpire(bookingId: Long): Boolean {
+        val affectedRows = queryFactory.update(booking)
+                                       .set(booking.status, BookingStatus.EXPIRED)
+                                       .where(
+                                           booking.id.eq(bookingId),
+                                           booking.status.eq(BookingStatus.PENDING),
+                                       )
+                                       .execute()
+        return affectedRows > 0
     }
 }

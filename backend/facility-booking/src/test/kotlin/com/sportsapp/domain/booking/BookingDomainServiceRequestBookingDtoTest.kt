@@ -2,6 +2,7 @@ package com.sportsapp.domain.booking
 
 import com.sportsapp.domain.common.DistributedLock
 import com.sportsapp.domain.common.DomainEventPublisher
+import com.sportsapp.domain.common.FeatureFlagEvaluator
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -25,6 +26,7 @@ class BookingDomainServiceRequestBookingDtoTest : BehaviorSpec({
     val distributedLock = mockk<DistributedLock>()
     val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
     val bookingOrderQueryRepository = mockk<BookingOrderQueryRepository>()
+    val featureFlagEvaluator = mockk<FeatureFlagEvaluator>()
 
     val service = BookingDomainService(
         bookingRepository,
@@ -32,6 +34,7 @@ class BookingDomainServiceRequestBookingDtoTest : BehaviorSpec({
         distributedLock,
         domainEventPublisher,
         bookingOrderQueryRepository,
+        featureFlagEvaluator,
     )
 
     Given("슬롯 잔여가 충분하고 락 획득에 성공하는 상황") {
