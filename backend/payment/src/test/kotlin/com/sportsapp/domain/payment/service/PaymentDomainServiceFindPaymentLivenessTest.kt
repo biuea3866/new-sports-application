@@ -36,7 +36,7 @@ class PaymentDomainServiceFindPaymentLivenessTest : BehaviorSpec({
         val service = buildService(paymentRepository)
         val now = ZonedDateTime.now()
         val expected = PaymentLivenessQueryResult(
-            livenessByOrderId = mapOf(2L to OrderPaymentLiveness.Live(now), 3L to OrderPaymentLiveness.Settled),
+            livenessByOrderId = mapOf(2L to OrderPaymentLiveness.Live(since = now, attemptSince = null), 3L to OrderPaymentLiveness.Settled),
         )
         every {
             paymentRepository.findPaymentLiveness(OrderType.BOOKING, listOf(1L, 2L, 3L))

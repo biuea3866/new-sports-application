@@ -87,7 +87,7 @@ class ExpirePendingBookingsUseCaseTest : BehaviorSpec({
             BookingExpiryCandidate(3L, ZonedDateTime.now().minusMinutes(20)),
         )
         val liveAnchor = ZonedDateTime.now().minusMinutes(5)
-        val liveness = PaymentLivenessQueryResult(livenessByOrderId = mapOf(2L to OrderPaymentLiveness.Live(liveAnchor)))
+        val liveness = PaymentLivenessQueryResult(livenessByOrderId = mapOf(2L to OrderPaymentLiveness.Live(since = liveAnchor, attemptSince = null)))
         every { bookingDomainService.findExpirableBookingCandidates(ttlMinutes = 15, afterId = 0L, limit = 100) } returns candidates
         every { bookingDomainService.findExpirableBookingCandidates(ttlMinutes = 15, afterId = 3L, limit = 100) } returns emptyList()
         every {
@@ -96,7 +96,7 @@ class ExpirePendingBookingsUseCaseTest : BehaviorSpec({
         every {
             bookingDomainService.filterExpirable(
                 candidates = candidates,
-                liveness = mapOf(2L to OrderPaymentLiveness.Live(liveAnchor)),
+                liveness = mapOf(2L to OrderPaymentLiveness.Live(since = liveAnchor, attemptSince = null)),
                 ttlPolicy = defaultTtlPolicy,
             )
         } returns BookingExpiryFilterResult(expirableIds = listOf(1L, 3L), skippedSettledCount = 0)
@@ -184,7 +184,7 @@ class ExpirePendingBookingsUseCaseTest : BehaviorSpec({
         }
     }
 
-    Given("만료 대상 판정 건 중 일부가 CAS 경합에서 졌을 때 (6차 재리뷰 p4 — 경합 계측 회귀)") {
+    Given("만료 대상 판정 건 중 일부가 CAS 경합에서 졌을 때 (경합 패배 건수가 계측된다)") {
         val bookingDomainService = mockk<BookingDomainService>()
         val paymentDomainService = mockk<PaymentDomainService>()
         val expireBookingChunkUseCase = mockk<ExpireBookingChunkUseCase>()
@@ -295,7 +295,7 @@ class ExpirePendingBookingsUseCaseTest : BehaviorSpec({
         val now = ZonedDateTime.now().minusMinutes(20)
         val chunk = listOf(BookingExpiryCandidate(20L, now), BookingExpiryCandidate(21L, now))
         val liveAnchor = ZonedDateTime.now().minusMinutes(5)
-        val liveness = PaymentLivenessQueryResult(livenessByOrderId = mapOf(20L to OrderPaymentLiveness.Live(liveAnchor)))
+        val liveness = PaymentLivenessQueryResult(livenessByOrderId = mapOf(20L to OrderPaymentLiveness.Live(since = liveAnchor, attemptSince = null)))
 
         // 20L은 결제 진행 중이라 건너뛰지만, 커서는 청크의 마지막 id(21L)로 전진해야 한다.
         every { bookingDomainService.findExpirableBookingCandidates(ttlMinutes = 15, afterId = 0L, limit = 2) } returns chunk
@@ -306,7 +306,7 @@ class ExpirePendingBookingsUseCaseTest : BehaviorSpec({
         every {
             bookingDomainService.filterExpirable(
                 candidates = chunk,
-                liveness = mapOf(20L to OrderPaymentLiveness.Live(liveAnchor)),
+                liveness = mapOf(20L to OrderPaymentLiveness.Live(since = liveAnchor, attemptSince = null)),
                 ttlPolicy = defaultTtlPolicy,
             )
         } returns BookingExpiryFilterResult(expirableIds = listOf(21L), skippedSettledCount = 0)

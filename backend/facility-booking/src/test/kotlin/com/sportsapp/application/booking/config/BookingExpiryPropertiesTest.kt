@@ -72,7 +72,7 @@ class BookingExpiryPropertiesTest : BehaviorSpec({
         }
     }
 
-    Given("env로 readyTtlMinutes<=ttlMinutes를 주입한 경우 (5차 리뷰 p2 — 컨텍스트 기동 검증)") {
+    Given("env로 readyTtlMinutes<=ttlMinutes를 주입한 경우 (불변조건 위반으로 컨텍스트 기동이 실패한다)") {
         When("ApplicationContextRunner로 컨텍스트를 로드하면") {
             Then("빈 생성이 실패해 컨텍스트 기동 자체가 실패한다") {
                 contextRunner()

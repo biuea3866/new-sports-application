@@ -44,7 +44,7 @@ class PaymentLivenessClassifierTest : BehaviorSpec({
         }
     }
 
-    Given("결제가 PENDING 상태일 때 (6차 — Attempting 분류 대상)") {
+    Given("결제가 PENDING 상태일 때 (Attempting 분류 대상)") {
         Then("live도 settled도 아니지만 attempting이다 — 시도 시각을 앵커로 재-앵커해야 한다") {
             PaymentLivenessClassifier.isLive(PaymentStatus.PENDING) shouldBe false
             PaymentLivenessClassifier.isSettled(PaymentStatus.PENDING) shouldBe false
@@ -119,7 +119,7 @@ class PaymentLivenessClassifierTest : BehaviorSpec({
         }
     }
 
-    Given("한 주문에 PENDING payment만 있을 때 (6차 핵심 회귀 — Attempting 분류)") {
+    Given("한 주문에 PENDING payment만 있을 때 (live 없이 Attempting으로 분류되고 시도 시각이 앵커가 된다)") {
         val attemptAt = ZonedDateTime.now().minusMinutes(1)
         val rows = listOf(PaymentLivenessRow(orderId = 5L, status = PaymentStatus.PENDING, createdAt = attemptAt))
 
@@ -167,7 +167,7 @@ class PaymentLivenessClassifierTest : BehaviorSpec({
         }
     }
 
-    Given("오래된 READY와 방금 삽입된 PENDING이 함께 있을 때 (8차 핵심 회귀 — 승자를 고르지 않고 양쪽 앵커를 모두 담는다)") {
+    Given("오래된 READY와 방금 삽입된 PENDING이 함께 있을 때 (승자를 고르지 않고 양쪽 앵커를 모두 담는다)") {
         val staleReadyAt = ZonedDateTime.now().minusMinutes(70)
         val retryAttemptAt = ZonedDateTime.now().minusSeconds(5)
         val rows = listOf(
@@ -186,7 +186,7 @@ class PaymentLivenessClassifierTest : BehaviorSpec({
         }
     }
 
-    Given("방금 발급된 READY와 오래된 PENDING(원 시도)이 함께 있을 때 (8차 회귀 — 반대 방향)") {
+    Given("방금 발급된 READY와 오래된 PENDING(원 시도)이 함께 있을 때 (반대 방향에서도 승자를 고르지 않고 양쪽 앵커를 모두 담는다)") {
         val recentReadyAt = ZonedDateTime.now().minusMinutes(1)
         val originalAttemptAt = ZonedDateTime.now().minusMinutes(70)
         val rows = listOf(

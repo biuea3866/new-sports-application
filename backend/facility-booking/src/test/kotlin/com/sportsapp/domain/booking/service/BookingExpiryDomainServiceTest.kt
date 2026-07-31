@@ -121,7 +121,7 @@ class BookingExpiryDomainServiceTest : BehaviorSpec({
         When("filterExpirable을 호출하면 (readyTtlMinutes=60, payment 발급 시각은 20분 전)") {
             val result = service.filterExpirable(
                 candidates = candidates,
-                liveness = mapOf(2L to OrderPaymentLiveness.Live(ZonedDateTime.now().minusMinutes(20))),
+                liveness = mapOf(2L to OrderPaymentLiveness.Live(since = ZonedDateTime.now().minusMinutes(20), attemptSince = null)),
                 ttlPolicy = defaultTtlPolicy,
             )
 
@@ -142,7 +142,7 @@ class BookingExpiryDomainServiceTest : BehaviorSpec({
         When("filterExpirable을 호출하면 (readyTtlMinutes=60, payment 발급 시각은 70분 전)") {
             val result = service.filterExpirable(
                 candidates = candidates,
-                liveness = mapOf(3L to OrderPaymentLiveness.Live(ZonedDateTime.now().minusMinutes(70))),
+                liveness = mapOf(3L to OrderPaymentLiveness.Live(since = ZonedDateTime.now().minusMinutes(70), attemptSince = null)),
                 ttlPolicy = defaultTtlPolicy,
             )
 
@@ -192,7 +192,7 @@ class BookingExpiryDomainServiceTest : BehaviorSpec({
         }
     }
 
-    Given("70분 전 생성된 예약에 방금 새 READY payment가 생겼을 때 (5차 재설계 핵심 회귀 — 앵커 이전으로 인한 오만료 재발 방지)") {
+    Given("70분 전 생성된 예약에 방금 새 READY payment가 생겼을 때 (payment 발급 시각을 앵커로 삼아 오만료를 방지한다)") {
         val bookingRepository = mockk<BookingRepository>()
         val service = buildService(bookingRepository)
         // 예약(booking.createdAt)은 70분 전에 생성됐지만, 방금(1분 전) 새 payment가
@@ -204,7 +204,7 @@ class BookingExpiryDomainServiceTest : BehaviorSpec({
         When("filterExpirable을 호출하면 (readyTtlMinutes=60, payment 발급 시각은 1분 전)") {
             val result = service.filterExpirable(
                 candidates = candidates,
-                liveness = mapOf(6L to OrderPaymentLiveness.Live(ZonedDateTime.now().minusMinutes(1))),
+                liveness = mapOf(6L to OrderPaymentLiveness.Live(since = ZonedDateTime.now().minusMinutes(1), attemptSince = null)),
                 ttlPolicy = defaultTtlPolicy,
             )
 
@@ -224,7 +224,7 @@ class BookingExpiryDomainServiceTest : BehaviorSpec({
         When("filterExpirable을 호출하면 (liveness는 PaymentLivenessClassifier가 이미 최댓값으로 계산해 넘긴 값 — 5분 전)") {
             val result = service.filterExpirable(
                 candidates = candidates,
-                liveness = mapOf(7L to OrderPaymentLiveness.Live(ZonedDateTime.now().minusMinutes(5))),
+                liveness = mapOf(7L to OrderPaymentLiveness.Live(since = ZonedDateTime.now().minusMinutes(5), attemptSince = null)),
                 ttlPolicy = defaultTtlPolicy,
             )
 
@@ -234,7 +234,7 @@ class BookingExpiryDomainServiceTest : BehaviorSpec({
         }
     }
 
-    Given("70분 전 생성된 예약에 방금(재결제 시도 중) 새 PENDING payment가 삽입됐을 때 (6차 재리뷰 p1 — 핵심 회귀)") {
+    Given("70분 전 생성된 예약에 방금(재결제 시도 중) 새 PENDING payment가 삽입됐을 때 (재결제 시도 시각을 빠른 TTL 앵커로 삼아 오만료를 방지한다)") {
         val bookingRepository = mockk<BookingRepository>()
         val service = buildService(bookingRepository)
         // booking.createdAt은 70분 전(ttlMinutes=15을 이미 지남)이지만, 방금(5초 전) 재결제
@@ -257,7 +257,7 @@ class BookingExpiryDomainServiceTest : BehaviorSpec({
         }
     }
 
-    Given("60분 지난 READY 예약에 방금 재결제 시도가 삽입됐을 때 (7차→8차 재리뷰 p1 — 카테고리 우선순위 결함 종단 회귀)") {
+    Given("60분 지난 READY 예약에 방금 재결제 시도가 삽입됐을 때 (승자를 고르지 않고 live·attempting 양쪽 앵커를 모두 검사한다)") {
         val bookingRepository = mockk<BookingRepository>()
         val service = buildService(bookingRepository)
         // orderId=102L의 payment: 65분 전 발급된 READY(readyTtlMinutes=60을 이미 초과) +
@@ -302,7 +302,7 @@ class BookingExpiryDomainServiceTest : BehaviorSpec({
         }
     }
 
-    Given("READY 발급 40분 경과(느린 TTL 60분 안)에 20분 전 재결제 PENDING이 삽입됐을 때 (8차 핵심 회귀 — 세 번째 가림)") {
+    Given("READY 발급 40분 경과(느린 TTL 60분 안)에 20분 전 재결제 PENDING이 삽입됐을 때 (느린 TTL이 아직 안 지났으면 attemptSince와 무관하게 보호된다)") {
         val bookingRepository = mockk<BookingRepository>()
         val service = buildService(bookingRepository)
         // 7차(교차 비교)는 newestAttempt(20분 전)가 newestLive(40분 전)보다 최신이므로
@@ -404,7 +404,7 @@ class BookingExpiryDomainServiceTest : BehaviorSpec({
         }
     }
 
-    Given("예약 생성과 함께 만들어진 원 PENDING payment가 여전히 PENDING일 때 (2차 무력화 재발 방지 회귀)") {
+    Given("예약 생성과 함께 만들어진 원 PENDING payment가 여전히 PENDING일 때 (attempting에 면제를 주지 않고 빠른 TTL로 정상 만료된다)") {
         val bookingRepository = mockk<BookingRepository>()
         val service = buildService(bookingRepository)
         // 원 payment의 createdAt은 booking.createdAt과 거의 동일하다

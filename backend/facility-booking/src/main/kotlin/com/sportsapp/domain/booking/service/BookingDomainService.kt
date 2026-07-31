@@ -297,6 +297,15 @@ class BookingDomainService(
      * `attemptSince` 유무와 무관하게 그대로 유지되므로(AND 결합), 이미 느린 TTL 안에서
      * 보호받던 대상이 attempting 증거가 추가됐다고 풀리는 일은 없다 — 오히려 `attemptSince`가
      * 채워지면 빠른 TTL 창까지 추가로 닫혀야 하므로 보호가 늘어날 수만 있다.
+     *
+     * **머지 전 하드닝 (리뷰 — 판정을 타입으로 강제)**: 위 8차까지의 AND 결합·단조성 불변식은
+     * 전부 이 메서드의 `when` 분기(구 `isExpirable`)에 있었다 — booking(W1-11c)이 이 로직을
+     * 검증받는 동안, goods·ticketing·recruitment(W1-11a/b/d)가 각자 이 `when`을 독립적으로
+     * 재작성하면 [OrderPaymentLiveness.Live]의 `attemptSince` 검사 한 항을 빠뜨리는 실수가
+     * 그대로 재발할 수 있었다(실증: 리뷰 중 `attemptSince` 기본값 `null` 덕에 그 실수가
+     * 컴파일 오류 없이 통과했다). 그래서 판정 자체를 [OrderPaymentLiveness.allowsExpiry]로
+     * 옮기고, 이 메서드는 그 결과에 위임만 한다 — booking을 포함한 모든 소비 도메인이 같은
+     * 단일 판정 지점을 공유하므로 이 결함은 구조적으로 재발할 수 없다.
      */
     fun filterExpirable(
         candidates: List<BookingExpiryCandidate>,
@@ -309,32 +318,12 @@ class BookingDomainService(
         val settled = candidates.filter { liveness[it.bookingId] is OrderPaymentLiveness.Settled }
         val expirableIds = candidates
             .filterNot { liveness[it.bookingId] is OrderPaymentLiveness.Settled }
-            .filter { candidate -> isExpirable(candidate, liveness[candidate.bookingId] ?: OrderPaymentLiveness.None, fastThreshold, readyThreshold) }
+            .filter { candidate ->
+                val candidateLiveness = liveness[candidate.bookingId] ?: OrderPaymentLiveness.None
+                candidateLiveness.allowsExpiry(candidate.createdAt, readyThreshold, fastThreshold)
+            }
             .map { it.bookingId }
         return BookingExpiryFilterResult(expirableIds = expirableIds, skippedSettledCount = settled.size)
-    }
-
-    private fun isExpirable(
-        candidate: BookingExpiryCandidate,
-        liveness: OrderPaymentLiveness,
-        fastThreshold: ZonedDateTime,
-        readyThreshold: ZonedDateTime,
-    ): Boolean = when (liveness) {
-        // settled는 filterExpirable에서 이미 제외됐다 — sealed when 전수 분기를 만족시키기
-        // 위한 방어 분기(도달 불가). false를 반환해 만에 하나 호출 순서가 바뀌어도 오만료를
-        // 만들지 않는다.
-        is OrderPaymentLiveness.Settled -> false
-        // 8차 — 단조성: 느린 TTL(since)이 아직 안 지났으면 attemptSince를 볼 것도 없이 보호(단락
-        // 평가). 지났다면 attemptSince가 없을 때만 그대로 만료 대상이고, 있으면 빠른 TTL까지
-        // 추가로 지나야 한다(AND) — attempting 증거가 추가될수록 조건이 늘어나 보호가 줄어들지
-        // 않는다(반대로 늘어날 수만 있다).
-        is OrderPaymentLiveness.Live -> {
-            val attemptSince = liveness.attemptSince
-            liveness.since.isBefore(readyThreshold) &&
-                (attemptSince == null || maxOf(candidate.createdAt, attemptSince).isBefore(fastThreshold))
-        }
-        is OrderPaymentLiveness.Attempting -> maxOf(candidate.createdAt, liveness.since).isBefore(fastThreshold)
-        is OrderPaymentLiveness.None -> candidate.createdAt.isBefore(fastThreshold)
     }
 
     /**
