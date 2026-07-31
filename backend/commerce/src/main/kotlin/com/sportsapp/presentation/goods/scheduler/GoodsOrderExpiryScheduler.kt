@@ -33,12 +33,14 @@ class GoodsOrderExpiryScheduler(
         meterRegistry.counter(SKIPPED_COUNTER).increment(result.skippedCount.toDouble())
         meterRegistry.counter(SKIPPED_SETTLED_COUNTER).increment(result.skippedSettledCount.toDouble())
         meterRegistry.counter(CONTENDED_COUNTER).increment(result.contendedCount.toDouble())
+        meterRegistry.counter(CHUNK_FAILED_COUNTER).increment(result.chunkFailedCount.toDouble())
         log.info(
-            "event=goods-order-expiry-completed expiredCount={} skippedCount={} skippedSettledCount={} contendedCount={}",
+            "event=goods-order-expiry-completed expiredCount={} skippedCount={} skippedSettledCount={} contendedCount={} chunkFailedCount={}",
             result.expiredCount,
             result.skippedCount,
             result.skippedSettledCount,
             result.contendedCount,
+            result.chunkFailedCount,
         )
     }
 
@@ -59,5 +61,14 @@ class GoodsOrderExpiryScheduler(
          * 확정·만료 경합이 잦다는 신호로, 스위퍼 주기·readyTtlMinutes 조정을 검토한다.
          */
         private const val CONTENDED_COUNTER = "goods_expiry_contended_total"
+
+        /**
+         * 청크 격리 전용 카운터(재리뷰 p2) — [ExpireGoodsOrderChunkUseCase]의 재시도 예산을
+         * 넘어서 끝내 실패한 청크의 후보 건수. 0보다 크면 `Stock`(`@Version`) 동시 쓰기
+         * 경합이 재시도로 해소되지 않을 만큼 심하다는 신호로, 재시도 파라미터·스위퍼
+         * chunkSize 조정을 검토한다. 이 청크의 만료 판정은 유실되지만 다음 주기에 다시
+         * 후보로 잡힌다(afterId는 매 실행 0부터 시작).
+         */
+        private const val CHUNK_FAILED_COUNTER = "goods_expiry_chunk_failed_total"
     }
 }

@@ -7,6 +7,7 @@ import com.sportsapp.domain.goods.dto.GoodsOrderExpiryCandidate
 import com.sportsapp.domain.goods.dto.GoodsOrderExpiryTtlPolicy
 import com.sportsapp.domain.goods.service.GoodsDomainService
 import com.sportsapp.domain.payment.service.PaymentDomainService
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 /**
@@ -35,6 +36,14 @@ import org.springframework.stereotype.Service
  * **청크 커서(afterId)**: 건너뛴(결제 진행 중) 주문은 다음 청크 조회에서 id > afterId
  * 조건으로 제외된다 — 커서가 없으면 같은 건이 매 청크 재조회되어 head-of-line blocking·
  * skippedCount 중복 집계가 생긴다.
+ *
+ * **청크 실패 격리(재리뷰 p2)**: booking 정본(`expireBookings`)은 순수 CAS(부수 쓰기
+ * 0건)라 청크 실패가 사실상 없지만, goods는 만료 시 `Stock`(`@Version`) 재고 복원 쓰기가
+ * 있어 동시 구매와 경합하면 [org.springframework.orm.ObjectOptimisticLockingFailureException]이
+ * 날 수 있다([ExpireGoodsOrderChunkUseCase]가 먼저 재시도하지만 그래도 실패할 수 있다).
+ * 이 예외가 [processChunks] 밖(스케줄러)까지 그대로 올라가면 남은 청크가 전부 미처리되고
+ * 4개 카운터가 전부 유실되므로, [processCandidates] 호출을 청크 단위로 격리해 실패를
+ * [GoodsOrderExpiryResult.chunkFailedCount]로 집계하고 다음 청크로 진행한다.
  */
 @Service
 class ExpirePendingGoodsOrdersUseCase(
@@ -43,6 +52,8 @@ class ExpirePendingGoodsOrdersUseCase(
     private val expireGoodsOrderChunkUseCase: ExpireGoodsOrderChunkUseCase,
     private val goodsOrderExpiryProperties: GoodsOrderExpiryProperties,
 ) {
+    private val log = LoggerFactory.getLogger(ExpirePendingGoodsOrdersUseCase::class.java)
+
     fun execute(): GoodsOrderExpiryResult =
         processChunks(afterId = 0L, chunksLeft = goodsOrderExpiryProperties.maxChunksPerRun, accumulated = GoodsOrderExpiryResult.empty())
 
@@ -54,9 +65,34 @@ class ExpirePendingGoodsOrdersUseCase(
             limit = goodsOrderExpiryProperties.chunkSize,
         )
         if (candidates.isEmpty()) return accumulated
-        val chunkResult = processCandidates(candidates)
+        val chunkResult = processCandidatesSafely(candidates)
         return processChunks(afterId = candidates.last().orderId, chunksLeft = chunksLeft - 1, accumulated = accumulated + chunkResult)
     }
+
+    /**
+     * [processCandidates] 실행 중 발생한 예외를 이 청크 하나로 격리한다 — 재시도
+     * ([ExpireGoodsOrderChunkUseCase]의 `@Retryable`) 후에도 남은 실패(CAS 경합 소진,
+     * payment 조회 오류 등)가 주기 전체(4개 카운터 유실 + 남은 청크 미처리)를 죽이지
+     * 않게 한다. 커서 전진은 호출부([processChunks])가 이미 처리하므로 여기서는 실패
+     * 카운트만 반환한다.
+     */
+    private fun processCandidatesSafely(candidates: List<GoodsOrderExpiryCandidate>): GoodsOrderExpiryResult =
+        runCatching { processCandidates(candidates) }.getOrElse { exception ->
+            log.error(
+                "event=goods-order-expiry-chunk-failed candidateCount={} firstOrderId={} lastOrderId={}",
+                candidates.size,
+                candidates.first().orderId,
+                candidates.last().orderId,
+                exception,
+            )
+            GoodsOrderExpiryResult(
+                expiredCount = 0,
+                skippedCount = 0,
+                skippedSettledCount = 0,
+                contendedCount = 0,
+                chunkFailedCount = candidates.size,
+            )
+        }
 
     private fun processCandidates(candidates: List<GoodsOrderExpiryCandidate>): GoodsOrderExpiryResult {
         val candidateIds = candidates.map { it.orderId }

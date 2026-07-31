@@ -14,6 +14,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import org.springframework.orm.ObjectOptimisticLockingFailureException
 import java.time.ZonedDateTime
 
 /**
@@ -279,6 +280,53 @@ class ExpirePendingGoodsOrdersUseCaseTest : BehaviorSpec({
                 verify(exactly = 1) { goodsDomainService.findExpirableGoodsOrderCandidates(ttlMinutes = 30, afterId = 11L, limit = 2) }
                 verify(exactly = 1) { goodsDomainService.findExpirableGoodsOrderCandidates(ttlMinutes = 30, afterId = 13L, limit = 2) }
                 result.expiredCount shouldBe 6
+            }
+        }
+    }
+
+    Given("한 주기 안에서 청크 하나가 재시도 후에도 끝내 실패했을 때 (재리뷰 p2 — 청크 격리)") {
+        val goodsDomainService = mockk<GoodsDomainService>()
+        val paymentDomainService = mockk<PaymentDomainService>()
+        val expireGoodsOrderChunkUseCase = mockk<ExpireGoodsOrderChunkUseCase>()
+        val properties = GoodsOrderExpiryProperties(ttlMinutes = 30, readyTtlMinutes = 90, chunkSize = 2, maxChunksPerRun = 3)
+        val useCase = ExpirePendingGoodsOrdersUseCase(goodsDomainService, paymentDomainService, expireGoodsOrderChunkUseCase, properties)
+
+        val now = ZonedDateTime.now().minusMinutes(40)
+        val chunk1 = listOf(GoodsOrderExpiryCandidate(30L, now), GoodsOrderExpiryCandidate(31L, now))
+        val chunk2 = listOf(GoodsOrderExpiryCandidate(32L, now), GoodsOrderExpiryCandidate(33L, now))
+        val chunk3 = listOf(GoodsOrderExpiryCandidate(34L, now), GoodsOrderExpiryCandidate(35L, now))
+
+        every { goodsDomainService.findExpirableGoodsOrderCandidates(ttlMinutes = 30, afterId = 0L, limit = 2) } returns chunk1
+        every { goodsDomainService.findExpirableGoodsOrderCandidates(ttlMinutes = 30, afterId = 31L, limit = 2) } returns chunk2
+        every { goodsDomainService.findExpirableGoodsOrderCandidates(ttlMinutes = 30, afterId = 33L, limit = 2) } returns chunk3
+        every { paymentDomainService.findPaymentLiveness(orderType = OrderType.GOODS, orderIds = any()) } returns PaymentLivenessQueryResult.empty()
+        every {
+            goodsDomainService.filterExpirable(candidates = chunk1, liveness = emptyMap(), ttlPolicy = defaultTtlPolicy)
+        } returns GoodsOrderExpiryFilterResult(expirableIds = listOf(30L, 31L), skippedSettledCount = 0)
+        every {
+            goodsDomainService.filterExpirable(candidates = chunk2, liveness = emptyMap(), ttlPolicy = defaultTtlPolicy)
+        } returns GoodsOrderExpiryFilterResult(expirableIds = listOf(32L, 33L), skippedSettledCount = 0)
+        every {
+            goodsDomainService.filterExpirable(candidates = chunk3, liveness = emptyMap(), ttlPolicy = defaultTtlPolicy)
+        } returns GoodsOrderExpiryFilterResult(expirableIds = listOf(34L, 35L), skippedSettledCount = 0)
+        every { expireGoodsOrderChunkUseCase.execute(listOf(30L, 31L)) } returns 2
+        // 청크2는 재시도(ExpireGoodsOrderChunkUseCase의 @Retryable) 예산을 넘어 끝내 실패한
+        // 상황을 흉내낸다 — Stock(@Version) 동시 쓰기 경합의 최종 실패.
+        every { expireGoodsOrderChunkUseCase.execute(listOf(32L, 33L)) } throws ObjectOptimisticLockingFailureException("stocks", null)
+        every { expireGoodsOrderChunkUseCase.execute(listOf(34L, 35L)) } returns 2
+
+        When("execute를 호출하면") {
+            val result = useCase.execute()
+
+            Then("청크2 실패가 주기 전체를 죽이지 않고 청크1·청크3이 정상 처리된다") {
+                verify(exactly = 1) { goodsDomainService.findExpirableGoodsOrderCandidates(ttlMinutes = 30, afterId = 0L, limit = 2) }
+                verify(exactly = 1) { goodsDomainService.findExpirableGoodsOrderCandidates(ttlMinutes = 30, afterId = 31L, limit = 2) }
+                verify(exactly = 1) { goodsDomainService.findExpirableGoodsOrderCandidates(ttlMinutes = 30, afterId = 33L, limit = 2) }
+                result.expiredCount shouldBe 4
+            }
+
+            Then("실패한 청크2의 후보 건수(2건)가 chunkFailedCount로 격리 집계된다") {
+                result.chunkFailedCount shouldBe 2
             }
         }
     }

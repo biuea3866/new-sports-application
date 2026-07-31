@@ -211,6 +211,13 @@ class GoodsDomainService(
      * CAS 실패 시 재조회한 현재 상태로 원인을 가른다 — 이미 같은 paymentId로 CONFIRMED면
      * 멱등(webhook 중복), 그 외(CANCELLED 등)면 [InvalidGoodsOrderStateException]을 던져
      * 상태 머신 우회를 막는다.
+     *
+     * **호출 계약(KDoc contract)**: 이 메서드 호출 **이전에 같은 트랜잭션에서 대상
+     * GoodsOrder를 먼저 로드하지 말 것.** [GoodsOrderCustomRepository.tryConfirm]은 QueryDSL
+     * 벌크 UPDATE라 JPA 1차 캐시를 무효화하지 않는다 — 이미 로드된 GoodsOrder가 있으면 아래
+     * `findById`가 그 stale 인스턴스를 그대로 반환해 status가 실제 DB 값과 어긋날 수 있다
+     * (`facility-booking`(W1-11c) `BookingDomainService.confirmBooking`과 동일 계약).
+     * 현재 유일 호출부(webhook 확정 경로)는 이 계약을 지키고 있다.
      */
     fun markPaid(orderId: Long, paymentId: Long): GoodsOrder {
         val transitioned = goodsOrderCustomRepository.tryConfirm(orderId = orderId, paymentId = paymentId)

@@ -37,6 +37,16 @@ data class GoodsOrderExpiryProperties(
     val readyTtlMinutes: Long = 90,
     val chunkSize: Int = 100,
     val maxChunksPerRun: Int = 20,
+    /**
+     * **프로덕션 코드가 이 필드를 읽지 않는다** — 재리뷰 p3. `goods.expiry.cycle-ms` 값은
+     * [com.sportsapp.presentation.goods.scheduler.GoodsOrderExpiryScheduler]의
+     * `@Scheduled(fixedDelayString = "${'$'}{goods.expiry.cycle-ms:...}")` 애노테이션이
+     * 부팅 시 자체적으로 문자열 보간해 바인딩한다(Spring이 `Environment`에서 직접 읽음).
+     * 이 필드는 **같은 프로퍼티 키를 이 클래스가 소유한 문서로 남기기 위한 선언**일 뿐,
+     * 코드 경로상 실제로 소비되지 않는다 — 값을 바꿔도 이 필드 자체는 아무것도 하지
+     * 않지만 `@Scheduled`가 같은 키를 읽으므로 스케줄 주기는 바뀐다. 제거하면 이 키의
+     * 존재·기본값이 문서화될 곳이 없어져 남겨둔다.
+     */
     val cycleMs: Long = DEFAULT_CYCLE_MS,
 ) {
     init {
