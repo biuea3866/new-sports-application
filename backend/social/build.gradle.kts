@@ -41,6 +41,10 @@ dependencies {
     // chat.realtime.enabled 플래그로 조건부 활성화). WebSocketConfig 자체는 bootstrap 잔류(전역 설정).
     implementation("org.springframework.boot:spring-boot-starter-websocket")
 
+    // [W1-07] Redis pub/sub STOMP 릴레이 — RealtimeRelayPublisher/Subscriber(StringRedisTemplate,
+    // RedisMessageListenerContainer). 신규 컨테이너 0(기존 공유 Redis 재사용).
+    implementation("org.springframework.boot:spring-boot-starter-data-redis")
+
     // Kafka — RecruitmentPaymentEventWorker(event.payment.payment.v1 구독)
     implementation("org.springframework.kafka:spring-kafka")
 
@@ -73,6 +77,11 @@ dependencies {
         exclude(group = "org.junit.vintage", module = "junit-vintage-engine")
     }
     testImplementation(testFixtures(project(":common")))
+
+    // [W1-07] RealtimeRelayIntegrationTest — 실 Redis(Testcontainers, common testFixtures의
+    // SharedTestContainers.redis 재사용, 신규 컨테이너 아님).
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+    testImplementation("org.testcontainers:junit-jupiter")
 }
 
 kapt {

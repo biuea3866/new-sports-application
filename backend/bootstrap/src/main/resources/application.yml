@@ -142,6 +142,15 @@ chat:
     # OFF면 WebSocketConfig/MessageBroadcastGatewayImpl/MessageBroadcastEventWorker/
     # ChatStompController 빈 자체가 등록되지 않아 /ws 가 404(즉시 롤백 지점). REST 채팅 경로는 무영향.
     enabled: ${CHAT_REALTIME_ENABLED:false}
+    relay:
+      # W1-07 — social 인스턴스 간 STOMP 릴레이(Redis pub/sub, 신규 컨테이너 0). OFF면
+      # RealtimeRelayPublisher가 발행을 건너뛰어 로컬 세션 전달만 남는 상태로 즉시 복귀한다
+      # (단일 인스턴스에서는 동작 차이 0 — 부팅 시 고정값이라 전환에는 재기동 필요, no-conditional-
+      # on-property 예외 아님: 빈 등록이 아니라 매 발행 호출마다 이 값을 조회한다).
+      enabled: ${CHAT_REALTIME_RELAY_ENABLED:true}
+      # social 전용 네임스페이스 prefix(§3-2 허용 ⑤). 단일 브로드캐스트 채널 + 인스턴스 로컬
+      # 필터(RealtimeRelayProperties 문서 참고 — 방 단위 채널 대비 채널 관리 비용 최소화).
+      channel: ${CHAT_REALTIME_RELAY_CHANNEL:social:realtime:relay}
   community:
     # BE-08 Release Scenario 2단계 — 커뮤니티 도메인 REST 엔드포인트 전체 활성 플래그.
     # OFF면 CommunityApiController 빈 자체가 등록되지 않아 /communities 전 경로가 404(즉시 롤백 지점).
