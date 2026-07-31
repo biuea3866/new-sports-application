@@ -108,7 +108,17 @@ val harnessCheck by tasks.registering {
     doLast {
         val forbidden: List<Triple<String, Regex, String>> = listOf(
             Triple("no-jpa-query", Regex("""@Query\s*\("""), "QueryDSL CustomRepository 패턴을 사용합니다."),
-            Triple("no-local-datetime", Regex("""\bLocalDate(Time)?\b"""), "ZonedDateTime / Instant 를 사용합니다."), // private-allow:no-local-datetime
+            // [W1-DEBT-01] 패턴을 컨벤션 범위로 좁혔다.
+            // 이전 패턴은 날짜 전용 타입(시각 없는 달력 날짜)까지 함께 잡아 facility-booking 56건 +
+            // bootstrap 2건, 총 58건의 **오탐**을 만들었다. 대상은 전부 시설 운영시간·휴무일이며,
+            // 영업 개시 시각은 벽시계 시각이고 휴무일은 달력 날짜라 그 타입들이 올바른 도메인 모델링이다.
+            // 컨벤션(private-be-code-convention no-local-datetime)이 금지하는 것은 "날짜+시각" 타입과
+            // 절대시각·시계 추상뿐이고, 날짜 전용·시각 전용 타입은 금지 대상이 아니다.
+            //
+            // 메시지의 절대시각 권유도 컨벤션과 모순이라 바로잡았다 — 그 타입 역시 금지다.
+            // 절대시각(3파일)·시계 추상(1파일)은 이 규칙이 애초에 검사하지 않아 숨어 있던 실제 위반이며,
+            // JWT exp 클레임 등 판단이 필요해 이 티켓에서 함께 고치지 않는다(부채 항목으로 남긴다).
+            Triple("no-local-datetime", Regex("""\bLocalDateTime\b"""), "ZonedDateTime 을 사용합니다."), // private-allow:no-local-datetime
             Triple("no-consumer-record-raw", Regex("""ConsumerRecord<\s*String\s*,\s*String\s*>"""), "DTO + JsonDeserializer 로 매핑합니다."), // private-allow:no-consumer-record
             Triple("no-non-null-assertion", Regex("""(?<!!)!!(?!=)"""), "requireNotNull / ?: / ?.let 으로 대체합니다."), // private-allow:no-double-bang
         )
