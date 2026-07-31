@@ -159,5 +159,33 @@ class TicketOrderRepositoryImplTest(
                 }
             }
         }
+
+        Given("소프트 삭제된 PENDING TicketOrder에") {
+            val order = ticketOrderRepositoryImpl.save(
+                TicketOrder.create(
+                    userId = 7L,
+                    lockedEventId = 50L,
+                    lockedSeatIds = listOf(501L),
+                )
+            )
+            order.softDelete(null)
+            ticketOrderRepositoryImpl.save(order)
+
+            When("tryConfirm CAS를 호출하면") {
+                val transitioned = ticketOrderRepositoryImpl.tryConfirm(orderId = order.id, paymentId = 555L)
+
+                Then("[R-04] deletedAt IS NULL 조건 미충족으로 0행 반환한다") {
+                    transitioned shouldBe false
+                }
+            }
+
+            When("tryExpire CAS를 호출하면") {
+                val transitioned = ticketOrderRepositoryImpl.tryExpire(order.id)
+
+                Then("[R-05] deletedAt IS NULL 조건 미충족으로 0행 반환한다") {
+                    transitioned shouldBe false
+                }
+            }
+        }
     }
 }

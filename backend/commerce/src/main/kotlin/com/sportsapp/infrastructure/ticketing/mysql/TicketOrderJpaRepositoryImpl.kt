@@ -38,6 +38,10 @@ class TicketOrderJpaRepositoryImpl : TicketOrderQueryDslRepository {
                            .fetch()
     }
 
+    // 후보 조회(findPendingCreatedBefore)는 deletedAt.isNull로 소프트 삭제된 주문을 걸러낸다 —
+    // CAS 술어도 대칭으로 걸러야 한다. 없으면 소프트 삭제된 PENDING 주문에도 UPDATE가 먼저
+    // 반영되고, 뒤이은 findByIdAndDeletedAtIsNull이 null을 반환해 ResourceNotFoundException으로
+    // 롤백되는 "후속 예외가 정합성을 되돌려 주는" 우회 경로에 의존하게 된다.
     override fun tryExpire(orderId: Long): Boolean {
         val affectedRows = queryFactory.update(ticketOrder)
                                        .set(ticketOrder.status, OrderStatus.CANCELLED)
@@ -45,6 +49,7 @@ class TicketOrderJpaRepositoryImpl : TicketOrderQueryDslRepository {
                                        .where(
                                            ticketOrder.id.eq(orderId),
                                            ticketOrder.status.eq(OrderStatus.PENDING),
+                                           ticketOrder.deletedAt.isNull,
                                        )
                                        .execute()
         return affectedRows > 0
@@ -58,6 +63,7 @@ class TicketOrderJpaRepositoryImpl : TicketOrderQueryDslRepository {
                                        .where(
                                            ticketOrder.id.eq(orderId),
                                            ticketOrder.status.eq(OrderStatus.PENDING),
+                                           ticketOrder.deletedAt.isNull,
                                        )
                                        .execute()
         return affectedRows > 0
