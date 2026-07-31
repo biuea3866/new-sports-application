@@ -60,7 +60,11 @@ dependencies {
 
     // QueryDSL
     implementation("com.querydsl:querydsl-jpa:5.1.0:jakarta")
-    kapt(platform("org.springframework.boot:spring-boot-dependencies:$springBootVersion"))
+    // [W1-01c 리뷰 후속 ④ — p4 적용] implementation과 대칭으로 enforcedPlatform 사용. 순수 platform()은
+    // constraint(highest-wins)일 뿐이라 kapt 컨피규레이션에 경쟁 BOM이 들어오면 implementation과 동일한
+    // 스큐가 생성 스텁(kaptGenerateStubsKotlin) 쪽에서 재발할 수 있다. 검증: kaptKotlin/compileKotlin
+    // BUILD SUCCESSFUL + Q타입 18개 유지(jakarta.persistence-api 3.1.0 by constraint 그대로).
+    kapt(enforcedPlatform("org.springframework.boot:spring-boot-dependencies:$springBootVersion"))
     kapt("com.querydsl:querydsl-apt:5.1.0:jakarta")
     kapt("jakarta.annotation:jakarta.annotation-api")
     kapt("jakarta.persistence:jakarta.persistence-api")
@@ -102,13 +106,22 @@ val verifyExternalLive by tasks.registering(Test::class) {
     shouldRunAfter(tasks.test)
 }
 
-// [W1-01c 리뷰 후속 ①] spring-ai-bom(1.1.6)의 dependency constraint 가 kotlin-reflect/kotlin-stdlib 를
-// 1.9.25 로 끌어올린다 — enforcedPlatform(spring-boot-dependencies) 은 그 BOM 이 관리하는 좌표(spring-*,
-// jackson-*, logback 등)에만 적용되고 kotlin-stdlib/kotlin-reflect 는 spring-boot-dependencies BOM의
-// 관리 범위 밖이라 enforcedPlatform 승격만으로는 해결되지 않는다(jackson-module-kotlin 은 이제
-// enforcedPlatform 이 커버해 force 불필요 — 상단 확인). 이 프로젝트의 Kotlin Gradle 플러그인은 1.9.23
-// (gradle.properties kotlinVersion)이라 bootstrap 런타임(kotlin-stdlib 1.9.23)과 어긋나면 그 자체가
-// 또 다른 컴파일-런타임 스큐이므로, kotlinVersion 으로 강제 고정한다.
+// [W1-01c 리뷰 후속 ③ — p3-1 정정] 1.9.25 압력의 출처는 spring-ai 가 아니라 enforcedPlatform 자신이다.
+// `dependencyInsight --configuration compileClasspath --dependency kotlin-reflect` 실측:
+//   org.jetbrains.kotlin:kotlin-reflect:1.9.25 -> 1.9.23
+//   \--- org.springframework.boot:spring-boot-dependencies:3.3.5
+//        \--- compileClasspath (requested org.springframework.boot:spring-boot-dependencies:{strictly 3.3.5})
+// 즉 spring-boot-dependencies 3.3.5 BOM 자신이 kotlin-reflect/kotlin-stdlib 를 1.9.25 로 관리한다
+// (spring-ai-bom 이 끌어올리는 게 아니다 — spring-ai 경로는 jackson-module-kotlin 을 통해 별도로 1.9.23
+// 을 요청할 뿐이다, 상단 dependencyInsight 출력의 다른 트리 참고). 문제는 이 BOM 을 `enforcedPlatform`
+// 으로 선언했다는 점이다 — enforcedPlatform 의 constraint 는 strict 이므로, 다른 어떤 경로가 무엇을
+// 요청하든 최종적으로 1.9.25 가 이긴다. 즉 force 가 필요한 이유는 "spring-ai 가 끌어올려서"가 아니라
+// "enforcedPlatform 이 자기 자신의 BOM 관리 버전(1.9.25)을 strict 로 강제해서"다.
+// 이 프로젝트의 Kotlin Gradle 플러그인 버전은 1.9.23(gradle.properties kotlinVersion)이고, 컴파일러와
+// stdlib/reflect 버전이 어긋나면 그 자체가 컴파일-런타임 스큐이므로 kotlinVersion 으로 강제 고정한다.
+// ⚠ 나중에 spring-ai 를 제거하더라도 이 force 는 지우면 안 된다 — enforcedPlatform(spring-boot-dependencies)
+// 만으로도 1.9.25 압력이 여전히 존재한다. 재현: ./gradlew :platform:dependencyInsight
+// --configuration compileClasspath --dependency kotlin-reflect
 configurations.all {
     resolutionStrategy {
         force("org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion")
