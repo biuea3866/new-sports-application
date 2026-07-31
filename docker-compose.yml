@@ -49,6 +49,14 @@ services:
       retries: 5
       start_period: 30s
 
+  # [W1-04][재리뷰 p0 후속] GRANT 사이드카(db-grants)는 이 base 파일에 두지 않는다.
+  #   base에 두면 prod override 병합(`docker compose -f docker-compose.yml -f docker-compose.prod.yml`,
+  #   scripts/deploy.sh compose_up()·Makefile PROD_STACK 공통 경로)에도 그대로 상속돼, 레포에
+  #   평문 커밋된 유저(flyway_migrator 등 — infra/mysql/grants/02-grants.sql)가 prod에도 무조건
+  #   자동 생성되는 사고가 났다(재리뷰 p0 — apply-grants.sh의 ALLOW_PROD 가드는 prod를 명시적으로
+  #   거부하도록 설계됐는데, base의 사이드카는 그 가드를 거치지 않고 매 prod 배포마다 우회 적용했다).
+  #   정의는 docker-compose.dev.yml로 옮겼다 — 1단계 범위(dev 한정)와도 일치한다. prod 반영은
+  #   2단계에서 별도 시크릿·가드와 함께 재설계한다(이 티켓 범위 밖).
   # ---- 데이터스토어 (단일 소유자 — ⑤ observability는 재정의하지 않고 참조만 한다) ----
   mysql:
     image: mysql:8.0
@@ -60,6 +68,15 @@ services:
       # [W1-02] §7-6 — max_connections 500 (기본 151은 목표 구성 10인스턴스×풀40=400에 못 미침).
       # 풀 크기 배분 자체는 W1-03 소유, 여기서는 서버측 상한만 연다.
       - ./infra/mysql/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+      # [W1-04] 서비스별 DB 유저 + 테이블 단위 GRANT는 여기서 자동 마운트하지 않는다 — 근거는
+      # infra/mysql/grants/02-grants.sql 헤더 주석 참조: 신규 볼륨 최초 기동 시점에는 Flyway가
+      # 아직 테이블을 만들지 않아 GRANT 대상 테이블이 존재하지 않고, MySQL은 존재하지 않는
+      # 테이블에 대한 GRANT를 에러(1146)로 거부해 docker-entrypoint-initdb.d 실행 자체가
+      # 실패한다(재현 확인 — mysql 컨테이너가 기동조차 못 하고 종료됨). 대신 dev 스택 전용
+      # `db-grants` 원샷 사이드카(docker-compose.dev.yml, backend가 healthy 가 된 뒤 = 최초
+      # 마이그레이션 완료 이후 실행)가 자동 적용한다 — base가 아니라 dev override에만 정의한
+      # 이유는 위 backend 서비스 앞 주석(재리뷰 p0) 참고. `scripts/apply-grants.sh` 는 사이드카가
+      # 재사용하는 동일 스크립트이자 수동 재적용 경로다(리뷰 p2① 후속).
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-root}"]
       interval: 10s
