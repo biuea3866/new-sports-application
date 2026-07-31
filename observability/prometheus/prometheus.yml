@@ -27,6 +27,15 @@ scrape_configs:
           - backend:8080
           # - host.docker.internal:8080   # 비컨테이너 로컬 앱용 대안
           # - backend-2:8080              # ⑦ 다중 인스턴스 확장 예시
+          # [W1-09] 2단계 6서비스 분리 시 활성화할 타깃. **1단계에서는 주석 유지 필수** —
+          # 지금 열면 존재하지 않는 호스트를 scrape 해 `up == 0` 알람이 상시 발생한다.
+          # 활성화 시점은 각 서비스 컨테이너가 실제로 뜨는 2단계이며, backend 타깃은 그때 제거한다.
+          # - commerce:8080
+          # - payment:8080
+          # - facility-booking:8080
+          # - social:8080
+          # - platform:8080
+          # - edge:8080
     # env 라벨은 앱 태그(management.metrics.tags.env)에서 유입되므로 여기서 부여하지 않는다.
 
   # ---- MySQL exporter ----
