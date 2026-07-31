@@ -32,6 +32,12 @@ services:
       PLATFORM_INTERNAL_BASE_URL: ${PLATFORM_INTERNAL_BASE_URL:-http://backend:8080}   # 소비: W1-06b
       SPRING_APPLICATION_NAME: ${SPRING_APPLICATION_NAME:-sports-application}          # 소비: W1-09
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-sports-application}                      # 소비: W1-09
+      # 가상 대기열 토큰 서명 시크릿 — application.yml의 빈 기본값을 HmacEntryTokenGateway가
+      # fail-fast로 막으므로 컨테이너에 전달되지 않으면 backend가 부팅하지 않는다. 값은 .env.<env>로 주입(비커밋).
+      VIRTUAL_QUEUE_TOKEN_SECRET: ${VIRTUAL_QUEUE_TOKEN_SECRET:-}
+      # 메일 발송 호스트 — 컨테이너 내부 localhost가 아니라 compose 서비스명 mailhog으로 붙는다(health DOWN 방지).
+      MAIL_HOST: ${MAIL_HOST:-mailhog}
+      MAIL_PORT: ${MAIL_PORT:-1025}
     # [W1-02] §7-2 실측 오버레이 값을 코드로 승격 — JVM -Xmx768m(위) + 컨테이너 실사용 오버헤드(~950m).
     # 런타임 컨테이너 증감 0 (base 12 → 12, §8-3 완료 판정 ⑧의 실제 요구는 "런타임 무변경"이다.
     # "13"은 compose 서비스 정의 수가 아니라 §8-3의 실행 컨테이너 실측치(12~14개) 기준 숫자) —
