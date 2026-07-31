@@ -7,6 +7,7 @@ import jakarta.annotation.PostConstruct
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.data.redis.listener.RedisMessageListenerContainer
 import org.springframework.stereotype.Component
 
@@ -38,6 +39,9 @@ import org.springframework.stereotype.Component
 class FeatureFlagMetricsBinder(
     private val meterRegistry: MeterRegistry,
     private val localFeatureFlagStore: LocalFeatureFlagStore,
+    // [W1-07] social 릴레이가 두 번째 RedisMessageListenerContainer 빈(realtimeRelayMessageListenerContainer)을
+    // 추가해 타입만으로는 더 이상 유일하지 않다 — FeatureFlag 전용 빈을 명시 지정한다.
+    @Qualifier("featureFlagRedisMessageListenerContainer")
     private val redisMessageListenerContainer: RedisMessageListenerContainer,
 ) {
 
