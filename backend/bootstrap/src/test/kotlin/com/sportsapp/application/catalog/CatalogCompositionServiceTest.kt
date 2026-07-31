@@ -13,6 +13,7 @@ import com.sportsapp.domain.goods.vo.SellerType
 import com.sportsapp.domain.recruitment.entity.Recruitment
 import com.sportsapp.domain.recruitment.entity.RecruitmentStatus
 import com.sportsapp.domain.recruitment.service.RecruitmentDomainService
+import com.sportsapp.domain.ticketing.dto.EventWithMinSeatPrice
 import com.sportsapp.domain.ticketing.entity.Event
 import com.sportsapp.domain.ticketing.entity.EventStatus
 import com.sportsapp.domain.ticketing.service.TicketingDomainService
@@ -131,7 +132,7 @@ class CatalogCompositionServiceTest : BehaviorSpec({
         val recruitmentDomainService = mockk<RecruitmentDomainService>()
         every { recruitmentDomainService.searchOpenRecruitments(any(), any()) } returns PageImpl(listOf(recruitment))
         val ticketingDomainService = mockk<TicketingDomainService>()
-        every { ticketingDomainService.searchOpenEvents(any(), any()) } returns PageImpl(listOf(event))
+        every { ticketingDomainService.searchOpenEventsForCatalog(any(), any()) } returns PageImpl(listOf(EventWithMinSeatPrice(event, BigDecimal("44000"))))
 
         val service = buildService(
             goodsDomainService = goodsDomainService,
@@ -180,7 +181,7 @@ class CatalogCompositionServiceTest : BehaviorSpec({
         val recruitmentDomainService = mockk<RecruitmentDomainService>()
         every { recruitmentDomainService.searchOpenRecruitments("요가", any()) } returns PageImpl(listOf(yogaRecruitment))
         val ticketingDomainService = mockk<TicketingDomainService>()
-        every { ticketingDomainService.searchOpenEvents("요가", any()) } returns emptyPage()
+        every { ticketingDomainService.searchOpenEventsForCatalog("요가", any()) } returns emptyPage()
 
         val service = buildService(
             goodsDomainService = goodsDomainService,
@@ -221,7 +222,7 @@ class CatalogCompositionServiceTest : BehaviorSpec({
         val recruitmentDomainService = mockk<RecruitmentDomainService>()
         every { recruitmentDomainService.searchOpenRecruitments(any(), any()) } returns emptyPage()
         val ticketingDomainService = mockk<TicketingDomainService>()
-        every { ticketingDomainService.searchOpenEvents(any(), any()) } returns emptyPage()
+        every { ticketingDomainService.searchOpenEventsForCatalog(any(), any()) } returns emptyPage()
 
         val service = buildService(
             goodsDomainService = goodsDomainService,
@@ -266,7 +267,7 @@ class CatalogCompositionServiceTest : BehaviorSpec({
                 response.items.map { it.itemType } shouldBe listOf(CatalogItemType.RECRUITMENT)
                 verify(exactly = 0) { goodsDomainService.search(any(), any(), any(), any(), any(), any()) }
                 verify(exactly = 0) { programDomainService.searchForCatalog(any(), any()) }
-                verify(exactly = 0) { ticketingDomainService.searchOpenEvents(any(), any()) }
+                verify(exactly = 0) { ticketingDomainService.searchOpenEventsForCatalog(any(), any()) }
             }
         }
     }
@@ -288,7 +289,7 @@ class CatalogCompositionServiceTest : BehaviorSpec({
         val recruitmentDomainService = mockk<RecruitmentDomainService>()
         every { recruitmentDomainService.searchOpenRecruitments(any(), any()) } returns PageImpl(listOf(recruitment))
         val ticketingDomainService = mockk<TicketingDomainService>()
-        every { ticketingDomainService.searchOpenEvents(any(), any()) } returns PageImpl(listOf(event))
+        every { ticketingDomainService.searchOpenEventsForCatalog(any(), any()) } returns PageImpl(listOf(EventWithMinSeatPrice(event, BigDecimal("44000"))))
 
         val service = buildService(
             goodsDomainService = goodsDomainService,
@@ -321,7 +322,7 @@ class CatalogCompositionServiceTest : BehaviorSpec({
         val recruitmentDomainService = mockk<RecruitmentDomainService>()
         every { recruitmentDomainService.searchOpenRecruitments(any(), any()) } returns emptyPage()
         val ticketingDomainService = mockk<TicketingDomainService>()
-        every { ticketingDomainService.searchOpenEvents(any(), any()) } returns emptyPage()
+        every { ticketingDomainService.searchOpenEventsForCatalog(any(), any()) } returns emptyPage()
 
         val service = buildService(
             goodsDomainService = goodsDomainService,
@@ -348,7 +349,7 @@ class CatalogCompositionServiceTest : BehaviorSpec({
         val programDomainService = mockk<ProgramDomainService>()
         val recruitmentDomainService = mockk<RecruitmentDomainService>()
         val ticketingDomainService = mockk<TicketingDomainService>()
-        every { ticketingDomainService.searchOpenEvents(any(), any()) } returns PageImpl(listOf(event))
+        every { ticketingDomainService.searchOpenEventsForCatalog(any(), any()) } returns PageImpl(listOf(EventWithMinSeatPrice(event, BigDecimal("44000"))))
 
         val service = buildService(
             goodsDomainService = goodsDomainService,
@@ -362,8 +363,8 @@ class CatalogCompositionServiceTest : BehaviorSpec({
                 CatalogSearchCriteria(keyword = null, itemType = CatalogItemType.TICKET, sellerType = null, page = 0, size = 20),
             )
 
-            Then("TICKET 항목의 price는 null이다") {
-                response.items.single().price shouldBe null
+            Then("TICKET 항목의 price는 최저 좌석가로 채워진다") {
+                response.items.single().price shouldBe BigDecimal("44000")
             }
         }
     }
@@ -460,7 +461,7 @@ class CatalogCompositionServiceTest : BehaviorSpec({
         val recruitmentDomainService = mockk<RecruitmentDomainService>()
         every { recruitmentDomainService.searchOpenRecruitments(any(), any()) } returns emptyPage()
         val ticketingDomainService = mockk<TicketingDomainService>()
-        every { ticketingDomainService.searchOpenEvents(any(), any()) } returns emptyPage()
+        every { ticketingDomainService.searchOpenEventsForCatalog(any(), any()) } returns emptyPage()
 
         val service = buildService(
             goodsDomainService = goodsDomainService,
@@ -576,6 +577,58 @@ class CatalogCompositionServiceTest : BehaviorSpec({
                     CatalogItemType.RECRUITMENT,
                     CatalogItemType.TICKET,
                 )
+            }
+        }
+    }
+
+    Given("좌석가가 서로 다른 경기가 검색되는 상황") {
+        val event = mockEvent(7L, "시티리그 4강", now.minusMinutes(1))
+        val ticketingDomainService = mockk<TicketingDomainService>()
+        every { ticketingDomainService.searchOpenEventsForCatalog(any(), any()) } returns PageImpl(
+            listOf(EventWithMinSeatPrice(event = event, minSeatPrice = BigDecimal("44000"))),
+        )
+
+        val service = buildService(ticketingDomainService = ticketingDomainService)
+
+        When("티켓 유형으로 검색하면") {
+            val response = service.search(
+                CatalogSearchCriteria(
+                    keyword = null,
+                    itemType = CatalogItemType.TICKET,
+                    sellerType = null,
+                    page = 0,
+                    size = 20,
+                ),
+            )
+
+            Then("가장 싼 좌석가가 대표가로 실린다") {
+                response.items.single().price shouldBe BigDecimal("44000")
+            }
+        }
+    }
+
+    Given("좌석이 아직 등록되지 않은 경기가 검색되는 상황") {
+        val event = mockEvent(8L, "좌석 미등록 경기", now.minusMinutes(2))
+        val ticketingDomainService = mockk<TicketingDomainService>()
+        every { ticketingDomainService.searchOpenEventsForCatalog(any(), any()) } returns PageImpl(
+            listOf(EventWithMinSeatPrice(event = event, minSeatPrice = null)),
+        )
+
+        val service = buildService(ticketingDomainService = ticketingDomainService)
+
+        When("티켓 유형으로 검색하면") {
+            val response = service.search(
+                CatalogSearchCriteria(
+                    keyword = null,
+                    itemType = CatalogItemType.TICKET,
+                    sellerType = null,
+                    page = 0,
+                    size = 20,
+                ),
+            )
+
+            Then("대표가 없이(null) 항목만 노출된다") {
+                response.items.single().price shouldBe null
             }
         }
     }

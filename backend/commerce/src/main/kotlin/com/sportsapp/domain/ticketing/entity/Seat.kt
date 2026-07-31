@@ -32,6 +32,9 @@ class Seat(
     val price: BigDecimal,
 ) : JpaAuditingBase() {
 
+    /** 좌석을 사람이 읽는 한 줄 표기 — 구역·열·번호 조합(예: `R석 1열 R석-01`). */
+    val displayLabel: String get() = "$section ${rowNo}열 $seatNo"
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is Seat) return false

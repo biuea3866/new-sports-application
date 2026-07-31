@@ -143,11 +143,11 @@ export default function EventDetailClient({ id }: EventDetailClientProps) {
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">판매</dt>
-            <dd className="text-xl font-bold mt-1 text-primary">{data.soldSeats}석</dd>
+            <dd className="text-xl font-bold mt-1 text-primary">{data.totalSold}석</dd>
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">잔여</dt>
-            <dd className="text-xl font-bold mt-1">{data.availableSeats}석</dd>
+            <dd className="text-xl font-bold mt-1">{data.totalAvailable}석</dd>
           </div>
         </dl>
 

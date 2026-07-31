@@ -103,7 +103,19 @@ export interface MyEvent {
   updatedAt: string;
 }
 
-export interface MyEventDetail extends MyEvent {
+/**
+ * 경기 단건 상세 — BE `/api/event-host/events/{id}`(MyEventWithSalesResponse) 응답 형태.
+ * 목록 응답(MyEvent)과 필드 구성이 다르므로 확장하지 않고 별도로 정의한다.
+ */
+export interface MyEventDetail {
+  id: number;
+  title: string;
+  venue: string;
+  startsAt: string;
+  status: EventStatus;
+  totalSeats: number;
+  totalSold: number;
+  totalAvailable: number;
   seats: SeatInfo[];
 }
 

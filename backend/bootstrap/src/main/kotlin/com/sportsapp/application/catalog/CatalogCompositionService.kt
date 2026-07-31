@@ -10,7 +10,7 @@ import com.sportsapp.domain.goods.dto.ProductWithStock
 import com.sportsapp.domain.goods.service.GoodsDomainService
 import com.sportsapp.domain.recruitment.entity.Recruitment
 import com.sportsapp.domain.recruitment.service.RecruitmentDomainService
-import com.sportsapp.domain.ticketing.entity.Event
+import com.sportsapp.domain.ticketing.dto.EventWithMinSeatPrice
 import com.sportsapp.domain.ticketing.service.TicketingDomainService
 import java.util.concurrent.Callable
 import java.util.concurrent.Future
@@ -111,7 +111,7 @@ class CatalogCompositionService(
             DOMAIN_GOODS -> fetchGoodsItems(criteria, pageable)
             DOMAIN_FACILITY -> programDomainService.searchForCatalog(criteria.keyword, pageable).content.map { it.toCatalogItem() }
             DOMAIN_RECRUITMENT -> recruitmentDomainService.searchOpenRecruitments(criteria.keyword, pageable).content.map { it.toCatalogItem() }
-            DOMAIN_TICKETING -> ticketingDomainService.searchOpenEvents(criteria.keyword, pageable).content.map { it.toCatalogItem() }
+            DOMAIN_TICKETING -> ticketingDomainService.searchOpenEventsForCatalog(criteria.keyword, pageable).content.map { it.toCatalogItem() }
             else -> emptyList()
         }
 
@@ -197,13 +197,14 @@ private fun Recruitment.toCatalogItem(): CatalogItem = CatalogItem(
     createdAt = createdAt,
 )
 
-private fun Event.toCatalogItem(): CatalogItem = CatalogItem(
+private fun EventWithMinSeatPrice.toCatalogItem(): CatalogItem = CatalogItem(
     itemType = CatalogItemType.TICKET,
-    sourceId = id,
-    title = title,
-    price = null,
+    sourceId = event.id,
+    title = event.title,
+    // 경기는 좌석마다 가격이 달라 최저 좌석가를 대표가로 노출한다(좌석 미등록 경기는 null).
+    price = minSeatPrice,
     sellerType = null,
-    status = status.name,
-    detailPath = "/events/$id",
-    createdAt = createdAt,
+    status = event.status.name,
+    detailPath = "/events/${event.id}",
+    createdAt = event.createdAt,
 )

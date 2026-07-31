@@ -111,25 +111,38 @@ describe("[U-01] zod 스키마 응답 형태 검증", () => {
   });
 
   describe("MyEventDetailSchema", () => {
-    it("seats 배열이 포함된 EventDetail을 파싱한다", () => {
+    // BE `/api/event-host/events/{id}`(MyEventWithSalesResponse) 실제 응답 형태.
+    it("좌석 판매 목록이 포함된 EventDetail을 파싱한다", () => {
       const data = {
         id: 1,
         title: "이벤트",
         venue: "venue",
         startsAt: "2026-06-01T10:00:00Z",
         status: "OPEN",
-        ownerId: 1,
         totalSeats: 2,
-        soldSeats: 1,
-        availableSeats: 1,
-        createdAt: "2026-01-01T00:00:00Z",
-        updatedAt: "2026-01-01T00:00:00Z",
+        totalSold: 1,
+        totalAvailable: 1,
         seats: [
-          { id: 1, label: "A1", sold: true },
-          { id: 2, label: "A2", sold: false },
+          { id: 1, label: "R석 1열 A1", sold: true },
+          { id: 2, label: "R석 1열 A2", sold: false },
         ],
       };
       const result = MyEventDetailSchema.safeParse(data);
+      expect(result.success).toBe(true);
+    });
+
+    it("좌석이 없는 경기도 파싱한다", () => {
+      const result = MyEventDetailSchema.safeParse({
+        id: 2,
+        title: "좌석 미등록",
+        venue: "venue",
+        startsAt: "2026-06-01T10:00:00Z",
+        status: "SCHEDULED",
+        totalSeats: 0,
+        totalSold: 0,
+        totalAvailable: 0,
+        seats: [],
+      });
       expect(result.success).toBe(true);
     });
   });

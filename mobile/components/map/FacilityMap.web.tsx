@@ -11,8 +11,6 @@
  */
 import { useEffect, useId, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
 
 import { ThemedText } from '../ui';
 import { useTheme } from '../../theme/useTheme';
@@ -31,15 +29,42 @@ const MAP_HEIGHT = 220;
 const LEAFLET_VERSION = '1.9.4';
 const LEAFLET_CDN_IMAGES = `https://unpkg.com/leaflet@${LEAFLET_VERSION}/dist/images`;
 
-L.Marker.prototype.options.icon = L.icon({
-  iconUrl: `${LEAFLET_CDN_IMAGES}/marker-icon.png`,
-  iconRetinaUrl: `${LEAFLET_CDN_IMAGES}/marker-icon-2x.png`,
-  shadowUrl: `${LEAFLET_CDN_IMAGES}/marker-shadow.png`,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
+type LeafletModule = typeof import('leaflet');
+type LeafletMap = ReturnType<LeafletModule['map']>;
+type LeafletMarker = ReturnType<LeafletModule['marker']>;
+
+let cachedLeaflet: LeafletModule | null = null;
+
+/**
+ * Leaflet을 **클라이언트에서만** 로드한다.
+ *
+ * Expo Router 웹은 페이지를 node에서 먼저 렌더하는데(window 없음) Leaflet은 임포트 시점에
+ * window를 참조해 "window is not defined"로 앱 전체가 500이 된다. 이펙트(=클라이언트에서만
+ * 실행) 안에서 지연 로드해 서버 렌더 경로에 라이브러리가 실리지 않게 한다.
+ */
+function loadLeaflet(): LeafletModule {
+  if (cachedLeaflet !== null) {
+    return cachedLeaflet;
+  }
+  /* eslint-disable @typescript-eslint/no-var-requires, global-require */
+  const leafletModule = require('leaflet') as LeafletModule & { default?: LeafletModule };
+  require('leaflet/dist/leaflet.css');
+  /* eslint-enable @typescript-eslint/no-var-requires, global-require */
+  const leaflet = leafletModule.default ?? leafletModule;
+
+  leaflet.Marker.prototype.options.icon = leaflet.icon({
+    iconUrl: `${LEAFLET_CDN_IMAGES}/marker-icon.png`,
+    iconRetinaUrl: `${LEAFLET_CDN_IMAGES}/marker-icon-2x.png`,
+    shadowUrl: `${LEAFLET_CDN_IMAGES}/marker-shadow.png`,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41],
+  });
+
+  cachedLeaflet = leaflet;
+  return leaflet;
+}
 
 export function FacilityMap({ facilities, center, onMarkerPress }: FacilityMapProps) {
   const { tokens } = useTheme();
@@ -47,8 +72,8 @@ export function FacilityMap({ facilities, center, onMarkerPress }: FacilityMapPr
   // "커밋 이후에만 존재하는 실 DOM 노드"에 대한 의존을 없애 테스트 환경(react-test-renderer는
   // 호스트 컴포넌트 ref를 채우지 않음)에서도 동일한 초기화 경로를 검증할 수 있다.
   const mapElementId = `facility-map-${useId()}`;
-  const mapRef = useRef<L.Map | null>(null);
-  const markersRef = useRef<L.Marker[]>([]);
+  const mapRef = useRef<LeafletMap | null>(null);
+  const markersRef = useRef<LeafletMarker[]>([]);
 
   const validFacilities = filterValidFacilities(facilities);
   const hasFacilities = validFacilities.length > 0;
@@ -58,8 +83,9 @@ export function FacilityMap({ facilities, center, onMarkerPress }: FacilityMapPr
       return;
     }
 
-    const map = L.map(mapElementId).setView([center.lat, center.lng], DEFAULT_ZOOM);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    const leaflet = loadLeaflet();
+    const map = leaflet.map(mapElementId).setView([center.lat, center.lng], DEFAULT_ZOOM);
+    leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
     }).addTo(map);
     mapRef.current = map;
@@ -85,9 +111,10 @@ export function FacilityMap({ facilities, center, onMarkerPress }: FacilityMapPr
       return;
     }
 
+    const leaflet = loadLeaflet();
     markersRef.current.forEach((marker) => marker.remove());
     markersRef.current = validFacilities.map((facility) => {
-      const marker = L.marker([facility.lat, facility.lng]).addTo(map);
+      const marker = leaflet.marker([facility.lat, facility.lng]).addTo(map);
       marker.bindPopup(facility.name);
       marker.on('click', () => onMarkerPress(facility.id));
       return marker;

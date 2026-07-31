@@ -21,10 +21,17 @@ jest.mock('expo-router', () => ({
   useRouter: jest.fn(),
 }));
 
+jest.mock('../../../lib/useMyProfile', () => ({
+  useMyProfile: jest.fn(),
+}));
+
 import { useAuthStore } from '../../../lib/auth';
 import { useRouter } from 'expo-router';
 import { isFeatureEnabled } from '../../../lib/feature-flags';
+import { useMyProfile } from '../../../lib/useMyProfile';
 import MeScreen from '../me';
+
+const useMyProfileMock = useMyProfile as unknown as jest.Mock;
 
 const useAuthStoreMock = useAuthStore as unknown as jest.Mock;
 const useRouterMock = useRouter as jest.MockedFunction<typeof useRouter>;
@@ -55,6 +62,7 @@ describe('마이 화면 — 내 주문 내역 진입점', () => {
       push: pushMock,
       replace: replaceMock,
     } as unknown as ReturnType<typeof useRouter>);
+    useMyProfileMock.mockReturnValue({ data: undefined, isLoading: false, isError: false });
   });
 
   afterEach(() => {
@@ -93,5 +101,57 @@ describe('마이 화면 — 내 주문 내역 진입점', () => {
     render(<MeScreen />);
 
     expect(screen.getByText('내 주문 내역')).toBeTruthy();
+  });
+});
+
+describe('마이 화면 — 내 정보 표시', () => {
+  const profile = {
+    id: 68,
+    email: 'demo.user@sportsapp.dev',
+    status: 'ACTIVE' as const,
+    createdAt: '2026-07-31T05:00:00Z',
+  };
+
+  beforeEach(() => {
+    mockUseColorScheme.mockReturnValue('light');
+    isFeatureEnabledMock.mockReturnValue(false);
+    useRouterMock.mockReturnValue({
+      push: jest.fn(),
+      replace: jest.fn(),
+    } as unknown as ReturnType<typeof useRouter>);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  // 앱을 새로고침하면 메모리에만 있던 accessToken이 사라진다 — 그때도 내 정보는 보여야 한다.
+  it('토큰이 메모리에 없어도 서버 프로필로 이메일과 사용자 ID를 표시한다', () => {
+    mockAuthState({ accessToken: null });
+    useMyProfileMock.mockReturnValue({ data: profile, isLoading: false, isError: false });
+
+    render(<MeScreen />);
+
+    expect(screen.getByText('demo.user@sportsapp.dev')).toBeTruthy();
+    expect(screen.getByText('68')).toBeTruthy();
+  });
+
+  it('프로필을 불러오는 중에는 안내 문구를 표시한다', () => {
+    mockAuthState({ accessToken: null });
+    useMyProfileMock.mockReturnValue({ data: undefined, isLoading: true, isError: false });
+
+    render(<MeScreen />);
+
+    // 이메일·사용자 ID 두 필드가 같은 상태 문구를 보여준다.
+    expect(screen.getAllByText('불러오는 중...').length).toBeGreaterThan(0);
+  });
+
+  it('프로필 조회에 실패하면 안내 문구를 표시한다', () => {
+    mockAuthState({ accessToken: null });
+    useMyProfileMock.mockReturnValue({ data: undefined, isLoading: false, isError: true });
+
+    render(<MeScreen />);
+
+    expect(screen.getAllByText('정보를 불러오지 못했어요').length).toBeGreaterThan(0);
   });
 });

@@ -47,9 +47,9 @@ export function AdminSidebar(): JSX.Element {
     <aside
       role="complementary"
       aria-label="어드민 사이드바"
-      className="w-64 border-r border-gray-200 bg-white p-4"
+      className="w-64 border-r border-border bg-card p-4"
     >
-      <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
+      <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
         MCP
       </h2>
       <nav>
@@ -58,10 +58,10 @@ export function AdminSidebar(): JSX.Element {
             <li key={item.href}>
               <Link
                 href={item.href}
-                className="block rounded-md px-3 py-2 text-sm hover:bg-gray-50 focus:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="block rounded-md px-3 py-2 text-sm text-foreground hover:bg-accent focus:bg-accent focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <span className="block font-medium">{item.label}</span>
-                <span className="block text-xs text-gray-500">{item.description}</span>
+                <span className="block text-xs text-muted-foreground">{item.description}</span>
               </Link>
             </li>
           ))}

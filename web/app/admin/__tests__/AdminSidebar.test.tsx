@@ -47,6 +47,30 @@ describe("AdminSidebar", () => {
     expect(className).toMatch(/(foreground|accent|ring|muted|primary)/);
   });
 
+  // 다크 모드에서 사이드바 글자가 배경에 묻히던 회귀 — 하드코딩 색은 한 쪽 모드만 커버한다.
+  it("사이드바 컨테이너가 하드코딩 색 없이 시맨틱 토큰으로 렌더된다", () => {
+    render(<AdminSidebar />);
+    const className = screen.getByRole("complementary").getAttribute("class") ?? "";
+    expect(className).not.toMatch(/(gray|slate|zinc|neutral|white|black)(-\d+)?\b/);
+    expect(className).toMatch(/(background|card|border|muted)/);
+  });
+
+  it("MCP nav 항목도 하드코딩 색 없이 시맨틱 토큰으로 렌더된다", () => {
+    render(<AdminSidebar />);
+    const link = screen.getByRole("link", { name: /MCP 토큰/ });
+    const className = link.getAttribute("class") ?? "";
+    expect(className).not.toMatch(/(gray|blue|red|green|slate|zinc|neutral|white|black)-\d/);
+    expect(className).toMatch(/(foreground|accent|ring|muted|primary)/);
+  });
+
+  it("섹션 제목도 하드코딩 색 없이 시맨틱 토큰으로 렌더된다", () => {
+    render(<AdminSidebar />);
+    const heading = screen.getByRole("heading", { name: "MCP" });
+    const className = heading.getAttribute("class") ?? "";
+    expect(className).not.toMatch(/(gray|slate|zinc|neutral|white|black)-\d/);
+    expect(className).toMatch(/(foreground|muted)/);
+  });
+
   it("피처 플래그 nav 링크가 키보드 포커스 가능하다", () => {
     render(<AdminSidebar />);
     const link = screen.getByRole("link", { name: /피처 플래그/ });
