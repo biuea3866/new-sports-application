@@ -35,6 +35,12 @@ import java.time.ZonedDateTime
  * [OrderPaymentLiveness]는 domain.common 공유 커널이라 booking domain이 직접 import해도
  * 도메인 교차가 아니다.
  *
+ * **8차 재설계 (p1 — 단조성)**: [OrderPaymentLiveness.Live]가 이제 `since`(느린 TTL)뿐
+ * 아니라 `attemptSince`(빠른 TTL, 있을 때만)도 함께 들고 온다 — payment 쪽이 "승자 하나"를
+ * 고르지 않기 때문이다. 이 DomainService의 `isExpirable`은 두 창을 **모두** 검사해야 하고,
+ * 검증해야 할 불변식은 **단조성**이다: attempting 증거(`attemptSince`)가 추가된다고 해서
+ * 이미 보호되던 대상이 풀리면 안 되고, 오히려 보호가 늘어날 수만 있어야 한다.
+ *
  * 슬롯 점유 해제는 별도 보상 로직이 아니라, PENDING → EXPIRED 전이 자체로 완료된다 —
  * 슬롯 점유는 countBySlotIdAndStatusIn(PENDING, CONFIRMED)로 파생되므로 EXPIRED로 전이되면
  * 그 즉시 활성 카운트에서 제외된다.
@@ -251,14 +257,20 @@ class BookingExpiryDomainServiceTest : BehaviorSpec({
         }
     }
 
-    Given("60분 지난 READY 예약에 방금 재결제 시도가 삽입됐을 때 (7차 재리뷰 p1 — 카테고리 우선순위 결함 종단 회귀)") {
+    Given("60분 지난 READY 예약에 방금 재결제 시도가 삽입됐을 때 (7차→8차 재리뷰 p1 — 카테고리 우선순위 결함 종단 회귀)") {
         val bookingRepository = mockk<BookingRepository>()
         val service = buildService(bookingRepository)
         // orderId=102L의 payment: 65분 전 발급된 READY(readyTtlMinutes=60을 이미 초과) +
         // 5초 전 삽입된 재결제 PENDING. 7차 이전(카테고리 우선순위) 로직이면 attempting을
-        // 아예 보지 않고 오래된 READY만으로 Live(65분 전)를 반환해 즉시 오만료됐다 —
-        // PaymentLivenessClassifier.classify()를 실제로 호출해 그 산출물이 filterExpirable에서
-        // 어떻게 소비되는지 종단으로 검증한다(스텁에 결론을 미리 박지 않는다).
+        // 아예 보지 않고 오래된 READY만으로 Live(65분 전)를 반환해 즉시 오만료됐다. 7차(교차
+        // 비교)는 반대로 이 케이스에서 최신 attempting을 골라 Attempting을 반환했지만, 그건
+        // "빠른 TTL만 재검증"으로 이어져 65분 전 READY 자체가 이미 지난 readyTtl(60분)과
+        // 무관하게 attempting의 5초 전 시각만으로 즉시 보호(비만료)되는 우연한 결과였을 뿐
+        // — 다른 조합(빠른 TTL이 더 이른 경우)에서는 오히려 방향이 뒤집혀 오만료가 재발했다
+        // (8차 KDoc 참고). 8차는 승자를 고르지 않고 Live(since=staleReadyAt,
+        // attemptSince=retryAttemptAt)를 그대로 반환한다 — PaymentLivenessClassifier.classify()를
+        // 실제로 호출해 그 산출물이 filterExpirable에서 어떻게 소비되는지 종단으로 검증한다
+        // (스텁에 결론을 미리 박지 않는다).
         val staleReadyAt = ZonedDateTime.now().minusMinutes(65)
         val retryAttemptAt = ZonedDateTime.now().minusSeconds(5)
         val liveness = PaymentLivenessClassifier.classify(
@@ -271,17 +283,123 @@ class BookingExpiryDomainServiceTest : BehaviorSpec({
             BookingExpiryCandidate(bookingId = 102L, createdAt = staleReadyAt),
         )
 
-        When("classify 결과(Attempting이어야 한다)를 filterExpirable에 그대로 넘기면") {
-            liveness.of(102L).shouldBeInstanceOf<OrderPaymentLiveness.Attempting>()
-
+        When("classify 결과를 filterExpirable에 그대로 넘기면") {
             val result = service.filterExpirable(
                 candidates = candidates,
                 liveness = mapOf(102L to liveness.of(102L)),
                 ttlPolicy = defaultTtlPolicy,
             )
 
-            Then("오래된 READY(readyTtl 초과)에 가려지지 않고 재결제 시도 시각 기준으로 만료되지 않는다") {
+            Then("classify는 승자를 고르지 않고 Live(since=staleReadyAt, attemptSince=retryAttemptAt)를 반환한다") {
+                val classified = liveness.of(102L).shouldBeInstanceOf<OrderPaymentLiveness.Live>()
+                classified.since shouldBe staleReadyAt
+                classified.attemptSince shouldBe retryAttemptAt
+            }
+
+            Then("빠른 TTL(재결제 시도 시각 기준)까지는 아직 지나지 않아 만료되지 않는다") {
                 result.expirableIds shouldBe emptyList()
+            }
+        }
+    }
+
+    Given("READY 발급 40분 경과(느린 TTL 60분 안)에 20분 전 재결제 PENDING이 삽입됐을 때 (8차 핵심 회귀 — 세 번째 가림)") {
+        val bookingRepository = mockk<BookingRepository>()
+        val service = buildService(bookingRepository)
+        // 7차(교차 비교)는 newestAttempt(20분 전)가 newestLive(40분 전)보다 최신이므로
+        // Attempting(20분 전)을 반환했다 — 빠른 TTL(15분)만 재검증되어 20분 전은 이미
+        // 지나서 즉시 만료됐다. 그러나 READY(40분 전)는 느린 TTL(60분) 안에 있어 아직
+        // 20분 더 보호돼야 하는 상태였다 — "돈은 받고 예약은 없음"이 방향만 바뀌어 재발한
+        // 지점. 8차는 두 앵커를 모두 담아, 느린 TTL이 아직 안 지났으면 attemptSince와
+        // 무관하게 보호한다.
+        val readyAt = ZonedDateTime.now().minusMinutes(40)
+        val retryAttemptAt = ZonedDateTime.now().minusMinutes(20)
+        val liveness = PaymentLivenessClassifier.classify(
+            listOf(
+                PaymentLivenessRow(orderId = 103L, status = PaymentStatus.READY, createdAt = readyAt),
+                PaymentLivenessRow(orderId = 103L, status = PaymentStatus.PENDING, createdAt = retryAttemptAt),
+            ),
+        )
+        val candidates = listOf(
+            BookingExpiryCandidate(bookingId = 103L, createdAt = readyAt),
+        )
+
+        When("filterExpirable을 호출하면") {
+            val result = service.filterExpirable(
+                candidates = candidates,
+                liveness = mapOf(103L to liveness.of(103L)),
+                ttlPolicy = defaultTtlPolicy,
+            )
+
+            Then("느린 TTL(60분)이 아직 안 지나 attemptSince와 무관하게 만료되지 않는다 — READY가 통째로 버려지지 않는다") {
+                result.expirableIds shouldBe emptyList()
+            }
+        }
+    }
+
+    Given("느린 TTL을 이미 지난 Live에 재결제 시도 증거가 추가될 때 (단조성 불변식 — 보호는 절대 줄어들지 않는다)") {
+        val bookingRepository = mockk<BookingRepository>()
+        val service = buildService(bookingRepository)
+        val staleReadyAt = ZonedDateTime.now().minusMinutes(70)
+        val candidates = listOf(
+            BookingExpiryCandidate(bookingId = 104L, createdAt = staleReadyAt),
+        )
+
+        When("attemptSince 없이 filterExpirable을 호출하면 (증거 추가 전 — 느린 TTL만 지나 만료 대상)") {
+            val beforeEvidence = service.filterExpirable(
+                candidates = candidates,
+                liveness = mapOf(104L to OrderPaymentLiveness.Live(since = staleReadyAt, attemptSince = null)),
+                ttlPolicy = defaultTtlPolicy,
+            )
+
+            Then("만료 대상이다") {
+                beforeEvidence.expirableIds shouldBe listOf(104L)
+            }
+        }
+
+        When("같은 since에 방금 삽입된 attemptSince를 추가해 filterExpirable을 호출하면 (증거 추가 후)") {
+            val afterEvidence = service.filterExpirable(
+                candidates = candidates,
+                liveness = mapOf(104L to OrderPaymentLiveness.Live(since = staleReadyAt, attemptSince = ZonedDateTime.now().minusSeconds(5))),
+                ttlPolicy = defaultTtlPolicy,
+            )
+
+            Then("만료 대상에서 빠진다 — 증거가 추가됐다고 이미 있던 보호가 사라지면 안 된다(단조성)") {
+                afterEvidence.expirableIds shouldBe emptyList()
+            }
+        }
+    }
+
+    Given("느린 TTL 안에서 이미 보호받던 Live에 재결제 시도 증거가 추가될 때 (단조성 — 보호가 풀리는 방향은 없다)") {
+        val bookingRepository = mockk<BookingRepository>()
+        val service = buildService(bookingRepository)
+        val recentReadyAt = ZonedDateTime.now().minusMinutes(10)
+        val candidates = listOf(
+            BookingExpiryCandidate(bookingId = 105L, createdAt = recentReadyAt),
+        )
+
+        When("attemptSince 없이 filterExpirable을 호출하면 (느린 TTL 안 — 이미 보호됨)") {
+            val beforeEvidence = service.filterExpirable(
+                candidates = candidates,
+                liveness = mapOf(105L to OrderPaymentLiveness.Live(since = recentReadyAt, attemptSince = null)),
+                ttlPolicy = defaultTtlPolicy,
+            )
+
+            Then("만료 대상이 아니다") {
+                beforeEvidence.expirableIds shouldBe emptyList()
+            }
+        }
+
+        When("이미 지난 attemptSince(15분 전, 빠른 TTL도 지남)를 추가해 filterExpirable을 호출하면") {
+            val afterEvidence = service.filterExpirable(
+                candidates = candidates,
+                liveness = mapOf(
+                    105L to OrderPaymentLiveness.Live(since = recentReadyAt, attemptSince = ZonedDateTime.now().minusMinutes(30)),
+                ),
+                ttlPolicy = defaultTtlPolicy,
+            )
+
+            Then("여전히 만료 대상이 아니다 — 느린 TTL 보호가 attemptSince로 인해 풀리지 않는다") {
+                afterEvidence.expirableIds shouldBe emptyList()
             }
         }
     }

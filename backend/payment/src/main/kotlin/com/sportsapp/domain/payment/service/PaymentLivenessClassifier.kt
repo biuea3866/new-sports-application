@@ -58,24 +58,35 @@ import com.sportsapp.domain.payment.entity.PaymentStatus
  * 사용자가 돌아와 재결제(`POST /payments/prepare`)를 시도해 새 PENDING 행이 막 커밋된
  * 시점에 스위퍼가 돌면, 그 새 PENDING이 아무리 최신이어도 오래된 READY의 카테고리
  * 우선순위에 가려 `Live(오래된 시각)`으로 판정돼 즉시 오만료됐다 — "돈은 받고 예약은 없음"이
- * 여기서도 재발한다. 카테고리 우선순위가 아니라 **두 카테고리의 최댓값끼리 교차 비교**해
- * 실제로 가장 최근에 갱신된 쪽을 앵커로 고른다.
+ * 여기서도 재발한다. 카테고리 우선순위가 아니라 두 카테고리의 최댓값끼리 교차 비교해 실제로
+ * 가장 최근에 갱신된 쪽을 앵커로 고르도록 7차에서 수정했었다.
+ *
+ * **8차 재설계 (p1 — "승자 하나 고르기" 자체가 근본 원인, 방향만 바꿔 재발)**: 7차의 교차
+ * 비교도 결국 **하나만** 반환했다. 그런데 소비측(`BookingDomainService.isExpirable`)은
+ * live를 **느린 TTL**(예: 60분), attempting을 **빠른 TTL**(예: 15분)로 소비한다 — 서로 다른
+ * TTL이다. `newestAttempt > newestLive`이면서 `newestAttempt + 빠른TTL < newestLive + 느린TTL`인
+ * 흔한 경우(재결제가 READY 발급 후 느린TTL−빠른TTL 이내, 예: 45분 이내)에는, "더 최신"인
+ * attempting을 골라도 그게 **더 짧은 보호 창**(빠른 TTL)으로 이어져 아직 느린 TTL 안에 있는
+ * READY까지 통째로 버려진다 — 방향만 바뀐 동일 결함("돈은 받고 예약은 없음")이었다. 게다가
+ * 재결제를 시도할수록(attempting 증거가 늘수록) 보호가 짧아지는 비단조 결함이었다.
+ * "승자 하나"로는 **증거가 추가되면 보호가 절대 줄지 않는다(단조성)**는 불변식을 표현할 수
+ * 없다 — 그래서 live 행이 하나라도 있으면 승자를 고르지 않고 [OrderPaymentLiveness.Live]가
+ * `since`(느린 TTL 앵커)와 `attemptSince`(빠른 TTL 앵커, 있으면)를 **함께** 반환한다. 소비측이
+ * 두 창을 모두 검사해 단조성을 보장한다(위 [OrderPaymentLiveness] KDoc "8차 재설계" 참고).
  *
  * 있는 정보(payment 상태·시각)로만 판정한다:
  * - **settled**(COMPLETED): 돈을 받았다 — 절대 만료(취소) 금지. [OrderPaymentLiveness.Settled].
  * - **live**(READY 또는 COMPLETED): 사용자가 checkoutUrl을 받았거나 결제 완료 — 결제가
  *   시작이라도 됐다는 신호. 방치돼도 짧은 TTL로 만료시키면 결제창에 머무는 사용자를
  *   오만료할 위험이 있으므로, 호출 컨텍스트(booking 등)가 소유한 **느린 TTL**을 live payment의
- *   **행 생성 시각 중 최댓값**에 적용해서만 만료를 허용한다([OrderPaymentLiveness.Live]). 한
+ *   **행 생성 시각 중 최댓값**에 적용해서만 만료를 허용한다([OrderPaymentLiveness.Live.since]). 한
  *   주문에 payment가 여러 건인 것은 정상 흐름이므로(장바구니 K1 + 결제 페이지 K2 재개시 등)
  *   최댓값이 아닌 값을 쓰면 "오래된 READY + 방금 READY" 조합에서 판정이 뒤집혀 오만료가 난다.
  * - **attempting**(PENDING): PG 왕복 대기 중 — 아직 결제가 시작됐다는 확답(checkoutUrl)은
- *   없지만 시도가 진행 중이다. **빠른 TTL**이나 앵커를 시도 시작 시각으로 재-앵커한다
- *   ([OrderPaymentLiveness.Attempting], 위 6차 참고).
- * - **live와 attempting이 함께 있을 때(7차)**: 두 카테고리의 최댓값(createdAt)을 비교해 더
- *   최신인 쪽을 반환한다 — live 최댓값이 attempting 최댓값보다 앞서지 않으면(같거나 이후면)
- *   [OrderPaymentLiveness.Live], 그 반대면(더 최근 시도가 존재하면) [OrderPaymentLiveness.Attempting].
- *   카테고리 자체의 우선순위(live > attempting)로 앵커를 정하지 않는다.
+ *   없지만 시도가 진행 중이다. live 행이 하나도 없으면 [OrderPaymentLiveness.Attempting]으로
+ *   단독 반환하고, **빠른 TTL**이나 앵커를 시도 시작 시각으로 재-앵커한다(위 6차 참고).
+ * - **live와 attempting이 함께 있을 때(8차)**: live 최댓값을 `since`, attempting 최댓값을
+ *   `attemptSince`로 **함께 담아** [OrderPaymentLiveness.Live]로 반환한다(승자를 고르지 않는다).
  * - 그 외(행 없음/FAILED/CANCELLED/REFUNDED): 결제가 시작 못 했거나 종결됐다 — **빠른 TTL**로
  *   만료 허용, 앵커는 호출 컨텍스트가 소유한 주문 생성 시각([OrderPaymentLiveness.None]).
  *   PG prepare 실패로 즉시 FAILED로 전이되는 케이스(F-A 고립 예약)가 여기 포함된다
@@ -95,12 +106,14 @@ object PaymentLivenessClassifier {
     fun isAttempting(status: PaymentStatus): Boolean = status == PaymentStatus.PENDING
 
     /**
-     * orderId별 [OrderPaymentLiveness]를 산출한다 — settled가 있으면 그것 하나, 없으면
-     * live·attempting 최댓값끼리 **앵커 최신성**으로 비교해 정확히 하나의 판정만 반환한다
-     * (같은 주문에 여러 상태의 payment 행이 섞여 있어도 판정은 하나. 7차 — 카테고리
-     * 우선순위가 아니다, 위 클래스 KDoc "7차 재설계" 참고). payment 행이 전혀 없는 orderId는
-     * 이 맵에 없다 — [PaymentLivenessQueryResult.of]가 조회 시 [OrderPaymentLiveness.None]을
-     * 기본값으로 채운다.
+     * orderId별 [OrderPaymentLiveness]를 산출한다 — settled가 있으면 그것 하나, live 행이
+     * 하나라도 있으면 `since`(live 최댓값)·`attemptSince`(attempting 최댓값, 없으면 `null`)를
+     * **함께 담은** [OrderPaymentLiveness.Live] 하나, live가 전혀 없고 attempting만 있으면
+     * [OrderPaymentLiveness.Attempting] 하나(같은 주문에 여러 상태의 payment 행이 섞여
+     * 있어도 판정은 하나 — 승자를 고르는 게 아니라 카테고리별 최댓값을 모두 전달한다. 8차 —
+     * 위 클래스 KDoc "8차 재설계" 참고). payment 행이 전혀 없는 orderId는 이 맵에 없다 —
+     * [PaymentLivenessQueryResult.of]가 조회 시 [OrderPaymentLiveness.None]을 기본값으로
+     * 채운다.
      */
     fun classify(rows: List<PaymentLivenessRow>): PaymentLivenessQueryResult {
         val livenessByOrderId = rows.groupBy { it.orderId }
@@ -109,13 +122,12 @@ object PaymentLivenessClassifier {
     }
 
     /**
-     * **7차 재설계 (p1)**: 이전에는 `liveRows.isNotEmpty()`면 `attemptingRows`를 평가조차
-     * 하지 않고 즉시 `Live`를 반환했다 — live 행이 한 건이라도 있으면 아무리 최신인 attempting
-     * 행이 있어도 통째로 버려져, "오래된 READY 방치 + 방금 재결제 시도로 삽입된 최신 PENDING"
-     * 조합에서 오만료가 재발했다(클래스 KDoc 참고). 이제 두 카테고리의 최댓값을 각각 구해
-     * **교차 비교**한다 — `newestLive`가 `newestAttempt`보다 앞서지 않을 때(같거나 이후,
-     * attempting이 없는 경우 포함)만 `Live`를, 그 외(더 최신 attempting이 존재)에는
-     * `Attempting`을 반환한다.
+     * **8차 재설계 (p1)**: 7차는 `newestLive`·`newestAttempt`를 교차 비교해 **하나만** 골라
+     * 반환했다 — 그런데 소비측이 두 앵커를 서로 다른 TTL로 소비하는 이상 "하나만 고르기"는
+     * 방향만 바꿔 같은 결함을 재발시켰다(클래스 KDoc "8차 재설계" 참고). 이제 live 행이
+     * 하나라도 있으면 승자를 고르지 않고 `newestLive`와 `newestAttempt`를 **모두**
+     * [OrderPaymentLiveness.Live]에 담아 반환한다 — 소비측이 두 창(느린 TTL by `since`, 빠른
+     * TTL by `attemptSince`)을 모두 검사해 단조성을 스스로 보장하게 한다.
      */
     private fun classifyOrder(rows: List<PaymentLivenessRow>): OrderPaymentLiveness {
         if (rows.any { isSettled(it.status) }) return OrderPaymentLiveness.Settled
@@ -124,8 +136,7 @@ object PaymentLivenessClassifier {
         val newestAttempt = rows.filter { isAttempting(it.status) }.maxOfOrNull { it.createdAt }
 
         return when {
-            newestLive != null && (newestAttempt == null || !newestLive.isBefore(newestAttempt)) ->
-                OrderPaymentLiveness.Live(newestLive)
+            newestLive != null -> OrderPaymentLiveness.Live(since = newestLive, attemptSince = newestAttempt)
             newestAttempt != null -> OrderPaymentLiveness.Attempting(newestAttempt)
             else -> OrderPaymentLiveness.None
         }

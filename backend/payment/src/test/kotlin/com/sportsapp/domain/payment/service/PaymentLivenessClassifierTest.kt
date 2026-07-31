@@ -21,10 +21,12 @@ import java.time.ZonedDateTime
  * PENDING 행을 먼저 커밋하고 PG 왕복 동안 그 상태로 머무는 창에서, 방금 시작된 재결제 시도를
  * 앵커 없이(=즉시 만료 허용) 판정하면 오만료가 재발한다.
  *
- * 핵심 회귀(7차 — p1): live 행이 한 건이라도 있으면 `attempting` 갈래를 아예 평가하지 않고
- * 즉시 `Live`를 반환하던 카테고리 우선순위 결함 — 오래된 READY + 방금 삽입된 최신 PENDING
- * 조합에서 최신 PENDING이 통째로 버려져 오만료가 재발했다. 두 카테고리 최댓값의 교차
- * 비교(양방향)로 검증한다.
+ * 핵심 회귀(7차 → 8차 — p1): 7차는 live 행이 한 건이라도 있으면 `attempting` 갈래를 아예
+ * 평가하지 않고 즉시 `Live`를 반환하던 카테고리 우선순위 결함을 "두 카테고리 최댓값의 교차
+ * 비교"로 고쳤으나, 그 비교 자체가 "승자 하나 고르기"라 서로 다른 TTL로 소비되는 두 신호
+ * 중 하나를 통째로 버리는 문제는 방향만 바뀌어 재발했다(8차). 이제 live 행이 있으면
+ * `attempting` 최댓값을 버리지 않고 `Live.attemptSince`에 함께 담아 반환한다 — "승자 하나"가
+ * 아니라 "두 앵커 모두 전달"로 검증한다.
  */
 class PaymentLivenessClassifierTest : BehaviorSpec({
 
@@ -165,7 +167,7 @@ class PaymentLivenessClassifierTest : BehaviorSpec({
         }
     }
 
-    Given("오래된 READY와 방금 삽입된 PENDING이 함께 있을 때 (7차 핵심 회귀 — 카테고리 우선순위가 최신 시도를 가리면 안 된다)") {
+    Given("오래된 READY와 방금 삽입된 PENDING이 함께 있을 때 (8차 핵심 회귀 — 승자를 고르지 않고 양쪽 앵커를 모두 담는다)") {
         val staleReadyAt = ZonedDateTime.now().minusMinutes(70)
         val retryAttemptAt = ZonedDateTime.now().minusSeconds(5)
         val rows = listOf(
@@ -173,17 +175,18 @@ class PaymentLivenessClassifierTest : BehaviorSpec({
             PaymentLivenessRow(orderId = 9L, status = PaymentStatus.PENDING, createdAt = retryAttemptAt),
         )
 
-        When("classify를 호출하면 (READY가 있지만 더 최신인 PENDING이 존재)") {
+        When("classify를 호출하면 (READY와 더 최신인 PENDING이 함께 존재)") {
             val result = PaymentLivenessClassifier.classify(rows)
 
-            Then("Attempting(retryAttemptAt)으로 분류된다 — 오래된 Live가 최신 Attempting을 가리면 안 된다") {
-                val liveness = result.of(9L).shouldBeInstanceOf<OrderPaymentLiveness.Attempting>()
-                liveness.since shouldBe retryAttemptAt
+            Then("Live(since=staleReadyAt, attemptSince=retryAttemptAt)로 분류된다 — attempting이 통째로 버려지지 않는다") {
+                val liveness = result.of(9L).shouldBeInstanceOf<OrderPaymentLiveness.Live>()
+                liveness.since shouldBe staleReadyAt
+                liveness.attemptSince shouldBe retryAttemptAt
             }
         }
     }
 
-    Given("방금 발급된 READY와 오래된 PENDING(원 시도)이 함께 있을 때 (7차 회귀 — 반대 방향)") {
+    Given("방금 발급된 READY와 오래된 PENDING(원 시도)이 함께 있을 때 (8차 회귀 — 반대 방향)") {
         val recentReadyAt = ZonedDateTime.now().minusMinutes(1)
         val originalAttemptAt = ZonedDateTime.now().minusMinutes(70)
         val rows = listOf(
@@ -191,12 +194,27 @@ class PaymentLivenessClassifierTest : BehaviorSpec({
             PaymentLivenessRow(orderId = 10L, status = PaymentStatus.READY, createdAt = recentReadyAt),
         )
 
-        When("classify를 호출하면 (PENDING이 있지만 더 최신인 READY가 존재)") {
+        When("classify를 호출하면 (PENDING과 더 최신인 READY가 함께 존재)") {
             val result = PaymentLivenessClassifier.classify(rows)
 
-            Then("Live(recentReadyAt)로 분류된다") {
+            Then("Live(since=recentReadyAt, attemptSince=originalAttemptAt)로 분류된다") {
                 val liveness = result.of(10L).shouldBeInstanceOf<OrderPaymentLiveness.Live>()
                 liveness.since shouldBe recentReadyAt
+                liveness.attemptSince shouldBe originalAttemptAt
+            }
+        }
+    }
+
+    Given("live payment가 없고 attempting만 있을 때 (Attempting은 live가 전혀 없을 때만 반환된다)") {
+        val attemptAt = ZonedDateTime.now().minusSeconds(5)
+        val rows = listOf(PaymentLivenessRow(orderId = 11L, status = PaymentStatus.PENDING, createdAt = attemptAt))
+
+        When("classify를 호출하면") {
+            val result = PaymentLivenessClassifier.classify(rows)
+
+            Then("Attempting(attemptAt)으로 분류된다") {
+                val liveness = result.of(11L).shouldBeInstanceOf<OrderPaymentLiveness.Attempting>()
+                liveness.since shouldBe attemptAt
             }
         }
     }

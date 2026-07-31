@@ -268,10 +268,12 @@ class BookingDomainService(
      *
      * - [OrderPaymentLiveness.Settled]: 돈을 받았다 — 항상 제외(절대 만료 금지). sealed
      *   `when`이 이 분기를 강제하므로 settled 우선 판정을 놓칠 수 없다.
-     * - [OrderPaymentLiveness.Live]: 발급 시각이 느린 TTL(readyTtlMinutes)을 아직 지나지
-     *   않았으면 결제창에 머무는 사용자로 보아 제외, 지났으면 만료 대상.
-     * - [OrderPaymentLiveness.Attempting]: `max(candidate.createdAt, since)`가 빠른 TTL
-     *   (ttlMinutes)을 지나지 않았으면 재결제 시도 중으로 보아 제외, 지났으면 만료 대상.
+     * - [OrderPaymentLiveness.Live] (8차 — 두 창 모두 검사): `since`가 느린 TTL(readyTtlMinutes)을
+     *   아직 지나지 않았으면 결제창에 머무는 사용자로 보아 즉시 제외(단락 평가). 지났다면
+     *   `attemptSince`가 없으면 그대로 만료 대상, 있으면 `max(candidate.createdAt, attemptSince)`가
+     *   빠른 TTL(ttlMinutes)까지 지나야만 만료 대상 — 둘 중 하나만 지나서는 안 된다(AND).
+     * - [OrderPaymentLiveness.Attempting] (live 행이 전혀 없을 때만): `max(candidate.createdAt, since)`가
+     *   빠른 TTL(ttlMinutes)을 지나지 않았으면 재결제 시도 중으로 보아 제외, 지났으면 만료 대상.
      * - [OrderPaymentLiveness.None](liveness 맵에 없는 후보도 동일): 빠른 TTL만 재검증 —
      *   candidate.createdAt이 ttlMinutes를 지났으면 만료 대상(F-A 고립 예약 등).
      *
@@ -282,6 +284,19 @@ class BookingDomainService(
      * `tryExpire`의 CAS UPDATE로 커밋 완료된 종결 상태라 다음 스케줄 주기가 되돌리지 않는다.
      * "다음 주기 보호"는 **이번 주기에 만료되지 않은 후보**(예: 이 창 이전에 이미 조회에
      * 포함돼 liveness 판정을 받은 candidate)에만 적용되는 별개의 명제다.
+     *
+     * **8차 재설계 (p1 — 단조성 불변식으로 세 번째 재발을 닫는다)**: 6차·7차는 모두 "live
+     * 우선순위" 또는 "최신 앵커 교차 비교"로 live/attempting 중 **승자 하나**를 고르는
+     * `classifyOrder`(payment 쪽)에 기대어 이 메서드는 [OrderPaymentLiveness.Live]만 보면
+     * 됐다. 그런데 live(느린 TTL)와 attempting(빠른 TTL)은 **서로 다른 TTL**로 소비되므로
+     * "더 최신인 쪽"이 "더 짧은 보호 창"일 수 있다 — 승자 하나를 고르는 순간 그 반대편의
+     * 보호가 통째로 사라져 방향만 바뀐 오만료가 재발했다. [OrderPaymentLiveness.Live]는
+     * 이제 `since`(느린 TTL 앵커)와 `attemptSince`(빠른 TTL 앵커, 있을 때만)를 함께 들고
+     * 오므로, 이 메서드가 **두 창을 모두** 검사한다 — **지켜야 할 불변식(단조성): 증거가
+     * 추가되면(= `attemptSince`가 채워지면) 보호 창은 절대 짧아지지 않는다.** `since` 조건은
+     * `attemptSince` 유무와 무관하게 그대로 유지되므로(AND 결합), 이미 느린 TTL 안에서
+     * 보호받던 대상이 attempting 증거가 추가됐다고 풀리는 일은 없다 — 오히려 `attemptSince`가
+     * 채워지면 빠른 TTL 창까지 추가로 닫혀야 하므로 보호가 늘어날 수만 있다.
      */
     fun filterExpirable(
         candidates: List<BookingExpiryCandidate>,
@@ -309,7 +324,15 @@ class BookingDomainService(
         // 위한 방어 분기(도달 불가). false를 반환해 만에 하나 호출 순서가 바뀌어도 오만료를
         // 만들지 않는다.
         is OrderPaymentLiveness.Settled -> false
-        is OrderPaymentLiveness.Live -> liveness.since.isBefore(readyThreshold)
+        // 8차 — 단조성: 느린 TTL(since)이 아직 안 지났으면 attemptSince를 볼 것도 없이 보호(단락
+        // 평가). 지났다면 attemptSince가 없을 때만 그대로 만료 대상이고, 있으면 빠른 TTL까지
+        // 추가로 지나야 한다(AND) — attempting 증거가 추가될수록 조건이 늘어나 보호가 줄어들지
+        // 않는다(반대로 늘어날 수만 있다).
+        is OrderPaymentLiveness.Live -> {
+            val attemptSince = liveness.attemptSince
+            liveness.since.isBefore(readyThreshold) &&
+                (attemptSince == null || maxOf(candidate.createdAt, attemptSince).isBefore(fastThreshold))
+        }
         is OrderPaymentLiveness.Attempting -> maxOf(candidate.createdAt, liveness.since).isBefore(fastThreshold)
         is OrderPaymentLiveness.None -> candidate.createdAt.isBefore(fastThreshold)
     }
