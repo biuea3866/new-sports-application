@@ -54,6 +54,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
     val limitedDropRepository = mockk<LimitedDropRepository>()
     val authChannelResolver = mockk<AuthChannelResolver>()
     val dropReservationStore = mockk<com.sportsapp.domain.goods.gateway.DropReservationStore>()
+    val featureFlagEvaluator = mockk<com.sportsapp.domain.common.FeatureFlagEvaluator>()
     val service = GoodsDomainService(
         productRepository = productRepository,
         stockRepository = stockRepository,
@@ -65,6 +66,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
         limitedDropRepository = limitedDropRepository,
         authChannelResolver = authChannelResolver,
         dropReservationStore = dropReservationStore,
+        featureFlagEvaluator = featureFlagEvaluator,
     )
 
     Given("재고가 충분한 Product가 존재할 때") {
@@ -398,6 +400,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
             limitedDropRepository = isolatedLimitedDropRepository,
             authChannelResolver = authChannelResolver,
             dropReservationStore = dropReservationStore,
+            featureFlagEvaluator = featureFlagEvaluator,
         )
         val pageable = PageRequest.of(0, 20)
         val emptyPage = PageImpl<ProductWithStock>(emptyList(), pageable, 0)
@@ -517,6 +520,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
             limitedDropRepository = limitedDropRepository,
             authChannelResolver = authChannelResolver,
             dropReservationStore = dropReservationStore,
+            featureFlagEvaluator = featureFlagEvaluator,
         )
         every { isolatedGoodsOrderRepository.findById(901L) } returns null
 
@@ -545,6 +549,7 @@ class GoodsDomainServiceTest : BehaviorSpec({
             limitedDropRepository = limitedDropRepository,
             authChannelResolver = authChannelResolver,
             dropReservationStore = dropReservationStore,
+            featureFlagEvaluator = featureFlagEvaluator,
         )
         val ownerUserId = 70L
         val requesterUserId = 71L

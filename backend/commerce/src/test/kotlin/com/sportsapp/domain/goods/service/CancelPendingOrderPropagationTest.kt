@@ -34,6 +34,7 @@ class BE11CancelPendingOrderPropagationTest : BehaviorSpec({
         limitedDropRepository = mockk(),
         authChannelResolver = mockk(),
         dropReservationStore = mockk(),
+        featureFlagEvaluator = mockk(),
     )
 
     Given("[S-01] PENDING 주문 취소 시 GoodsOrderItem이 soft-delete된다") {
