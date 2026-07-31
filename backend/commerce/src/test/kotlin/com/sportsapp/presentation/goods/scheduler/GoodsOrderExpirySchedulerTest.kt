@@ -15,7 +15,7 @@ import io.mockk.verify
  * 빈 등록 자체는 항상 되고, 실행 시점에 [IsGoodsOrderExpiryEnabledUseCase]로 플래그를 조회해
  * 분기한다. 지표 카운터(goods_expiry_expired_total/goods_expiry_skipped_total/
  * goods_expiry_skipped_settled_total/goods_expiry_contended_total/
- * goods_expiry_chunk_failed_total)도 검증한다.
+ * goods_expiry_chunk_failed_candidates_total)도 검증한다.
  */
 class GoodsOrderExpirySchedulerTest : BehaviorSpec({
 
@@ -30,7 +30,7 @@ class GoodsOrderExpirySchedulerTest : BehaviorSpec({
             skippedCount = 2,
             skippedSettledCount = 1,
             contendedCount = 1,
-            chunkFailedCount = 1,
+            chunkFailedCandidateCount = 1,
         )
 
         When("expirePendingGoodsOrders를 호출하면") {
@@ -45,7 +45,7 @@ class GoodsOrderExpirySchedulerTest : BehaviorSpec({
                 meterRegistry.counter("goods_expiry_skipped_total").count() shouldBe 2.0
                 meterRegistry.counter("goods_expiry_skipped_settled_total").count() shouldBe 1.0
                 meterRegistry.counter("goods_expiry_contended_total").count() shouldBe 1.0
-                meterRegistry.counter("goods_expiry_chunk_failed_total").count() shouldBe 1.0
+                meterRegistry.counter("goods_expiry_chunk_failed_candidates_total").count() shouldBe 1.0
             }
         }
     }

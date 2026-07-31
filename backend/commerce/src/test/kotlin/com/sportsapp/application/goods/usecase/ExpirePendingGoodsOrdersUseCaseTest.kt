@@ -325,8 +325,8 @@ class ExpirePendingGoodsOrdersUseCaseTest : BehaviorSpec({
                 result.expiredCount shouldBe 4
             }
 
-            Then("실패한 청크2의 후보 건수(2건)가 chunkFailedCount로 격리 집계된다") {
-                result.chunkFailedCount shouldBe 2
+            Then("실패한 청크2의 후보 건수(2건)가 chunkFailedCandidateCount로 격리 집계된다") {
+                result.chunkFailedCandidateCount shouldBe 2
             }
         }
     }

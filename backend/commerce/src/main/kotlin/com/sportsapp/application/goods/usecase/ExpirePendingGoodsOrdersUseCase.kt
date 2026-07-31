@@ -43,7 +43,7 @@ import org.springframework.stereotype.Service
  * 날 수 있다([ExpireGoodsOrderChunkUseCase]가 먼저 재시도하지만 그래도 실패할 수 있다).
  * 이 예외가 [processChunks] 밖(스케줄러)까지 그대로 올라가면 남은 청크가 전부 미처리되고
  * 4개 카운터가 전부 유실되므로, [processCandidates] 호출을 청크 단위로 격리해 실패를
- * [GoodsOrderExpiryResult.chunkFailedCount]로 집계하고 다음 청크로 진행한다.
+ * [GoodsOrderExpiryResult.chunkFailedCandidateCount]로 집계하고 다음 청크로 진행한다.
  */
 @Service
 class ExpirePendingGoodsOrdersUseCase(
@@ -75,9 +75,19 @@ class ExpirePendingGoodsOrdersUseCase(
      * payment 조회 오류 등)가 주기 전체(4개 카운터 유실 + 남은 청크 미처리)를 죽이지
      * 않게 한다. 커서 전진은 호출부([processChunks])가 이미 처리하므로 여기서는 실패
      * 카운트만 반환한다.
+     *
+     * **격리 범위는 `Exception`만**(재리뷰 p3) — `Throwable` 전체를 삼키면
+     * `OutOfMemoryError` 같은 치명적 오류도 로그 한 줄로 묻히고 스케줄러가 남은
+     * `maxChunksPerRun`개 청크를 계속 돈다. `InterruptedException`은 별도로 잡아
+     * 인터럽트 플래그를 복원한 뒤 재throw한다.
      */
     private fun processCandidatesSafely(candidates: List<GoodsOrderExpiryCandidate>): GoodsOrderExpiryResult =
-        runCatching { processCandidates(candidates) }.getOrElse { exception ->
+        try {
+            processCandidates(candidates)
+        } catch (exception: InterruptedException) {
+            Thread.currentThread().interrupt()
+            throw exception
+        } catch (exception: Exception) {
             log.error(
                 "event=goods-order-expiry-chunk-failed candidateCount={} firstOrderId={} lastOrderId={}",
                 candidates.size,
@@ -90,7 +100,7 @@ class ExpirePendingGoodsOrdersUseCase(
                 skippedCount = 0,
                 skippedSettledCount = 0,
                 contendedCount = 0,
-                chunkFailedCount = candidates.size,
+                chunkFailedCandidateCount = candidates.size,
             )
         }
 
