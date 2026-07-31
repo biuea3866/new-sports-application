@@ -4,6 +4,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
 
 class McpScopeTest : BehaviorSpec({
 
@@ -40,6 +41,52 @@ class McpScopeTest : BehaviorSpec({
             shouldThrow<IllegalArgumentException> {
                 McpScope.of("invalid-format")
             }
+        }
+    }
+
+    Given("qualifier가 없는 McpScope") {
+        val scope = McpScope(verb = "read", domain = "facility", qualifier = null)
+
+        Then("asString()은 verb:domain 형식으로 직렬화한다") {
+            scope.asString() shouldBe "read:facility"
+        }
+    }
+
+    Given("qualifier가 있는 McpScope") {
+        val scope = McpScope(verb = "write", domain = "booking", qualifier = "any")
+
+        Then("asString()은 verb:domain:qualifier 형식으로 직렬화한다") {
+            scope.asString() shouldBe "write:booking:any"
+        }
+    }
+
+    Given("mcp.facility.read.own 형식의 permission name") {
+        Then("fromPermissionName은 qualifier=null(own 생략)인 McpScope를 반환한다") {
+            val scope = McpScope.fromPermissionName("mcp.facility.read.own")
+            scope.shouldNotBeNull()
+            scope.verb shouldBe "read"
+            scope.domain shouldBe "facility"
+            scope.qualifier.shouldBeNull()
+        }
+    }
+
+    Given("mcp.booking.write.any 형식의 permission name") {
+        Then("fromPermissionName은 qualifier=any인 McpScope를 반환한다") {
+            val scope = McpScope.fromPermissionName("mcp.booking.write.any")
+            scope.shouldNotBeNull()
+            scope.qualifier shouldBe "any"
+        }
+    }
+
+    Given("mcp. 로 시작하지 않는 permission name") {
+        Then("fromPermissionName은 null을 반환한다") {
+            McpScope.fromPermissionName("other.facility.read.own").shouldBeNull()
+        }
+    }
+
+    Given("부분이 4개 미만인 permission name") {
+        Then("fromPermissionName은 null을 반환한다") {
+            McpScope.fromPermissionName("mcp.facility.read").shouldBeNull()
         }
     }
 })

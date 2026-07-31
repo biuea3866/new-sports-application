@@ -1,5 +1,6 @@
 package com.sportsapp.domain.partner.service
 
+import com.sportsapp.domain.common.BusinessException
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import com.sportsapp.domain.common.exceptions.UnauthorizedException
 import com.sportsapp.domain.partner.entity.ApiKeyStatus
@@ -8,6 +9,7 @@ import com.sportsapp.domain.partner.entity.PartnerApiKey
 import com.sportsapp.domain.partner.entity.PartnerStatus
 import com.sportsapp.domain.partner.exception.PartnerApiKeyInactiveException
 import com.sportsapp.domain.partner.exception.PartnerNotFoundException
+import com.sportsapp.domain.partner.exception.PartnerSuspendedException
 import com.sportsapp.domain.partner.gateway.ApiKeyGenerator
 import com.sportsapp.domain.partner.repository.PartnerApiKeyRepository
 import com.sportsapp.domain.partner.repository.PartnerRepository
@@ -18,6 +20,44 @@ data class IssuedApiKey(val plainKey: String, val apiKey: PartnerApiKey) {
     val keyId: Long get() = requireNotNull(apiKey.id) { "PartnerApiKey id must exist after save" }
 }
 data class AuthenticatedPartner(val partnerId: Long, val linkedUserId: Long)
+
+/**
+ * W1-06a: Partner API 키 검증 결과 값 객체. `PartnerApiKeyAuthenticationFilter`(bootstrap, 미수정)와
+ * 동일한 무누출 경계를 보존한다 — 오늘 필터가 이미 구분해 노출하는 것(SUSPENDED→403)만 [SUSPENDED]로
+ * 남기고, 그 외 실패(키 없음·해시 불일치·키 REVOKED·연동 유저 없음)는 전부 [INVALID]로 수렴시킨다.
+ * 새로 추가로 노출하는 구분은 없다 — 존재하지 않는 키와 폐기된 키의 응답이 동일하다.
+ */
+enum class PartnerApiKeyVerificationFailure { INVALID, SUSPENDED }
+
+data class PartnerApiKeyVerification(
+    val valid: Boolean,
+    val partnerId: Long?,
+    val linkedUserId: Long?,
+    val failureReason: PartnerApiKeyVerificationFailure?,
+) {
+    companion object {
+        fun valid(partnerId: Long, linkedUserId: Long): PartnerApiKeyVerification = PartnerApiKeyVerification(
+            valid = true,
+            partnerId = partnerId,
+            linkedUserId = linkedUserId,
+            failureReason = null,
+        )
+
+        fun invalid(): PartnerApiKeyVerification = PartnerApiKeyVerification(
+            valid = false,
+            partnerId = null,
+            linkedUserId = null,
+            failureReason = PartnerApiKeyVerificationFailure.INVALID,
+        )
+
+        fun suspended(): PartnerApiKeyVerification = PartnerApiKeyVerification(
+            valid = false,
+            partnerId = null,
+            linkedUserId = null,
+            failureReason = PartnerApiKeyVerificationFailure.SUSPENDED,
+        )
+    }
+}
 
 /**
  * Partner 라이프사이클(생성·키 발급/재발급/폐기·상태 전이·인증) 도메인 서비스.
@@ -90,6 +130,27 @@ class PartnerDomainService(
         val partner = partnerRepository.findById(apiKey.partnerId) ?: throw PartnerNotFoundException(apiKey.partnerId)
         partner.validateActive()
         return AuthenticatedPartner(partnerId = requireNotNull(partner.id), linkedUserId = partner.linkedUserId)
+    }
+
+    /**
+     * W1-06a: `PartnerApiKeyAuthenticationFilter`(bootstrap, 미수정)가 이미 위임하던 [authenticate]를
+     * 그대로 재사용한다 — 인증 판정 로직을 복사하지 않고, 예외 기반 계약을 결과값 기반으로
+     * 감싸기만 한다. keyId 파싱만 [PartnerApiKey.parseKeyId]로 새로 캡슐화한다(필터는 자기 사본을
+     * 그대로 유지 — bootstrap 미수정 원칙).
+     */
+    fun verifyApiKey(plainKey: String): PartnerApiKeyVerification {
+        val keyId = PartnerApiKey.parseKeyId(plainKey) ?: return PartnerApiKeyVerification.invalid()
+        return try {
+            val authenticated = authenticate(keyId, plainKey)
+            PartnerApiKeyVerification.valid(
+                partnerId = authenticated.partnerId,
+                linkedUserId = authenticated.linkedUserId,
+            )
+        } catch (exception: PartnerSuspendedException) {
+            PartnerApiKeyVerification.suspended()
+        } catch (exception: BusinessException) {
+            PartnerApiKeyVerification.invalid()
+        }
     }
 
     /**

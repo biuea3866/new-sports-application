@@ -9,4 +9,10 @@ package com.sportsapp.domain.mcp.gateway
  */
 interface McpPermissionGateway {
     fun findPermissionIdBy(permissionName: String): Long?
+
+    /**
+     * W1-06a: MCP 토큰 검증 시 저장된 permissionId 목록을 permission name으로 역해석하기 위한 조회.
+     * `findPermissionIdBy`(이름→id)의 반대 방향(id들→이름)이다.
+     */
+    fun findPermissionNamesBy(permissionIds: List<Long>): Map<Long, String>
 }

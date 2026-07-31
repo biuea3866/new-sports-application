@@ -150,4 +150,79 @@ class McpTokenTest : BehaviorSpec({
             }
         }
     }
+
+    Given("ACTIVE + 만료 없음(expiresAt=null)인 McpToken") {
+        val token = createActiveToken()
+
+        Then("isUsable()은 true를 반환한다") {
+            token.isUsable() shouldBe true
+        }
+
+        Then("isExpired()는 false를 반환한다") {
+            token.isExpired() shouldBe false
+        }
+    }
+
+    Given("ACTIVE + 미래 만료인 McpToken") {
+        val token = McpToken.create(
+            userId = 1L,
+            name = "valid-token",
+            tokenHash = "hashed",
+            expiresAt = ZonedDateTime.now().plusDays(1),
+        )
+
+        Then("isUsable()은 true를 반환한다") {
+            token.isUsable() shouldBe true
+        }
+    }
+
+    Given("ACTIVE + 과거 만료인 McpToken") {
+        val token = McpToken.create(
+            userId = 1L,
+            name = "expired-token",
+            tokenHash = "hashed",
+            expiresAt = ZonedDateTime.now().minusDays(1),
+        )
+
+        Then("isExpired()는 true를 반환한다") {
+            token.isExpired() shouldBe true
+        }
+
+        Then("isUsable()은 false를 반환한다 (만료)") {
+            token.isUsable() shouldBe false
+        }
+    }
+
+    Given("SUSPENDED 상태의 McpToken") {
+        val token = createActiveToken()
+        token.suspend()
+
+        Then("isUsable()은 false를 반환한다 (비활성)") {
+            token.isUsable() shouldBe false
+        }
+    }
+
+    Given("mcp_<id>_<random> 형식의 평문 토큰") {
+        Then("parseTokenId는 id를 추출한다") {
+            McpToken.parseTokenId("mcp_42_randomPart") shouldBe 42L
+        }
+    }
+
+    Given("mcp_ prefix가 없는 문자열") {
+        Then("parseTokenId는 null을 반환한다") {
+            McpToken.parseTokenId("bearer_42_randomPart") shouldBe null
+        }
+    }
+
+    Given("mcp_ 다음에 구분자가 없는 문자열") {
+        Then("parseTokenId는 null을 반환한다") {
+            McpToken.parseTokenId("mcp_onlyonepart") shouldBe null
+        }
+    }
+
+    Given("id 부분이 숫자가 아닌 토큰") {
+        Then("parseTokenId는 null을 반환한다") {
+            McpToken.parseTokenId("mcp_notanumber_randomPart") shouldBe null
+        }
+    }
 })

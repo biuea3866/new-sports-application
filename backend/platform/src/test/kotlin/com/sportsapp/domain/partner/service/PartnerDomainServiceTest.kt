@@ -333,6 +333,110 @@ class PartnerDomainServiceTest : BehaviorSpec({
         }
     }
 
+    Given("유효한 평문 키와 ACTIVE 파트너로 verifyApiKey를 호출하면") {
+        val apiKey = activeApiKey(id = 60L, partnerId = 2L, keyHash = "hashed-key")
+        val partner = activePartner(id = 2L, linkedUserId = 88L)
+        every { partnerApiKeyRepository.findById(60L) } returns apiKey
+        every { apiKeyGenerator.matches("partner_60_random-part", "hashed-key") } returns true
+        every { partnerRepository.findById(2L) } returns partner
+
+        When("verifyApiKey를 호출하면") {
+            val result = domainService.verifyApiKey("partner_60_random-part")
+
+            Then("파트너 식별자가 담긴 유효한 결과가 반환된다") {
+                result.valid shouldBe true
+                result.partnerId shouldBe 2L
+                result.linkedUserId shouldBe 88L
+                result.failureReason shouldBe null
+            }
+        }
+    }
+
+    Given("형식이 partner_ 로 시작하지 않는 문자열로 verifyApiKey를 호출하면") {
+        When("verifyApiKey를 호출하면") {
+            val result = domainService.verifyApiKey("not-a-partner-key")
+
+            Then("유효하지 않은 결과가 반환된다") {
+                result.valid shouldBe false
+            }
+        }
+    }
+
+    Given("존재하지 않는 keyId로 verifyApiKey를 호출하면") {
+        every { partnerApiKeyRepository.findById(999L) } returns null
+
+        When("verifyApiKey를 호출하면") {
+            val result = domainService.verifyApiKey("partner_999_random-part")
+
+            Then("유효하지 않은 결과가 반환된다") {
+                result.valid shouldBe false
+                result.failureReason shouldBe PartnerApiKeyVerificationFailure.INVALID
+            }
+        }
+    }
+
+    Given("REVOKED(폐기된) 키로 verifyApiKey를 호출하면") {
+        val apiKey = PartnerApiKey.reconstitute(
+            id = 60L,
+            partnerId = 2L,
+            keyHash = "hashed-key",
+            status = ApiKeyStatus.REVOKED,
+            revokedAt = null,
+            lastUsedAt = null,
+        )
+        every { partnerApiKeyRepository.findById(60L) } returns apiKey
+        every { apiKeyGenerator.matches("partner_60_random-part", "hashed-key") } returns true
+
+        When("verifyApiKey를 호출하면") {
+            val result = domainService.verifyApiKey("partner_60_random-part")
+
+            Then("예외 없이 유효하지 않은 결과가 반환된다 (실패 경로)") {
+                result.valid shouldBe false
+                result.failureReason shouldBe PartnerApiKeyVerificationFailure.INVALID
+            }
+        }
+    }
+
+    Given("SUSPENDED 파트너의 유효한 키로 verifyApiKey를 호출하면") {
+        val apiKey = activeApiKey(id = 60L, partnerId = 2L, keyHash = "hashed-key")
+        val partner = suspendedPartner(id = 2L)
+        every { partnerApiKeyRepository.findById(60L) } returns apiKey
+        every { apiKeyGenerator.matches("partner_60_random-part", "hashed-key") } returns true
+        every { partnerRepository.findById(2L) } returns partner
+
+        When("verifyApiKey를 호출하면") {
+            val result = domainService.verifyApiKey("partner_60_random-part")
+
+            Then("SUSPENDED 사유로 유효하지 않은 결과가 반환된다 (기존 403 구분 보존)") {
+                result.valid shouldBe false
+                result.failureReason shouldBe PartnerApiKeyVerificationFailure.SUSPENDED
+            }
+        }
+    }
+
+    Given("존재하지 않는 keyId와 폐기된 키가 각각 verifyApiKey에 주어지면") {
+        every { partnerApiKeyRepository.findById(998L) } returns null
+        val revokedKey = PartnerApiKey.reconstitute(
+            id = 997L,
+            partnerId = 2L,
+            keyHash = "hashed-key",
+            status = ApiKeyStatus.REVOKED,
+            revokedAt = null,
+            lastUsedAt = null,
+        )
+        every { partnerApiKeyRepository.findById(997L) } returns revokedKey
+        every { apiKeyGenerator.matches("partner_997_random-part", "hashed-key") } returns true
+
+        When("각각 verifyApiKey를 호출하면") {
+            val notFoundResult = domainService.verifyApiKey("partner_998_random-part")
+            val revokedResult = domainService.verifyApiKey("partner_997_random-part")
+
+            Then("두 응답이 동일해 존재 여부를 구분할 수 없다 (보안)") {
+                notFoundResult shouldBe revokedResult
+            }
+        }
+    }
+
     // createPartner 는 partner 저장 + 키 placeholder 저장 + 실 해시 재저장으로 3회 쓴다.
     // 호출부(CreatePartnerUseCase)가 SAGA 구조라 @Transactional 을 갖지 않으므로, 이 경계가
     // 사라지면 3개 쓰기가 독립 auto-commit 되어 마지막 실패 시 아무도 쓸 수 없는 placeholder
