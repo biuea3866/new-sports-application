@@ -10,6 +10,7 @@ import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../lib/auth';
 import { ListItem } from '../../components/ui';
 import { isFeatureEnabled } from '../../lib/feature-flags';
+import { useMyProfile } from '../../lib/useMyProfile';
 import { ROUTES } from '../../lib/navigation';
 import { useTheme } from '../../theme/useTheme';
 import { createStyles } from '../../theme/createStyles';
@@ -36,6 +37,26 @@ function decodeJwt(token: string | null): JwtPayload | null {
   }
 }
 
+const LOADING_LABEL = '불러오는 중...';
+const LOAD_FAILED_LABEL = '정보를 불러오지 못했어요';
+
+/**
+ * 표시값 결정 — 서버 프로필이 기준이고, 조회 전/실패 시에만 토큰 값이나 상태 문구로 대체한다.
+ * accessToken은 메모리에만 있어 앱을 새로 열면 비므로 토큰만으로는 내 정보를 보여줄 수 없다.
+ */
+function resolveProfileField(
+  serverValue: string | undefined,
+  tokenValue: string | undefined,
+  isLoading: boolean,
+  isError: boolean
+): string {
+  if (serverValue !== undefined) return serverValue;
+  if (tokenValue !== undefined) return tokenValue;
+  if (isLoading) return LOADING_LABEL;
+  if (isError) return LOAD_FAILED_LABEL;
+  return '-';
+}
+
 export default function MeScreen() {
   const router = useRouter();
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -45,6 +66,15 @@ export default function MeScreen() {
   const styles = useStyles(tokens);
 
   const payload = decodeJwt(accessToken);
+  const { data: profile, isLoading, isError } = useMyProfile();
+
+  const emailText = resolveProfileField(profile?.email, payload?.email, isLoading, isError);
+  const userIdText = resolveProfileField(
+    profile?.id !== undefined ? String(profile.id) : undefined,
+    payload?.sub,
+    isLoading,
+    isError
+  );
 
   async function handleLogout() {
     await logout();
@@ -57,10 +87,10 @@ export default function MeScreen() {
 
       <View style={styles.card}>
         <Text style={styles.label}>이메일</Text>
-        <Text style={styles.value}>{payload?.email ?? '로그인 정보 없음'}</Text>
+        <Text style={styles.value}>{emailText}</Text>
 
         <Text style={[styles.label, styles.mt]}>사용자 ID</Text>
-        <Text style={styles.value}>{payload?.sub ?? '-'}</Text>
+        <Text style={styles.value}>{userIdText}</Text>
 
         <Text style={[styles.label, styles.mt]}>역할</Text>
         <Text style={styles.value}>

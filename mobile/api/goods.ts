@@ -207,14 +207,11 @@ export function useCreateGoodsOrder(userId: number) {
 }
 
 /** userId를 Zustand에서 읽어오는 편의 훅. X-User-Id 임시 패턴에서 사용. */
-export function useCurrentUserId(): number {
-  // 임시 구현: accessToken에서 userId 파싱이 필요하지만 AUTH-04 전까지는 -1 반환.
-  // 현재 BE가 테스트 환경에서 고정 userId(예: 1)로 동작하므로 개발 시에는 1을 반환.
-  const accessToken = useAuthStore((s) => s.accessToken);
-  if (!accessToken) return 0;
-  // TODO(AUTH-04): JWT decode로 교체
-  return 1;
-}
+/**
+ * 현재 로그인 사용자 id — 구현은 `lib/useCurrentUserId`(서버 프로필 기준)에 있다.
+ * 기존 호출부 호환을 위해 이 모듈에서도 그대로 재노출한다.
+ */
+export { useCurrentUserId, UNKNOWN_USER_ID } from '../lib/useCurrentUserId';
 
 /** X-User-Id 헤더용 — getUserIdHeader export (하위 호환) */
 export { getUserIdHeader };

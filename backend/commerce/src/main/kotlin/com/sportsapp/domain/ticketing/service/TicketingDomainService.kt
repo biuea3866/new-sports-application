@@ -7,6 +7,7 @@ import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import com.sportsapp.domain.common.payment.OrderPaymentLiveness
 import com.sportsapp.domain.ticketing.TicketingFeatureFlagKeys
 import com.sportsapp.domain.ticketing.dto.EventSalesInfo
+import com.sportsapp.domain.ticketing.dto.EventWithMinSeatPrice
 import com.sportsapp.domain.ticketing.dto.TicketKpiSummary
 import com.sportsapp.domain.ticketing.dto.TicketOrderDetail
 import com.sportsapp.domain.ticketing.dto.TicketOrderExpiryCandidate
@@ -108,6 +109,18 @@ class TicketingDomainService(
             EventCriteria(status = EventStatus.OPEN, startsAtFrom = null, startsAtTo = null, keyword = keyword),
             pageable,
         )
+
+    /**
+     * catalog 통합검색용 — 경기와 **최저 좌석가**를 함께 반환한다.
+     *
+     * 카탈로그는 모든 항목을 같은 카드로 렌더하므로 경기도 대표가가 필요하다. 좌석가는 경기당
+     * 여러 건이라 최저가를 대표로 삼고, 페이지 전체를 한 번의 집계 조회로 채워 N+1을 피한다.
+     */
+    fun searchOpenEventsForCatalog(keyword: String?, pageable: Pageable): Page<EventWithMinSeatPrice> {
+        val events = searchOpenEvents(keyword, pageable)
+        val minPriceByEventId = seatCustomRepository.findMinPriceByEventIds(events.content.map { it.id })
+        return events.map { event -> EventWithMinSeatPrice(event, minPriceByEventId[event.id]) }
+    }
 
     // order 통합조회용 — TicketOrder에 이벤트명(title)을 조인한 표시용 프로젝션.
     fun listTicketOrdersBy(userId: Long): List<TicketOrderWithEventTitle> =
@@ -372,8 +385,13 @@ class TicketingDomainService(
         val event = eventRepository.findById(eventId)
             ?: throw ResourceNotFoundException("Event", eventId)
         val seats = seatRepository.findByEventId(eventId)
-        val soldCount = seatCustomRepository.countSoldByEventId(eventId)
-        return EventSalesInfo(event = event, seats = seats, soldCount = soldCount)
+        val soldSeatIds = seatCustomRepository.findSoldSeatIdsByEventId(eventId)
+        return EventSalesInfo(
+            event = event,
+            seats = seats,
+            soldCount = soldSeatIds.size.toLong(),
+            soldSeatIds = soldSeatIds,
+        )
     }
 
     fun openEvent(eventId: Long) {

@@ -9,9 +9,14 @@ import type { CatalogItemType } from '../api/catalog-types';
 
 const PRICE_UNAVAILABLE_LABEL = '가격 상세 확인';
 
-/** 가격을 표시 문자열로 변환한다. price=null(TICKET 등 대표가 없음)이면 안내 문구를 반환한다. */
-export function formatCatalogPrice(price: number | null): string {
-  if (price === null) {
+/**
+ * 가격을 표시 문자열로 변환한다.
+ *
+ * 대표가가 없으면(price=null, 또는 서버가 필드 자체를 생략해 undefined) 안내 문구를 반환한다.
+ * 필드 생략은 실제로 발생하므로(TICKET 항목) 두 경우를 함께 막는다.
+ */
+export function formatCatalogPrice(price: number | null | undefined): string {
+  if (price == null) {
     return PRICE_UNAVAILABLE_LABEL;
   }
   return `${price.toLocaleString()}원`;

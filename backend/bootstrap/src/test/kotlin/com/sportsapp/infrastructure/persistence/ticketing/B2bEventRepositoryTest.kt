@@ -12,6 +12,7 @@ import com.sportsapp.domain.ticketing.entity.Seat
 import com.sportsapp.domain.ticketing.entity.Ticket
 import com.sportsapp.domain.ticketing.entity.TicketStatus
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.domain.PageRequest
 import java.math.BigDecimal
@@ -76,25 +77,46 @@ class B2bEventRepositoryTest(
                 code = UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", ""),
             ))
 
-            When("countSoldByEventId(event.id)를 호출하면") {
-                val soldCount = seatCustomRepositoryImpl.countSoldByEventId(event.id)
+            When("발권된 좌석 id를 조회하면") {
+                val soldSeatIds = seatCustomRepositoryImpl.findSoldSeatIdsByEventId(event.id)
 
-                Then("[R-02] sold count가 2이다") {
-                    soldCount shouldBe 2L
+                Then("ISSUED 티켓이 점유한 좌석 2석만 반환한다") {
+                    soldSeatIds shouldBe setOf(seat1.id, seat2.id)
                 }
             }
 
-            When("REVOKED 티켓이 있어도 sold count에는 포함되지 않는다") {
+            When("REVOKED 티켓이 추가로 있어도 발권 좌석을 다시 조회하면") {
                 ticketJpaRepository.save(Ticket(
                     ticketOrder = null,
                     seatId = seat3.id,
                     status = TicketStatus.REVOKED,
                     code = UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", ""),
                 ))
-                val soldCount = seatCustomRepositoryImpl.countSoldByEventId(event.id)
+                val soldSeatIds = seatCustomRepositoryImpl.findSoldSeatIdsByEventId(event.id)
 
-                Then("[R-02b] REVOKED 티켓은 sold count에 포함되지 않는다") {
-                    soldCount shouldBe 2L
+                Then("REVOKED 좌석은 판매된 좌석으로 세지 않는다") {
+                    soldSeatIds shouldBe setOf(seat1.id, seat2.id)
+                }
+            }
+
+            When("카탈로그 대표가용 최저 좌석가를 조회하면") {
+                val cheapSeat = seatJpaRepository.save(Seat(0L, event.id, "C", "1", "9", BigDecimal("12000")))
+                val minPriceByEventId = seatCustomRepositoryImpl.findMinPriceByEventIds(listOf(event.id))
+
+                Then("경기의 가장 싼 좌석가가 반환된다") {
+                    minPriceByEventId[event.id] shouldBe BigDecimal("12000.00")
+                    cheapSeat.id shouldNotBe 0L
+                }
+            }
+
+            When("좌석이 없는 경기 id로 최저가를 조회하면") {
+                val emptyEvent = eventJpaRepository.save(
+                    Event(0L, "좌석 미등록 경기", "Sales Venue", startsAt.plusDays(2), EventStatus.SCHEDULED, 2L)
+                )
+                val minPriceByEventId = seatCustomRepositoryImpl.findMinPriceByEventIds(listOf(emptyEvent.id))
+
+                Then("결과에 포함되지 않는다") {
+                    minPriceByEventId[emptyEvent.id] shouldBe null
                 }
             }
         }

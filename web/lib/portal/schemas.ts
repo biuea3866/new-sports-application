@@ -112,7 +112,19 @@ export const MyEventSchema = z.object({
   updatedAt: z.string(),
 });
 
-export const MyEventDetailSchema = MyEventSchema.extend({
+/**
+ * 경기 단건 상세 — BE MyEventWithSalesResponse 계약.
+ * 목록(MyEventSchema)과 필드 구성이 달라 확장하지 않는다.
+ */
+export const MyEventDetailSchema = z.object({
+  id: z.number().int(),
+  title: z.string(),
+  venue: z.string(),
+  startsAt: z.string(),
+  status: EventStatusSchema,
+  totalSeats: z.number().int().nonnegative(),
+  totalSold: z.number().int().nonnegative(),
+  totalAvailable: z.number().int().nonnegative(),
   seats: z.array(SeatInfoSchema),
 });
 

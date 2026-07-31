@@ -17,6 +17,11 @@ describe('formatCatalogPrice', () => {
   it('price=0이면 0원을 반환한다', () => {
     expect(formatCatalogPrice(0)).toBe('0원');
   });
+
+  // 서버가 price 필드 자체를 생략해 보내면 undefined가 들어온다 — 화면이 죽지 않아야 한다.
+  it('price 필드가 없으면(undefined) 가격 상세 확인을 반환한다', () => {
+    expect(formatCatalogPrice(undefined)).toBe('가격 상세 확인');
+  });
 });
 
 describe('CATALOG_ITEM_TYPE_LABEL', () => {

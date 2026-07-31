@@ -6,6 +6,7 @@ import com.sportsapp.domain.ticketing.entity.QEvent
 import com.sportsapp.domain.ticketing.entity.QSeat
 import com.sportsapp.domain.ticketing.entity.QTicket
 import com.sportsapp.domain.ticketing.entity.TicketStatus
+import java.math.BigDecimal
 import org.springframework.stereotype.Component
 
 @Component
@@ -13,10 +14,10 @@ class SeatCustomRepositoryImpl(
     private val queryFactory: JPAQueryFactory,
 ) : SeatCustomRepository {
 
-    override fun countSoldByEventId(eventId: Long): Long {
+    override fun findSoldSeatIdsByEventId(eventId: Long): Set<Long> {
         val seat = QSeat.seat
         val ticket = QTicket.ticket
-        return queryFactory.select(ticket.count())
+        return queryFactory.select(ticket.seatId)
                            .from(ticket)
                            .join(seat).on(seat.id.eq(ticket.seatId))
                            .where(
@@ -25,7 +26,27 @@ class SeatCustomRepositoryImpl(
                                ticket.deletedAt.isNull,
                                ticket.status.eq(TicketStatus.ISSUED),
                            )
-                           .fetchOne() ?: 0L
+                           .fetch()
+                           .toSet()
+    }
+
+    override fun findMinPriceByEventIds(eventIds: List<Long>): Map<Long, BigDecimal> {
+        if (eventIds.isEmpty()) return emptyMap()
+        val seat = QSeat.seat
+        return queryFactory.select(seat.eventId, seat.price.min())
+                           .from(seat)
+                           .where(
+                               seat.eventId.`in`(eventIds),
+                               seat.deletedAt.isNull,
+                           )
+                           .groupBy(seat.eventId)
+                           .fetch()
+                           .mapNotNull { row ->
+                               val eventId = row.get(seat.eventId) ?: return@mapNotNull null
+                               val minPrice = row.get(seat.price.min()) ?: return@mapNotNull null
+                               eventId to minPrice
+                           }
+                           .toMap()
     }
 
     override fun sumTotalSeatsByOwnerId(ownerId: Long): Long {
