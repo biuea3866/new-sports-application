@@ -20,6 +20,9 @@ data class McpScope(
         return "mcp.$domain.$verb.$resolvedQualifier"
     }
 
+    // toPermissionName()의 역변환 — verify 응답 등 외부에 scope를 다시 문자열로 노출할 때 쓴다.
+    fun asString(): String = listOfNotNull(verb, domain, qualifier).joinToString(":")
+
     companion object {
         fun of(raw: String): McpScope {
             val parts = raw.split(":")
@@ -30,6 +33,23 @@ data class McpScope(
                 verb = parts[0],
                 domain = parts[1],
                 qualifier = if (parts.size >= 3) parts[2] else null,
+            )
+        }
+
+        /**
+         * permission name(`mcp.{domain}.{verb}.{qualifier}`) → [McpScope] 역변환.
+         *
+         * 기존 `McpTokenAuthenticationFilter.parseScopeFromPermissionName`(bootstrap, 미수정)과
+         * 동일한 규칙이다 — 이 메서드가 platform 쪽 정본이며, 필터의 사본은 W1-06b가 필터를
+         * 옮길 때 이 메서드 호출로 대체될 예정이다.
+         */
+        fun fromPermissionName(permissionName: String): McpScope? {
+            val parts = permissionName.split(".")
+            if (parts.size < 4 || parts[0] != "mcp") return null
+            return McpScope(
+                verb = parts[2],
+                domain = parts[1],
+                qualifier = parts[3].takeIf { it != "own" },
             )
         }
     }

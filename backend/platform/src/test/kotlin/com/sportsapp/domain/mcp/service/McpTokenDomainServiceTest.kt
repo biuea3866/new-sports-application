@@ -18,6 +18,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.string.shouldHaveMinLength
+import io.kotest.matchers.string.shouldNotContain
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -248,6 +249,122 @@ class McpTokenDomainServiceTest : BehaviorSpec({
                 shouldThrow<ResourceNotFoundException> {
                     domainService.recordUsage(999L)
                 }
+            }
+        }
+    }
+
+    Given("유효한 평문 토큰으로 verifyToken을 호출하면") {
+        val token = makeToken(userId = 7L, id = 42L)
+        every { mcpTokenRepository.findById(42L) } returns token
+        every { passwordEncoder.matches("mcp_42_random", token.tokenHash) } returns true
+        every { mcpTokenScopeRepository.findByTokenId(42L) } returns
+            listOf(McpTokenScope.create(tokenId = 42L, permissionId = 10L))
+        every { mcpPermissionGateway.findPermissionNamesBy(listOf(10L)) } returns
+            mapOf(10L to "mcp.facility.read.own")
+
+        When("verifyToken을 호출하면") {
+            val result = domainService.verifyToken("mcp_42_random")
+
+            Then("주체 식별자와 스코프 목록이 담긴 유효한 결과가 반환된다") {
+                result.valid shouldBe true
+                result.tokenId shouldBe 42L
+                result.userId shouldBe 7L
+                result.scopes.map { it.asString() }.shouldContainExactly(listOf("read:facility"))
+            }
+
+            Then("검증 결과에 토큰 원문·해시가 포함되지 않는다") {
+                result.toString() shouldNotContain "mcp_42_random"
+                result.toString() shouldNotContain token.tokenHash
+            }
+        }
+    }
+
+    Given("존재하지 않는 tokenId 형식의 토큰으로 verifyToken을 호출하면") {
+        When("verifyToken을 호출하면") {
+            val result = domainService.verifyToken("not-an-mcp-token")
+
+            Then("유효하지 않은 결과가 반환된다") {
+                result.valid shouldBe false
+            }
+        }
+    }
+
+    Given("존재하지 않는 토큰 id로 verifyToken을 호출하면") {
+        every { mcpTokenRepository.findById(999L) } returns null
+
+        When("verifyToken을 호출하면") {
+            val result = domainService.verifyToken("mcp_999_random")
+
+            Then("유효하지 않은 결과가 반환된다") {
+                result.valid shouldBe false
+            }
+        }
+    }
+
+    Given("해시가 일치하지 않는 토큰으로 verifyToken을 호출하면") {
+        val token = makeToken(userId = 7L, id = 42L)
+        every { mcpTokenRepository.findById(42L) } returns token
+        every { passwordEncoder.matches("mcp_42_wrong", token.tokenHash) } returns false
+
+        When("verifyToken을 호출하면") {
+            val result = domainService.verifyToken("mcp_42_wrong")
+
+            Then("유효하지 않은 결과가 반환된다") {
+                result.valid shouldBe false
+            }
+        }
+    }
+
+    Given("만료된 토큰으로 verifyToken을 호출하면") {
+        val token = makeToken(userId = 7L, id = 43L)
+        val expiredField = McpToken::class.java.getDeclaredField("expiresAt")
+        expiredField.isAccessible = true
+        expiredField.set(token, ZonedDateTime.now().minusDays(1))
+        every { mcpTokenRepository.findById(43L) } returns token
+        every { passwordEncoder.matches("mcp_43_random", token.tokenHash) } returns true
+
+        When("verifyToken을 호출하면") {
+            val result = domainService.verifyToken("mcp_43_random")
+
+            Then("예외 없이 유효하지 않은 결과가 반환된다 (실패 경로)") {
+                result.valid shouldBe false
+            }
+        }
+    }
+
+    Given("비활성(SUSPENDED)된 토큰으로 verifyToken을 호출하면") {
+        val token = makeToken(userId = 7L, id = 44L)
+        token.suspend()
+        every { mcpTokenRepository.findById(44L) } returns token
+        every { passwordEncoder.matches("mcp_44_random", token.tokenHash) } returns true
+
+        When("verifyToken을 호출하면") {
+            val result = domainService.verifyToken("mcp_44_random")
+
+            Then("유효하지 않은 결과가 반환된다") {
+                result.valid shouldBe false
+            }
+        }
+    }
+
+    Given("알 수 없는 권한명이 섞인 스코프를 가진 유효한 토큰으로 verifyToken을 호출하면") {
+        val token = makeToken(userId = 7L, id = 45L)
+        every { mcpTokenRepository.findById(45L) } returns token
+        every { passwordEncoder.matches("mcp_45_random", token.tokenHash) } returns true
+        every { mcpTokenScopeRepository.findByTokenId(45L) } returns
+            listOf(
+                McpTokenScope.create(tokenId = 45L, permissionId = 10L),
+                McpTokenScope.create(tokenId = 45L, permissionId = 999L),
+            )
+        every { mcpPermissionGateway.findPermissionNamesBy(listOf(10L, 999L)) } returns
+            mapOf(10L to "mcp.facility.read.own")
+
+        When("verifyToken을 호출하면") {
+            val result = domainService.verifyToken("mcp_45_random")
+
+            Then("알 수 없는 권한명(999L) 항목만 건너뛰고 나머지 스코프만 반환된다 (엣지 — mapNotNull 계약)") {
+                result.valid shouldBe true
+                result.scopes.map { it.asString() }.shouldContainExactly(listOf("read:facility"))
             }
         }
     }

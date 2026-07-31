@@ -18,4 +18,7 @@ class McpPermissionGatewayImpl(
 
     override fun findPermissionIdBy(permissionName: String): Long? =
         permissionDomainService.findIdByName(permissionName)
+
+    override fun findPermissionNamesBy(permissionIds: List<Long>): Map<Long, String> =
+        permissionDomainService.findNamesByIds(permissionIds)
 }

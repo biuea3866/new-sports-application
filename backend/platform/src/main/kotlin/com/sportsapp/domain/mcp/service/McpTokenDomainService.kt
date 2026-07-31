@@ -10,6 +10,7 @@ import com.sportsapp.domain.mcp.repository.McpTokenCustomRepository
 import com.sportsapp.domain.mcp.repository.McpTokenRepository
 import com.sportsapp.domain.mcp.repository.McpTokenScopeRepository
 import com.sportsapp.domain.mcp.vo.McpScope
+import com.sportsapp.domain.mcp.vo.McpTokenVerification
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -72,6 +73,33 @@ class McpTokenDomainService(
         mcpToken.requireOwnedBy(requesterId)
         mcpToken.revoke()
         mcpTokenRepository.save(mcpToken)
+    }
+
+    /**
+     * W1-06a: `McpTokenAuthenticationFilter`(bootstrap, 미수정)가 인라인으로 수행하던
+     * "토큰 조회 → 해시 대조 → 활성/만료 확인 → 스코프 해석"을 platform의 UseCase로 승격한 계약.
+     * 예외가 아니라 [McpTokenVerification] 결과값으로 반환한다 — 실패 사유(존재하지 않음·해시
+     * 불일치·비활성·만료)는 구분하지 않고 전부 `invalid()`로 수렴시킨다(필터의 무누출 401과 동일 경계).
+     */
+    fun verifyToken(plainToken: String): McpTokenVerification {
+        val tokenId = McpToken.parseTokenId(plainToken) ?: return McpTokenVerification.invalid()
+        val mcpToken = mcpTokenRepository.findById(tokenId) ?: return McpTokenVerification.invalid()
+        if (!passwordEncoder.matches(plainToken, mcpToken.tokenHash)) return McpTokenVerification.invalid()
+        if (!mcpToken.isUsable()) return McpTokenVerification.invalid()
+        return McpTokenVerification.valid(
+            tokenId = mcpToken.id,
+            userId = mcpToken.userId,
+            scopes = resolveScopes(mcpToken.id),
+        )
+    }
+
+    private fun resolveScopes(tokenId: Long): Set<McpScope> {
+        val tokenScopes = mcpTokenScopeRepository.findByTokenId(tokenId)
+        val permissionIds = tokenScopes.map { it.permissionId }
+        val permissionNames = mcpPermissionGateway.findPermissionNamesBy(permissionIds)
+        return tokenScopes.mapNotNull { tokenScope ->
+            permissionNames[tokenScope.permissionId]?.let { McpScope.fromPermissionName(it) }
+        }.toSet()
     }
 
     private fun resolvePermissionIds(scopes: List<String>): List<Long> =

@@ -139,4 +139,28 @@ class PartnerApiKeyTest : BehaviorSpec({
             }
         }
     }
+
+    Given("partner_<keyId>_<random> 형식의 평문 키") {
+        Then("parseKeyId는 keyId를 추출한다") {
+            PartnerApiKey.parseKeyId("partner_77_randomPart") shouldBe 77L
+        }
+    }
+
+    Given("partner_ prefix가 없는 문자열") {
+        Then("parseKeyId는 null을 반환한다") {
+            PartnerApiKey.parseKeyId("bearer_77_randomPart").shouldBeNull()
+        }
+    }
+
+    Given("partner_ 다음에 구분자가 없는 문자열") {
+        Then("parseKeyId는 null을 반환한다") {
+            PartnerApiKey.parseKeyId("partner_onlyonepart").shouldBeNull()
+        }
+    }
+
+    Given("keyId 부분이 숫자가 아닌 평문 키") {
+        Then("parseKeyId는 null을 반환한다") {
+            PartnerApiKey.parseKeyId("partner_notanumber_randomPart").shouldBeNull()
+        }
+    }
 })

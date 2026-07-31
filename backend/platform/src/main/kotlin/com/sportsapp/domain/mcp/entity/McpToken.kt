@@ -112,6 +112,12 @@ class McpToken(
         }
     }
 
+    fun isExpired(): Boolean = expiresAt?.isBefore(ZonedDateTime.now()) ?: false
+
+    // 검증(verify) 흐름 전용 질의 메서드 — requireActive()/requireNotExpired()는 예외를 던지므로
+    // "예외가 아니라 결과값"이어야 하는 VerifyMcpTokenUseCase 흐름에서는 이 메서드를 쓴다.
+    fun isUsable(): Boolean = status == McpTokenStatus.ACTIVE && !isExpired()
+
     companion object {
         fun create(
             userId: Long,
@@ -125,5 +131,20 @@ class McpToken(
             initialStatus = McpTokenStatus.ACTIVE,
             initialExpiresAt = expiresAt,
         )
+
+        /**
+         * 평문 토큰(`mcp_<id>_<random>`)에서 tokenId를 추출한다. 형식이 아니거나 id 파싱에
+         * 실패하면 null (호출부가 pass-through 또는 무효 처리하도록).
+         *
+         * `McpTokenAuthenticationFilter.parseTokenId`(bootstrap, 미수정)와 동일한 규칙 —
+         * 이 메서드가 platform 쪽 정본이다.
+         */
+        fun parseTokenId(plainToken: String): Long? =
+            plainToken.takeIf { it.startsWith("mcp_") }
+                ?.removePrefix("mcp_")
+                ?.split("_", limit = 2)
+                ?.takeIf { it.size >= 2 }
+                ?.get(0)
+                ?.toLongOrNull()
     }
 }

@@ -79,5 +79,22 @@ class PartnerApiKey private constructor(
             initialRevokedAt = revokedAt,
             initialLastUsedAt = lastUsedAt,
         )
+
+        private const val KEY_PREFIX = "partner_"
+
+        /**
+         * 평문 키(`partner_<keyId>_<random>`)에서 keyId를 추출한다. 형식이 아니거나 id 파싱에
+         * 실패하면 null (호출부가 pass-through 또는 무효 처리하도록).
+         *
+         * `PartnerApiKeyAuthenticationFilter.parseKeyId`(bootstrap, 미수정)와 동일한 규칙 —
+         * 이 메서드가 platform 쪽 정본이다.
+         */
+        fun parseKeyId(plainKey: String): Long? =
+            plainKey.takeIf { it.startsWith(KEY_PREFIX) }
+                ?.removePrefix(KEY_PREFIX)
+                ?.split("_", limit = 2)
+                ?.takeIf { it.size >= 2 }
+                ?.get(0)
+                ?.toLongOrNull()
     }
 }

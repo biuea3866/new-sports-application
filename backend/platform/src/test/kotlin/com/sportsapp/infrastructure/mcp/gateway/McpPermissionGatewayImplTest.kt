@@ -41,4 +41,18 @@ class McpPermissionGatewayImplTest : BehaviorSpec({
             }
         }
     }
+
+    Given("permissionId 목록으로 findPermissionNamesBy를 호출하면") {
+        every { permissionDomainService.findNamesByIds(listOf(10L, 20L)) } returns
+            mapOf(10L to "mcp.facility.read.own", 20L to "mcp.booking.write.own")
+
+        When("findPermissionNamesBy를 호출하면") {
+            val result = gateway.findPermissionNamesBy(listOf(10L, 20L))
+
+            Then("PermissionDomainService에 위임된 id→이름 맵이 반환된다") {
+                result shouldBe mapOf(10L to "mcp.facility.read.own", 20L to "mcp.booking.write.own")
+                verify(exactly = 1) { permissionDomainService.findNamesByIds(listOf(10L, 20L)) }
+            }
+        }
+    }
 })
