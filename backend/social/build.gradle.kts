@@ -44,6 +44,12 @@ dependencies {
     // Kafka — RecruitmentPaymentEventWorker(event.payment.payment.v1 구독)
     implementation("org.springframework.kafka:spring-kafka")
 
+    // Micrometer — W1-11d RecruitmentPaymentEventWorker 경보 지표 + ApplicationExpiryScheduler
+    // 만료 스위퍼 지표(MeterRegistry, `facility-booking`(W1-11c) 선례와 동일 계약). 이 모듈은
+    // spring-boot-starter-actuator 를 갖지 않아 MeterRegistry 빈을 스스로 오토컨픽하지 못한다 —
+    // 실행 시점에 조립자(bootstrap)가 공급해야 하는 암묵 계약이다.
+    implementation("io.micrometer:micrometer-core")
+
     // QueryDSL — community·post·message·recruitment 11테이블(Community·CommunityBooking·
     // CommunityMember·Post·Comment·Room·RoomParticipant·RoomInvitation·Message·Application·
     // Recruitment) 소유.

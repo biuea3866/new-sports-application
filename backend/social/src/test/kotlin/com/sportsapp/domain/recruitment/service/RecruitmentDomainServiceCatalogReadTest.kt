@@ -2,6 +2,7 @@ package com.sportsapp.domain.recruitment.service
 
 import com.sportsapp.domain.common.DistributedLock
 import com.sportsapp.domain.common.DomainEventPublisher
+import com.sportsapp.domain.common.FeatureFlagEvaluator
 import com.sportsapp.domain.recruitment.dto.ApplicationWithRecruitmentTitle
 import com.sportsapp.domain.recruitment.entity.ApplicationStatus
 import com.sportsapp.domain.recruitment.entity.Recruitment
@@ -25,6 +26,7 @@ import org.springframework.data.domain.PageRequest
 
 class RecruitmentDomainServiceCatalogReadTest : BehaviorSpec({
 
+    @Suppress("LongParameterList")
     fun buildService(
         recruitmentRepository: RecruitmentRepository = mockk(relaxed = true),
         applicationRepository: ApplicationRepository = mockk(relaxed = true),
@@ -33,6 +35,7 @@ class RecruitmentDomainServiceCatalogReadTest : BehaviorSpec({
         domainEventPublisher: DomainEventPublisher = mockk(relaxed = true),
         recruitmentCustomRepository: RecruitmentCustomRepository = mockk(relaxed = true),
         applicationCustomRepository: ApplicationCustomRepository = mockk(relaxed = true),
+        featureFlagEvaluator: FeatureFlagEvaluator = mockk(relaxed = true),
     ) = RecruitmentDomainService(
         recruitmentRepository = recruitmentRepository,
         applicationRepository = applicationRepository,
@@ -41,6 +44,7 @@ class RecruitmentDomainServiceCatalogReadTest : BehaviorSpec({
         domainEventPublisher = domainEventPublisher,
         recruitmentCustomRepository = recruitmentCustomRepository,
         applicationCustomRepository = applicationCustomRepository,
+        featureFlagEvaluator = featureFlagEvaluator,
     )
 
     val activityAt = ZonedDateTime.of(2026, 12, 1, 18, 0, 0, 0, ZoneOffset.UTC)

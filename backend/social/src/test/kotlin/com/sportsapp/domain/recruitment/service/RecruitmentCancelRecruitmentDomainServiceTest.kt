@@ -47,6 +47,7 @@ class RecruitmentCancelRecruitmentDomainServiceTest : BehaviorSpec({
         domainEventPublisher,
         mockk(relaxed = true),
         mockk(relaxed = true),
+        mockk(relaxed = true),
     )
 
     Given("CONFIRMED 신청 2건이 있는 모집을 개설자가 취소하는 상황") {

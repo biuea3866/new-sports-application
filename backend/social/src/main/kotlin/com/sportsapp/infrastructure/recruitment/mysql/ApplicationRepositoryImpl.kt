@@ -1,8 +1,10 @@
 package com.sportsapp.infrastructure.recruitment.mysql
 
+import com.sportsapp.domain.recruitment.dto.ApplicationExpiryCandidate
 import com.sportsapp.domain.recruitment.entity.Application
 import com.sportsapp.domain.recruitment.entity.ApplicationStatus
 import com.sportsapp.domain.recruitment.repository.ApplicationRepository
+import java.time.ZonedDateTime
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Repository
 
@@ -28,4 +30,10 @@ class ApplicationRepositoryImpl(
 
     override fun findByApplicantUserId(applicantUserId: Long): List<Application> =
         applicationJpaRepository.findByApplicantUserId(applicantUserId)
+
+    override fun findPendingCreatedBefore(before: ZonedDateTime, afterId: Long, limit: Int): List<ApplicationExpiryCandidate> =
+        applicationJpaRepository.findPendingCreatedBefore(before, afterId, limit)
+
+    override fun tryExpire(applicationId: Long): Boolean =
+        applicationJpaRepository.tryExpire(applicationId)
 }

@@ -2,9 +2,14 @@ package com.sportsapp.presentation.recruitment.worker
 
 import com.sportsapp.application.recruitment.usecase.CancelRecruitmentPaymentUseCase
 import com.sportsapp.application.recruitment.usecase.ConfirmRecruitmentPaymentUseCase
-import com.sportsapp.domain.payment.event.PaymentEvent
 import com.sportsapp.domain.common.order.OrderType
+import com.sportsapp.domain.payment.event.PaymentEvent
+import com.sportsapp.domain.recruitment.entity.ApplicationStatus
+import com.sportsapp.domain.recruitment.exception.InvalidApplicationStateException
 import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.shouldBe
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
+import io.mockk.every
 import io.mockk.justRun
 import io.mockk.mockk
 import io.mockk.verify
@@ -13,7 +18,8 @@ class RecruitmentPaymentEventWorkerTest : BehaviorSpec({
 
     val confirmUseCase = mockk<ConfirmRecruitmentPaymentUseCase>()
     val cancelUseCase = mockk<CancelRecruitmentPaymentUseCase>()
-    val worker = RecruitmentPaymentEventWorker(confirmUseCase, cancelUseCase)
+    val meterRegistry = SimpleMeterRegistry()
+    val worker = RecruitmentPaymentEventWorker(confirmUseCase, cancelUseCase, meterRegistry)
     justRun { confirmUseCase.execute(any(), any()) }
     justRun { cancelUseCase.execute(any()) }
 
@@ -39,6 +45,18 @@ class RecruitmentPaymentEventWorkerTest : BehaviorSpec({
 
             Then("무시하고 어떤 UseCase 도 호출하지 않는다") {
                 verify(exactly = 0) { confirmUseCase.execute(20L, 200L) }
+            }
+        }
+
+        When("이미 CANCELLED된 신청(만료 스위퍼가 먼저 취소)에 결제 확정 이벤트가 도달하면") {
+            every { confirmUseCase.execute(50L, 500L) } throws
+                InvalidApplicationStateException(ApplicationStatus.CANCELLED, ApplicationStatus.CONFIRMED)
+
+            Then("예외로 죽지 않고 경보 지표가 올라간다 (환불 판단 필요 사건)") {
+                worker.consume(
+                    PaymentEvent.Confirmed(paymentId = 500L, orderType = OrderType.RECRUITMENT, orderId = 50L, recipientUserId = 1L, amount = 0L),
+                )
+                meterRegistry.counter("recruitment_confirm_after_terminal_total").count() shouldBe 1.0
             }
         }
     }
