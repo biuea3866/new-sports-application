@@ -43,6 +43,14 @@ class InternalIdentityHeaderRequestTest : BehaviorSpec({
         Then("내부 헤더가 아닌 헤더는 그대로 보인다") {
             wrapped.getHeader("Authorization") shouldBe "Bearer mcp_1_secret"
         }
+
+        Then("숫자 헤더 경로(getIntHeader)로도 위조값이 새지 않는다 — 서블릿 기본 구현은 getHeader 를 거치지 않는다") {
+            wrapped.getIntHeader(InternalIdentityHeaders.SUBJECT) shouldBe -1
+        }
+
+        Then("날짜 헤더 경로(getDateHeader)로도 위조값이 새지 않는다") {
+            wrapped.getDateHeader(InternalIdentityHeaders.SUBJECT) shouldBe -1L
+        }
     }
 
     Given("검증된 신원과 함께 요청이 감싸이면") {
@@ -62,6 +70,10 @@ class InternalIdentityHeaderRequestTest : BehaviorSpec({
         Then("헤더 이름 목록에 내부 헤더가 한 번씩만 나타난다") {
             val names = wrapped.headerNames.toList()
             names.count { it.equals(InternalIdentityHeaders.SUBJECT, ignoreCase = true) } shouldBe 1
+        }
+
+        Then("숫자 헤더 경로로도 검증된 주체 식별자가 읽힌다") {
+            wrapped.getIntHeader(InternalIdentityHeaders.SUBJECT) shouldBe 10
         }
     }
 
