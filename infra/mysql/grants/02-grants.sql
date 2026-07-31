@@ -43,8 +43,11 @@
 --   DROP USER IF EXISTS 'svc_commerce'@'%', 'svc_payment'@'%', 'svc_facility_booking'@'%',
 --     'svc_social'@'%', 'svc_platform'@'%', 'svc_edge'@'%', 'flyway_migrator'@'%';
 --
--- 비밀번호는 로컬/개발 전용이다 (기존 root/root, testcontainers test/test 와 동일한 수준) — 운영 반입 시
--- 별도 시크릿 관리로 교체한다 (이 티켓 범위 밖).
+-- 비밀번호는 로컬/개발 전용이다 (기존 root/root, testcontainers test/test 와 동일한 수준). 이 파일은
+-- **dev 전용 — prod 적용 금지**다. 적용 경로(docker-compose.dev.yml 의 db-grants 사이드카)도 이
+-- 전제와 일관되게 base(docker-compose.yml)가 아니라 dev override에만 배선돼 있다(재리뷰 p0 —
+-- 과거 base에 두었을 때 prod override 병합에도 상속돼 이 평문 비밀번호 유저들이 prod에 자동
+-- 생성되는 사고가 있었다). prod 반영은 별도 시크릿 관리·가드 설계가 선행돼야 하며 이 티켓 범위 밖이다.
 
 -- ── 1. 유저 생성 (멱등) ──
 CREATE USER IF NOT EXISTS 'svc_commerce'@'%' IDENTIFIED BY 'svc_commerce_pw';

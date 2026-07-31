@@ -34,10 +34,15 @@ import org.testcontainers.containers.MySQLContainer
  * 테스트가 통과해버리는 false-green을 방지하기 위함이다 (GRANT가 실제로 적용됐는지가 아니라
  * 유저 존재 여부만 우연히 검증하게 되는 사고를 막는다).
  *
- * [createMinimalSchema]가 45개 도메인 테이블 + 9개 BATCH_* 테이블을 전부 만든 뒤에만
- * `02-grants.sql`을 실행한다 — MySQL은 존재하지 않는 테이블에 대한 GRANT를 ERROR 1146으로
- * 거부하므로(재현 확인됨), 실제 운영에서도 이 스크립트는 backend가 최초 기동을 마쳐 전 테이블이
- * 생성된 뒤에만 적용 가능하다. 이 테스트는 그 전제를 그대로 재현해 검증한다.
+ * [createMinimalSchema]가 마이그레이션 파일에서 파생한 도메인 테이블 전부(현재 45개) + 9개
+ * BATCH_* 테이블을 만든 뒤에만 `02-grants.sql`을 실행한다 — MySQL은 존재하지 않는 테이블에 대한
+ * GRANT를 ERROR 1146으로 거부하므로(재현 확인됨), 실제 운영에서도 이 스크립트는 backend가 최초
+ * 기동을 마쳐 전 테이블이 생성된 뒤에만 적용 가능하다. 이 테스트는 그 전제를 그대로 재현해
+ * 검증한다. 이 스펙의 관심사는 어디까지나 "권한 거부/허용이 실제로 작동하는가"이고, 마이그레이션·
+ * 02-grants.sql 두 원본 사이의 테이블 집합 드리프트는 [MigrationGrantParityTest](컨테이너 없는
+ * 파일 레벨 비교)가 검증한다 — 이 스펙의 information_schema 대조(아래 "GRANT 스크립트가 다루는
+ * 모든 테이블에 소유 서비스 유저가 있다" 테스트)는 이 스펙 자신이 만든 스텁 스키마를 대상으로 할
+ * 뿐, 실제 운영 스키마와의 드리프트를 잡지 않는다.
  */
 class DbGrantPermissionTest : FunSpec({
 
@@ -50,17 +55,6 @@ class DbGrantPermissionTest : FunSpec({
 
     fun connectAs(username: String, password: String): Connection =
         DriverManager.getConnection(jdbcUrl(), username, password)
-
-    fun findGrantsSql(): File {
-        tailrec fun search(dir: File?): File? {
-            val currentDir = dir ?: return null
-            val candidate = File(currentDir, "infra/mysql/grants/02-grants.sql")
-            if (candidate.exists()) return candidate
-            return search(currentDir.parentFile)
-        }
-        return search(File(System.getProperty("user.dir")).absoluteFile)
-            ?: error("infra/mysql/grants/02-grants.sql 을 찾을 수 없습니다 (user.dir=${System.getProperty("user.dir")})")
-    }
 
     fun runSqlFile(connection: Connection, file: File) {
         val statements = file.readText()
@@ -75,19 +69,16 @@ class DbGrantPermissionTest : FunSpec({
         }
     }
 
-    // 02-grants.sql이 실제로 GRANT하는 45개 도메인 테이블 전부 — 하나라도 없으면 그 테이블의
+    // 02-grants.sql이 실제로 GRANT하는 도메인 테이블 전부 — 하나라도 없으면 그 테이블의
     // GRANT 문에서 ERROR 1146(테이블 없음)이 발생해 스크립트 실행이 중단된다(운영에서도 동일하게
     // backend 최초 기동으로 전 테이블이 생성된 뒤에만 apply-grants.sh를 실행해야 하는 이유와 같다).
-    val domainTables = listOf(
-        "alerts", "applications", "bookings", "cart_items", "carts", "comments", "communities",
-        "community_bookings", "community_members", "events", "feature_flag_audit_logs", "feature_flags",
-        "goods_order_items", "goods_orders", "limited_drops", "mcp_anomaly_events", "mcp_audit_logs",
-        "mcp_token_scopes", "mcp_tokens", "messages", "notifications", "operator_inbox_notifications",
-        "partner", "partner_api_key", "partner_audit_log", "payments", "permissions", "posts", "products",
-        "programs", "push_tokens", "recruitments", "regions", "role_permissions", "roles",
-        "room_invitations", "room_participants", "rooms", "seats", "slots", "stocks", "ticket_orders",
-        "tickets", "user_roles", "users",
-    )
+    // [재리뷰 p2① 후속] 이전에는 이 테이블 목록을 하드코딩 배열로 들고 있어 마이그레이션에 테이블이
+    // 추가돼도 이 배열을 손으로 갱신하지 않는 한 스텁 스키마가 실제와 어긋난 채 조용히 통과했다.
+    // 이제는 실제 마이그레이션 SQL 파일을 파싱해([GrantSchemaFiles.tablesCreatedByMigrations])
+    // 이 스펙의 스텁 스키마가 항상 최신 마이그레이션과 같은 테이블 집합을 갖도록 파생시킨다 —
+    // 마이그레이션·02-grants.sql 두 원본 사이의 실제 드리프트 검출은 [MigrationGrantParityTest]가
+    // 담당한다(컨테이너 없이 더 빠르게 검증).
+    val domainTables = GrantSchemaFiles.tablesCreatedByMigrations().toList()
 
     // Spring Batch 메타 테이블 — 도메인 마이그레이션이 아니라 앱 최초 기동 시
     // BatchMetadataSchemaInitializer가 만든다(svc_commerce 소유, §2-2 D2).
@@ -124,7 +115,7 @@ class DbGrantPermissionTest : FunSpec({
         mysql.start()
         rootConnection().use { root ->
             createMinimalSchema(root)
-            runSqlFile(root, findGrantsSql())
+            runSqlFile(root, GrantSchemaFiles.grantsSqlFile())
         }
     }
 
@@ -258,40 +249,47 @@ class DbGrantPermissionTest : FunSpec({
 
     test("02-grants.sql 을 두 번 실행해도 svc_commerce 의 최종 권한 개수가 동일하다 (멱등)") {
         rootConnection().use { root ->
-            runSqlFile(root, findGrantsSql())
+            runSqlFile(root, GrantSchemaFiles.grantsSqlFile())
             val firstCount = countTablePrivileges(root, "svc_commerce")
 
-            runSqlFile(root, findGrantsSql())
+            runSqlFile(root, GrantSchemaFiles.grantsSqlFile())
             val secondCount = countTablePrivileges(root, "svc_commerce")
 
-            // svc_commerce: 11 도메인 테이블 + BATCH_* 9 테이블 = 20 × 4 권한(SELECT/INSERT/UPDATE/DELETE) = 80
-            firstCount shouldBe 80
+            // [재리뷰 p3 후속] 기대값(80)을 하드코딩하지 않고 02-grants.sql 에서 파생한다
+            // (GrantSchemaFiles.expectedTablePrivilegeCount — svc_commerce: 11 도메인 + BATCH_* 9
+            // = 20 GRANT 라인 × 4권한). apply-grants.sh 의 expected_count_for_user() 와 동일한 산식.
+            firstCount shouldBe GrantSchemaFiles.expectedTablePrivilegeCount("svc_commerce")
             secondCount shouldBe firstCount
         }
     }
 
     // 6개 서비스 유저 전부의 최종 테이블 권한 개수를 기대값과 대조한다 (리뷰 p3 후속) — 기존에는
     // svc_commerce 1건만 단언했고, svc_edge의 "권한 0"이라는 경계의 핵심 주장이 SELECT 연결 거부
-    // 테스트로만 간접 검증됐다. apply-grants.sh 의 verify 모드가 쓰는 기대값과 동일하다.
+    // 테스트로만 간접 검증됐다. [재리뷰 p3 후속] 기대값은 하드코딩 숫자가 아니라 02-grants.sql 에서
+    // 파생한다(GrantSchemaFiles.expectedTablePrivilegeCount) — apply-grants.sh 의 verify 모드가
+    // 쓰는 산식과 동일한 소스를 공유해, 02-grants.sql이 바뀌어도 두 곳을 손으로 맞출 필요가 없다.
     test("6개 서비스 유저의 최종 테이블 권한 개수가 각각 기대값과 일치한다") {
         rootConnection().use { root ->
-            countTablePrivileges(root, "svc_commerce") shouldBe 80
-            countTablePrivileges(root, "svc_payment") shouldBe 4
-            countTablePrivileges(root, "svc_facility_booking") shouldBe 16
-            countTablePrivileges(root, "svc_social") shouldBe 44
-            countTablePrivileges(root, "svc_platform") shouldBe 72
-            countTablePrivileges(root, "svc_edge") shouldBe 0
+            countTablePrivileges(root, "svc_commerce") shouldBe GrantSchemaFiles.expectedTablePrivilegeCount("svc_commerce")
+            countTablePrivileges(root, "svc_payment") shouldBe GrantSchemaFiles.expectedTablePrivilegeCount("svc_payment")
+            countTablePrivileges(root, "svc_facility_booking") shouldBe GrantSchemaFiles.expectedTablePrivilegeCount("svc_facility_booking")
+            countTablePrivileges(root, "svc_social") shouldBe GrantSchemaFiles.expectedTablePrivilegeCount("svc_social")
+            countTablePrivileges(root, "svc_platform") shouldBe GrantSchemaFiles.expectedTablePrivilegeCount("svc_platform")
+            countTablePrivileges(root, "svc_edge") shouldBe GrantSchemaFiles.expectedTablePrivilegeCount("svc_edge")
         }
     }
 
-    // 테이블 목록이 ① 마이그레이션 ② 02-grants.sql ③ 이 스펙의 하드코딩 배열, 3곳에 중복돼 있어
-    // 46번째 테이블이 추가돼도 GRANT 누락이 아무것도 실패시키지 않는 드리프트를 막는다(리뷰 p2③
-    // 후속). information_schema.tables(실제 존재하는 테이블) ⟂ information_schema.table_privileges
-    // (실제 부여된 GRANT)를 대조해 "소유자 없는 테이블 0건"을 단언한다 — 하드코딩 배열이 아니라
-    // 스키마 자체를 근거로 삼으므로, 향후 새 테이블이 02-grants.sql 갱신 없이 추가되면 이 테스트가
-    // 즉시 실패한다. flyway_migrator는 스키마 단위(sports.*) GRANT라 table_privileges에 잡히지
-    // 않으므로 정상적으로 제외한다.
-    test("GRANT 스크립트가 다루는 모든 테이블에 소유 서비스 유저가 있다 (테이블 집합 드리프트 가드)") {
+    // [재리뷰 p2① 후속 — 서술 정정] 이 테스트는 information_schema.tables ⟂ information_schema.
+    // table_privileges 를 대조하지만, 대조 대상인 information_schema.tables 자체가 이 스펙의
+    // beforeSpec 이 만든 스텁 스키마([createMinimalSchema], 위 domainTables 참고)다. domainTables는
+    // 이제 하드코딩 배열이 아니라 마이그레이션 파일을 파싱해 파생하므로(GrantSchemaFiles), 이
+    // 테스트는 "그 파생된 스텁 스키마 안에서 GRANT 누락이 없는가"를 검증한다 — 즉 02-grants.sql이
+    // domainTables(=마이그레이션에서 파생된 값)와 실제로 어긋나지 않는지의 **간접** 확인이다.
+    // 구 버전 주석은 "스키마 자체를 근거로 삼으므로 향후 새 테이블이 갱신 없이 추가되면 즉시
+    // 실패한다"고 서술했으나 사실이 아니었다 — domainTables가 하드코딩이던 시절에는 컨테이너
+    // 기동조차 없이는 드리프트가 절대 드러나지 않았다. 컨테이너 없이 마이그레이션·02-grants.sql
+    // 두 실제 원본을 직접(양방향) 대조하는 결정적 가드는 [MigrationGrantParityTest]가 수행한다.
+    test("GRANT 스크립트가 다루는 모든 테이블에 소유 서비스 유저가 있다 (스텁 스키마 내부 정합성)") {
         rootConnection().use { root ->
             val ownerlessTables = mutableListOf<String>()
             root.createStatement().use { statement ->
