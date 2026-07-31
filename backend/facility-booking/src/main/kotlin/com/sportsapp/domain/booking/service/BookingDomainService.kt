@@ -275,18 +275,22 @@ class BookingDomainService(
      * - [OrderPaymentLiveness.None](liveness 맵에 없는 후보도 동일): 빠른 TTL만 재검증 —
      *   candidate.createdAt이 ttlMinutes를 지났으면 만료 대상(F-A 고립 예약 등).
      *
-     * **잔여 레이스 창(설계상 한계)**: liveness 조회(`PaymentDomainService.findPaymentLiveness`)
+     * **잔여 레이스 창(설계상 한계, p3-1 정정)**: liveness 조회(`PaymentDomainService.findPaymentLiveness`)
      * ~ 이 메서드 호출 사이에 새로 삽입되는 PENDING 행은 이번 청크의 스냅샷에 반영되지
      * 않는다 — 다만 그 창은 "PG 왕복 전체"가 아니라 "청크 처리 수 ms"로 좁혀진다(6차가
-     * 좁힌 범위). 다음 스케줄 주기(기본 5분)에는 attemptSince로 반영돼 보호된다.
+     * 좁힌 범위). **이 창에 삽입된 건은 이번 주기에 오만료되며 복구되지 않는다** — 만료는
+     * `tryExpire`의 CAS UPDATE로 커밋 완료된 종결 상태라 다음 스케줄 주기가 되돌리지 않는다.
+     * "다음 주기 보호"는 **이번 주기에 만료되지 않은 후보**(예: 이 창 이전에 이미 조회에
+     * 포함돼 liveness 판정을 받은 candidate)에만 적용되는 별개의 명제다.
      */
     fun filterExpirable(
         candidates: List<BookingExpiryCandidate>,
         liveness: Map<Long, OrderPaymentLiveness>,
         ttlPolicy: BookingExpiryTtlPolicy,
     ): BookingExpiryFilterResult {
-        val fastThreshold = ZonedDateTime.now().minusMinutes(ttlPolicy.ttlMinutes)
-        val readyThreshold = ZonedDateTime.now().minusMinutes(ttlPolicy.readyTtlMinutes)
+        val now = ZonedDateTime.now()
+        val fastThreshold = now.minusMinutes(ttlPolicy.ttlMinutes)
+        val readyThreshold = now.minusMinutes(ttlPolicy.readyTtlMinutes)
         val settled = candidates.filter { liveness[it.bookingId] is OrderPaymentLiveness.Settled }
         val expirableIds = candidates
             .filterNot { liveness[it.bookingId] is OrderPaymentLiveness.Settled }

@@ -11,12 +11,23 @@ package com.sportsapp.domain.booking.dto
  *
  * 불변조건(`readyTtlMinutes > ttlMinutes`)은
  * [com.sportsapp.application.booking.config.BookingExpiryProperties]가 부팅 시 `require()`로
- * 이미 강제한다 — 이 값 객체는 그 값을 domain 레이어까지 그대로 옮겨 담을 뿐 재검증하지
- * 않는다(application이 domain보다 먼저 걸러진 값을 넘긴다는 전제. domain은
- * `application.booking.config`를 import할 수 없어 `BookingExpiryProperties`를 직접
- * 참조하지 못한다 — 레이어 의존 방향).
+ * 강제하지만, **이 값 객체 자신도 같은 불변조건을 `init` 블록에서 재검증한다(6차 재리뷰
+ * p3-2)** — 애초에 값 객체로 분리한 목적(위치 인자 뒤바뀜 차단)과 달리, 생성자 파라미터
+ * 순서가 그대로 뒤바뀌어도(`BookingExpiryTtlPolicy(60, 15)`처럼 named argument 없이 값만
+ * 전도돼 호출돼도) 이 클래스만 보면 컴파일이 그대로 통과했다. `BookingExpiryProperties`가
+ * 애플리케이션 레이어에서 이미 걸러준다는 사실이 KDoc에만 적힌 채로 이 타입 자체는
+ * 불변식을 스스로 지키지 못하는 상태였다 — domain은 `application.booking.config`를 import할
+ * 수 없어 `BookingExpiryProperties`를 직접 참조하지 못하므로(레이어 의존 방향), 이 타입이
+ * 유일하게 domain 레이어에서 불변식을 강제할 수 있는 지점이다.
  */
 data class BookingExpiryTtlPolicy(
     val ttlMinutes: Long,
     val readyTtlMinutes: Long,
-)
+) {
+    init {
+        require(readyTtlMinutes > ttlMinutes) {
+            "readyTtlMinutes($readyTtlMinutes)는 ttlMinutes($ttlMinutes)보다 커야 한다 — " +
+                "그렇지 않으면 결제 진행 중(live)인 예약이 빠른 TTL에 의해 오만료된다"
+        }
+    }
+}

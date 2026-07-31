@@ -20,6 +20,11 @@ import java.time.ZonedDateTime
  * [OrderPaymentLiveness.Attempting]으로 분류돼 시도 시작 시각을 앵커로 넘긴다 — `createPending`이
  * PENDING 행을 먼저 커밋하고 PG 왕복 동안 그 상태로 머무는 창에서, 방금 시작된 재결제 시도를
  * 앵커 없이(=즉시 만료 허용) 판정하면 오만료가 재발한다.
+ *
+ * 핵심 회귀(7차 — p1): live 행이 한 건이라도 있으면 `attempting` 갈래를 아예 평가하지 않고
+ * 즉시 `Live`를 반환하던 카테고리 우선순위 결함 — 오래된 READY + 방금 삽입된 최신 PENDING
+ * 조합에서 최신 PENDING이 통째로 버려져 오만료가 재발했다. 두 카테고리 최댓값의 교차
+ * 비교(양방향)로 검증한다.
  */
 class PaymentLivenessClassifierTest : BehaviorSpec({
 
@@ -156,6 +161,42 @@ class PaymentLivenessClassifierTest : BehaviorSpec({
 
             Then("FAILED는 무시되고 PENDING만 Attempting 앵커로 반영된다") {
                 (result.of(7L) as OrderPaymentLiveness.Attempting).since shouldBe retryAttemptAt
+            }
+        }
+    }
+
+    Given("오래된 READY와 방금 삽입된 PENDING이 함께 있을 때 (7차 핵심 회귀 — 카테고리 우선순위가 최신 시도를 가리면 안 된다)") {
+        val staleReadyAt = ZonedDateTime.now().minusMinutes(70)
+        val retryAttemptAt = ZonedDateTime.now().minusSeconds(5)
+        val rows = listOf(
+            PaymentLivenessRow(orderId = 9L, status = PaymentStatus.READY, createdAt = staleReadyAt),
+            PaymentLivenessRow(orderId = 9L, status = PaymentStatus.PENDING, createdAt = retryAttemptAt),
+        )
+
+        When("classify를 호출하면 (READY가 있지만 더 최신인 PENDING이 존재)") {
+            val result = PaymentLivenessClassifier.classify(rows)
+
+            Then("Attempting(retryAttemptAt)으로 분류된다 — 오래된 Live가 최신 Attempting을 가리면 안 된다") {
+                val liveness = result.of(9L).shouldBeInstanceOf<OrderPaymentLiveness.Attempting>()
+                liveness.since shouldBe retryAttemptAt
+            }
+        }
+    }
+
+    Given("방금 발급된 READY와 오래된 PENDING(원 시도)이 함께 있을 때 (7차 회귀 — 반대 방향)") {
+        val recentReadyAt = ZonedDateTime.now().minusMinutes(1)
+        val originalAttemptAt = ZonedDateTime.now().minusMinutes(70)
+        val rows = listOf(
+            PaymentLivenessRow(orderId = 10L, status = PaymentStatus.PENDING, createdAt = originalAttemptAt),
+            PaymentLivenessRow(orderId = 10L, status = PaymentStatus.READY, createdAt = recentReadyAt),
+        )
+
+        When("classify를 호출하면 (PENDING이 있지만 더 최신인 READY가 존재)") {
+            val result = PaymentLivenessClassifier.classify(rows)
+
+            Then("Live(recentReadyAt)로 분류된다") {
+                val liveness = result.of(10L).shouldBeInstanceOf<OrderPaymentLiveness.Live>()
+                liveness.since shouldBe recentReadyAt
             }
         }
     }

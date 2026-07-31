@@ -21,7 +21,10 @@ import java.time.ZonedDateTime
  *
  * - [Settled]: COMPLETED — 돈을 받았다. TTL 앵커 필드가 아예 없다 — 시간값을 실수로
  *   끼워 넣어 만료 판정에 쓸 수 없는 구조다(절대 만료 금지).
- * - [Live]: READY 또는 COMPLETED 중 발급 시각([since])이 존재하는 상태 — 느린 TTL 앵커.
+ * - [Live]: READY 또는 COMPLETED 중 [since](payment 행 생성 시각 — `markReady`로 checkoutUrl이
+ *   발급되는 시각이 아니라 [com.sportsapp.domain.payment.dto.PaymentLivenessRow.createdAt]이다.
+ *   READY 행은 PENDING으로 먼저 생성된 뒤 상태만 전이되므로 둘은 다르다)이 존재하는 상태 —
+ *   느린 TTL 앵커.
  *   COMPLETED는 [Settled]로도 계산되므로(같은 주문이 두 변이 후보에 모두 해당해도 classify는
  *   [Settled] 하나만 반환한다), 소비측이 sealed `when`을 쓰면 [Settled] 분기가 구조적으로
  *   먼저 잡혀 [Live]로는 도달하지 않는다.

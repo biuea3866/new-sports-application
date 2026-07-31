@@ -10,8 +10,12 @@ import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.common.FeatureContext
 import com.sportsapp.domain.common.FeatureFlagEvaluator
 import com.sportsapp.domain.common.payment.OrderPaymentLiveness
+import com.sportsapp.domain.payment.dto.PaymentLivenessRow
+import com.sportsapp.domain.payment.entity.PaymentStatus
+import com.sportsapp.domain.payment.service.PaymentLivenessClassifier
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -242,6 +246,41 @@ class BookingExpiryDomainServiceTest : BehaviorSpec({
             )
 
             Then("예약 생성 시각과 무관하게 재결제 시도 시각 기준으로 만료되지 않는다 — max(createdAt, attemptSince) 앵커") {
+                result.expirableIds shouldBe emptyList()
+            }
+        }
+    }
+
+    Given("60분 지난 READY 예약에 방금 재결제 시도가 삽입됐을 때 (7차 재리뷰 p1 — 카테고리 우선순위 결함 종단 회귀)") {
+        val bookingRepository = mockk<BookingRepository>()
+        val service = buildService(bookingRepository)
+        // orderId=102L의 payment: 65분 전 발급된 READY(readyTtlMinutes=60을 이미 초과) +
+        // 5초 전 삽입된 재결제 PENDING. 7차 이전(카테고리 우선순위) 로직이면 attempting을
+        // 아예 보지 않고 오래된 READY만으로 Live(65분 전)를 반환해 즉시 오만료됐다 —
+        // PaymentLivenessClassifier.classify()를 실제로 호출해 그 산출물이 filterExpirable에서
+        // 어떻게 소비되는지 종단으로 검증한다(스텁에 결론을 미리 박지 않는다).
+        val staleReadyAt = ZonedDateTime.now().minusMinutes(65)
+        val retryAttemptAt = ZonedDateTime.now().minusSeconds(5)
+        val liveness = PaymentLivenessClassifier.classify(
+            listOf(
+                PaymentLivenessRow(orderId = 102L, status = PaymentStatus.READY, createdAt = staleReadyAt),
+                PaymentLivenessRow(orderId = 102L, status = PaymentStatus.PENDING, createdAt = retryAttemptAt),
+            ),
+        )
+        val candidates = listOf(
+            BookingExpiryCandidate(bookingId = 102L, createdAt = staleReadyAt),
+        )
+
+        When("classify 결과(Attempting이어야 한다)를 filterExpirable에 그대로 넘기면") {
+            liveness.of(102L).shouldBeInstanceOf<OrderPaymentLiveness.Attempting>()
+
+            val result = service.filterExpirable(
+                candidates = candidates,
+                liveness = mapOf(102L to liveness.of(102L)),
+                ttlPolicy = defaultTtlPolicy,
+            )
+
+            Then("오래된 READY(readyTtl 초과)에 가려지지 않고 재결제 시도 시각 기준으로 만료되지 않는다") {
                 result.expirableIds shouldBe emptyList()
             }
         }

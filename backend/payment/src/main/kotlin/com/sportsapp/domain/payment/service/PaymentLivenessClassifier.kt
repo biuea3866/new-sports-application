@@ -42,17 +42,40 @@ import com.sportsapp.domain.payment.entity.PaymentStatus
  * 시도(`POST /payments/prepare`, 매 호출 새 idempotencyKey)만** 재-앵커된다. 이미 종결된
  * FAILED/CANCELLED/REFUNDED는 [isAttempting] 대상이 아니므로 영향 없다.
  *
+ * **한계 — idempotencyKey 재사용(p3-3)**: 위 재-앵커는 "매 `POST /payments/prepare` 호출이
+ * 새 idempotencyKey를 쓴다"는 전제에서만 성립한다. 클라이언트가 동일 키를 재사용하면
+ * `PaymentDomainService.createPending`이 기존 행을 그대로 반환해(새 행 미삽입) 앵커가
+ * 갱신되지 않고, `applyPgResult`도 대상 status가 `PENDING`이 아니면 갱신을 건너뛰므로 이미
+ * 종결된 행이면 앵커가 영구히 낡은 채로 남는다 — 이때는 checkoutUrl만 유효하게 재반환되고
+ * 스위퍼는 앵커 신선도로 이를 구분하지 못한다. 레이스가 아니라 **결정적** 오만료 경로이며,
+ * 이 클래스가 관측하는 정보(payment 행의 상태·시각)만으로는 방지할 수 없다 — 클라이언트가
+ * idempotencyKey를 매 시도마다 새로 발급하는 것이 전제 조건이다.
+ *
+ * **7차 재설계 (p1 — 카테고리 우선순위가 최신 시도를 가리는 결함)**: 6차까지는 `live` 행이
+ * 한 건이라도 있으면 그 최댓값을 무조건 반환하고 `attempting` 갈래는 아예 평가하지 않았다
+ * (`liveRows.isNotEmpty()`로 즉시 return). 그런데 **원 payment가 READY까지 성공한 뒤**(정상
+ * 흐름 — F-A처럼 prepare가 실패하는 드문 변종이 아니다) 느린 TTL이 경과하도록 방치되다가,
+ * 사용자가 돌아와 재결제(`POST /payments/prepare`)를 시도해 새 PENDING 행이 막 커밋된
+ * 시점에 스위퍼가 돌면, 그 새 PENDING이 아무리 최신이어도 오래된 READY의 카테고리
+ * 우선순위에 가려 `Live(오래된 시각)`으로 판정돼 즉시 오만료됐다 — "돈은 받고 예약은 없음"이
+ * 여기서도 재발한다. 카테고리 우선순위가 아니라 **두 카테고리의 최댓값끼리 교차 비교**해
+ * 실제로 가장 최근에 갱신된 쪽을 앵커로 고른다.
+ *
  * 있는 정보(payment 상태·시각)로만 판정한다:
  * - **settled**(COMPLETED): 돈을 받았다 — 절대 만료(취소) 금지. [OrderPaymentLiveness.Settled].
  * - **live**(READY 또는 COMPLETED): 사용자가 checkoutUrl을 받았거나 결제 완료 — 결제가
  *   시작이라도 됐다는 신호. 방치돼도 짧은 TTL로 만료시키면 결제창에 머무는 사용자를
  *   오만료할 위험이 있으므로, 호출 컨텍스트(booking 등)가 소유한 **느린 TTL**을 live payment의
- *   **발급 시각 중 최댓값**에 적용해서만 만료를 허용한다([OrderPaymentLiveness.Live]). 한
+ *   **행 생성 시각 중 최댓값**에 적용해서만 만료를 허용한다([OrderPaymentLiveness.Live]). 한
  *   주문에 payment가 여러 건인 것은 정상 흐름이므로(장바구니 K1 + 결제 페이지 K2 재개시 등)
  *   최댓값이 아닌 값을 쓰면 "오래된 READY + 방금 READY" 조합에서 판정이 뒤집혀 오만료가 난다.
  * - **attempting**(PENDING): PG 왕복 대기 중 — 아직 결제가 시작됐다는 확답(checkoutUrl)은
  *   없지만 시도가 진행 중이다. **빠른 TTL**이나 앵커를 시도 시작 시각으로 재-앵커한다
  *   ([OrderPaymentLiveness.Attempting], 위 6차 참고).
+ * - **live와 attempting이 함께 있을 때(7차)**: 두 카테고리의 최댓값(createdAt)을 비교해 더
+ *   최신인 쪽을 반환한다 — live 최댓값이 attempting 최댓값보다 앞서지 않으면(같거나 이후면)
+ *   [OrderPaymentLiveness.Live], 그 반대면(더 최근 시도가 존재하면) [OrderPaymentLiveness.Attempting].
+ *   카테고리 자체의 우선순위(live > attempting)로 앵커를 정하지 않는다.
  * - 그 외(행 없음/FAILED/CANCELLED/REFUNDED): 결제가 시작 못 했거나 종결됐다 — **빠른 TTL**로
  *   만료 허용, 앵커는 호출 컨텍스트가 소유한 주문 생성 시각([OrderPaymentLiveness.None]).
  *   PG prepare 실패로 즉시 FAILED로 전이되는 케이스(F-A 고립 예약)가 여기 포함된다
@@ -72,11 +95,12 @@ object PaymentLivenessClassifier {
     fun isAttempting(status: PaymentStatus): Boolean = status == PaymentStatus.PENDING
 
     /**
-     * orderId별 [OrderPaymentLiveness]를 산출한다 — settled > live > attempting > none
-     * 우선순위로 한 주문에 정확히 하나의 판정만 반환한다(같은 주문에 여러 상태의 payment 행이
-     * 섞여 있어도 판정은 하나). payment 행이 전혀 없는 orderId는 이 맵에 없다 —
-     * [PaymentLivenessQueryResult.of]가 조회 시 [OrderPaymentLiveness.None]을 기본값으로
-     * 채운다.
+     * orderId별 [OrderPaymentLiveness]를 산출한다 — settled가 있으면 그것 하나, 없으면
+     * live·attempting 최댓값끼리 **앵커 최신성**으로 비교해 정확히 하나의 판정만 반환한다
+     * (같은 주문에 여러 상태의 payment 행이 섞여 있어도 판정은 하나. 7차 — 카테고리
+     * 우선순위가 아니다, 위 클래스 KDoc "7차 재설계" 참고). payment 행이 전혀 없는 orderId는
+     * 이 맵에 없다 — [PaymentLivenessQueryResult.of]가 조회 시 [OrderPaymentLiveness.None]을
+     * 기본값으로 채운다.
      */
     fun classify(rows: List<PaymentLivenessRow>): PaymentLivenessQueryResult {
         val livenessByOrderId = rows.groupBy { it.orderId }
@@ -84,15 +108,26 @@ object PaymentLivenessClassifier {
         return PaymentLivenessQueryResult(livenessByOrderId)
     }
 
+    /**
+     * **7차 재설계 (p1)**: 이전에는 `liveRows.isNotEmpty()`면 `attemptingRows`를 평가조차
+     * 하지 않고 즉시 `Live`를 반환했다 — live 행이 한 건이라도 있으면 아무리 최신인 attempting
+     * 행이 있어도 통째로 버려져, "오래된 READY 방치 + 방금 재결제 시도로 삽입된 최신 PENDING"
+     * 조합에서 오만료가 재발했다(클래스 KDoc 참고). 이제 두 카테고리의 최댓값을 각각 구해
+     * **교차 비교**한다 — `newestLive`가 `newestAttempt`보다 앞서지 않을 때(같거나 이후,
+     * attempting이 없는 경우 포함)만 `Live`를, 그 외(더 최신 attempting이 존재)에는
+     * `Attempting`을 반환한다.
+     */
     private fun classifyOrder(rows: List<PaymentLivenessRow>): OrderPaymentLiveness {
         if (rows.any { isSettled(it.status) }) return OrderPaymentLiveness.Settled
 
-        val liveRows = rows.filter { isLive(it.status) }
-        if (liveRows.isNotEmpty()) return OrderPaymentLiveness.Live(liveRows.maxOf { it.createdAt })
+        val newestLive = rows.filter { isLive(it.status) }.maxOfOrNull { it.createdAt }
+        val newestAttempt = rows.filter { isAttempting(it.status) }.maxOfOrNull { it.createdAt }
 
-        val attemptingRows = rows.filter { isAttempting(it.status) }
-        if (attemptingRows.isNotEmpty()) return OrderPaymentLiveness.Attempting(attemptingRows.maxOf { it.createdAt })
-
-        return OrderPaymentLiveness.None
+        return when {
+            newestLive != null && (newestAttempt == null || !newestLive.isBefore(newestAttempt)) ->
+                OrderPaymentLiveness.Live(newestLive)
+            newestAttempt != null -> OrderPaymentLiveness.Attempting(newestAttempt)
+            else -> OrderPaymentLiveness.None
+        }
     }
 }
