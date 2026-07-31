@@ -331,7 +331,10 @@ management:
     tags:
       application: ${spring.application.name}
       env: ${APP_ENV:local}
-      service: mcp
+      # [W1-09] 고정 `service` 태그(값 `mcp`)를 제거했다. MCP 시절 잔재이며 6서비스 전개에서는 모든
+      # 서비스의 메트릭에 거짓 값이 붙는다. 소비자 확인 근거: observability/grafana/dashboards/*.json
+      # 은 `application`·`env`(Prometheus)와 `resource.service.name`(Tempo)만 쿼리하고 `service`
+      # 태그를 쓰지 않는다. 서비스 식별은 `application` 태그(= spring.application.name)가 담당한다.
     distribution:
       percentiles-histogram:
         # INFRA-02 실측: Grafana P95 규칙이 http_server_requests_seconds_bucket 히스토그램을 소비한다.

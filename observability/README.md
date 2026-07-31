@@ -88,13 +88,38 @@ dev/prod는 `-p`(프로젝트명)로 네임스페이스가 분리되어 상호 �
 | `APP_ENV` | 메트릭 `env` 라벨(ADR-005) | `local` / `dev` / `prod` |
 | `MANAGEMENT_OTLP_TRACING_ENDPOINT` | 앱 trace 발신 대상(HTTP) | `http://otel-collector:4318/v1/traces` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | OTEL SDK base 엔드포인트 | `http://otel-collector:4318` |
-| `OTEL_SERVICE_NAME` | 서비스 식별(service.name) | BE=`sports-application` / web=`sports-web` |
+| `OTEL_SERVICE_NAME` | 서비스 식별(service.name) | 아래 규약 표 참조 |
 | `GRAFANA_ADMIN_USER` / `GRAFANA_ADMIN_PASSWORD` | Grafana 관리자 계정 | `admin` / `admin` |
 
-> **service.name 규약**: BE(Spring Boot)=`sports-application`, web(프론트)=`sports-web`.
-> 서비스마다 다른 값을 부여합니다(같은 값을 공유하면 Tempo에서 trace가 한 서비스로 뭉칩니다).
+> **service.name 규약** (W1-09): 서비스마다 다른 값을 부여합니다 — 같은 값을 공유하면 Tempo에서
+> trace가 한 서비스로 뭉쳐 **경계를 넘는 호출을 구분할 수 없습니다**.
+>
+> | 대상 | `service.name` | 비고 |
+> |---|---|---|
+> | BE 단일 앱 (1단계 런타임) | `sports-application` | 모듈 프로파일 미활성 시 기본값 |
+> | commerce | `sports-commerce` | 2단계 |
+> | payment | `sports-payment` | 2단계 |
+> | facility-booking | `sports-facility-booking` | 2단계 |
+> | social | `sports-social` | 2단계 |
+> | platform | `sports-platform` | 2단계 |
+> | edge | `sports-edge` | 2단계 |
+> | web(프론트) | `sports-web` | — |
+>
+> **우선순위**: `OTEL_SERVICE_NAME`(env) > 모듈 프로파일 `spring.application.name` > 루트
+> `application.yml`의 `sports-application`. 모듈 yml이 `${OTEL_SERVICE_NAME:sports-...}` 형태라
+> env가 이깁니다. 따라서 **2단계 compose는 `OTEL_SERVICE_NAME`을 서비스별로 설정해야 합니다** —
+> 전역 1값으로 두면 6서비스가 한 이름으로 뭉쳐 이 규약이 무력화됩니다.
+>
 > backend의 OTLP 엔드포인트는 `docker-compose.observability.yml`이 이미 서비스명 기준으로 주입하므로,
 > `.env`의 위 값은 비컨테이너 로컬 앱(`gradlew bootRun`)이나 web처럼 컨테이너 밖 발신 시 참조용입니다.
+>
+> **2단계 전환 성공 판정** (실행설계 §8-3 2단계 판정 ⑤): 한 요청의 트레이스에서 **부모 스팬과 자식
+> 스팬의 `service.name`이 서로 다른 값**으로 이어지는지 확인합니다. 예를 들어 카탈로그 통합 조회는
+> `sports-edge` 스팬 아래에 `sports-commerce`·`sports-facility-booking` 자식 스팬이 붙어야 합니다.
+> Grafana → Explore → Tempo → `{resource.service.name="sports-edge"}` 로 조회한 트레이스를 펼쳐
+> 자식 스팬의 서비스명이 갈리는지 봅니다. 모든 스팬이 한 이름이면 전환이 실패한 것입니다(전파 헤더
+> 누락 또는 `OTEL_SERVICE_NAME` 전역 1값 설정). 1단계에서는 단일 프로세스라 스팬이 자연히 이어지므로
+> 이 판정은 2단계에서만 의미가 있습니다.
 
 ---
 
@@ -268,6 +293,9 @@ LGTM 실기동 E2E(연결율 99% 실측·대시보드 렌더·lag)는 이미지 
   `promtail-config.yaml`의 relabel 규칙이 1차로 compose 서비스명을 `service_name`으로 승격한 뒤,
   backend/web 컨테이너에 한해 2차로 trace 쪽 값(`sports-application`/`sports-web`)으로 덮어씁니다 —
   다른 컨테이너(mysql·redis·kafka 등, trace 미발신)는 compose 서비스명을 그대로 유지합니다.
+  W1-09가 2단계 6서비스(`commerce`→`sports-commerce` 등) 매핑을 같은 방식으로 선반영했습니다 —
+  1단계에는 해당 컨테이너가 없어 regex가 불일치하고, relabel 규칙은 불일치 시 라벨을 바꾸지 않으므로
+  무해합니다.
   backend 컨테이너 로그는 `CONSOLE_LOG_PATTERN`의 `trace_id=xxxx` 텍스트를 그대로 포함하므로 Loki
   `derivedFields`(`trace_id_logfmt`, `datasources.yml:79`)가 그대로 매칭되어 로그→trace 점프가 가능합니다.
 - **보안 트레이드오프**: `docker.sock` 읽기 전용 마운트는 로컬/dev 전용 패턴입니다. prod 환경에서는

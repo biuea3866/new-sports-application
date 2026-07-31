@@ -68,3 +68,32 @@ scrape_configs:
         regex: "^web$"
         target_label: service_name
         replacement: "sports-web"
+      # [W1-09] 2단계 6서비스 분리 대비 — compose 서비스명 → service.name 규약값 매핑.
+      # 1단계에는 이 컨테이너들이 존재하지 않아 regex 가 불일치하고, relabel 규칙은 불일치 시
+      # target_label 을 바꾸지 않으므로 무해하다(backend 단일 앱의 라벨은 위 규칙이 그대로 담당).
+      # 이 매핑이 없으면 2단계에서 Loki 라벨은 compose 서비스명(commerce)인데 Tempo span 의
+      # service.name 은 규약값(sports-commerce)이라 tracesToLogsV2 매칭이 0건이 된다.
+      - source_labels: ["__meta_docker_container_label_com_docker_compose_service"]
+        regex: "^commerce$"
+        target_label: service_name
+        replacement: "sports-commerce"
+      - source_labels: ["__meta_docker_container_label_com_docker_compose_service"]
+        regex: "^payment$"
+        target_label: service_name
+        replacement: "sports-payment"
+      - source_labels: ["__meta_docker_container_label_com_docker_compose_service"]
+        regex: "^facility-booking$"
+        target_label: service_name
+        replacement: "sports-facility-booking"
+      - source_labels: ["__meta_docker_container_label_com_docker_compose_service"]
+        regex: "^social$"
+        target_label: service_name
+        replacement: "sports-social"
+      - source_labels: ["__meta_docker_container_label_com_docker_compose_service"]
+        regex: "^platform$"
+        target_label: service_name
+        replacement: "sports-platform"
+      - source_labels: ["__meta_docker_container_label_com_docker_compose_service"]
+        regex: "^edge$"
+        target_label: service_name
+        replacement: "sports-edge"

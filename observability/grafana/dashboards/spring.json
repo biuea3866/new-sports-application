@@ -55,7 +55,7 @@
         "name": "service",
         "label": "service",
         "type": "custom",
-        "query": "sports-application,sports-web",
+        "query": "sports-application,sports-web,sports-commerce,sports-payment,sports-facility-booking,sports-social,sports-platform,sports-edge",
         "includeAll": false,
         "multi": false,
         "current": {
