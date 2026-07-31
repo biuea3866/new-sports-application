@@ -223,6 +223,51 @@ class RecruitmentExpiryDomainServiceTest : BehaviorSpec({
         }
     }
 
+    Given("주문은 오래됐지만 방금 재결제를 시도해 payment 행이 PENDING일 때 (Attempting — 오만료 금지)") {
+        val service = buildService()
+        val applicationCreatedAt = ZonedDateTime.now().minusMinutes(60)
+        val attemptStartedAt = ZonedDateTime.now().minusMinutes(10)
+        val liveness = PaymentLivenessClassifier.classify(
+            listOf(PaymentLivenessRow(orderId = 9L, status = PaymentStatus.PENDING, createdAt = attemptStartedAt)),
+        )
+        val candidates = listOf(ApplicationExpiryCandidate(applicationId = 9L, createdAt = applicationCreatedAt))
+
+        When("filterExpirable을 호출하면") {
+            val result = service.filterExpirable(
+                candidates = candidates,
+                liveness = mapOf(9L to liveness.of(9L)),
+                ttlPolicy = defaultTtlPolicy,
+            )
+
+            Then("빠른 TTL 앵커가 주문 생성 시각이 아니라 시도 시각과의 최댓값이므로 취소되지 않는다") {
+                result.expirableIds shouldBe emptyList()
+                result.skippedSettledCount shouldBe 0
+            }
+        }
+    }
+
+    Given("PG 왕복 대기 중인 PENDING payment 행이 빠른 TTL을 지났을 때 (Attempting — 무한 점유 방지)") {
+        val service = buildService()
+        val applicationCreatedAt = ZonedDateTime.now().minusMinutes(60)
+        val attemptStartedAt = ZonedDateTime.now().minusMinutes(40)
+        val liveness = PaymentLivenessClassifier.classify(
+            listOf(PaymentLivenessRow(orderId = 10L, status = PaymentStatus.PENDING, createdAt = attemptStartedAt)),
+        )
+        val candidates = listOf(ApplicationExpiryCandidate(applicationId = 10L, createdAt = applicationCreatedAt))
+
+        When("filterExpirable을 호출하면") {
+            val result = service.filterExpirable(
+                candidates = candidates,
+                liveness = mapOf(10L to liveness.of(10L)),
+                ttlPolicy = defaultTtlPolicy,
+            )
+
+            Then("시도 시각도 빠른 TTL 30분을 넘겼으므로 취소 대상이다") {
+                result.expirableIds shouldBe listOf(10L)
+            }
+        }
+    }
+
     Given("readyTtlMinutes가 ttlMinutes 이하일 때 (설정 불변조건 위반)") {
         Then("ApplicationExpiryTtlPolicy 생성이 IllegalArgumentException으로 실패한다") {
             io.kotest.assertions.throwables.shouldThrow<IllegalArgumentException> {
