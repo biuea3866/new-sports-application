@@ -1,0 +1,16 @@
+# [W1-03] social 서비스 커넥션 예산 — 실행설계 §7-6
+#
+# 풀 25/인스턴스 × 2 replica = 50. community·post·message·recruitment 4개 컨텍스트를 담아
+# 소유 테이블은 11개로 많지만, 트래픽 대부분이 조회이고 결제·재고 같은 경합 쓰기가 없다.
+#
+# replica 2 는 W1-07(Redis pub/sub STOMP 릴레이)이 전제다 — 릴레이 없이 2 replica 로 띄우면
+# 인스턴스 A 에 붙은 사용자의 메시지가 B 에 붙은 사용자에게 도달하지 않는다.
+#
+# 1단계에서는 이 프로파일이 활성화되지 않는다(단일 bootstrap 앱만 기동). 2단계 서비스 물리 추출
+# 시점에 활성화될 설정을 미리 확정해 두는 것이 이 파일의 목적이다.
+# connection-timeout 5000ms 는 FIX-03 확정값 — 전 서비스 통일.
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 25
+      connection-timeout: 5000

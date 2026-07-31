@@ -1,0 +1,21 @@
+# [W1-03] edge 서비스 — DB 커넥션 0 (실행설계 §7-6, §3-1)
+#
+# edge 는 소유 테이블이 0이고 W1-04 의 GRANT 설계에서 `svc_edge` 에 **DB 권한을 주지 않는다**.
+# 저장소는 Redis 하나뿐이다(대기열 상태·입장 토큰·Lua 스크립트 3종).
+#
+# 그래서 풀 크기 0 을 적는 것으로 끝내지 않고 **데이터소스 자동 구성 자체를 제외**한다. 풀 0 으로
+# 두면 Spring 이 여전히 DataSource 빈을 만들려 하고, 권한 없는 계정으로 접속을 시도해 기동이
+# 실패하거나(권한 오류) 무의미한 커넥션 시도가 남는다. 자동 구성을 빼야 커넥션을 아예 만들지 않는다.
+#
+# 제외 3종은 edge 의 기존 Redis 통합 테스트가 이미 쓰는 목록과 동일하다
+# (VirtualQueueStoreImplTest·VirtualQueueLuaScriptsContractTest·HmacEntryTokenGatewayRedisIntegrationTest)
+# — JPA 자동 구성은 DataSource 부재 시 스스로 실패하므로 함께 제외해야 한다.
+#
+# 1단계에서는 이 프로파일이 활성화되지 않는다(단일 bootstrap 앱만 기동). 2단계 서비스 물리 추출
+# 시점에 활성화될 설정을 미리 확정해 두는 것이 이 파일의 목적이다.
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
