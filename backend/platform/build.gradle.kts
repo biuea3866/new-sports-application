@@ -19,7 +19,20 @@ dependencies {
     implementation(project(":commerce"))
     implementation(project(":facility-booking"))
 
-    implementation(platform("org.springframework.boot:spring-boot-dependencies:$springBootVersion"))
+    // [W1-01c 리뷰 후속 ①] enforcedPlatform — spring-ai-bom(1.1.6)이 spring-boot-starter-web을
+    // 3.5.14로 전이 요청해(spring-ai-starter-mcp-server-webmvc -> spring-boot-starter-web:3.5.14
+    // -> spring-boot-starter-json:3.5.14 -> jackson-bom:2.21.2) 순수 platform()의 "높은 값 승리"
+    // 규칙에서 spring-core 6.2.18/jackson-databind 2.21.2/logback 1.5.32가 선택되는 컴파일-런타임
+    // 스큐가 있었다(컴파일은 3.5.14, bootJar 실행은 io.spring.dependency-management가 있는 bootstrap
+    // 기준 3.3.5) — 최대 모듈(431파일)이 대상이라 NoSuchMethodError/NoClassDefFoundError가 프로덕션
+    // 런타임에서만 터진다. io.spring.dependency-management 플러그인(또는 dependencyManagement{imports{}}
+    // DSL)은 detekt 자체 tool 컨피규레이션까지 BOM 제약을 적용해 kotlin-stdlib를 1.9.23->1.9.25로
+    // 끌어올려 "detekt was compiled with Kotlin 1.9.23 but is currently running with 1.9.25" 크래시를
+    // 재현한다(common 모듈의 동일 이력, 이 티켓에서 직접 재현 확인) — 그래서 그 플러그인 대신
+    // enforcedPlatform()으로 Spring Boot BOM 버전을 다른 전이 요청보다 우선 강제한다. enforcedPlatform은
+    // compileClasspath/runtimeClasspath 계열 컨피규레이션에만 적용되고 detekt 컨피규레이션에는
+    // 적용되지 않아 이 크래시가 재현되지 않는다(하단 검증 참고).
+    implementation(enforcedPlatform("org.springframework.boot:spring-boot-dependencies:$springBootVersion"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-security")
@@ -76,15 +89,28 @@ tasks.named<Test>("test") {
     systemProperty("kotest.tags", "!Live")
 }
 
-// spring-ai-bom(1.1.6)의 dependency constraint 가 jackson-module-kotlin 을 2.21.2 로 끌어올리며
-// kotlin-reflect/kotlin-stdlib 를 2.1.21 로 함께 끌어올린다 — 이 프로젝트의 Kotlin Gradle 플러그인은
-// 1.9.23(gradle.properties kotlinVersion) 이라 2.1 메타데이터를 읽지 못해 컴파일이 깨진다(bootstrap 은
-// org.springframework.boot/io.spring.dependency-management 플러그인이 자체 BOM 을 더 강하게 적용해
-// 이 충돌이 나타나지 않는다 — platform 은 그 플러그인을 쓰지 않아 순수 Gradle platform() 제약이 병합되며
-// 최댓값이 선택된다). spring-boot-dependencies BOM 이 관리하는 버전으로 강제 고정한다.
+// [W1-01c 리뷰 후속 ②] verifyExternalLive — KmaWeatherLiveContractTest(tags = Live)가 이 모듈로
+// 이관됐는데, 짝인 live 태그 opt-in 실행 태스크가 없어 이 계약 스모크를 어떤 태스크로도 돌릴 수
+// 없었다. bootstrap(build.gradle.kts)과 동일한 정의를 이 모듈에도 추가한다(실 키가 env 에 있을 때만
+// 유효, opt-in).
+val verifyExternalLive by tasks.registering(Test::class) {
+    description = "외부 API 계약 live 태그 스모크 실행 (opt-in, 실 키 필요)"
+    group = "verification"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    systemProperty("kotest.tags", "Live")
+    shouldRunAfter(tasks.test)
+}
+
+// [W1-01c 리뷰 후속 ①] spring-ai-bom(1.1.6)의 dependency constraint 가 kotlin-reflect/kotlin-stdlib 를
+// 1.9.25 로 끌어올린다 — enforcedPlatform(spring-boot-dependencies) 은 그 BOM 이 관리하는 좌표(spring-*,
+// jackson-*, logback 등)에만 적용되고 kotlin-stdlib/kotlin-reflect 는 spring-boot-dependencies BOM의
+// 관리 범위 밖이라 enforcedPlatform 승격만으로는 해결되지 않는다(jackson-module-kotlin 은 이제
+// enforcedPlatform 이 커버해 force 불필요 — 상단 확인). 이 프로젝트의 Kotlin Gradle 플러그인은 1.9.23
+// (gradle.properties kotlinVersion)이라 bootstrap 런타임(kotlin-stdlib 1.9.23)과 어긋나면 그 자체가
+// 또 다른 컴파일-런타임 스큐이므로, kotlinVersion 으로 강제 고정한다.
 configurations.all {
     resolutionStrategy {
-        force("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.2")
         force("org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion")
         force("org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion")
     }
