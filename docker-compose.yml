@@ -60,6 +60,12 @@ services:
       # [W1-02] §7-6 — max_connections 500 (기본 151은 목표 구성 10인스턴스×풀40=400에 못 미침).
       # 풀 크기 배분 자체는 W1-03 소유, 여기서는 서버측 상한만 연다.
       - ./infra/mysql/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+      # [W1-04] 서비스별 DB 유저 + 테이블 단위 GRANT는 여기서 자동 마운트하지 않는다 — 근거는
+      # infra/mysql/grants/02-grants.sql 헤더 주석 참조: 신규 볼륨 최초 기동 시점에는 Flyway가
+      # 아직 테이블을 만들지 않아 GRANT 대상 테이블이 존재하지 않고, MySQL은 존재하지 않는
+      # 테이블에 대한 GRANT를 에러(1146)로 거부해 docker-entrypoint-initdb.d 실행 자체가
+      # 실패한다(재현 확인 — mysql 컨테이너가 기동조차 못 하고 종료됨). 대신 backend가 최초
+      # 마이그레이션을 마친 뒤 scripts/apply-grants.sh 를 1회 수동 실행한다(신규·기존 볼륨 공통).
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-root}"]
       interval: 10s
