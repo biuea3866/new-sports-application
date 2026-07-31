@@ -31,6 +31,7 @@ class SecurityConfig(
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
     private val partnerApiKeyAuthenticationFilter: PartnerApiKeyAuthenticationFilter,
     private val loadSheddingFilter: LoadSheddingFilter,
+    private val internalIdentityHeaderSanitizingFilter: InternalIdentityHeaderSanitizingFilter,
 ) {
     @Autowired(required = false)
     private var mcpTokenAuthenticationFilter: McpTokenAuthenticationFilter? = null
@@ -53,6 +54,12 @@ class SecurityConfig(
             .authorizeHttpRequests { configureAuthorization(it) }
             // F2: 부하 셰딩은 인증 연산(JWT 파싱 등) 이전에 거부하도록 필터 체인 최전방에 둔다.
             .addFilterBefore(loadSheddingFilter, UsernamePasswordAuthenticationFilter::class.java)
+            // W1-06b: 내부 신원 헤더 폐기는 모든 인증 필터보다 앞이어야 한다 — 인증을 거치지 않는
+            // permitAll 경로에도 위조 헤더가 남으면 안 되고, 인증 필터가 자기 검증 결과로 덮어쓰기
+            // 전에 외부 유입분이 사라져 있어야 한다. 같은 기준 필터 앞에 등록된 필터들은 등록 순서를
+            // 유지하므로(loadShedding 을 최전방으로 두는 아래 순서가 그 전제다) 여기 위치가 곧
+            // 실행 순서 2번째가 된다 — loadShedding → sanitizer → mcp/partner/jwt 인증.
+            .addFilterBefore(internalIdentityHeaderSanitizingFilter, UsernamePasswordAuthenticationFilter::class.java)
             .also { config ->
                 mcpTokenAuthenticationFilter?.let {
                     config.addFilterBefore(it, UsernamePasswordAuthenticationFilter::class.java)

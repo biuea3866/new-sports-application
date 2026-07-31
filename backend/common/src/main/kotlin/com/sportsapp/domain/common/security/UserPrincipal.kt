@@ -7,6 +7,6 @@ data class UserPrincipal(
     val email: String,
     val roles: List<String>,
     val partnerAuthenticated: Boolean = false,
-) {
+) : AuthenticatedPrincipal {
     fun hasRole(role: UserRoleName): Boolean = roles.contains(role.name)
 }

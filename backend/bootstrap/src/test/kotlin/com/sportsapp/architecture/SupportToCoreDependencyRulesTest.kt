@@ -22,6 +22,10 @@ object DomainClassification {
     val support = listOf(
         "notification", "operator", "weather", "alerting",
         "featureflag", "virtualqueue", "partner", "airquality", "featuredemo",
+        // W1-06b: edge 가 소유한 신원 검증 계약(PlatformMcp/PartnerIdentityVerificationGateway).
+        // 코어 도메인을 import 하지 않고 common 만 의존하므로 support 분류가 맞다 — virtualqueue 와 동일하게
+        // edge 소유이며, 검증 판정 자체는 platform 이 수행하고 edge 는 계약만 가진다.
+        "identity",
     )
     val subsystem = listOf("mcp")
 
@@ -192,8 +196,8 @@ class SupportToCoreDependencyRulesTest : FunSpec({
         classifiedDomains shouldBe actualDomainSubPackages
     }
 
-    test("분류 합계가 20이다") {
-        (DomainClassification.core.size + DomainClassification.support.size + DomainClassification.subsystem.size) shouldBe 20
+    test("분류 합계가 21이다") {
+        (DomainClassification.core.size + DomainClassification.support.size + DomainClassification.subsystem.size) shouldBe 21
     }
 
     test("R3 스캔 대상에 기존 5개와 신규 편입 4개를 합한 9개 도메인이 모두 포함된다") {
