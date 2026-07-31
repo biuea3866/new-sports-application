@@ -1,0 +1,14 @@
+# [W1-03] commerce 서비스 커넥션 예산 — 실행설계 §7-6
+#
+# 풀 40/인스턴스 × 2 replica = 80. 6개 서비스 중 가장 큰 배분이다 — goods·ticketing 두 컨텍스트를
+# 담고 주문·재고 쓰기 경로가 몰려 있다(§4-1 C8 실측 기준 최대 결합·최대 파일 수 컨텍스트).
+#
+# 1단계에서는 이 프로파일이 활성화되지 않는다(단일 bootstrap 앱만 기동). 2단계 서비스 물리 추출
+# 시점에 활성화될 설정을 미리 확정해 두는 것이 이 파일의 목적이다.
+# connection-timeout 5000ms 는 FIX-03 확정값 — nginx read/send timeout(15s, infra/nginx/lb.conf)
+# 보다 먼저 실패 응답을 내보내야 "응답 전달 경로 절단"(F3)이 재발하지 않는다.
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 40
+      connection-timeout: 5000

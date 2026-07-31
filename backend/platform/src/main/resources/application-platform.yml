@@ -1,0 +1,14 @@
+# [W1-03] platform 서비스 커넥션 예산 — 실행설계 §7-6
+#
+# 풀 20/인스턴스 × 1 replica = 20. 소유 테이블은 18개 이상으로 가장 많지만 user·partner·
+# notification·operator 등 관리·부가 성격이라 동시 요청량이 낮다. §7-6 이 유일하게 replica 1 로
+# 잡은 서비스다.
+#
+# 1단계에서는 이 프로파일이 활성화되지 않는다(단일 bootstrap 앱만 기동). 2단계 서비스 물리 추출
+# 시점에 활성화될 설정을 미리 확정해 두는 것이 이 파일의 목적이다.
+# connection-timeout 5000ms 는 FIX-03 확정값 — 전 서비스 통일.
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 20
+      connection-timeout: 5000

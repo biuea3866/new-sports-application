@@ -1,0 +1,13 @@
+# [W1-03] payment 서비스 커넥션 예산 — 실행설계 §7-6
+#
+# 풀 20/인스턴스 × 2 replica = 40. 소유 테이블이 1개(payments)이고 쓰기가 결제 개시·웹훅 수신에
+# 국한돼 트랜잭션이 짧다. 다만 돈 경로라 대기로 인한 유실을 피해야 하므로 replica 2를 전제한다.
+#
+# 1단계에서는 이 프로파일이 활성화되지 않는다(단일 bootstrap 앱만 기동). 2단계 서비스 물리 추출
+# 시점에 활성화될 설정을 미리 확정해 두는 것이 이 파일의 목적이다.
+# connection-timeout 5000ms 는 FIX-03 확정값 — 전 서비스 통일.
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 20
+      connection-timeout: 5000
