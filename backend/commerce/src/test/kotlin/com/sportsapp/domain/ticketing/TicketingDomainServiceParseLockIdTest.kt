@@ -28,6 +28,7 @@ class TicketingDomainServiceParseLockIdTest : BehaviorSpec({
         ticketOrderRepository = ticketOrderRepository,
         ticketRepository = mockk(relaxed = true),
         domainEventPublisher = mockk(relaxed = true),
+        featureFlagEvaluator = mockk(relaxed = true),
     )
 
     Given("non-numeric lockId 토큰") {

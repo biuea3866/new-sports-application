@@ -36,6 +36,7 @@ class TicketingDomainServiceCancelTest : BehaviorSpec({
         ticketOrderRepository = ticketOrderRepository,
         ticketRepository = ticketRepository,
         domainEventPublisher = domainEventPublisher,
+        featureFlagEvaluator = mockk(relaxed = true),
     )
 
     fun buildPendingOrder(seatIds: List<Long> = listOf(101L)) = TicketOrder(
