@@ -52,21 +52,57 @@ object GrantSchemaFiles {
             .flatMap { file -> createTableRegex.findAll(file.readText()).map { it.groupValues[1] } }
             .toSet()
 
+    private val grantPrivilegeRegex = Regex(
+        """GRANT\s+([A-Za-z,\s]+?)\s+ON\s+sports\.([a-zA-Z0-9_]+)\s+TO\s+'([a-zA-Z0-9_]+)'@'%'""",
+        RegexOption.IGNORE_CASE,
+    )
+
+    /**
+     * 02-grants.sql 이 테이블 단위로 GRANT하는 대상 → 그 테이블에 GRANT된 유저 목록
+     * (BATCH_* 제외, flyway_migrator의 `ON sports.*` 스키마 단위 GRANT도 이 정규식에 매칭되지
+     * 않아 자연히 제외된다). §2-1의 "한 테이블 = 한 서비스" 원칙상 값(List<유저>)의 크기는
+     * 항상 1이어야 한다 — [MigrationGrantParityTest]의 "테이블마다 소유 유저가 정확히 1명이다"
+     * 테스트가 이 값으로 단일 소유를 직접 가드한다(재리뷰 p3-1 후속. 이전에는 이 함수가
+     * Set<String>만 반환해 어떤 테스트도 "같은 테이블에 두 유저가 GRANT됐는가"를 볼 수
+     * 없었다 — parity 두 테스트는 집합 기준이라 통과하고, expectedTablePrivilegeCount는 이
+     * 파일 자신에서 파생돼 자기 자신에 맞춰 늘어나므로 통과했다).
+     */
+    fun tableOwnersInGrantsSql(): Map<String, List<String>> =
+        grantTableRegex.findAll(grantsSqlFile().readText())
+            .map { it.groupValues[1] to it.groupValues[2] }
+            .filterNot { (table, _) -> table.startsWith("BATCH_") }
+            .groupBy(keySelector = { it.first }, valueTransform = { it.second })
+
     /**
      * 02-grants.sql 이 테이블 단위로 GRANT하는 대상 (BATCH_* 제외, flyway_migrator의
      * `ON sports.*` 스키마 단위 GRANT도 이 정규식에 매칭되지 않아 자연히 제외된다).
      */
-    fun tablesGrantedInGrantsSql(): Set<String> =
-        grantTableRegex.findAll(grantsSqlFile().readText())
-            .map { it.groupValues[1] }
-            .filterNot { it.startsWith("BATCH_") }
-            .toSet()
+    fun tablesGrantedInGrantsSql(): Set<String> = tableOwnersInGrantsSql().keys
+
+    /**
+     * 02-grants.sql 의 테이블 단위 GRANT 문(BATCH_* 포함, `ON sports.*` 스키마 단위 GRANT는
+     * 정규식에 매칭되지 않아 제외)이 실제로 부여하는 권한 집합 — 테이블명 → 권한 Set.
+     * [expectedTablePrivilegeCount]·scripts/apply-grants.sh의 expected_count_for_user() 는
+     * 둘 다 "GRANT 라인 수 × 4"로 계산한다 — 즉 "이 파일의 모든 테이블 단위 GRANT가 예외 없이
+     * SELECT/INSERT/UPDATE/DELETE 4권한을 부여한다"는 전제에 의존한다. 이 전제가 깨지면
+     * (예: 실수로 `GRANT SELECT`만 부여) ×4 산식이 조용히 틀려진다 — 아래 값을
+     * [MigrationGrantParityTest]에서 단언해 전제 자체를 가드한다(재리뷰 p3-3 후속).
+     */
+    fun tableGrantPrivileges(): List<Pair<String, Set<String>>> =
+        grantPrivilegeRegex.findAll(grantsSqlFile().readText())
+            .map { match ->
+                match.groupValues[2] to match.groupValues[1].split(",").map { it.trim().uppercase() }.toSet()
+            }
+            .toList()
 
     /**
      * 유저별 기대 테이블 권한 개수 — 02-grants.sql 을 단일 소스로 파생한다(리뷰 p3 후속).
-     * "TO '<user>'@'%'" 로 끝나는 GRANT 라인 수 × 4(SELECT/INSERT/UPDATE/DELETE, 이 파일의
-     * 모든 도메인 GRANT 라인이 동일한 4권한을 부여한다). scripts/apply-grants.sh의
-     * expected_count_for_user()와 동일한 산식이다.
+     * 테이블 단위 GRANT 라인 수(스키마 단위 `ON sports.*` 는 제외 — grantTableRegex와 동일 기준)
+     * × 4(SELECT/INSERT/UPDATE/DELETE, [tableGrantPrivileges]가 이 전제를 별도로 단언한다).
+     * scripts/apply-grants.sh의 expected_count_for_user()와 **동일한 카운팅 기준**(테이블 단위
+     * GRANT만, 스키마 단위 GRANT 제외)을 쓴다(재리뷰 p3-3 후속 — 이전에는 Bash 쪽이 "TO
+     * '<user>'@'%';"로 끝나는 라인 수만 셌는데, 이는 GRANT 대상이 테이블 단위인지 스키마
+     * 단위인지 구분하지 않아 두 산식이 실제로 달랐다).
      */
     fun expectedTablePrivilegeCount(username: String): Int =
         grantTableRegex.findAll(grantsSqlFile().readText())

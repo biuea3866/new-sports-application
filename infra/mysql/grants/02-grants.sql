@@ -3,10 +3,10 @@
 -- 근거: 아키텍트/20260728-msa-물리분리-실행설계.md §2-1(45테이블 소유권 배분표) §3-1(GRANT 물리 차단)
 --       §3-2(허용/금지) — 소유권 배분은 이 파일에 그대로 옮긴 것이며 재판단하지 않는다.
 --
--- 적용 경로 — docker-compose.yml 의 `db-grants` 원샷 사이드카가 자동 적용한다 (신규 볼륨·기존
---   볼륨 공통, 리뷰 p2① 후속). 사이드카가 아닌 수동 재적용이 필요하면 scripts/apply-grants.sh 를
---   쓴다(대체 경로).
---   docker-compose.yml 의 /docker-entrypoint-initdb.d 자동 마운트는 쓰지 않는다. 근거:
+-- 적용 경로 — docker-compose.dev.yml 의 `db-grants` 원샷 사이드카가 자동 적용한다 (신규 볼륨·기존
+--   볼륨 공통, 리뷰 p2① 후속. dev override에만 배선된 이유는 아래 "비밀번호는..." 문단 — 재리뷰
+--   p0 참고). 사이드카가 아닌 수동 재적용이 필요하면 scripts/apply-grants.sh 를 쓴다(대체 경로).
+--   docker-compose.yml(base) 의 /docker-entrypoint-initdb.d 자동 마운트는 쓰지 않는다. 근거:
 --   이 파일의 테이블 단위 GRANT 대상(products 등)은 Flyway 마이그레이션이 만드는데, Flyway는
 --   backend 애플리케이션이 최초 기동할 때 실행된다 — MySQL 컨테이너의 docker-entrypoint-initdb.d
 --   실행 시점(= MySQL 자체 최초 기동, backend는 아직 뜨지도 않은 시점)에는 대상 테이블이 하나도

@@ -82,14 +82,22 @@ fi
 # ── 유저별 기대 테이블 권한 개수 — 02-grants.sql 을 단일 소스로 파생한다 (리뷰 p3 후속) ──
 # 이전에는 apply-grants.sh(이 파일)·DbGrantPermissionTest.kt 두 곳에 동일 숫자(80/4/16/44/72/0)가
 # 하드코딩돼 있어 02-grants.sql이 바뀌어도 두 곳을 손으로 갱신하지 않는 한 조용히 drift됐다.
-# 이제는 GRANTS_SQL 실제 내용에서 "TO '<user>'@'%';" 로 끝나는 GRANT 라인 수를 세어, 그 라인마다
-# 4권한(SELECT/INSERT/UPDATE/DELETE)이 부여되므로 ×4 한 값을 기대값으로 쓴다.
+#
+# [재리뷰 p3-3] "TO '<user>'@'%';" 로 끝나는 **라인 수**만 세는 산식은 GrantSchemaFiles.kt의
+# grantTableRegex(테이블 단위 "ON sports.<table> TO '<user>'@'%'" 매치 수)와 실제로 달랐다 —
+# 예를 들어 GRANT가 여러 줄로 개행되면 이 grep은 못 세고(과소), 스키마 단위 "ON sports.*"에
+# svc_ 유저가 GRANT되면 Kotlin은 매칭하지 않는데 이 grep은 세어버린다(과대). 이제는 Kotlin과
+# 동일하게 **테이블 단위 GRANT만** 카운트한다 — "ON sports.<table> TO '<user>'@'%'" 패턴
+# (스키마 단위 "ON sports.*"는 `[a-zA-Z0-9_]+`에 `*`가 매칭되지 않아 자연히 제외된다). 그 라인마다
+# 4권한(SELECT/INSERT/UPDATE/DELETE)이 부여된다는 전제는
+# MigrationGrantParityTest.kt의 "02-grants.sql 의 모든 테이블 단위 GRANT는 SELECT/INSERT/UPDATE/
+# DELETE 4권한이다" 테스트가 별도로 가드한다.
 SERVICE_USERS=(svc_commerce svc_payment svc_facility_booking svc_social svc_platform svc_edge)
 
 expected_count_for_user() {
   local grant_username="$1"
   local grant_line_count
-  grant_line_count="$(grep -c "TO '${grant_username}'@'%';" "$GRANTS_SQL" || true)"
+  grant_line_count="$(grep -cE "ON sports\.[a-zA-Z0-9_]+ TO '${grant_username}'@'%'" "$GRANTS_SQL" || true)"
   echo $(( grant_line_count * 4 ))
 }
 
