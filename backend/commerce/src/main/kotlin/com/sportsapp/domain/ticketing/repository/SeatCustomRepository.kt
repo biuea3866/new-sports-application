@@ -3,8 +3,6 @@ package com.sportsapp.domain.ticketing.repository
 import java.math.BigDecimal
 
 interface SeatCustomRepository {
-    fun countSoldByEventId(eventId: Long): Long
-
     /** 발권 완료(ISSUED) 티켓이 점유한 좌석 id — 좌석별 판매 여부 판정용. */
     fun findSoldSeatIdsByEventId(eventId: Long): Set<Long>
 

@@ -14,21 +14,6 @@ class SeatCustomRepositoryImpl(
     private val queryFactory: JPAQueryFactory,
 ) : SeatCustomRepository {
 
-    override fun countSoldByEventId(eventId: Long): Long {
-        val seat = QSeat.seat
-        val ticket = QTicket.ticket
-        return queryFactory.select(ticket.count())
-                           .from(ticket)
-                           .join(seat).on(seat.id.eq(ticket.seatId))
-                           .where(
-                               seat.eventId.eq(eventId),
-                               seat.deletedAt.isNull,
-                               ticket.deletedAt.isNull,
-                               ticket.status.eq(TicketStatus.ISSUED),
-                           )
-                           .fetchOne() ?: 0L
-    }
-
     override fun findSoldSeatIdsByEventId(eventId: Long): Set<Long> {
         val seat = QSeat.seat
         val ticket = QTicket.ticket
