@@ -49,6 +49,30 @@ services:
       retries: 5
       start_period: 30s
 
+  # [W1-04][리뷰 p2① 후속] 서비스별 DB 유저 + 테이블 단위 GRANT 원샷 적용 사이드카.
+  #   backend가 healthy(= Flyway 최초 마이그레이션 완료)가 된 뒤 실행되므로 GRANT 대상 테이블이
+  #   모두 존재한다(위 mysql 볼륨 주석 참고). docker exec가 아니라 컴포즈 내부 네트워크로
+  #   mysql 서비스에 접속하므로 컨테이너 이름·docker socket 의존이 없어 dev/prod 스택 어디서나
+  #   동일하게 동작한다. 02-grants.sql은 멱등(CREATE USER IF NOT EXISTS + REVOKE ALL 후 재부여)
+  #   이라 매 `docker compose up`마다 재실행돼도 안전하다 — 실행 후 정상 종료(exit 0)하므로
+  #   상시 실행 컨테이너 수는 늘지 않는다(§8-3 완료 판정 ⑧ "런타임 무변경"과 충돌하지 않음).
+  #   `scripts/apply-grants.sh`는 사이드카 없이 수동 재적용이 필요할 때의 대체 경로로 유지한다.
+  db-grants:
+    image: mysql:8.0
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+    volumes:
+      - ./infra/mysql/grants/02-grants.sql:/grants.sql:ro
+    command: >
+      sh -c "
+      mysql -h mysql -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --default-character-set=utf8mb4 < /grants.sql &&
+      echo '✔ [db-grants] GRANT 적용 완료 (멱등 — 재실행 안전)'
+      "
+    restart: "no"
+
   # ---- 데이터스토어 (단일 소유자 — ⑤ observability는 재정의하지 않고 참조만 한다) ----
   mysql:
     image: mysql:8.0
@@ -64,8 +88,9 @@ services:
       # infra/mysql/grants/02-grants.sql 헤더 주석 참조: 신규 볼륨 최초 기동 시점에는 Flyway가
       # 아직 테이블을 만들지 않아 GRANT 대상 테이블이 존재하지 않고, MySQL은 존재하지 않는
       # 테이블에 대한 GRANT를 에러(1146)로 거부해 docker-entrypoint-initdb.d 실행 자체가
-      # 실패한다(재현 확인 — mysql 컨테이너가 기동조차 못 하고 종료됨). 대신 backend가 최초
-      # 마이그레이션을 마친 뒤 scripts/apply-grants.sh 를 1회 수동 실행한다(신규·기존 볼륨 공통).
+      # 실패한다(재현 확인 — mysql 컨테이너가 기동조차 못 하고 종료됨). 대신 아래 `db-grants`
+      # 원샷 사이드카(backend가 healthy 가 된 뒤 = 최초 마이그레이션 완료 이후 실행)가 자동
+      # 적용한다 — `scripts/apply-grants.sh` 는 수동 재적용 경로로 유지한다(리뷰 p2① 후속).
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-root}"]
       interval: 10s

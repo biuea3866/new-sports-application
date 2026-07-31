@@ -1,6 +1,5 @@
 package com.sportsapp.grant
 
-import com.sportsapp.SharedTestContainers
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContain
@@ -9,15 +8,26 @@ import java.io.File
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.SQLException
+import org.testcontainers.containers.MySQLContainer
 
 /**
  * [W1-04] 서비스별 DB 유저 + 테이블 단위 GRANT 물리 차단 검증.
  *
  * 근거: 아키텍트/20260728-msa-물리분리-실행설계.md §3-1(GRANT 물리 차단) §2-1(45테이블 소유권 배분표).
  *
- * Spring 컨텍스트 없이 [SharedTestContainers.mysql](순수 Testcontainers MySQL)에 직접 JDBC로 접속해
- * 검증한다 — 이 테스트의 관심사는 애플리케이션 배선이 아니라 "DB 서버 레벨 권한"이므로 무거운
- * `@SpringBootTest` 부팅이 필요 없다.
+ * 이 스펙은 **자기 전용 disposable MySQLContainer**를 `beforeSpec`에서 기동하고 `afterSpec`에서
+ * 종료한다 — [com.sportsapp.SharedTestContainers.mysql](JVM 싱글톤 공유 컨테이너)을 쓰지 않는다.
+ * (리뷰 p1 후속) 이 스펙의 관심사는 "DB 서버 레벨 권한"뿐이라 공유가 이득이 없고, 오히려 공유
+ * 컨테이너를 오염시킨다:
+ *   ① [createMinimalSchema]가 Flyway를 거치지 않고 스텁 테이블 54개를 만들면, 같은 JVM에서 나중에
+ *      기동하는 다른 `@SpringBootTest`가 `flyway.enabled=true`(bootstrap 테스트 설정) 상태에서
+ *      "Found non-empty schema(s) without schema history table"로 컨텍스트 기동에 실패한다.
+ *   ② `createMinimalSchema`가 만드는 스텁 `BATCH_JOB_INSTANCE`(마커 테이블)를
+ *      [com.sportsapp.infrastructure.config.BatchMetadataSchemaInitializer]가 "이미 초기화됨"으로
+ *      오판해, 실제 Spring Batch 스키마 생성을 **영구 스킵**한다 — 순서와 무관하게 항상 발생하는
+ *      문제였다(실제 BATCH_* 컬럼이 없는 스텁 테이블 위에서 배치 테스트가 실행돼 실패).
+ * 전용 컨테이너로 격리하면 두 문제 모두 원천 차단된다 — 이 스펙이 만드는 스텁 스키마는 이
+ * 컨테이너 안에서만 존재하고 다른 스펙과 공유되지 않는다.
  *
  * 권한 거부는 SQLException 발생 여부만이 아니라 **MySQL 권한 거부 에러 코드**(1142/1044/1143)로
  * 판별한다 — 단순 SQLException만 확인하면 "유저가 아예 없어서 인증에서 실패"(에러 1045)한 경우에도
@@ -31,7 +41,7 @@ import java.sql.SQLException
  */
 class DbGrantPermissionTest : FunSpec({
 
-    val mysql = SharedTestContainers.mysql
+    lateinit var mysql: MySQLContainer<*>
 
     fun jdbcUrl(): String =
         "jdbc:mysql://${mysql.host}:${mysql.getMappedPort(3306)}/sports?useSSL=false&allowPublicKeyRetrieval=true"
@@ -107,10 +117,19 @@ class DbGrantPermissionTest : FunSpec({
     }
 
     beforeSpec {
+        mysql = MySQLContainer("mysql:8.0")
+            .withDatabaseName("sports")
+            .withUsername("test")
+            .withPassword("test")
+        mysql.start()
         rootConnection().use { root ->
             createMinimalSchema(root)
             runSqlFile(root, findGrantsSql())
         }
+    }
+
+    afterSpec {
+        mysql.stop()
     }
 
     test("svc_social 이 products 를 SELECT하면 권한 거부 오류가 발생한다") {
@@ -163,13 +182,9 @@ class DbGrantPermissionTest : FunSpec({
         }
     }
 
-    // 자기 소유 테이블 SELECT·INSERT·UPDATE·DELETE 4개 권한이 실제로 부여됐는지 검증한다.
-    // SharedTestContainers.mysql은 JVM 하나를 여러 통합 테스트가 공유하므로(실행 중 다른 스펙이
-    // 동일 테이블명에 실제 Flyway 스키마를 이미 적용해뒀을 수 있다), 컬럼명을 가정하는 원본 DML
-    // (INSERT ... (name) VALUES ...) 대신 실제 스키마 형태와 무관한 두 축으로 검증한다:
-    //   ① SELECT는 해당 유저로 직접 접속해 COUNT(*)를 실행 — 컬럼명 의존 없이 권한 자체를 실행 확인.
-    //   ② INSERT/UPDATE/DELETE는 information_schema.table_privileges로 부여 여부를 확인 — GRANT
-    //      문 하나가 4개 권한을 원자적으로 부여하므로 메타데이터 확인이 곧 실행 가능성의 근거다.
+    // 자기 소유 테이블 SELECT·INSERT·UPDATE·DELETE 4개 권한이 실제로 "실행 성공"하는지 검증한다
+    // (리뷰 p2⑤ 후속 — 전용 컨테이너로 격리했으므로 다른 스펙이 만든 실제 Flyway 스키마와
+    // 충돌할 걱정 없이, createMinimalSchema가 만든 스텁 컬럼(id, name)으로 직접 CRUD를 실행한다).
     fun verifyOwnTableAllPrivileges(username: String, password: String, table: String) {
         connectAs(username, password).use { conn ->
             conn.createStatement().use { statement ->
@@ -177,11 +192,20 @@ class DbGrantPermissionTest : FunSpec({
                     resultSet.next() shouldBe true
                 }
             }
-        }
-        rootConnection().use { root ->
-            grantedPrivilegeTypes(root, username, table) shouldContain "INSERT"
-            grantedPrivilegeTypes(root, username, table) shouldContain "UPDATE"
-            grantedPrivilegeTypes(root, username, table) shouldContain "DELETE"
+            conn.prepareStatement("INSERT INTO $table (name) VALUES (?)").use { statement ->
+                statement.setString(1, "grant-test-$table")
+                statement.executeUpdate() shouldBe 1
+            }
+            conn.createStatement().use { statement ->
+                statement.executeUpdate(
+                    "UPDATE $table SET name = 'grant-test-updated' WHERE name = 'grant-test-$table'",
+                ) shouldBe 1
+            }
+            conn.createStatement().use { statement ->
+                statement.executeUpdate(
+                    "DELETE FROM $table WHERE name = 'grant-test-updated'",
+                ) shouldBe 1
+            }
         }
     }
 
@@ -245,6 +269,54 @@ class DbGrantPermissionTest : FunSpec({
             secondCount shouldBe firstCount
         }
     }
+
+    // 6개 서비스 유저 전부의 최종 테이블 권한 개수를 기대값과 대조한다 (리뷰 p3 후속) — 기존에는
+    // svc_commerce 1건만 단언했고, svc_edge의 "권한 0"이라는 경계의 핵심 주장이 SELECT 연결 거부
+    // 테스트로만 간접 검증됐다. apply-grants.sh 의 verify 모드가 쓰는 기대값과 동일하다.
+    test("6개 서비스 유저의 최종 테이블 권한 개수가 각각 기대값과 일치한다") {
+        rootConnection().use { root ->
+            countTablePrivileges(root, "svc_commerce") shouldBe 80
+            countTablePrivileges(root, "svc_payment") shouldBe 4
+            countTablePrivileges(root, "svc_facility_booking") shouldBe 16
+            countTablePrivileges(root, "svc_social") shouldBe 44
+            countTablePrivileges(root, "svc_platform") shouldBe 72
+            countTablePrivileges(root, "svc_edge") shouldBe 0
+        }
+    }
+
+    // 테이블 목록이 ① 마이그레이션 ② 02-grants.sql ③ 이 스펙의 하드코딩 배열, 3곳에 중복돼 있어
+    // 46번째 테이블이 추가돼도 GRANT 누락이 아무것도 실패시키지 않는 드리프트를 막는다(리뷰 p2③
+    // 후속). information_schema.tables(실제 존재하는 테이블) ⟂ information_schema.table_privileges
+    // (실제 부여된 GRANT)를 대조해 "소유자 없는 테이블 0건"을 단언한다 — 하드코딩 배열이 아니라
+    // 스키마 자체를 근거로 삼으므로, 향후 새 테이블이 02-grants.sql 갱신 없이 추가되면 이 테스트가
+    // 즉시 실패한다. flyway_migrator는 스키마 단위(sports.*) GRANT라 table_privileges에 잡히지
+    // 않으므로 정상적으로 제외한다.
+    test("GRANT 스크립트가 다루는 모든 테이블에 소유 서비스 유저가 있다 (테이블 집합 드리프트 가드)") {
+        rootConnection().use { root ->
+            val ownerlessTables = mutableListOf<String>()
+            root.createStatement().use { statement ->
+                statement.executeQuery(
+                    """
+                    SELECT t.table_name
+                    FROM information_schema.tables t
+                    WHERE t.table_schema = 'sports'
+                      AND t.table_name NOT LIKE 'ddl_probe_%'
+                      AND NOT EXISTS (
+                        SELECT 1 FROM information_schema.table_privileges p
+                        WHERE p.table_schema = t.table_schema
+                          AND p.table_name = t.table_name
+                          AND p.grantee != "'flyway_migrator'@'%'"
+                      )
+                    """.trimIndent(),
+                ).use { resultSet ->
+                    while (resultSet.next()) {
+                        ownerlessTables += resultSet.getString("table_name")
+                    }
+                }
+            }
+            ownerlessTables shouldBe emptyList()
+        }
+    }
 })
 
 private fun countTablePrivileges(connection: Connection, grantUsername: String): Int =
@@ -255,17 +327,4 @@ private fun countTablePrivileges(connection: Connection, grantUsername: String):
         )
         resultSet.next()
         resultSet.getInt(1)
-    }
-
-private fun grantedPrivilegeTypes(connection: Connection, grantUsername: String, table: String): Set<String> =
-    connection.createStatement().use { statement ->
-        val resultSet = statement.executeQuery(
-            "SELECT privilege_type FROM information_schema.table_privileges " +
-                "WHERE grantee = \"'$grantUsername'@'%'\" AND table_schema = 'sports' AND table_name = '$table'",
-        )
-        val privileges = mutableSetOf<String>()
-        while (resultSet.next()) {
-            privileges += resultSet.getString("privilege_type")
-        }
-        privileges
     }

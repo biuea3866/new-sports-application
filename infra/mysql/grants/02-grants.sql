@@ -3,7 +3,9 @@
 -- 근거: 아키텍트/20260728-msa-물리분리-실행설계.md §2-1(45테이블 소유권 배분표) §3-1(GRANT 물리 차단)
 --       §3-2(허용/금지) — 소유권 배분은 이 파일에 그대로 옮긴 것이며 재판단하지 않는다.
 --
--- 적용 경로 — scripts/apply-grants.sh 단일 경로 (신규 볼륨·기존 볼륨 공통):
+-- 적용 경로 — docker-compose.yml 의 `db-grants` 원샷 사이드카가 자동 적용한다 (신규 볼륨·기존
+--   볼륨 공통, 리뷰 p2① 후속). 사이드카가 아닌 수동 재적용이 필요하면 scripts/apply-grants.sh 를
+--   쓴다(대체 경로).
 --   docker-compose.yml 의 /docker-entrypoint-initdb.d 자동 마운트는 쓰지 않는다. 근거:
 --   이 파일의 테이블 단위 GRANT 대상(products 등)은 Flyway 마이그레이션이 만드는데, Flyway는
 --   backend 애플리케이션이 최초 기동할 때 실행된다 — MySQL 컨테이너의 docker-entrypoint-initdb.d
@@ -12,9 +14,10 @@
 --   mysql 클라이언트는 기본적으로 첫 에러에서 스크립트 실행을 중단하므로, 자동 마운트 시
 --   docker-entrypoint-initdb.d 전체가 실패해 MySQL 컨테이너 자체가 기동하지 못하고 종료된다
 --   (실제 재현 확인: `docker compose up -d mysql` → 컨테이너 Exited(1), 로그
---   "ERROR 1146 (42S02) at line 56: Table 'sports.products' doesn't exist"). 따라서 이 파일은
---   backend가 최초 마이그레이션을 마쳐 대상 테이블이 모두 생성된 뒤 scripts/apply-grants.sh 로
---   수동 적용한다 — 신규 볼륨이든 기존 볼륨이든 절차는 동일하다(경로 1종).
+--   "ERROR 1146 (42S02) at line 56: Table 'sports.products' doesn't exist"). 따라서 `db-grants`
+--   사이드카는 backend가 healthy(= 최초 마이그레이션 완료)가 된 뒤에만 실행되도록
+--   `depends_on: backend: condition: service_healthy` 로 배선한다 — 신규 볼륨이든 기존 볼륨이든
+--   절차는 동일하다.
 --
 -- 멱등성: CREATE USER IF NOT EXISTS + REVOKE ALL 후 재부여. 몇 번을 재실행해도 최종 권한 상태는 동일하다.
 --   REVOKE ALL PRIVILEGES, GRANT OPTION 은 대상 유저에게 권한이 하나도 없어도(최초 생성 직후) 에러 없이
