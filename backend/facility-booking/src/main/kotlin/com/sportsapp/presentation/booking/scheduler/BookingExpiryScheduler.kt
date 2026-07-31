@@ -1,5 +1,6 @@
 package com.sportsapp.presentation.booking.scheduler
 
+import com.sportsapp.application.booking.config.BookingExpiryProperties
 import com.sportsapp.application.booking.usecase.ExpirePendingBookingsUseCase
 import com.sportsapp.application.booking.usecase.IsBookingExpiryEnabledUseCase
 import io.micrometer.core.instrument.MeterRegistry
@@ -24,7 +25,7 @@ class BookingExpiryScheduler(
 ) {
     private val log = LoggerFactory.getLogger(BookingExpiryScheduler::class.java)
 
-    @Scheduled(fixedDelayString = "\${booking.expiry.cycle-ms:300000}")
+    @Scheduled(fixedDelayString = "\${booking.expiry.cycle-ms:${BookingExpiryProperties.DEFAULT_CYCLE_MS}}")
     fun expirePendingBookings() {
         if (!isBookingExpiryEnabledUseCase.execute()) return
         val result = expirePendingBookingsUseCase.execute()

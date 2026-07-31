@@ -2,13 +2,16 @@ package com.sportsapp.domain.booking.service
 
 import com.sportsapp.domain.booking.BookingFeatureFlagKeys
 import com.sportsapp.domain.booking.dto.BookingDetail
+import com.sportsapp.domain.booking.dto.BookingExpiryCandidate
 import com.sportsapp.domain.booking.dto.BookingOrderItem
 import com.sportsapp.domain.booking.dto.BookingResult
 import com.sportsapp.domain.booking.dto.FacilityKpiSummary
 import com.sportsapp.domain.booking.entity.Booking
 import com.sportsapp.domain.booking.entity.BookingStatus
+import com.sportsapp.domain.booking.event.BookingEvent
 import com.sportsapp.domain.booking.event.BookingRefundRequestedEvent
 import com.sportsapp.domain.booking.event.BookingRequestedEvent
+import com.sportsapp.domain.booking.exception.InvalidBookingStateException
 import com.sportsapp.domain.booking.exception.SlotBusyException
 import com.sportsapp.domain.booking.exception.SlotFullException
 import com.sportsapp.domain.booking.exception.UnauthorizedBookingAccessException
@@ -110,14 +113,26 @@ class BookingDomainService(
         return bookingRepository.save(booking)
     }
 
+    /**
+     * 결제 확정(webhook)에 의한 예약 확정 — [BookingRepository.tryConfirm] CAS(조건부 UPDATE,
+     * WHERE status='PENDING')로 전이한다. 비잠금 findById → confirm() → save() 경로는 만료
+     * 스위퍼가 먼저 커밋한 EXPIRED를 조건 없는 dirty-checking UPDATE로 덮어쓰는 반대 방향
+     * lost update(오버부킹)를 만들 수 있어, tryExpire와 대칭으로 CAS로 닫았다(p2-3).
+     * CAS 실패 시 재조회한 현재 상태로 원인을 가른다 — 이미 CONFIRMED면 멱등(webhook 중복),
+     * 그 외(EXPIRED 등)면 InvalidBookingStateException을 던져 상태 머신 우회를 막는다.
+     */
     fun confirmBooking(bookingId: Long, paymentId: Long): Booking {
-        val booking = bookingRepository.findById(bookingId)
-            ?: throw ResourceNotFoundException("Booking", bookingId)
-        if (booking.status == BookingStatus.CONFIRMED) return booking
-        booking.confirm(paymentId)
-        val saved = bookingRepository.save(booking)
-        domainEventPublisher.publishAll(saved.pullDomainEvents())
-        return saved
+        val transitioned = bookingRepository.tryConfirm(bookingId, paymentId)
+        val current = bookingRepository.findById(bookingId) ?: throw ResourceNotFoundException("Booking", bookingId)
+        if (!transitioned && current.status != BookingStatus.CONFIRMED) {
+            throw InvalidBookingStateException(current.status, BookingStatus.CONFIRMED)
+        }
+        if (transitioned) {
+            domainEventPublisher.publishAll(
+                listOf(BookingEvent.Confirmed(bookingId = bookingId, paymentId = paymentId, recipientUserId = current.userId)),
+            )
+        }
+        return current
     }
 
     fun cancelPending(bookingId: Long) {
@@ -198,13 +213,41 @@ class BookingDomainService(
     }
 
     /**
-     * W1-11c 만료 스위퍼 — PENDING이며 createdAt < (now - ttlMinutes)이고 id > afterId(청크
-     * 커서)인 예약 id를 최대 limit건 조회한다. 시간 계산은 이 메서드 내부에서 해결한다
-     * (no-time-parameter — 캡슐화 메서드에 시간을 인자로 넘기지 않는다).
+     * W1-11c 만료 스위퍼 — PENDING이며 createdAt < (now - ttlMinutes, 빠른 TTL)이고
+     * id > afterId(청크 커서)인 예약 후보를 최대 limit건 조회한다. 시간 계산은 이 메서드
+     * 내부에서 해결한다(no-time-parameter — 캡슐화 메서드에 시간을 인자로 넘기지 않는다).
+     * createdAt을 포함한 [BookingExpiryCandidate]를 반환한다 — [filterExpirable]이 느린
+     * TTL(readyTtlMinutes) 판정에 사용한다.
      */
-    fun findExpirableBookingIds(ttlMinutes: Long, afterId: Long, limit: Int): List<Long> {
+    fun findExpirableBookingCandidates(ttlMinutes: Long, afterId: Long, limit: Int): List<BookingExpiryCandidate> {
         val threshold = ZonedDateTime.now().minusMinutes(ttlMinutes)
         return bookingRepository.findPendingCreatedBefore(threshold, afterId, limit)
+    }
+
+    /**
+     * W1-11c 4차 재설계 — 만료 후보 중 실제로 만료시킬 대상을 최종 판정한다. payment로부터
+     * 받은 live(READY 이상)·settled(COMPLETED) 주문 id 집합(Set<Long>, PaymentStatus 노출
+     * 없음)만으로 판단하므로 도메인 교차가 아니다 — 크로스 컨텍스트 조합 자체(payment 조회 →
+     * 값 변환)는 application(ExpirePendingBookingsUseCase)이 수행하고, 이 메서드는 booking
+     * 자신의 정책(두 TTL)만 적용한다.
+     *
+     * - settled 포함: 돈을 받았다 — 항상 제외(절대 만료 금지).
+     * - live 포함 && createdAt이 느린 TTL(readyTtlMinutes)을 아직 지나지 않음: 결제창에
+     *   머무는 사용자로 보아 제외.
+     * - 그 외(빠른 TTL 후보 조회 자체를 통과한 결제 미시작/실패/취소/환불 또는 readyTtl까지
+     *   지난 live): 만료 대상에 포함.
+     */
+    fun filterExpirable(
+        candidates: List<BookingExpiryCandidate>,
+        liveOrderIds: Set<Long>,
+        settledOrderIds: Set<Long>,
+        readyTtlMinutes: Long,
+    ): List<Long> {
+        val readyThreshold = ZonedDateTime.now().minusMinutes(readyTtlMinutes)
+        return candidates.filter { candidate ->
+            !settledOrderIds.contains(candidate.bookingId) &&
+                (!liveOrderIds.contains(candidate.bookingId) || candidate.createdAt.isBefore(readyThreshold))
+        }.map { it.bookingId }
     }
 
     /**

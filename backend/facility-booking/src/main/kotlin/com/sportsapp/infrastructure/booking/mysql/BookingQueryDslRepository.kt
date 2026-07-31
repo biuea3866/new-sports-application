@@ -1,5 +1,6 @@
 package com.sportsapp.infrastructure.booking.mysql
 
+import com.sportsapp.domain.booking.dto.BookingExpiryCandidate
 import com.sportsapp.domain.booking.entity.Booking
 import com.sportsapp.domain.booking.entity.BookingStatus
 import org.springframework.data.domain.Page
@@ -20,7 +21,9 @@ interface BookingQueryDslRepository {
         pageable: Pageable,
     ): Page<Booking>
 
-    fun findPendingCreatedBefore(before: ZonedDateTime, afterId: Long, limit: Int): List<Long>
+    fun findPendingCreatedBefore(before: ZonedDateTime, afterId: Long, limit: Int): List<BookingExpiryCandidate>
 
     fun tryExpire(bookingId: Long): Boolean
+
+    fun tryConfirm(bookingId: Long, paymentId: Long): Boolean
 }

@@ -1,5 +1,6 @@
 package com.sportsapp.infrastructure.booking.mysql
 
+import com.sportsapp.domain.booking.dto.BookingExpiryCandidate
 import com.sportsapp.domain.booking.entity.Booking
 import com.sportsapp.domain.booking.entity.BookingStatus
 import com.sportsapp.domain.booking.repository.BookingKpiQueryRepository
@@ -44,11 +45,14 @@ class BookingRepositoryImpl(
     override fun countBySlotIdAndStatusIn(slotId: Long, statuses: List<BookingStatus>): Long =
         bookingJpaRepository.countBySlotIdAndStatusIn(slotId, statuses)
 
-    override fun findPendingCreatedBefore(before: ZonedDateTime, afterId: Long, limit: Int): List<Long> =
+    override fun findPendingCreatedBefore(before: ZonedDateTime, afterId: Long, limit: Int): List<BookingExpiryCandidate> =
         bookingJpaRepository.findPendingCreatedBefore(before, afterId, limit)
 
     override fun tryExpire(bookingId: Long): Boolean =
         bookingJpaRepository.tryExpire(bookingId)
+
+    override fun tryConfirm(bookingId: Long, paymentId: Long): Boolean =
+        bookingJpaRepository.tryConfirm(bookingId, paymentId)
 
     override fun countConfirmedByOwnerUserIdAndDateRange(ownerUserId: Long, from: ZonedDateTime, to: ZonedDateTime): Long =
         bookingKpiQueryRepository.countConfirmedByOwnerUserIdAndDateRange(ownerUserId, from, to)

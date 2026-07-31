@@ -1,6 +1,7 @@
 package com.sportsapp.domain.payment.repository
 
 import com.sportsapp.domain.common.order.OrderType
+import com.sportsapp.domain.payment.dto.PaymentLivenessQueryResult
 import com.sportsapp.domain.payment.entity.Payment
 import com.sportsapp.domain.payment.entity.PaymentStatus
 import org.springframework.data.domain.Page
@@ -17,15 +18,13 @@ interface PaymentCustomRepository {
     ): Page<Payment>
 
     /**
-     * 만료 스위퍼(W1-11a~d 공통 만료 금지 가드)가 소비한다 — orderType·orderId 목록 중
-     * "만료시키면 안 되는" 주문의 orderId만 반환한다.
+     * 만료 스위퍼(W1-11a~d 공통 만료 금지 가드)가 소비한다 — orderType·orderId 목록에 대해
+     * live(READY 또는 COMPLETED)·settled(COMPLETED) 주문 id 집합을 함께 반환한다.
      *
-     * status만으로는 판단할 수 없다 — 결제 개시 시점에 이미 PENDING 행이 생성되므로 주문마다
-     * PENDING 또는 READY 행이 항상 존재한다. `activeSince`(활동 창 시작 시각) 이후에 갱신된
-     * PENDING/READY는 "사용자가 지금 결제 진행 중"으로 보아 만료 금지, 그 이전(방치)은 만료를
-     * 허용한다. COMPLETED는 무조건 만료 금지, CANCELLED/FAILED/REFUNDED는 만료를 허용한다.
-     * 판정 규칙 상세는 [com.sportsapp.domain.payment.service.PaymentExpiryGuard] 참고.
-     * Payment 엔티티를 소비 컨텍스트에 노출하지 않는다.
+     * 4차 재설계: payment는 "결제가 시작이라도 됐는가"라는 **사실**만 답하고, TTL(시간 창)
+     * 정책은 호출 컨텍스트(booking 등)가 소유한다 — 그래서 시간 인자를 받지 않는다. 판정
+     * 규칙 상세는 [com.sportsapp.domain.payment.service.PaymentLivenessClassifier] 참고.
+     * Payment 엔티티·PaymentStatus enum을 소비 컨텍스트에 노출하지 않는다.
      */
-    fun findUnexpirableOrderIds(orderType: OrderType, orderIds: List<Long>, activeSince: ZonedDateTime): Set<Long>
+    fun findPaymentLiveness(orderType: OrderType, orderIds: List<Long>): PaymentLivenessQueryResult
 }

@@ -3,6 +3,7 @@ package com.sportsapp.domain.payment.service
 import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.common.PgEventType
 import com.sportsapp.domain.payment.dto.ConfirmWebhookResult
+import com.sportsapp.domain.payment.dto.PaymentLivenessQueryResult
 import com.sportsapp.domain.payment.dto.PgInitiateCommand
 import com.sportsapp.domain.payment.dto.PgInitiateResult
 import com.sportsapp.domain.payment.entity.Payment
@@ -226,18 +227,14 @@ class PaymentDomainService(
     }
 
     /**
-     * 만료 스위퍼(W1-11a~d)의 만료 금지 가드가 소비한다. `activeWindowMinutes`(호출부가 자신의
-     * 만료 정책에 맞춰 넘기는 활동 창 — [com.sportsapp.application.payment.config.PaymentExpiryGuardProperties]
-     * 기본값 5분, 각 주문 컨텍스트 TTL보다 반드시 짧아야 한다) 이내에 갱신된 PENDING/READY는
-     * "사용자가 지금 결제 진행 중"으로 보아 만료 금지 대상에 포함하고, 그보다 오래된 PENDING/
-     * READY는 "방치된 결제"로 보아 만료를 허용한다. `now` 해결은 이 메서드 내부에서 한다
-     * (no-time-parameter) — 호출부는 활동 창 분(minutes)만 넘긴다. 판정 규칙 상세는
-     * [PaymentExpiryGuard] 참고.
+     * 만료 스위퍼(W1-11a~d)의 만료 금지 가드가 소비한다. 4차 재설계 — payment는 시간 창을
+     * 갖지 않고 "결제가 시작이라도 됐는가"(live)·"돈을 받았는가"(settled)라는 **사실**만
+     * 반환한다. TTL 정책은 호출 컨텍스트(booking 등)가 소유한다. 판정 규칙 상세는
+     * [PaymentLivenessClassifier] 참고.
      */
-    fun findUnexpirableOrderIds(orderType: OrderType, orderIds: List<Long>, activeWindowMinutes: Long): Set<Long> {
-        if (orderIds.isEmpty()) return emptySet()
-        val activeSince = ZonedDateTime.now().minusMinutes(activeWindowMinutes)
-        return paymentRepository.findUnexpirableOrderIds(orderType, orderIds, activeSince)
+    fun findPaymentLiveness(orderType: OrderType, orderIds: List<Long>): PaymentLivenessQueryResult {
+        if (orderIds.isEmpty()) return PaymentLivenessQueryResult.empty()
+        return paymentRepository.findPaymentLiveness(orderType, orderIds)
     }
 
     fun getPayment(userId: Long, paymentId: Long): Payment {
