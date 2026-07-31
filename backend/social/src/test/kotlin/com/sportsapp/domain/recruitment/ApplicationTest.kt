@@ -4,6 +4,7 @@ import com.sportsapp.domain.recruitment.entity.Application
 import com.sportsapp.domain.recruitment.event.ApplicationRefundRequestedEvent
 import com.sportsapp.domain.recruitment.entity.ApplicationStatus
 import com.sportsapp.domain.recruitment.exception.ApplicationCancellationClosedException
+import com.sportsapp.domain.recruitment.exception.InvalidApplicationStateException
 import com.sportsapp.domain.recruitment.exception.UnauthorizedApplicationAccessException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
@@ -46,6 +47,20 @@ class ApplicationTest : BehaviorSpec({
             Then("상태와 paymentId가 변경되지 않고 멱등하게 처리된다") {
                 application.status shouldBe ApplicationStatus.CONFIRMED
                 application.paymentId shouldBe 100L
+            }
+        }
+    }
+
+    Given("CANCELLED 상태의 Application (W1-11d 만료 스위퍼가 취소한 이후 결제 확정 이벤트가 뒤늦게 도달하는 상황)") {
+        val application = Application.create(recruitmentId = 10L, applicantUserId = 1L)
+        application.cancelPending()
+
+        When("confirm(paymentId)을 호출하면") {
+            Then("InvalidApplicationStateException을 던진다 (CANCELLED에서 CONFIRMED로 전이 불가)") {
+                shouldThrow<InvalidApplicationStateException> {
+                    application.confirm(paymentId = 999L)
+                }
+                application.status shouldBe ApplicationStatus.CANCELLED
             }
         }
     }

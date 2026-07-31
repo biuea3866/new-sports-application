@@ -76,6 +76,20 @@ class Recruitment private constructor(
         }
     }
 
+    /**
+     * W1-11d 만료 스위퍼 — PENDING 신청이 만료(CANCELLED)돼 정원에 여유가 생기면 CLOSED를
+     * OPEN으로 되돌린다. [closeWhenFull]과 대칭인 캐시 무효화 메서드로, `RecruitmentStatus`의
+     * 일반 상태 머신(`canTransitTo`)을 거치지 않고 이 필드만 직접 갱신한다(closeWhenFull과
+     * 동일한 방식) — CLOSED가 아니거나(OPEN인데 정원이 남는 경우는 애초에 CLOSED된 적이
+     * 없다) CANCELLED(개설자가 모집 자체를 취소)면 아무 것도 하지 않는다. 취소된 모집을
+     * 되살리지 않는 것이 핵심 방어다.
+     */
+    fun reopenIfBelowCapacity(currentApplicantCount: Int) {
+        if (status == RecruitmentStatus.CLOSED && currentApplicantCount < capacity) {
+            status = RecruitmentStatus.OPEN
+        }
+    }
+
     fun cancelByHost(userId: Long) {
         requireRecruiter(userId)
         if (status == RecruitmentStatus.CANCELLED) {

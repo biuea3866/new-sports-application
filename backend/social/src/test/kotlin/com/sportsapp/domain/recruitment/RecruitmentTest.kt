@@ -208,4 +208,55 @@ class RecruitmentTest : BehaviorSpec({
             recruitment.description shouldBe "매주 토요일 오전 축구 모임입니다"
         }
     }
+
+    Given("정원이 가득 차 CLOSED로 전이된 모집에서 만료로 정원 여유가 생겼을 때 (W1-11d 만료 스위퍼 — 정원 복원)") {
+        val recruitment = createRecruitment(capacity = 3).apply { closeWhenFull(currentApplicantCount = 3) }
+
+        When("reopenIfBelowCapacity(현재 활성 신청 2건)를 호출하면") {
+            recruitment.reopenIfBelowCapacity(currentApplicantCount = 2)
+
+            Then("OPEN으로 재전이되어 신청이 다시 가능해진다") {
+                recruitment.status shouldBe RecruitmentStatus.OPEN
+            }
+        }
+    }
+
+    Given("정원이 가득 차 CLOSED로 전이된 모집에서 정원 여유가 없을 때 (경계값)") {
+        val recruitment = createRecruitment(capacity = 3).apply { closeWhenFull(currentApplicantCount = 3) }
+
+        When("reopenIfBelowCapacity(현재 활성 신청도 정원과 동일한 3건)를 호출하면") {
+            recruitment.reopenIfBelowCapacity(currentApplicantCount = 3)
+
+            Then("CLOSED를 유지한다") {
+                recruitment.status shouldBe RecruitmentStatus.CLOSED
+            }
+        }
+    }
+
+    Given("OPEN 상태의 모집") {
+        val recruitment = createRecruitment(capacity = 3)
+
+        When("reopenIfBelowCapacity를 호출하면") {
+            recruitment.reopenIfBelowCapacity(currentApplicantCount = 0)
+
+            Then("OPEN을 그대로 유지한다 (원래 CLOSED가 아니었으므로 재전이 대상이 아니다)") {
+                recruitment.status shouldBe RecruitmentStatus.OPEN
+            }
+        }
+    }
+
+    Given("개설자가 취소한 CANCELLED 상태의 모집") {
+        val recruitment = createRecruitment(capacity = 3, recruiterUserId = 1L).apply {
+            closeWhenFull(currentApplicantCount = 3)
+            cancelByHost(userId = 1L)
+        }
+
+        When("reopenIfBelowCapacity를 호출하면") {
+            recruitment.reopenIfBelowCapacity(currentApplicantCount = 0)
+
+            Then("CANCELLED를 그대로 유지한다 (취소된 모집을 되살리지 않는다)") {
+                recruitment.status shouldBe RecruitmentStatus.CANCELLED
+            }
+        }
+    }
 })
