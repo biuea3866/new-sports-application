@@ -22,6 +22,12 @@ interface BookingRepository {
         pageable: Pageable,
     ): Page<Booking>
     fun countBySlotIdAndStatusIn(slotId: Long, statuses: List<BookingStatus>): Long
+
+    /**
+     * W1-11c 만료 스위퍼가 소비 — PENDING 상태이며 createdAt이 before보다 이른 예약 id를
+     * createdAt(id) 오름차순으로 최대 limit건 조회한다(청크 조회).
+     */
+    fun findPendingCreatedBefore(before: ZonedDateTime, limit: Int): List<Long>
     fun countConfirmedByOwnerUserIdAndDateRange(ownerUserId: Long, from: ZonedDateTime, to: ZonedDateTime): Long
     fun countRefundedByOwnerUserIdAndDateRange(ownerUserId: Long, from: ZonedDateTime, to: ZonedDateTime): Long
     fun sumSlotCapacityByOwnerUserIdAndDateRange(ownerUserId: Long, from: ZonedDateTime, to: ZonedDateTime): Long

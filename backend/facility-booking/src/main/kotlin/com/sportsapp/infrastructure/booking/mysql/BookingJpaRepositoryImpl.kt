@@ -60,4 +60,16 @@ class BookingJpaRepositoryImpl : BookingQueryDslRepository {
 
         return PageImpl(content, pageable, total)
     }
+
+    override fun findPendingCreatedBefore(before: ZonedDateTime, limit: Int): List<Long> {
+        return queryFactory.select(booking.id)
+                           .from(booking)
+                           .where(
+                               booking.status.eq(BookingStatus.PENDING),
+                               booking.createdAt.lt(before),
+                           )
+                           .orderBy(booking.id.asc())
+                           .limit(limit.toLong())
+                           .fetch()
+    }
 }

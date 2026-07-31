@@ -2,8 +2,11 @@ package com.sportsapp.presentation.booking.worker
 
 import com.sportsapp.application.booking.usecase.CancelBookingPaymentUseCase
 import com.sportsapp.application.booking.usecase.ConfirmBookingPaymentUseCase
+import com.sportsapp.domain.booking.exception.InvalidBookingStateException
 import com.sportsapp.domain.payment.event.PaymentEvent
 import com.sportsapp.domain.common.order.OrderType
+import io.micrometer.core.instrument.MeterRegistry
+import org.slf4j.LoggerFactory
 import org.springframework.kafka.annotation.KafkaListener
 import org.springframework.stereotype.Component
 
@@ -11,12 +14,20 @@ import org.springframework.stereotype.Component
  * payment 가 발행한 단일 결제 이벤트 토픽을 구독해 자기(booking) 주문만 확정/취소한다.
  * 같은 토픽을 여러 컨텍스트가 구독하므로 고유 groupId 로 그룹을 분리한다.
  * 멱등은 하류 UseCase/DomainService 가 보장한다(이미 확정/취소된 주문 재수신 시 no-op).
+ *
+ * W1-11c — 만료 스위퍼가 먼저 PENDING → EXPIRED로 전이한 뒤 결제 확정 이벤트가 뒤늦게
+ * 도달하면 [InvalidBookingStateException]이 던져진다(EXPIRED → CONFIRMED 전이 불가).
+ * 결제는 성공했는데 예약을 반영할 수 없는 상태이므로 환불 판단이 필요한 사건이다 — 컨슈머를
+ * 죽이지 않고(재시도 낭비 방지) 경보 지표를 올려 운영이 인지하게 한다.
  */
 @Component
 class BookingPaymentEventWorker(
     private val confirmBookingPaymentUseCase: ConfirmBookingPaymentUseCase,
     private val cancelBookingPaymentUseCase: CancelBookingPaymentUseCase,
+    private val meterRegistry: MeterRegistry,
 ) {
+    private val log = LoggerFactory.getLogger(BookingPaymentEventWorker::class.java)
+
     @KafkaListener(
         topics = [PaymentEvent.TOPIC],
         groupId = "booking-payment",
@@ -25,8 +36,26 @@ class BookingPaymentEventWorker(
     fun consume(event: PaymentEvent) {
         if (event.orderType != OrderType.BOOKING) return
         when (event) {
-            is PaymentEvent.Confirmed -> confirmBookingPaymentUseCase.execute(event.orderId, event.paymentId)
+            is PaymentEvent.Confirmed -> confirmOrAlert(event)
             is PaymentEvent.Cancelled -> cancelBookingPaymentUseCase.execute(event.orderId)
         }
+    }
+
+    private fun confirmOrAlert(event: PaymentEvent.Confirmed) {
+        try {
+            confirmBookingPaymentUseCase.execute(event.orderId, event.paymentId)
+        } catch (exception: InvalidBookingStateException) {
+            log.error(
+                "결제 확정 이벤트가 이미 종료된 예약에 도달했습니다 — 환불 판단 필요. bookingId={} paymentId={}",
+                event.orderId,
+                event.paymentId,
+                exception,
+            )
+            meterRegistry.counter(CONFIRM_AFTER_TERMINAL_COUNTER).increment()
+        }
+    }
+
+    companion object {
+        private const val CONFIRM_AFTER_TERMINAL_COUNTER = "booking_confirm_after_terminal_total"
     }
 }

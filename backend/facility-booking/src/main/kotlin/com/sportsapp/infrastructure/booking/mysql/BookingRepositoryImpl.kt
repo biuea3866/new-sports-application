@@ -44,6 +44,9 @@ class BookingRepositoryImpl(
     override fun countBySlotIdAndStatusIn(slotId: Long, statuses: List<BookingStatus>): Long =
         bookingJpaRepository.countBySlotIdAndStatusIn(slotId, statuses)
 
+    override fun findPendingCreatedBefore(before: ZonedDateTime, limit: Int): List<Long> =
+        bookingJpaRepository.findPendingCreatedBefore(before, limit)
+
     override fun countConfirmedByOwnerUserIdAndDateRange(ownerUserId: Long, from: ZonedDateTime, to: ZonedDateTime): Long =
         bookingKpiQueryRepository.countConfirmedByOwnerUserIdAndDateRange(ownerUserId, from, to)
 

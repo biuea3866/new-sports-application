@@ -193,6 +193,31 @@ class BookingDomainService(
         return BookingDetail.of(booking, slot)
     }
 
+    /**
+     * W1-11c 만료 스위퍼 — PENDING이며 createdAt < before인 예약 id를 최대 limit건 조회한다.
+     */
+    fun findExpirableBookingIds(before: ZonedDateTime, limit: Int): List<Long> =
+        bookingRepository.findPendingCreatedBefore(before, limit)
+
+    /**
+     * W1-11c 만료 스위퍼 — 청크 단위로 PENDING → EXPIRED 전이한다. 슬롯 점유 해제는 별도
+     * 보상 로직 없이 이 전이만으로 완료된다(점유는 PENDING/CONFIRMED 카운트로 파생되므로).
+     * 청크 커밋을 위해 호출부(UseCase) 트랜잭션과 분리된 새 트랜잭션에서 실행한다.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    fun expireBookings(bookingIds: List<Long>): Int {
+        if (bookingIds.isEmpty()) return 0
+        return bookingIds.count { expireIfPending(it) }
+    }
+
+    private fun expireIfPending(bookingId: Long): Boolean {
+        val booking = bookingRepository.findById(bookingId) ?: return false
+        if (booking.status != BookingStatus.PENDING) return false
+        booking.expire()
+        bookingRepository.save(booking)
+        return true
+    }
+
     fun refundBooking(bookingId: Long, callerUserId: Long, refundAmount: BigDecimal, reason: String): Booking {
         val booking = bookingRepository.findById(bookingId)
             ?: throw ResourceNotFoundException("Booking", bookingId)

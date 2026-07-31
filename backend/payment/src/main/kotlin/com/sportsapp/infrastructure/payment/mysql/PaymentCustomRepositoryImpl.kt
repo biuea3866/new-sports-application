@@ -2,6 +2,7 @@ package com.sportsapp.infrastructure.payment.mysql
 
 import com.querydsl.core.BooleanBuilder
 import com.querydsl.jpa.impl.JPAQueryFactory
+import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.payment.repository.PaymentCustomRepository
 import com.sportsapp.domain.payment.entity.Payment
 import com.sportsapp.domain.payment.entity.PaymentStatus
@@ -16,6 +17,21 @@ import java.time.ZonedDateTime
 class PaymentCustomRepositoryImpl(
     private val queryFactory: JPAQueryFactory,
 ) : PaymentCustomRepository {
+
+    override fun findCompletedOrderIds(orderType: OrderType, orderIds: List<Long>): Set<Long> {
+        if (orderIds.isEmpty()) return emptySet()
+        val payment = QPayment.payment
+        return queryFactory.select(payment.orderId)
+                           .from(payment)
+                           .where(
+                               payment.orderType.eq(orderType),
+                               payment.orderId.`in`(orderIds),
+                               payment.status.eq(PaymentStatus.COMPLETED),
+                               payment.deletedAt.isNull,
+                           )
+                           .fetch()
+                           .toSet()
+    }
 
     override fun findByUserIdAndConditions(
         userId: Long,

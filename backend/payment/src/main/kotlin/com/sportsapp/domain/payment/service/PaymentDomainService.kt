@@ -225,6 +225,15 @@ class PaymentDomainService(
             .associate { it.id to it.status }
     }
 
+    /**
+     * 만료 스위퍼(W1-11a~d)의 결제 성공 가드가 소비한다 — orderType·orderId 목록 중
+     * COMPLETED 상태인 orderId만 반환한다.
+     */
+    fun findCompletedOrderIds(orderType: OrderType, orderIds: List<Long>): Set<Long> {
+        if (orderIds.isEmpty()) return emptySet()
+        return paymentRepository.findCompletedOrderIds(orderType, orderIds)
+    }
+
     fun getPayment(userId: Long, paymentId: Long): Payment {
         val payment = paymentRepository.findById(paymentId)
             ?: throw PaymentNotFoundException(paymentId)

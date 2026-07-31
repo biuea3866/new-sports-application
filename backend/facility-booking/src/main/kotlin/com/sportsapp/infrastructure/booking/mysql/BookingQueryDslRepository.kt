@@ -19,4 +19,6 @@ interface BookingQueryDslRepository {
         status: BookingStatus?,
         pageable: Pageable,
     ): Page<Booking>
+
+    fun findPendingCreatedBefore(before: ZonedDateTime, limit: Int): List<Long>
 }
