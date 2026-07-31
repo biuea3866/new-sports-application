@@ -2,9 +2,14 @@ package com.sportsapp.presentation.booking.worker
 
 import com.sportsapp.application.booking.usecase.CancelBookingPaymentUseCase
 import com.sportsapp.application.booking.usecase.ConfirmBookingPaymentUseCase
+import com.sportsapp.domain.booking.entity.BookingStatus
+import com.sportsapp.domain.booking.exception.InvalidBookingStateException
 import com.sportsapp.domain.payment.event.PaymentEvent
 import com.sportsapp.domain.common.order.OrderType
 import io.kotest.core.spec.style.BehaviorSpec
+import io.micrometer.core.instrument.Counter
+import io.micrometer.core.instrument.MeterRegistry
+import io.mockk.every
 import io.mockk.justRun
 import io.mockk.mockk
 import io.mockk.verify
@@ -13,9 +18,11 @@ class BookingPaymentEventWorkerTest : BehaviorSpec({
 
     val confirmUseCase = mockk<ConfirmBookingPaymentUseCase>()
     val cancelUseCase = mockk<CancelBookingPaymentUseCase>()
-    val worker = BookingPaymentEventWorker(confirmUseCase, cancelUseCase)
+    val meterRegistry = mockk<MeterRegistry>()
+    val worker = BookingPaymentEventWorker(confirmUseCase, cancelUseCase, meterRegistry)
     justRun { confirmUseCase.execute(any(), any()) }
     justRun { cancelUseCase.execute(any()) }
+    every { meterRegistry.counter(any<String>()) } returns mockk<Counter>(relaxed = true)
 
     Given("결제 이벤트 워커") {
         When("BOOKING 확정 이벤트를 수신하면") {
@@ -56,6 +63,18 @@ class BookingPaymentEventWorkerTest : BehaviorSpec({
 
             Then("무시하고 어떤 UseCase 도 호출하지 않는다") {
                 verify(exactly = 0) { cancelUseCase.execute(30L) }
+            }
+        }
+
+        When("이미 EXPIRED된 예약에 결제 확정 이벤트가 도달하면") {
+            every { confirmUseCase.execute(40L, 400L) } throws
+                InvalidBookingStateException(BookingStatus.EXPIRED, BookingStatus.CONFIRMED)
+
+            Then("예외로 죽지 않고 경보 지표가 올라간다 (환불 판단 필요 사건)") {
+                worker.consume(
+                    PaymentEvent.Confirmed(paymentId = 400L, orderType = OrderType.BOOKING, orderId = 40L, recipientUserId = 1L, amount = 0L),
+                )
+                verify(exactly = 1) { meterRegistry.counter("booking_confirm_after_terminal_total") }
             }
         }
     }

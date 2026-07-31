@@ -14,6 +14,7 @@ class ConfirmBookingPaymentUseCase(
 ) {
     @Transactional
     fun execute(orderId: Long, paymentId: Long) {
-        bookingDomainService.confirmBooking(orderId, paymentId)
+        // named argument 강제(6차 재리뷰 p3) — 인접한 동일 타입(Long) 위치 인자 뒤바뀜 방지.
+        bookingDomainService.confirmBooking(bookingId = orderId, paymentId = paymentId)
     }
 }

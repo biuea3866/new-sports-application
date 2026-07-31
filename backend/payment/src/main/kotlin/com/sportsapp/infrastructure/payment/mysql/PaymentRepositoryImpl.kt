@@ -1,5 +1,7 @@
 package com.sportsapp.infrastructure.payment.mysql
 
+import com.sportsapp.domain.common.order.OrderType
+import com.sportsapp.domain.payment.dto.PaymentLivenessQueryResult
 import com.sportsapp.domain.payment.repository.PaymentCustomRepository
 import com.sportsapp.domain.payment.entity.Payment
 import com.sportsapp.domain.payment.repository.PaymentRepository
@@ -28,6 +30,9 @@ class PaymentRepositoryImpl(
 
     override fun findAllByIdIn(ids: List<Long>): List<Payment> =
         paymentJpaRepository.findAllByIdIn(ids)
+
+    override fun findPaymentLiveness(orderType: OrderType, orderIds: List<Long>): PaymentLivenessQueryResult =
+        paymentCustomRepository.findPaymentLiveness(orderType, orderIds)
 
     override fun findByUserIdAndConditions(
         userId: Long,

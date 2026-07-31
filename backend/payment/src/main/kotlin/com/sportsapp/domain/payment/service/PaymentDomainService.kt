@@ -3,6 +3,7 @@ package com.sportsapp.domain.payment.service
 import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.common.PgEventType
 import com.sportsapp.domain.payment.dto.ConfirmWebhookResult
+import com.sportsapp.domain.payment.dto.PaymentLivenessQueryResult
 import com.sportsapp.domain.payment.dto.PgInitiateCommand
 import com.sportsapp.domain.payment.dto.PgInitiateResult
 import com.sportsapp.domain.payment.entity.Payment
@@ -223,6 +224,18 @@ class PaymentDomainService(
         if (paymentIds.isEmpty()) return emptyMap()
         return paymentRepository.findAllByIdIn(paymentIds)
             .associate { it.id to it.status }
+    }
+
+    /**
+     * 만료 스위퍼(W1-11a~d)의 만료 금지 가드가 소비한다. payment는 시간 창을 갖지 않고
+     * orderId별 결제 생존 판정(settled·live·attempting·none —
+     * [com.sportsapp.domain.common.payment.OrderPaymentLiveness])이라는 **사실**만 반환한다.
+     * TTL 정책은 호출 컨텍스트(booking 등)가 소유한다. 판정 규칙 상세는
+     * [PaymentLivenessClassifier] 참고.
+     */
+    fun findPaymentLiveness(orderType: OrderType, orderIds: List<Long>): PaymentLivenessQueryResult {
+        if (orderIds.isEmpty()) return PaymentLivenessQueryResult.empty()
+        return paymentRepository.findPaymentLiveness(orderType, orderIds)
     }
 
     fun getPayment(userId: Long, paymentId: Long): Payment {

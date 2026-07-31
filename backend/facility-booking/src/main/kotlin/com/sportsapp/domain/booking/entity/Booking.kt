@@ -61,6 +61,16 @@ class Booking(
     var paymentId: Long? = initialPaymentId
         private set
 
+    /**
+     * **CAS가 유일한 프로덕션 전이 경로다.** 실제 확정은
+     * [com.sportsapp.domain.booking.repository.BookingRepository.tryConfirm](조건부 UPDATE,
+     * WHERE status='PENDING')이 수행하고, 이 메서드는 find→mutate→save 경로로 호출되지 않는다
+     * (`BookingDomainService.confirmBooking` 참고 — lost update 방지를 위해 dirty-checking
+     * UPDATE를 의도적으로 배제했다). `BookingStatus.canTransitTo`의 상태 머신 정의가 이
+     * 메서드와 tryConfirm의 SQL 조건(`WHERE status=PENDING`) 두 곳에 이중화돼 있으므로,
+     * 상태 전이 규칙을 바꿀 때는 반드시 두 곳을 함께 갱신할 것 — SQL만 고치고 이 메서드를
+     * 방치하면 드리프트가 생긴다.
+     */
     fun confirm(paymentId: Long) {
         if (status == BookingStatus.CONFIRMED) {
             return
@@ -110,6 +120,14 @@ class Booking(
         return paymentId ?: throw RefundBookingException(id, "결제 정보가 없는 예약은 환불할 수 없습니다.")
     }
 
+    /**
+     * **CAS가 유일한 프로덕션 전이 경로다.** 실제 만료는
+     * [com.sportsapp.domain.booking.repository.BookingRepository.tryExpire](조건부 UPDATE,
+     * WHERE status='PENDING')가 수행하고, 이 메서드는 만료 스위퍼(`BookingDomainService.expireBookings`)에서
+     * find→mutate→save 경로로 호출되지 않는다 — 청크 트랜잭션 스냅샷과 무관하게 최신 커밋본을
+     * 평가해야 다른 트랜잭션이 CONFIRMED로 전이시킨 예약을 덮어쓰지 않는다. `confirm()`과
+     * 동일하게 상태 머신 정의가 이 메서드와 tryExpire의 SQL 조건 두 곳에 이중화돼 있다.
+     */
     fun expire() {
         if (!status.canTransitTo(BookingStatus.EXPIRED)) {
             throw InvalidBookingStateException(status, BookingStatus.EXPIRED)

@@ -1,6 +1,8 @@
 package com.sportsapp.infrastructure.booking.mysql
 
+import com.querydsl.core.types.Projections
 import com.querydsl.jpa.impl.JPAQueryFactory
+import com.sportsapp.domain.booking.dto.BookingExpiryCandidate
 import com.sportsapp.domain.booking.entity.Booking
 import com.sportsapp.domain.booking.entity.BookingStatus
 import com.sportsapp.domain.booking.entity.QBooking.booking
@@ -59,5 +61,44 @@ class BookingJpaRepositoryImpl : BookingQueryDslRepository {
                                 .fetchOne() ?: 0L
 
         return PageImpl(content, pageable, total)
+    }
+
+    override fun findPendingCreatedBefore(before: ZonedDateTime, afterId: Long, limit: Int): List<BookingExpiryCandidate> {
+        return queryFactory.select(Projections.constructor(BookingExpiryCandidate::class.java, booking.id, booking.createdAt))
+                           .from(booking)
+                           .where(
+                               booking.status.eq(BookingStatus.PENDING),
+                               booking.createdAt.lt(before),
+                               booking.id.gt(afterId),
+                               booking.deletedAt.isNull,
+                           )
+                           .orderBy(booking.id.asc())
+                           .limit(limit.toLong())
+                           .fetch()
+    }
+
+    override fun tryExpire(bookingId: Long): Boolean {
+        val affectedRows = queryFactory.update(booking)
+                                       .set(booking.status, BookingStatus.EXPIRED)
+                                       .set(booking.updatedAt, ZonedDateTime.now())
+                                       .where(
+                                           booking.id.eq(bookingId),
+                                           booking.status.eq(BookingStatus.PENDING),
+                                       )
+                                       .execute()
+        return affectedRows > 0
+    }
+
+    override fun tryConfirm(bookingId: Long, paymentId: Long): Boolean {
+        val affectedRows = queryFactory.update(booking)
+                                       .set(booking.status, BookingStatus.CONFIRMED)
+                                       .set(booking.paymentId, paymentId)
+                                       .set(booking.updatedAt, ZonedDateTime.now())
+                                       .where(
+                                           booking.id.eq(bookingId),
+                                           booking.status.eq(BookingStatus.PENDING),
+                                       )
+                                       .execute()
+        return affectedRows > 0
     }
 }

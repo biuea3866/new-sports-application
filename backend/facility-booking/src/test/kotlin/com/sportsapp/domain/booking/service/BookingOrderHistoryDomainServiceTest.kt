@@ -7,6 +7,7 @@ import com.sportsapp.domain.booking.repository.BookingRepository
 import com.sportsapp.domain.booking.repository.SlotRepository
 import com.sportsapp.domain.common.DistributedLock
 import com.sportsapp.domain.common.DomainEventPublisher
+import com.sportsapp.domain.common.FeatureFlagEvaluator
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
@@ -22,6 +23,7 @@ class BookingOrderHistoryDomainServiceTest : BehaviorSpec({
     val distributedLock = mockk<DistributedLock>()
     val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
     val bookingOrderQueryRepository = mockk<BookingOrderQueryRepository>()
+    val featureFlagEvaluator = mockk<FeatureFlagEvaluator>()
 
     val service = BookingDomainService(
         bookingRepository,
@@ -29,6 +31,7 @@ class BookingOrderHistoryDomainServiceTest : BehaviorSpec({
         distributedLock,
         domainEventPublisher,
         bookingOrderQueryRepository,
+        featureFlagEvaluator,
     )
 
     Given("사용자 7의 예약이 라벨과 함께 존재하는 상황") {
