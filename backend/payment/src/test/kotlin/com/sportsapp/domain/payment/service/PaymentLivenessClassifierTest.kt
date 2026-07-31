@@ -1,19 +1,25 @@
 package com.sportsapp.domain.payment.service
 
+import com.sportsapp.domain.common.payment.OrderPaymentLiveness
 import com.sportsapp.domain.payment.dto.PaymentLivenessRow
 import com.sportsapp.domain.payment.entity.PaymentStatus
 import io.kotest.core.spec.style.BehaviorSpec
-import io.kotest.matchers.maps.shouldContainExactly
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import java.time.ZonedDateTime
 
 /**
- * [PaymentLivenessClassifier] — 4차 재설계 판정 순수 함수의 5개 payment 상태 전수 검증 +
- * 5차 재설계(liveSince 최댓값 앵커) [classify] 검증.
+ * [PaymentLivenessClassifier] — 6차 재설계(공유 커널 [OrderPaymentLiveness] sealed 타입) 판정
+ * 순수 함수의 5개 payment 상태 전수 검증 + classify() 그룹핑·앵커 산출 검증.
  *
  * 핵심 회귀(F-A 타격): PENDING/FAILED는 live가 아니므로 빠른 TTL로 만료 허용돼야 한다.
  * PG prepare 실패 시 즉시 FAILED로 전이하므로([PaymentDomainService.applyPgResult]),
  * F-A(고립 예약) 케이스는 반드시 여기서 걸러져야 스위퍼가 정확히 타격한다.
+ *
+ * 핵심 회귀(6차 — p1): PENDING만 있는 주문은 더 이상 [OrderPaymentLiveness.None]이 아니라
+ * [OrderPaymentLiveness.Attempting]으로 분류돼 시도 시작 시각을 앵커로 넘긴다 — `createPending`이
+ * PENDING 행을 먼저 커밋하고 PG 왕복 동안 그 상태로 머무는 창에서, 방금 시작된 재결제 시도를
+ * 앵커 없이(=즉시 만료 허용) 판정하면 오만료가 재발한다.
  */
 class PaymentLivenessClassifierTest : BehaviorSpec({
 
@@ -31,31 +37,35 @@ class PaymentLivenessClassifierTest : BehaviorSpec({
         }
     }
 
-    Given("결제가 PENDING 상태일 때 (핵심 회귀 — F-A 타격 대상)") {
-        Then("live도 settled도 아니다 — 빠른 TTL로 만료를 허용해야 한다") {
+    Given("결제가 PENDING 상태일 때 (6차 — Attempting 분류 대상)") {
+        Then("live도 settled도 아니지만 attempting이다 — 시도 시각을 앵커로 재-앵커해야 한다") {
             PaymentLivenessClassifier.isLive(PaymentStatus.PENDING) shouldBe false
             PaymentLivenessClassifier.isSettled(PaymentStatus.PENDING) shouldBe false
+            PaymentLivenessClassifier.isAttempting(PaymentStatus.PENDING) shouldBe true
         }
     }
 
     Given("결제가 FAILED 상태일 때 (핵심 회귀 — PG prepare 실패로 고립된 예약)") {
-        Then("live도 settled도 아니다 — 빠른 TTL로 만료를 허용해야 한다") {
+        Then("live도 settled도 attempting도 아니다 — 빠른 TTL(주문 생성 시각 기준)로 만료를 허용해야 한다") {
             PaymentLivenessClassifier.isLive(PaymentStatus.FAILED) shouldBe false
             PaymentLivenessClassifier.isSettled(PaymentStatus.FAILED) shouldBe false
+            PaymentLivenessClassifier.isAttempting(PaymentStatus.FAILED) shouldBe false
         }
     }
 
     Given("결제가 CANCELLED 상태일 때") {
-        Then("live도 settled도 아니다 — 빠른 TTL로 만료를 허용한다") {
+        Then("live도 settled도 attempting도 아니다 — 빠른 TTL로 만료를 허용한다") {
             PaymentLivenessClassifier.isLive(PaymentStatus.CANCELLED) shouldBe false
             PaymentLivenessClassifier.isSettled(PaymentStatus.CANCELLED) shouldBe false
+            PaymentLivenessClassifier.isAttempting(PaymentStatus.CANCELLED) shouldBe false
         }
     }
 
     Given("결제가 REFUNDED 상태일 때") {
-        Then("live도 settled도 아니다 — 환불 완료로 방치된 예약 정리를 허용한다") {
+        Then("live도 settled도 attempting도 아니다 — 환불 완료로 방치된 예약 정리를 허용한다") {
             PaymentLivenessClassifier.isLive(PaymentStatus.REFUNDED) shouldBe false
             PaymentLivenessClassifier.isSettled(PaymentStatus.REFUNDED) shouldBe false
+            PaymentLivenessClassifier.isAttempting(PaymentStatus.REFUNDED) shouldBe false
         }
     }
 
@@ -63,9 +73,8 @@ class PaymentLivenessClassifierTest : BehaviorSpec({
         When("classify를 호출하면") {
             val result = PaymentLivenessClassifier.classify(emptyList())
 
-            Then("liveSince·settledOrderIds 모두 비어있다") {
-                result.liveSince shouldBe emptyMap()
-                result.settledOrderIds shouldBe emptySet()
+            Then("livenessByOrderId가 비어있다") {
+                result.livenessByOrderId shouldBe emptyMap()
             }
         }
     }
@@ -77,14 +86,14 @@ class PaymentLivenessClassifierTest : BehaviorSpec({
         When("classify를 호출하면") {
             val result = PaymentLivenessClassifier.classify(rows)
 
-            Then("그 payment의 createdAt이 liveSince 앵커로 잡힌다") {
-                result.liveSince shouldContainExactly mapOf(1L to readyAt)
-                result.settledOrderIds shouldBe emptySet()
+            Then("Live(readyAt)로 분류된다") {
+                val liveness = result.of(1L).shouldBeInstanceOf<OrderPaymentLiveness.Live>()
+                liveness.since shouldBe readyAt
             }
         }
     }
 
-    Given("한 주문에 오래된 READY payment와 방금 발급된 READY payment가 함께 있을 때 (5차 재설계 핵심 회귀 — 최댓값 앵커)") {
+    Given("한 주문에 오래된 READY payment와 방금 발급된 READY payment가 함께 있을 때 (최댓값 앵커 회귀)") {
         val oldReadyAt = ZonedDateTime.now().minusDays(3)
         val recentReadyAt = ZonedDateTime.now().minusMinutes(1)
         val rows = listOf(
@@ -96,17 +105,64 @@ class PaymentLivenessClassifierTest : BehaviorSpec({
             val result = PaymentLivenessClassifier.classify(rows)
             val resultReversed = PaymentLivenessClassifier.classify(rows.reversed())
 
-            Then("최근(recent) createdAt이 liveSince 앵커로 잡힌다 — 최솟값·임의 1건을 쓰면 오만료가 재발한다") {
-                result.liveSince shouldContainExactly mapOf(1L to recentReadyAt)
-                resultReversed.liveSince shouldContainExactly mapOf(1L to recentReadyAt)
+            Then("최근(recent) createdAt이 Live의 since로 잡힌다 — 최솟값·임의 1건을 쓰면 오만료가 재발한다") {
+                (result.of(1L) as OrderPaymentLiveness.Live).since shouldBe recentReadyAt
+                (resultReversed.of(1L) as OrderPaymentLiveness.Live).since shouldBe recentReadyAt
             }
         }
     }
 
-    Given("PENDING/FAILED/CANCELLED/REFUNDED payment만 있을 때 (F-A 타격 대상 — liveSince 없음)") {
+    Given("한 주문에 PENDING payment만 있을 때 (6차 핵심 회귀 — Attempting 분류)") {
+        val attemptAt = ZonedDateTime.now().minusMinutes(1)
+        val rows = listOf(PaymentLivenessRow(orderId = 5L, status = PaymentStatus.PENDING, createdAt = attemptAt))
+
+        When("classify를 호출하면") {
+            val result = PaymentLivenessClassifier.classify(rows)
+
+            Then("Attempting(attemptAt)으로 분류된다 — None이 아니다") {
+                val liveness = result.of(5L).shouldBeInstanceOf<OrderPaymentLiveness.Attempting>()
+                liveness.since shouldBe attemptAt
+            }
+        }
+    }
+
+    Given("한 주문에 오래된 PENDING(원 시도)과 방금 삽입된 PENDING(재시도)이 함께 있을 때 (Attempting 최댓값 회귀)") {
+        val originalAttemptAt = ZonedDateTime.now().minusMinutes(70)
+        val retryAttemptAt = ZonedDateTime.now().minusSeconds(5)
+        val rows = listOf(
+            PaymentLivenessRow(orderId = 6L, status = PaymentStatus.PENDING, createdAt = originalAttemptAt),
+            PaymentLivenessRow(orderId = 6L, status = PaymentStatus.PENDING, createdAt = retryAttemptAt),
+        )
+
+        When("classify를 호출하면") {
+            val result = PaymentLivenessClassifier.classify(rows)
+
+            Then("가장 최근 PENDING 삽입 시각이 Attempting의 since로 잡힌다") {
+                (result.of(6L) as OrderPaymentLiveness.Attempting).since shouldBe retryAttemptAt
+            }
+        }
+    }
+
+    Given("PENDING과 FAILED가 함께 있을 때 (원 시도가 FAILED로 종결되고 재시도가 PENDING인 상황)") {
+        val failedAt = ZonedDateTime.now().minusMinutes(70)
+        val retryAttemptAt = ZonedDateTime.now().minusSeconds(5)
+        val rows = listOf(
+            PaymentLivenessRow(orderId = 7L, status = PaymentStatus.FAILED, createdAt = failedAt),
+            PaymentLivenessRow(orderId = 7L, status = PaymentStatus.PENDING, createdAt = retryAttemptAt),
+        )
+
+        When("classify를 호출하면") {
+            val result = PaymentLivenessClassifier.classify(rows)
+
+            Then("FAILED는 무시되고 PENDING만 Attempting 앵커로 반영된다") {
+                (result.of(7L) as OrderPaymentLiveness.Attempting).since shouldBe retryAttemptAt
+            }
+        }
+    }
+
+    Given("FAILED/CANCELLED/REFUNDED payment만 있을 때 (F-A 타격 대상 — None)") {
         val now = ZonedDateTime.now()
         val rows = listOf(
-            PaymentLivenessRow(orderId = 1L, status = PaymentStatus.PENDING, createdAt = now),
             PaymentLivenessRow(orderId = 2L, status = PaymentStatus.FAILED, createdAt = now),
             PaymentLivenessRow(orderId = 3L, status = PaymentStatus.CANCELLED, createdAt = now),
             PaymentLivenessRow(orderId = 4L, status = PaymentStatus.REFUNDED, createdAt = now),
@@ -115,10 +171,19 @@ class PaymentLivenessClassifierTest : BehaviorSpec({
         When("classify를 호출하면") {
             val result = PaymentLivenessClassifier.classify(rows)
 
-            Then("liveSince에 아무 orderId도 포함되지 않아 호출 컨텍스트가 빠른 TTL을 적용할 수 있다") {
-                result.liveSince shouldBe emptyMap()
-                result.settledOrderIds shouldBe emptySet()
+            Then("모두 None으로 분류돼 호출 컨텍스트가 빠른 TTL(주문 생성 시각 기준)을 적용할 수 있다") {
+                result.of(2L) shouldBe OrderPaymentLiveness.None
+                result.of(3L) shouldBe OrderPaymentLiveness.None
+                result.of(4L) shouldBe OrderPaymentLiveness.None
             }
+        }
+    }
+
+    Given("조회 대상이 아닌 orderId를 조회할 때") {
+        val result = PaymentLivenessClassifier.classify(emptyList())
+
+        Then("None을 기본값으로 반환한다") {
+            result.of(999L) shouldBe OrderPaymentLiveness.None
         }
     }
 
@@ -129,9 +194,27 @@ class PaymentLivenessClassifierTest : BehaviorSpec({
         When("classify를 호출하면") {
             val result = PaymentLivenessClassifier.classify(rows)
 
-            Then("liveSince·settledOrderIds 모두에 포함된다 (COMPLETED는 live이기도 하다)") {
-                result.liveSince shouldContainExactly mapOf(1L to paidAt)
-                result.settledOrderIds shouldBe setOf(1L)
+            Then("Settled로 분류된다") {
+                result.of(1L) shouldBe OrderPaymentLiveness.Settled
+            }
+        }
+    }
+
+    Given("한 주문에 COMPLETED와 시점상 더 오래된 READY가 함께 있을 때 (settled 우선 판정 — 핵심 회귀, p4)") {
+        val staleReadyAt = ZonedDateTime.now().minusDays(3)
+        val completedAt = ZonedDateTime.now().minusMinutes(2)
+        val rows = listOf(
+            PaymentLivenessRow(orderId = 8L, status = PaymentStatus.READY, createdAt = staleReadyAt),
+            PaymentLivenessRow(orderId = 8L, status = PaymentStatus.COMPLETED, createdAt = completedAt),
+        )
+
+        When("classify를 호출하면 (READY가 먼저 나열돼도, COMPLETED가 나중에 나열돼도)") {
+            val result = PaymentLivenessClassifier.classify(rows)
+            val resultReversed = PaymentLivenessClassifier.classify(rows.reversed())
+
+            Then("Settled 하나로만 분류된다 — Live로는 도달하지 않는다(타입이 settled 우선을 강제)") {
+                result.of(8L) shouldBe OrderPaymentLiveness.Settled
+                resultReversed.of(8L) shouldBe OrderPaymentLiveness.Settled
             }
         }
     }
@@ -148,9 +231,10 @@ class PaymentLivenessClassifierTest : BehaviorSpec({
         When("classify를 호출하면") {
             val result = PaymentLivenessClassifier.classify(rows)
 
-            Then("각 orderId가 자신의 앵커·settled 여부로만 독립적으로 판정된다") {
-                result.liveSince shouldContainExactly mapOf(1L to order1ReadyAt, 2L to order2CompletedAt)
-                result.settledOrderIds shouldBe setOf(2L)
+            Then("각 orderId가 자신의 판정으로만 독립적으로 분류된다") {
+                (result.of(1L) as OrderPaymentLiveness.Live).since shouldBe order1ReadyAt
+                result.of(2L) shouldBe OrderPaymentLiveness.Settled
+                result.of(3L) shouldBe OrderPaymentLiveness.None
             }
         }
     }

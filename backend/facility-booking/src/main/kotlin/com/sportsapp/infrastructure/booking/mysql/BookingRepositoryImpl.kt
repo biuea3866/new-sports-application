@@ -52,7 +52,8 @@ class BookingRepositoryImpl(
         bookingJpaRepository.tryExpire(bookingId)
 
     override fun tryConfirm(bookingId: Long, paymentId: Long): Boolean =
-        bookingJpaRepository.tryConfirm(bookingId, paymentId)
+        // named argument 강제(6차 재리뷰 p3) — 인접한 동일 타입(Long) 위치 인자 뒤바뀜 방지.
+        bookingJpaRepository.tryConfirm(bookingId = bookingId, paymentId = paymentId)
 
     override fun countConfirmedByOwnerUserIdAndDateRange(ownerUserId: Long, from: ZonedDateTime, to: ZonedDateTime): Long =
         bookingKpiQueryRepository.countConfirmedByOwnerUserIdAndDateRange(ownerUserId, from, to)

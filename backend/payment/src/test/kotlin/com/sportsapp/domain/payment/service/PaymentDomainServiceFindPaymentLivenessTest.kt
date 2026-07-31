@@ -1,6 +1,7 @@
 package com.sportsapp.domain.payment.service
 
 import com.sportsapp.domain.common.order.OrderType
+import com.sportsapp.domain.common.payment.OrderPaymentLiveness
 import com.sportsapp.domain.payment.dto.PaymentLivenessQueryResult
 import com.sportsapp.domain.payment.gateway.PaymentGateway
 import com.sportsapp.domain.payment.repository.PaymentRepository
@@ -34,7 +35,9 @@ class PaymentDomainServiceFindPaymentLivenessTest : BehaviorSpec({
         val paymentRepository = mockk<PaymentRepository>()
         val service = buildService(paymentRepository)
         val now = ZonedDateTime.now()
-        val expected = PaymentLivenessQueryResult(liveSince = mapOf(2L to now, 3L to now), settledOrderIds = setOf(3L))
+        val expected = PaymentLivenessQueryResult(
+            livenessByOrderId = mapOf(2L to OrderPaymentLiveness.Live(now), 3L to OrderPaymentLiveness.Settled),
+        )
         every {
             paymentRepository.findPaymentLiveness(OrderType.BOOKING, listOf(1L, 2L, 3L))
         } returns expected

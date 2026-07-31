@@ -227,9 +227,10 @@ class PaymentDomainService(
     }
 
     /**
-     * 만료 스위퍼(W1-11a~d)의 만료 금지 가드가 소비한다. 4차 재설계 — payment는 시간 창을
-     * 갖지 않고 "결제가 시작이라도 됐는가"(live)·"돈을 받았는가"(settled)라는 **사실**만
-     * 반환한다. TTL 정책은 호출 컨텍스트(booking 등)가 소유한다. 판정 규칙 상세는
+     * 만료 스위퍼(W1-11a~d)의 만료 금지 가드가 소비한다. payment는 시간 창을 갖지 않고
+     * orderId별 결제 생존 판정(settled·live·attempting·none —
+     * [com.sportsapp.domain.common.payment.OrderPaymentLiveness])이라는 **사실**만 반환한다.
+     * TTL 정책은 호출 컨텍스트(booking 등)가 소유한다. 판정 규칙 상세는
      * [PaymentLivenessClassifier] 참고.
      */
     fun findPaymentLiveness(orderType: OrderType, orderIds: List<Long>): PaymentLivenessQueryResult {

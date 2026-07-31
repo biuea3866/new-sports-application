@@ -19,10 +19,10 @@ interface PaymentCustomRepository {
 
     /**
      * 만료 스위퍼(W1-11a~d 공통 만료 금지 가드)가 소비한다 — orderType·orderId 목록에 대해
-     * live(READY 또는 COMPLETED) payment의 createdAt 최댓값(liveSince)·settled(COMPLETED)
-     * 주문 id 집합을 함께 반환한다.
+     * orderId별 결제 생존 판정([com.sportsapp.domain.common.payment.OrderPaymentLiveness])을
+     * 반환한다.
      *
-     * 5차 재설계: payment는 "결제가 시작이라도 됐는가"라는 **사실**과 그 발급 시각(liveSince)만
+     * 6차 재설계: payment는 "결제가 어느 상태인가"라는 **사실**과 그 시각(발급/시도 시각)만
      * 답하고, TTL(시간 창) 정책은 호출 컨텍스트(booking 등)가 소유한다 — 그래서 TTL 분값 자체는
      * 받지 않는다. 판정 규칙 상세는
      * [com.sportsapp.domain.payment.service.PaymentLivenessClassifier] 참고. Payment

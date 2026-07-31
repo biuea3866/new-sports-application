@@ -32,11 +32,13 @@ class BookingExpiryScheduler(
         meterRegistry.counter(EXPIRED_COUNTER).increment(result.expiredCount.toDouble())
         meterRegistry.counter(SKIPPED_COUNTER).increment(result.skippedCount.toDouble())
         meterRegistry.counter(SKIPPED_SETTLED_COUNTER).increment(result.skippedSettledCount.toDouble())
+        meterRegistry.counter(CONTENDED_COUNTER).increment(result.contendedCount.toDouble())
         log.info(
-            "event=booking-expiry-completed expiredCount={} skippedCount={} skippedSettledCount={}",
+            "event=booking-expiry-completed expiredCount={} skippedCount={} skippedSettledCount={} contendedCount={}",
             result.expiredCount,
             result.skippedCount,
             result.skippedSettledCount,
+            result.contendedCount,
         )
     }
 
@@ -50,5 +52,13 @@ class BookingExpiryScheduler(
          * 건너뛴 정상 흐름과 [SKIPPED_COUNTER]에 뭉뚱그려지면 경보가 불가능해 분리했다.
          */
         private const val SKIPPED_SETTLED_COUNTER = "booking_expiry_skipped_settled_total"
+
+        /**
+         * CAS(tryExpire) 경합 전용 카운터(6차 재리뷰 p4) — 만료 대상으로 판정됐으나 청크
+         * 처리 도중 webhook 확정이 먼저 CONFIRMED로 전이시켜 CAS에 진 건. 이 값이 지속적으로
+         * 0보다 크면 확정·만료 경합이 잦다는 신호로, 스위퍼 주기·readyTtlMinutes 조정을
+         * 검토한다.
+         */
+        private const val CONTENDED_COUNTER = "booking_expiry_contended_total"
     }
 }

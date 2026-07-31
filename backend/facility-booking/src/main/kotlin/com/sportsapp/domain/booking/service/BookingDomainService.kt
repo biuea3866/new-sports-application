@@ -4,6 +4,7 @@ import com.sportsapp.domain.booking.BookingFeatureFlagKeys
 import com.sportsapp.domain.booking.dto.BookingDetail
 import com.sportsapp.domain.booking.dto.BookingExpiryCandidate
 import com.sportsapp.domain.booking.dto.BookingExpiryFilterResult
+import com.sportsapp.domain.booking.dto.BookingExpiryTtlPolicy
 import com.sportsapp.domain.booking.dto.BookingOrderItem
 import com.sportsapp.domain.booking.dto.BookingResult
 import com.sportsapp.domain.booking.dto.FacilityKpiSummary
@@ -24,6 +25,7 @@ import com.sportsapp.domain.common.DomainEventPublisher
 import com.sportsapp.domain.common.FeatureContext
 import com.sportsapp.domain.common.FeatureFlagEvaluator
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
+import com.sportsapp.domain.common.payment.OrderPaymentLiveness
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -129,7 +131,10 @@ class BookingDomainService(
      * 이 계약을 지키고 있다.
      */
     fun confirmBooking(bookingId: Long, paymentId: Long): Booking {
-        val transitioned = bookingRepository.tryConfirm(bookingId, paymentId)
+        // named argument 강제(6차 재리뷰 p3) — bookingId/paymentId가 인접한 동일 타입(Long)이라
+        // 위치 인자로 바꿔 넘겨도 컴파일이 통과해 다른 예약을 확정시키는 오동작이 조용히
+        // 재발할 수 있다.
+        val transitioned = bookingRepository.tryConfirm(bookingId = bookingId, paymentId = paymentId)
         val current = bookingRepository.findById(bookingId) ?: throw ResourceNotFoundException("Booking", bookingId)
         if (!transitioned && current.status != BookingStatus.CONFIRMED) {
             throw InvalidBookingStateException(current.status, BookingStatus.CONFIRMED)
@@ -223,8 +228,13 @@ class BookingDomainService(
      * W1-11c 만료 스위퍼 — PENDING이며 createdAt < (now - ttlMinutes, 빠른 TTL)이고
      * id > afterId(청크 커서)인 예약 후보를 최대 limit건 조회한다. 시간 계산은 이 메서드
      * 내부에서 해결한다(no-time-parameter — 캡슐화 메서드에 시간을 인자로 넘기지 않는다).
-     * createdAt을 포함한 [BookingExpiryCandidate]를 반환한다 — [filterExpirable]이 느린
-     * TTL(readyTtlMinutes) 판정에 사용한다.
+     * createdAt을 포함한 [BookingExpiryCandidate]를 반환한다 — [filterExpirable]이 느린 TTL
+     * (readyTtlMinutes, live 갈래) 판정과 빠른 TTL(ttlMinutes, attempting 갈래의
+     * `max(createdAt, attemptSince)` 재평가) 판정 양쪽에 모두 사용한다.
+     *
+     * **명명 인자 강제**: `ttlMinutes`(Long)와 `afterId`(Long)가 인접한 동일 타입이라 위치
+     * 인자로 바꿔 넘기면 컴파일은 통과하되 TTL↔커서가 뒤바뀌는 오동작이 조용히 재발할 수
+     * 있다 — 호출부는 반드시 named argument로 호출한다.
      */
     fun findExpirableBookingCandidates(ttlMinutes: Long, afterId: Long, limit: Int): List<BookingExpiryCandidate> {
         val threshold = ZonedDateTime.now().minusMinutes(ttlMinutes)
@@ -232,45 +242,72 @@ class BookingDomainService(
     }
 
     /**
-     * W1-11c 5차 재설계 — 만료 후보 중 실제로 만료시킬 대상을 최종 판정한다. payment로부터
-     * 받은 [liveSince](orderId → live payment 발급 시각 최댓값)·[settledOrderIds](COMPLETED
-     * 주문 id 집합)만으로 판단하므로 도메인 교차가 아니다 — 크로스 컨텍스트 조합 자체(payment
-     * 조회 → 값 변환)는 application(ExpirePendingBookingsUseCase)이 수행하고, 이 메서드는
-     * booking 자신의 정책(두 TTL)만 적용한다.
+     * W1-11c 6차 재설계 — 만료 후보 중 실제로 만료시킬 대상을 최종 판정한다. payment로부터
+     * 받은 orderId별 판정([OrderPaymentLiveness] — domain.common 공유 커널)만으로 판단하므로
+     * 도메인 교차가 아니다 — 크로스 컨텍스트 조합 자체(payment 조회 → 값 변환)는
+     * application(ExpirePendingBookingsUseCase)이 수행하고, 이 메서드는 booking 자신의
+     * 정책(두 TTL)만 적용한다.
      *
      * **앵커 정정(4차 → 5차)**: 4차는 느린 TTL을 `candidate.createdAt`(예약 생성 시각)에
      * 적용했으나, `POST /payments/prepare`가 기존 주문에 새 payment 행을 만드는 가동 중
      * 경로라 예약이 오래전에 생성됐어도 결제가 방금 살아날 수 있다 — 그 경우 예약 생성 시각
-     * 기준으로는 다음 주기에 오만료됐다. 앵커를 **payment 발급 시각의 최댓값**(liveSince)으로
+     * 기준으로는 다음 주기에 오만료됐다. 앵커를 **payment 발급 시각의 최댓값**([OrderPaymentLiveness.Live.since])으로
      * 옮겨 "결제가 언제 살아났는가"를 정확히 반영한다.
      *
-     * - settled 포함: 돈을 받았다 — 항상 제외(절대 만료 금지).
-     * - liveSince에 값이 있고 그 값이 느린 TTL(readyTtlMinutes)을 아직 지나지 않음: 결제창에
-     *   머무는 사용자로 보아 제외.
-     * - 그 외(liveSince에 없음 — 빠른 TTL 후보 조회 자체를 통과한 결제 미시작/실패/취소/환불,
-     *   또는 liveSince가 readyTtl까지 지난 live): 만료 대상에 포함.
+     * **앵커 정정(5차 → 6차, p1)**: 5차는 느린 TTL(live) 갈래만 앵커를 옮겼고, 빠른 TTL
+     * 갈래(live가 없는 경우)는 여전히 `candidate.createdAt`(예약 생성 시각)만 보고 즉시 만료를
+     * 허용했다. 그런데 `PaymentDomainService.createPending`이 PENDING 행을 먼저 커밋하고 PG
+     * 왕복 동안 그 상태로 머무는 창(δ) 안에 스위퍼가 돌면, "방금 시작된 재결제 시도"를
+     * 신호 없음으로 오판정해 오만료시킬 수 있었다 — 이 가드가 존재하는 이유 그 자체인 결과
+     * ("돈은 받고 예약은 없음")로 이어진다. [OrderPaymentLiveness.Attempting](PENDING 시도
+     * 시각)이 있으면 `max(candidate.createdAt, attempting.since)`를 빠른 TTL 앵커로 쓴다.
+     *
+     * **2차 무력화 재발 방지**: 이 변경은 PENDING에 *면제*를 주는 게 아니라 *시각 앵커*만
+     * 준다 — 예약과 같은 트랜잭션에서 함께 생성된 원 payment는 `attemptSince ≈ candidate.createdAt`이라
+     * 빠른 TTL에 그대로 걸려 정상 만료된다. 방금 새로 삽입된 재결제 시도만 재-앵커된다.
+     *
+     * - [OrderPaymentLiveness.Settled]: 돈을 받았다 — 항상 제외(절대 만료 금지). sealed
+     *   `when`이 이 분기를 강제하므로 settled 우선 판정을 놓칠 수 없다.
+     * - [OrderPaymentLiveness.Live]: 발급 시각이 느린 TTL(readyTtlMinutes)을 아직 지나지
+     *   않았으면 결제창에 머무는 사용자로 보아 제외, 지났으면 만료 대상.
+     * - [OrderPaymentLiveness.Attempting]: `max(candidate.createdAt, since)`가 빠른 TTL
+     *   (ttlMinutes)을 지나지 않았으면 재결제 시도 중으로 보아 제외, 지났으면 만료 대상.
+     * - [OrderPaymentLiveness.None](liveness 맵에 없는 후보도 동일): 빠른 TTL만 재검증 —
+     *   candidate.createdAt이 ttlMinutes를 지났으면 만료 대상(F-A 고립 예약 등).
+     *
+     * **잔여 레이스 창(설계상 한계)**: liveness 조회(`PaymentDomainService.findPaymentLiveness`)
+     * ~ 이 메서드 호출 사이에 새로 삽입되는 PENDING 행은 이번 청크의 스냅샷에 반영되지
+     * 않는다 — 다만 그 창은 "PG 왕복 전체"가 아니라 "청크 처리 수 ms"로 좁혀진다(6차가
+     * 좁힌 범위). 다음 스케줄 주기(기본 5분)에는 attemptSince로 반영돼 보호된다.
      */
     fun filterExpirable(
         candidates: List<BookingExpiryCandidate>,
-        liveSince: Map<Long, ZonedDateTime>,
-        settledOrderIds: Set<Long>,
-        readyTtlMinutes: Long,
+        liveness: Map<Long, OrderPaymentLiveness>,
+        ttlPolicy: BookingExpiryTtlPolicy,
     ): BookingExpiryFilterResult {
-        val readyThreshold = ZonedDateTime.now().minusMinutes(readyTtlMinutes)
-        val settled = candidates.filter { settledOrderIds.contains(it.bookingId) }
-        val expirableIds = candidates.filterNot { settledOrderIds.contains(it.bookingId) }
-            .filter { candidate -> isExpirableByLiveness(candidate.bookingId, liveSince, readyThreshold) }
+        val fastThreshold = ZonedDateTime.now().minusMinutes(ttlPolicy.ttlMinutes)
+        val readyThreshold = ZonedDateTime.now().minusMinutes(ttlPolicy.readyTtlMinutes)
+        val settled = candidates.filter { liveness[it.bookingId] is OrderPaymentLiveness.Settled }
+        val expirableIds = candidates
+            .filterNot { liveness[it.bookingId] is OrderPaymentLiveness.Settled }
+            .filter { candidate -> isExpirable(candidate, liveness[candidate.bookingId] ?: OrderPaymentLiveness.None, fastThreshold, readyThreshold) }
             .map { it.bookingId }
         return BookingExpiryFilterResult(expirableIds = expirableIds, skippedSettledCount = settled.size)
     }
 
-    private fun isExpirableByLiveness(
-        bookingId: Long,
-        liveSince: Map<Long, ZonedDateTime>,
+    private fun isExpirable(
+        candidate: BookingExpiryCandidate,
+        liveness: OrderPaymentLiveness,
+        fastThreshold: ZonedDateTime,
         readyThreshold: ZonedDateTime,
-    ): Boolean {
-        val liveAnchor = liveSince[bookingId] ?: return true
-        return liveAnchor.isBefore(readyThreshold)
+    ): Boolean = when (liveness) {
+        // settled는 filterExpirable에서 이미 제외됐다 — sealed when 전수 분기를 만족시키기
+        // 위한 방어 분기(도달 불가). false를 반환해 만에 하나 호출 순서가 바뀌어도 오만료를
+        // 만들지 않는다.
+        is OrderPaymentLiveness.Settled -> false
+        is OrderPaymentLiveness.Live -> liveness.since.isBefore(readyThreshold)
+        is OrderPaymentLiveness.Attempting -> maxOf(candidate.createdAt, liveness.since).isBefore(fastThreshold)
+        is OrderPaymentLiveness.None -> candidate.createdAt.isBefore(fastThreshold)
     }
 
     /**

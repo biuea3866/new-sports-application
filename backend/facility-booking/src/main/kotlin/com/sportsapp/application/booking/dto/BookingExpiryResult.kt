@@ -8,19 +8,29 @@ package com.sportsapp.application.booking.dto
  * 이상 신호**다. live(결제 진행 중)로 건너뛴 정상 흐름과 뭉뚱그리면 경보가 불가능하다
  * ([com.sportsapp.presentation.booking.scheduler.BookingExpiryScheduler]가
  * `booking_expiry_skipped_settled_total`로 별도 계측한다).
+ *
+ * **[contendedCount] (6차 재리뷰 — p4)**: `filterExpirable`이 만료 대상으로 판정했으나
+ * [com.sportsapp.domain.booking.repository.BookingRepository.tryExpire] CAS(WHERE
+ * status='PENDING')가 실패한 건 — 청크 처리 도중 다른 트랜잭션(webhook 확정)이 먼저
+ * CONFIRMED로 전이시켜 경합에서 진 경우다. 기존에는 이 건이 `expiredCount`에도
+ * `skippedCount`에도 잡히지 않아 `expiredCount + skippedCount ≠ candidates` 였다 —
+ * "확정과 만료가 얼마나 부딪히는가"를 관측할 수 없었다. 별도 카운터로 분리해 계측한다.
  */
 data class BookingExpiryResult(
     val expiredCount: Int,
     val skippedCount: Int,
     val skippedSettledCount: Int = 0,
+    val contendedCount: Int = 0,
 ) {
     operator fun plus(other: BookingExpiryResult): BookingExpiryResult = BookingExpiryResult(
         expiredCount = expiredCount + other.expiredCount,
         skippedCount = skippedCount + other.skippedCount,
         skippedSettledCount = skippedSettledCount + other.skippedSettledCount,
+        contendedCount = contendedCount + other.contendedCount,
     )
 
     companion object {
-        fun empty(): BookingExpiryResult = BookingExpiryResult(expiredCount = 0, skippedCount = 0, skippedSettledCount = 0)
+        fun empty(): BookingExpiryResult =
+            BookingExpiryResult(expiredCount = 0, skippedCount = 0, skippedSettledCount = 0, contendedCount = 0)
     }
 }

@@ -24,7 +24,12 @@ class BookingExpirySchedulerTest : BehaviorSpec({
         val meterRegistry = SimpleMeterRegistry()
         val scheduler = BookingExpiryScheduler(useCase, isEnabledUseCase, meterRegistry)
         every { isEnabledUseCase.execute() } returns true
-        every { useCase.execute() } returns BookingExpiryResult(expiredCount = 3, skippedCount = 2, skippedSettledCount = 1)
+        every { useCase.execute() } returns BookingExpiryResult(
+            expiredCount = 3,
+            skippedCount = 2,
+            skippedSettledCount = 1,
+            contendedCount = 1,
+        )
 
         When("expirePendingBookings를 호출하면") {
             scheduler.expirePendingBookings()
@@ -33,10 +38,11 @@ class BookingExpirySchedulerTest : BehaviorSpec({
                 verify(exactly = 1) { useCase.execute() }
             }
 
-            Then("만료·건너뜀·settled 건너뜀 건수가 각각 카운터에 반영된다 (환불 판단 신호 분리 계측)") {
+            Then("만료·건너뜀·settled 건너뜀·경합 건수가 각각 카운터에 반영된다 (환불 판단 신호·경합 분리 계측)") {
                 meterRegistry.counter("booking_expiry_expired_total").count() shouldBe 3.0
                 meterRegistry.counter("booking_expiry_skipped_total").count() shouldBe 2.0
                 meterRegistry.counter("booking_expiry_skipped_settled_total").count() shouldBe 1.0
+                meterRegistry.counter("booking_expiry_contended_total").count() shouldBe 1.0
             }
         }
     }

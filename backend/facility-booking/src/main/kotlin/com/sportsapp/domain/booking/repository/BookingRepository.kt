@@ -27,9 +27,13 @@ interface BookingRepository {
     /**
      * W1-11c 만료 스위퍼가 소비 — PENDING 상태·삭제되지 않았으며 createdAt이 before보다 이르고
      * id가 afterId보다 큰 예약을 id 오름차순으로 최대 limit건 조회한다(청크 조회). id뿐 아니라
-     * createdAt도 함께 반환한다 — 4차 재설계에서 payment의 live(READY 이상) 판정과 결합해
-     * "느린 TTL(readyTtlMinutes)을 지났는가"를 판단하려면 후보의 createdAt이 필요하다
-     * ([com.sportsapp.domain.booking.service.BookingDomainService.filterExpirable] 참고).
+     * createdAt도 함께 반환한다 — [com.sportsapp.domain.booking.service.BookingDomainService.filterExpirable]가
+     * 이 createdAt을 **두 갈래 모두**에서 앵커로 쓴다: (1) live payment가 있는 후보는 payment
+     * 발급 시각([com.sportsapp.domain.common.payment.OrderPaymentLiveness.Live.since])과
+     * 별개로 느린 TTL(readyTtlMinutes)의 기준이 되고, (2) live가 없거나 PENDING(시도 중)인
+     * 후보는 이 createdAt과 payment 시도 시각(Attempting.since)의 **최댓값**을 빠른 TTL
+     * (ttlMinutes) 재평가 기준으로 쓴다(6차 재설계 — p1. `POST /payments/prepare`가
+     * PENDING 행을 먼저 커밋하고 PG 왕복 동안 그 상태로 머무는 창을 이 재평가로 보호한다).
      * afterId 커서로 한 주기 내 이미 훑은(만료 금지 가드로 건너뛴 건 포함) 구간을 다시 스캔하지
      * 않는다 — 커서 없이는 결제 진행 중이라 건너뛴 예약이 다음 청크에서 계속 재조회되어
      * 스위퍼가 진행하지 못하는 head-of-line blocking이 생긴다.
