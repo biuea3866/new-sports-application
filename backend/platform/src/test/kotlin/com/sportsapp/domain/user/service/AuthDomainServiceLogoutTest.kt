@@ -8,7 +8,8 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import java.time.Instant
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
 
 class AuthDomainServiceLogoutTest : BehaviorSpec({
 
@@ -32,7 +33,7 @@ class AuthDomainServiceLogoutTest : BehaviorSpec({
         val accessToken = "valid.access.token"
         val jti = "test-jti-uuid"
         val userId = 1L
-        val expiration = Instant.now().plusSeconds(1800)
+        val expiration = ZonedDateTime.now(ZoneOffset.UTC).plusSeconds(1800)
 
         every { jwtIssuer.extractJti(accessToken) } returns jti
         every { jwtIssuer.extractExpiration(accessToken) } returns expiration
@@ -53,7 +54,7 @@ class AuthDomainServiceLogoutTest : BehaviorSpec({
         val accessToken = "already.blacklisted.token"
         val jti = "blacklisted-jti"
         val userId = 2L
-        val expiration = Instant.now().plusSeconds(900)
+        val expiration = ZonedDateTime.now(ZoneOffset.UTC).plusSeconds(900)
 
         every { jwtIssuer.extractJti(accessToken) } returns jti
         every { jwtIssuer.extractExpiration(accessToken) } returns expiration

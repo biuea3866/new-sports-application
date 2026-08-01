@@ -13,7 +13,8 @@ import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
-import java.time.Instant // private-allow:no-instant — JwtIssuer(domain) 계약이 이미 Instant 반환, 인터페이스 변경은 이 티켓 범위 밖
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
 import java.util.Base64
 import java.util.Date
 import java.util.UUID
@@ -92,14 +93,15 @@ class JwtTokenProvider(
     }
 
     override fun generateAccessToken(userId: Long, email: String, roles: List<String>): String {
-        val now = Instant.now()
+        val now = ZonedDateTime.now(ZoneOffset.UTC)
         val builder = Jwts.builder()
             .subject(userId.toString())
             .claim("email", email)
             .claim("roles", roles)
             .id(UUID.randomUUID().toString())
-            .issuedAt(Date.from(now))
-            .expiration(Date.from(now.plusSeconds(accessTokenExpirySeconds)))
+            // JWT 규격이 epoch 초를 요구하는 경계 — 변환은 이 어댑터 안에서만 한다 (W1-DEBT-01).
+            .issuedAt(Date.from(now.toInstant()))
+            .expiration(Date.from(now.plusSeconds(accessTokenExpirySeconds).toInstant()))
 
         // signWith(key) 단일 인자 오버로드는 키 길이에 맞춰 가장 강한 알고리즘을 자동 선택한다 —
         // 시크릿이 32바이트를 넘으면 그대로 두었을 때 HS384/HS512 로 서명돼 버린다(실제로 발견된
@@ -137,8 +139,12 @@ class JwtTokenProvider(
     override fun extractJti(token: String): String =
         requireNotNull(parseClaims(token).id) { "missing jti claim in JWT" }
 
-    override fun extractExpiration(token: String): Instant = // private-allow:no-instant — JwtIssuer 계약 그대로 구현
-        requireNotNull(parseClaims(token).expiration) { "missing expiration in JWT" }.toInstant()
+    // JWT 라이브러리가 주는 Date 를 도메인 표준 시간 타입으로 변환해 돌려준다 — 규격 타입이
+    // 도메인 계약을 오염시키지 않게 이 경계에서 끊는다 (W1-DEBT-01).
+    override fun extractExpiration(token: String): ZonedDateTime =
+        requireNotNull(parseClaims(token).expiration) { "missing expiration in JWT" }
+            .toInstant()
+            .atZone(ZoneOffset.UTC)
 
     override fun accessTokenExpiresInSeconds(): Long = accessTokenExpirySeconds
 

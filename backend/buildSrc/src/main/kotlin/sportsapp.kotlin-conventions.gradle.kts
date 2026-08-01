@@ -118,7 +118,9 @@ val harnessCheck by tasks.registering {
             // 메시지의 절대시각 권유도 컨벤션과 모순이라 바로잡았다 — 그 타입 역시 금지다.
             // 절대시각(3파일)·시계 추상(1파일)은 이 규칙이 애초에 검사하지 않아 숨어 있던 실제 위반이며,
             // JWT exp 클레임 등 판단이 필요해 이 티켓에서 함께 고치지 않는다(부채 항목으로 남긴다).
-            Triple("no-local-datetime", Regex("""\bLocalDateTime\b"""), "ZonedDateTime 을 사용합니다."), // private-allow:no-local-datetime
+            // [W1-DEBT-01 후속] 컨벤션이 금지하는 나머지 두 타입도 함께 검사한다 — 규칙이 이들을
+            // 아예 보지 않아 JWT 경로 3파일에 실제 위반이 숨어 있었다(그 3파일을 먼저 정리한 뒤 확장).
+            Triple("no-local-datetime", Regex("""\b(LocalDateTime|Instant|Clock)\b"""), "ZonedDateTime 을 사용합니다."), // private-allow:no-local-datetime
             Triple("no-consumer-record-raw", Regex("""ConsumerRecord<\s*String\s*,\s*String\s*>"""), "DTO + JsonDeserializer 로 매핑합니다."), // private-allow:no-consumer-record
             Triple("no-non-null-assertion", Regex("""(?<!!)!!(?!=)"""), "requireNotNull / ?: / ?.let 으로 대체합니다."), // private-allow:no-double-bang
         )
