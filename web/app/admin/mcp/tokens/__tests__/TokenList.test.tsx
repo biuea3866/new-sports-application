@@ -76,4 +76,34 @@ describe("TokenList", () => {
     render(<TokenList tokens={TOKENS} onRevoke={vi.fn()} />);
     expect(screen.getByRole("table")).toHaveAttribute("aria-label", "MCP 토큰 목록");
   });
+
+  // ─── 날짜 표기 회귀 ───────────────────────────────────────────────────────
+  // BE는 NON_NULL 직렬화라 expiresAt·lastUsedAt이 null이면 응답에서 필드가 생략된다.
+  // 화면에 `Invalid Date`가 새어 나가면 안 된다.
+
+  it("만료일·마지막 사용 필드가 응답에서 생략돼도 Invalid Date를 표시하지 않는다", () => {
+    const tokenWithOmittedDates = {
+      tokenId: 3,
+      name: "무기한 미사용 토큰",
+      status: "ACTIVE",
+      createdAt: "2026-07-31T00:00:00Z",
+    } as McpTokenSummary;
+
+    render(<TokenList tokens={[tokenWithOmittedDates]} onRevoke={vi.fn()} />);
+
+    expect(screen.queryByText("Invalid Date")).not.toBeInTheDocument();
+    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("만료일·마지막 사용이 null이면 값 없음으로 표기한다", () => {
+    render(<TokenList tokens={TOKENS} onRevoke={vi.fn()} />);
+
+    expect(screen.queryByText("Invalid Date")).not.toBeInTheDocument();
+  });
+
+  it("발급일은 실제 날짜로 표기한다", () => {
+    render(<TokenList tokens={TOKENS} onRevoke={vi.fn()} />);
+
+    expect(screen.getAllByText(/2026/).length).toBeGreaterThan(0);
+  });
 });

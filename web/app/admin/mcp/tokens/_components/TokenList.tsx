@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatDateOnly } from "@/lib/admin/datetime";
 import type { McpTokenSummary } from "@/lib/admin/mcp/schemas";
 
 interface TokenListProps {
@@ -14,20 +15,12 @@ const STATUS_LABEL: Record<string, string> = {
   REVOKED: "폐기",
 };
 
+/** 상태 배지 색은 시맨틱 토큰만 사용한다 — 라이트/다크 두 모드에서 모두 판독 가능해야 한다. */
 const STATUS_CLASS: Record<string, string> = {
-  ACTIVE: "bg-green-100 text-green-800",
-  SUSPENDED: "bg-yellow-100 text-yellow-800",
-  REVOKED: "bg-red-100 text-red-800",
+  ACTIVE: "bg-success/15 text-success",
+  SUSPENDED: "bg-warning/15 text-warning",
+  REVOKED: "bg-destructive/15 text-destructive",
 };
-
-function formatDate(iso: string | null): string {
-  if (iso === null) return "—";
-  return new Date(iso).toLocaleDateString("ko-KR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-}
 
 export function TokenList({ tokens, onRevoke }: TokenListProps): JSX.Element {
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
@@ -46,16 +39,14 @@ export function TokenList({ tokens, onRevoke }: TokenListProps): JSX.Element {
   }
 
   if (tokens.length === 0) {
-    return (
-      <p className="text-sm text-gray-500">발급된 토큰이 없습니다.</p>
-    );
+    return <p className="text-sm text-muted-foreground">발급된 토큰이 없습니다.</p>;
   }
 
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm" aria-label="MCP 토큰 목록">
         <thead>
-          <tr className="border-b border-gray-200 text-left text-xs font-medium uppercase text-gray-500">
+          <tr className="border-b border-border text-left text-xs font-medium uppercase text-muted-foreground">
             <th className="pb-2 pr-4" scope="col">이름</th>
             <th className="pb-2 pr-4" scope="col">상태</th>
             <th className="pb-2 pr-4" scope="col">만료일</th>
@@ -64,10 +55,10 @@ export function TokenList({ tokens, onRevoke }: TokenListProps): JSX.Element {
             <th className="pb-2" scope="col">작업</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100">
+        <tbody className="divide-y divide-border">
           {tokens.map((token) => (
             <tr key={token.tokenId} className="py-2">
-              <td className="py-2 pr-4 font-medium text-gray-900">{token.name}</td>
+              <td className="py-2 pr-4 font-medium text-foreground">{token.name}</td>
               <td className="py-2 pr-4">
                 <span
                   className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_CLASS[token.status] ?? ""}`}
@@ -75,15 +66,15 @@ export function TokenList({ tokens, onRevoke }: TokenListProps): JSX.Element {
                   {STATUS_LABEL[token.status] ?? token.status}
                 </span>
               </td>
-              <td className="py-2 pr-4 text-gray-600">{formatDate(token.expiresAt)}</td>
-              <td className="py-2 pr-4 text-gray-600">{formatDate(token.lastUsedAt)}</td>
-              <td className="py-2 pr-4 text-gray-600">{formatDate(token.createdAt)}</td>
+              <td className="py-2 pr-4 text-muted-foreground">{formatDateOnly(token.expiresAt)}</td>
+              <td className="py-2 pr-4 text-muted-foreground">{formatDateOnly(token.lastUsedAt)}</td>
+              <td className="py-2 pr-4 text-muted-foreground">{formatDateOnly(token.createdAt)}</td>
               <td className="py-2">
                 {token.status !== "REVOKED" && confirmingId !== token.tokenId && (
                   <button
                     type="button"
                     onClick={() => handleRevokeClick(token.tokenId)}
-                    className="rounded border border-red-300 px-2 py-1 text-xs text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-400"
+                    className="rounded border border-destructive/40 px-2 py-1 text-xs text-destructive hover:bg-destructive/10 focus:outline-none focus:ring-2 focus:ring-destructive"
                     aria-label={`${token.name} 토큰 폐기`}
                   >
                     폐기
@@ -94,7 +85,7 @@ export function TokenList({ tokens, onRevoke }: TokenListProps): JSX.Element {
                     <button
                       type="button"
                       onClick={() => handleConfirm(token.tokenId)}
-                      className="rounded bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+                      className="rounded bg-destructive px-2 py-1 text-xs text-destructive-foreground hover:bg-destructive/90 focus:outline-none focus:ring-2 focus:ring-destructive"
                       aria-label={`${token.name} 토큰 폐기 확인`}
                     >
                       확인
@@ -102,7 +93,7 @@ export function TokenList({ tokens, onRevoke }: TokenListProps): JSX.Element {
                     <button
                       type="button"
                       onClick={handleCancel}
-                      className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                      className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring"
                       aria-label="폐기 취소"
                     >
                       취소
@@ -110,7 +101,7 @@ export function TokenList({ tokens, onRevoke }: TokenListProps): JSX.Element {
                   </span>
                 )}
                 {token.status === "REVOKED" && (
-                  <span className="text-xs text-gray-400">폐기됨</span>
+                  <span className="text-xs text-muted-foreground">폐기됨</span>
                 )}
               </td>
             </tr>
