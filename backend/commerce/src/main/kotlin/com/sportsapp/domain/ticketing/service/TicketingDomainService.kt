@@ -8,6 +8,7 @@ import com.sportsapp.domain.common.payment.OrderPaymentLiveness
 import com.sportsapp.domain.ticketing.TicketingFeatureFlagKeys
 import com.sportsapp.domain.ticketing.dto.EventSalesInfo
 import com.sportsapp.domain.ticketing.dto.EventWithMinSeatPrice
+import com.sportsapp.domain.ticketing.dto.EventWithSeatCounts
 import com.sportsapp.domain.ticketing.dto.TicketKpiSummary
 import com.sportsapp.domain.ticketing.dto.TicketOrderDetail
 import com.sportsapp.domain.ticketing.dto.TicketOrderExpiryCandidate
@@ -384,6 +385,32 @@ class TicketingDomainService(
 
     fun findEventsByOwnerId(ownerId: Long, pageable: Pageable, status: EventStatus?): Page<Event> =
         eventRepository.findByOwnerId(ownerId, status, pageable)
+
+    /**
+     * 주최자 경기 목록 + 좌석 판매 집계 — 포털 "내 경기 목록"이 카드마다 판매/총 좌석을 렌더한다.
+     *
+     * 경기당 좌석을 개별 조회하면 N+1이므로, 페이지에 실린 경기 id 전체로 좌석 수·판매 수를
+     * 각각 한 번씩만 집계한다([searchOpenEventsForCatalog]의 대표가 조회와 동일한 방식).
+     * 좌석이나 판매가 없는 경기는 집계 결과에서 빠지므로 0으로 보정한다 — 누락과 0은 다르고,
+     * 화면은 0석도 "판매 0 / 0석"으로 표시해야 한다.
+     */
+    fun findEventsWithSeatCountsByOwnerId(
+        ownerId: Long,
+        pageable: Pageable,
+        status: EventStatus?,
+    ): Page<EventWithSeatCounts> {
+        val events = findEventsByOwnerId(ownerId, pageable, status)
+        val eventIds = events.content.map { it.id }
+        val totalSeatsByEventId = seatCustomRepository.countSeatsByEventIds(eventIds)
+        val soldSeatsByEventId = seatCustomRepository.countSoldSeatsByEventIds(eventIds)
+        return events.map { event ->
+            EventWithSeatCounts(
+                event = event,
+                totalSeats = totalSeatsByEventId[event.id] ?: 0L,
+                soldSeats = soldSeatsByEventId[event.id] ?: 0L,
+            )
+        }
+    }
 
     fun getEventSalesInfo(eventId: Long): EventSalesInfo {
         val event = eventRepository.findById(eventId)
