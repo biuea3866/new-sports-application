@@ -19,6 +19,55 @@ class SlotRepositoryImplIntegrationTest(
             jdbcTemplate.execute("TRUNCATE TABLE slots")
         }
 
+        // 예약 목록은 페이지의 Slot을 한 번에 조회해 라벨(title)을 만든다 — N+1 없이
+        // 여러 id를 한 번에 되찾아오는지 실제 DB로 확인한다.
+        // afterEach가 slots를 TRUNCATE하므로 Given마다 데이터를 새로 넣는다(When 1개씩).
+        fun saveSlot(timeRange: String): Slot = slotRepository.save(
+            Slot.create(
+                facilityId = "FAC-BATCH-01",
+                date = ZonedDateTime.now(),
+                timeRange = timeRange,
+                capacity = 5,
+                ownerId = 1L,
+            )
+        )
+
+        Given("여러 슬롯이 저장돼 있을 때") {
+            val first = saveSlot("07:00-08:00")
+            val second = saveSlot("10:00-11:00")
+
+            When("두 슬롯 id로 한 번에 조회하면") {
+                val result = slotRepository.findAllByIds(listOf(first.id, second.id))
+
+                Then("두 슬롯이 모두 반환된다") {
+                    result.map { it.id }.toSet() shouldBe setOf(first.id, second.id)
+                }
+            }
+        }
+
+        Given("조회 대상 id 중 하나가 존재하지 않을 때") {
+            val existing = saveSlot("07:00-08:00")
+
+            When("존재하지 않는 id를 섞어 조회하면") {
+                val result = slotRepository.findAllByIds(listOf(existing.id, 999_999L))
+
+                Then("존재하는 슬롯만 반환된다(호출부가 기본 라벨로 방어한다)") {
+                    result shouldHaveSize 1
+                    result[0].id shouldBe existing.id
+                }
+            }
+        }
+
+        Given("조회할 id가 하나도 없을 때") {
+            When("빈 id 목록으로 조회하면") {
+                val result = slotRepository.findAllByIds(emptyList())
+
+                Then("빈 목록을 반환한다") {
+                    result shouldHaveSize 0
+                }
+            }
+        }
+
         Given("programId를 가진 슬롯과 일반 슬롯이 섞여 있을 때") {
             slotRepository.save(
                 Slot.create(

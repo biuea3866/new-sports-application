@@ -15,16 +15,16 @@ class ListMyBookingsUseCase(
 ) {
     @Transactional(readOnly = true)
     fun execute(command: ListBookingsCommand): ListBookingsResult {
-        val bookingPage = bookingDomainService.findMyBookings(
+        val detailPage = bookingDomainService.findMyBookingDetails(
             userId = command.userId,
             status = command.status,
             pageable = command.pageable,
         )
-        val paymentIds = bookingPage.content.mapNotNull { it.paymentId }
+        val paymentIds = detailPage.content.mapNotNull { it.paymentId }
         val paymentStatuses = paymentDomainService.findStatuses(paymentIds)
         return ListBookingsResult.of(
-            bookingPage.map { booking ->
-                GetBookingResult.of(booking, paymentStatuses[booking.paymentId])
+            detailPage.map { detail ->
+                GetBookingResult.of(detail, paymentStatuses[detail.paymentId])
             }
         )
     }

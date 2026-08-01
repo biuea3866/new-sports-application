@@ -20,8 +20,9 @@ data class GetBookingResult(
 ) {
     companion object {
         /**
-         * Slot 조인 없는 목록 조회(ListMyBookingsUseCase)가 사용 — facilityId·title은
-         * 이 경로에서 아직 채우지 않는다(범위: booking 단건 상세 보강).
+         * Slot 조인 없는 경로(취소 응답 등)가 사용 — facilityId·title은 채우지 않는다.
+         * 목록·단건 상세는 아래 BookingDetail 오버로드를 쓴다(라벨이 비면 화면이 예약 PK를
+         * 대신 노출하게 된다).
          */
         fun of(booking: Booking, paymentStatus: PaymentStatus? = null): GetBookingResult = GetBookingResult(
             id = booking.id,
