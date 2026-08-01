@@ -49,10 +49,10 @@ class BookingOrderQueryRepositoryImplTest(
             When("findByUserId로 조회하면") {
                 val results = bookingOrderQueryRepository.findByUserId(42L)
 
-                Then("date timeRange 시설 예약 라벨(title)을 포함해 반환한다") {
+                Then("한국어 날짜 timeRange 시설 예약 라벨(title)을 포함해 반환한다") {
                     results shouldHaveSize 1
                     results[0].bookingId shouldBe booking.id
-                    results[0].title shouldBe "2026-07-10 09:00-10:00 시설 예약"
+                    results[0].title shouldBe "2026. 07. 10. 09:00-10:00 시설 예약"
                 }
 
                 Then("title이 BOOKING #id 형태의 기술 식별자를 포함하지 않는다") {

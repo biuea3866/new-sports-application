@@ -39,7 +39,7 @@ class NotificationCustomRepositoryImplTest(
 
             When("onlyUnread=false, page=0, size=20 으로 조회하면") {
                 val pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt"))
-                val result = notificationCustomRepository.findByUserIdPaged(userId, false, pageable)
+                val result = notificationCustomRepository.findByUserIdPaged(userId, NotificationChannel.IN_APP, false, pageable)
 
                 Then("[R-01] 5건이 반환되고 createdAt desc 정렬이다") {
                     result.totalElements shouldBe 5L
@@ -82,7 +82,7 @@ class NotificationCustomRepositoryImplTest(
 
             When("onlyUnread=true 로 조회하면") {
                 val pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt"))
-                val result = notificationCustomRepository.findByUserIdPaged(userId, true, pageable)
+                val result = notificationCustomRepository.findByUserIdPaged(userId, NotificationChannel.IN_APP, true, pageable)
 
                 Then("읽지 않은 3건만 반환된다") {
                     result.totalElements shouldBe 3L
@@ -106,7 +106,7 @@ class NotificationCustomRepositoryImplTest(
 
             When("page=0, size=20 으로 조회하면") {
                 val pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt"))
-                val result = notificationCustomRepository.findByUserIdPaged(userId, false, pageable)
+                val result = notificationCustomRepository.findByUserIdPaged(userId, NotificationChannel.IN_APP, false, pageable)
 
                 Then("[R-02] 20건이 반환되고 totalElements 는 25 이다") {
                     result.content.size shouldBe 20
@@ -116,7 +116,7 @@ class NotificationCustomRepositoryImplTest(
 
             When("page=1, size=20 으로 조회하면") {
                 val pageable = PageRequest.of(1, 20, Sort.by(Sort.Direction.DESC, "createdAt"))
-                val result = notificationCustomRepository.findByUserIdPaged(userId, false, pageable)
+                val result = notificationCustomRepository.findByUserIdPaged(userId, NotificationChannel.IN_APP, false, pageable)
 
                 Then("나머지 5건이 반환된다") {
                     result.content.size shouldBe 5
@@ -154,6 +154,32 @@ class NotificationCustomRepositoryImplTest(
                 }
             }
         }
+
+        Given("같은 사건이 IN_APP·PUSH 두 채널로 저장된 상태에서") {
+            val userId = 700L + System.nanoTime() % 1000
+            listOf(NotificationChannel.IN_APP, NotificationChannel.PUSH).forEach { channel ->
+                notificationJpaRepository.saveAndFlush(
+                    Notification.queue(
+                        userId = userId,
+                        channel = channel,
+                        templateId = "payment-completed",
+                        payload = NotificationPayload(emptyMap()),
+                    )
+                )
+            }
+
+            When("알림함이 IN_APP 채널로 조회하면") {
+                val pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt"))
+                val result = notificationCustomRepository
+                    .findByUserIdPaged(userId, NotificationChannel.IN_APP, false, pageable)
+
+                Then("PUSH 발송분이 제외돼 1건만 반환된다") {
+                    result.totalElements shouldBe 1L
+                    result.content.single().channel shouldBe NotificationChannel.IN_APP
+                }
+            }
+        }
+
     }
 }
 
