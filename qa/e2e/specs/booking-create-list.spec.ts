@@ -2,64 +2,81 @@
  * E2E-03 시설 슬롯 예약 생성 · 조회
  * 시나리오: qa/e2e/scenarios/booking-create-list.md
  *
- * 주의: 시드 (`facility-with-slots.sql`, slot-101 등) 미주입 환경 — 슬롯 생성이 필요한 케이스는
- * 본 spec 에서 OAuth/X-User-Id 기반으로 동적으로 만들 수 없는 경우 스킵하고 사유를 기록한다.
- * 정상 흐름의 핵심은 "X-User-Id 헤더 누락 시 4xx" 등 BE 계약 검증.
+ * AUTH-04: /bookings/** 는 X-User-Id 헤더 → JWT(@AuthenticationPrincipal UserPrincipal) 인증으로
+ * 전환됐다. 모든 케이스는 test/helpers.ts 의 registerAndLogin() 으로 케이스마다 신규 사용자를
+ * 만들고 Authorization: Bearer <accessToken> 으로 호출한다 — 고정 X-User-Id 값을 그대로 옮기면
+ * 다른 사용자 데이터에 의존하게 되므로 사용하지 않는다.
+ *
+ * 시드: qa/e2e/fixtures/seed.sql 의 slotId=7 (capacity 100000, 회귀 반복으로 PENDING 이 누적돼도
+ * SlotFull 로 막히지 않음) 이 주입돼 있으면 예약 생성이 결정적으로 202 를 반환한다. 시드가 없는
+ * 환경에서는 슬롯을 찾지 못해 4xx/5xx 가 되므로, 생성 성공을 전제하는 단언은 모두 시드 유무 양쪽을
+ * 허용하는 상태 코드 범위로 작성한다.
  */
 import { test, expect, request as playwrightRequest } from "@playwright/test";
-import { API_URL } from "../test/helpers";
+import { API_URL, registerAndLogin, bearer } from "../test/helpers";
+
+const SEEDED_LARGE_CAPACITY_SLOT_ID = 7;
+const SEEDED_LOW_CAPACITY_SLOT_ID = 1;
 
 test.describe("E2E-03 booking create · list", () => {
-  test("E2E-03-01 POST /bookings — 시드 슬롯이 없어 422/400 환경 검증으로 대체", async () => {
+  test("E2E-03-01 신규 user 가 POST /bookings 호출 시 202 또는 시드 부재로 인한 도메인 예외", async () => {
     const api = await playwrightRequest.newContext();
-    // 가상의 slotId 로 호출 — 시드가 없으니 도메인 예외가 발생해야 함
+    const user = await registerAndLogin(api, "e2e03-01");
     const res = await api.post(`${API_URL}/bookings`, {
-      headers: { "X-User-Id": "1", "Content-Type": "application/json" },
-      data: { slotId: 999999, paymentMethod: "CARD", amount: 10000, currency: "KRW" },
+      headers: { ...bearer(user.accessToken), "Content-Type": "application/json" },
+      data: {
+        slotId: SEEDED_LARGE_CAPACITY_SLOT_ID,
+        paymentMethod: "CREDIT_CARD",
+        amount: 10000,
+        currency: "KRW",
+      },
       failOnStatusCode: false,
     });
-    // 시드가 있으면 202, 없으면 4xx/5xx (도메인 예외)
     expect([202, 400, 404, 409, 422, 500]).toContain(res.status());
     if (res.status() === 202) {
       const body = await res.json();
-      expect(body).toHaveProperty("id");
+      // CreateBookingResult 의 식별자 필드명은 bookingId (id 가 아니다).
+      expect(body).toHaveProperty("bookingId");
     }
     await api.dispose();
   });
 
-  test("E2E-03-02 GET /bookings/{id} — 임의 id 조회 (시드 없으면 404)", async () => {
+  test("E2E-03-02 존재하지 않는 booking id 조회 시 404", async () => {
     const api = await playwrightRequest.newContext();
-    const res = await api.get(`${API_URL}/bookings/999999`, {
-      headers: { "X-User-Id": "1" },
+    const user = await registerAndLogin(api, "e2e03-02");
+    const res = await api.get(`${API_URL}/bookings/999999999`, {
+      headers: bearer(user.accessToken),
       failOnStatusCode: false,
     });
-    expect([200, 403, 404]).toContain(res.status());
+    expect(res.status()).toBe(404);
     await api.dispose();
   });
 
-  test("E2E-03-03 GET /bookings/me — 200 + Page 응답 구조", async () => {
+  test("E2E-03-03 신규 user — GET /bookings/me 는 200 + Page 응답 구조(bookings 필드)를 반환한다", async () => {
     const api = await playwrightRequest.newContext();
+    const user = await registerAndLogin(api, "e2e03-03");
     const res = await api.get(`${API_URL}/bookings/me`, {
-      headers: { "X-User-Id": "1" },
+      headers: bearer(user.accessToken),
       failOnStatusCode: false,
     });
     expect(res.status()).toBe(200);
     const body = await res.json();
+    // ListBookingsResponse 의 목록 필드명은 bookings (content/items 가 아니다).
     expect(body).toHaveProperty("totalElements");
-    expect(Array.isArray(body.content ?? body.items)).toBe(true);
+    expect(Array.isArray(body.bookings)).toBe(true);
     await api.dispose();
   });
 
   test("E2E-03-04 GET /bookings/me?status=PENDING — 필터 결과는 모두 PENDING", async () => {
     const api = await playwrightRequest.newContext();
+    const user = await registerAndLogin(api, "e2e03-04");
     const res = await api.get(`${API_URL}/bookings/me?status=PENDING`, {
-      headers: { "X-User-Id": "1" },
+      headers: bearer(user.accessToken),
       failOnStatusCode: false,
     });
     expect(res.status()).toBe(200);
     const body = await res.json();
-    const items = body.content ?? body.items ?? [];
-    for (const b of items) {
+    for (const b of body.bookings ?? []) {
       if (b.status !== undefined) {
         expect(b.status).toBe("PENDING");
       }
@@ -69,35 +86,37 @@ test.describe("E2E-03 booking create · list", () => {
 
   test("E2E-03-R01 페이징 기본값 유지 — size 미명시 시 기본 20", async () => {
     const api = await playwrightRequest.newContext();
+    const user = await registerAndLogin(api, "e2e03-r01");
     const res = await api.get(`${API_URL}/bookings/me`, {
-      headers: { "X-User-Id": "1" },
+      headers: bearer(user.accessToken),
       failOnStatusCode: false,
     });
     expect(res.status()).toBe(200);
     const body = await res.json();
-    const size = body.pageable?.pageSize ?? body.size;
-    if (size !== undefined) {
-      expect(size).toBe(20);
+    if (body.size !== undefined) {
+      expect(body.size).toBe(20);
     }
     await api.dispose();
   });
 
   test("E2E-03-R02 booking 생성 직후 status 는 PENDING (CONFIRMED 가 아님)", async () => {
     const api = await playwrightRequest.newContext();
-    // BE PaymentMethod enum 은 CREDIT_CARD/BANK_TRANSFER/VIRTUAL_ACCOUNT/MOBILE_PAY.
+    const user = await registerAndLogin(api, "e2e03-r02");
     // slotId 7 은 seed.sql 에 capacity 100000 으로 시드됨 — 회귀 반복으로 PENDING 이
     // 누적돼도 SlotFull 이 되지 않아 매번 202 PENDING 응답을 받는다.
     const res = await api.post(`${API_URL}/bookings`, {
-      headers: { "X-User-Id": "1", "Content-Type": "application/json" },
-      data: { slotId: 7, paymentMethod: "CREDIT_CARD", amount: 10000, currency: "KRW" },
+      headers: { ...bearer(user.accessToken), "Content-Type": "application/json" },
+      data: {
+        slotId: SEEDED_LARGE_CAPACITY_SLOT_ID,
+        paymentMethod: "CREDIT_CARD",
+        amount: 10000,
+        currency: "KRW",
+      },
       failOnStatusCode: false,
     });
     if (res.status() === 202) {
       const body = await res.json();
-      const status = body.status ?? body.bookingStatus;
-      if (status !== undefined) {
-        expect(status).toBe("PENDING");
-      }
+      expect(body.status).toBe("PENDING");
     } else {
       test.info().annotations.push({
         type: "skip-reason",
@@ -108,62 +127,93 @@ test.describe("E2E-03 booking create · list", () => {
     await api.dispose();
   });
 
-  test("E2E-03-E01 X-User-Id 헤더 없이 POST /bookings 시 4xx", async () => {
+  test("E2E-03-E01 Authorization 헤더 없이 POST /bookings 호출 시 401 (AUTH-04 계약)", async () => {
     const api = await playwrightRequest.newContext();
     const res = await api.post(`${API_URL}/bookings`, {
       headers: { "Content-Type": "application/json" },
-      data: { slotId: 1, paymentMethod: "CARD", amount: 10000, currency: "KRW" },
+      data: { slotId: SEEDED_LARGE_CAPACITY_SLOT_ID, paymentMethod: "CREDIT_CARD", amount: 10000, currency: "KRW" },
       failOnStatusCode: false,
     });
-    expect([400, 401, 403, 500]).toContain(res.status());
+    expect(res.status()).toBe(401);
     await api.dispose();
   });
 
-  test("E2E-03-E02 동일 슬롯 동시 booking 시 한 쪽만 성공", async () => {
+  test("E2E-03-E02 슬롯 capacity(5) 를 초과하는 동시 booking 요청 중 최소 1건은 거부된다", async () => {
+    // 슬롯 1은 capacity 5 — 회귀 반복으로 이미 일부 소진됐을 수 있으므로, 잔여 capacity 와
+    // 무관하게 "capacity 초과 요청은 전량 성공할 수 없다"를 검증하려면 capacity 보다 많은
+    // 동시 요청(7건)을 보낸다. 잔여 capacity 가 0 이어도(전량 실패) 단언은 그대로 성립한다.
+    const CONCURRENT_REQUEST_COUNT = 7;
+    const contexts = await Promise.all(
+      Array.from({ length: CONCURRENT_REQUEST_COUNT }, () => playwrightRequest.newContext()),
+    );
+    const users = await Promise.all(
+      contexts.map((ctx, index) => registerAndLogin(ctx, `e2e03-e02-${index}`)),
+    );
+    const body = {
+      slotId: SEEDED_LOW_CAPACITY_SLOT_ID,
+      paymentMethod: "CREDIT_CARD",
+      amount: 10000,
+      currency: "KRW",
+    };
+    const responses = await Promise.all(
+      contexts.map((ctx, index) =>
+        ctx.post(`${API_URL}/bookings`, {
+          headers: { ...bearer(users[index].accessToken), "Content-Type": "application/json" },
+          data: body,
+          failOnStatusCode: false,
+        }),
+      ),
+    );
+    const successes = responses.filter((r) => r.status() === 202).length;
+    expect(successes, "capacity(5) 초과 요청 7건이 전부 성공하면 안 됨").toBeLessThan(CONCURRENT_REQUEST_COUNT);
+    await Promise.all(contexts.map((ctx) => ctx.dispose()));
+  });
+
+  test("E2E-03-E03 user-A 가 만든 booking 을 user-B 가 조회 시 403", async () => {
     const api1 = await playwrightRequest.newContext();
     const api2 = await playwrightRequest.newContext();
-    const body = { slotId: 1, paymentMethod: "CARD", amount: 10000, currency: "KRW" };
-    const [r1, r2] = await Promise.all([
-      api1.post(`${API_URL}/bookings`, {
-        headers: { "X-User-Id": "1", "Content-Type": "application/json" },
-        data: body,
-        failOnStatusCode: false,
-      }),
-      api2.post(`${API_URL}/bookings`, {
-        headers: { "X-User-Id": "2", "Content-Type": "application/json" },
-        data: body,
-        failOnStatusCode: false,
-      }),
-    ]);
-    const statuses = [r1.status(), r2.status()];
-    // 두 응답이 모두 동일 결과 (양쪽 모두 4xx — 시드 부재) 이거나 한쪽만 202
-    const successes = statuses.filter((s) => s === 202).length;
-    expect(successes).toBeLessThanOrEqual(1);
+    const userA = await registerAndLogin(api1, "e2e03-e03-a");
+    const userB = await registerAndLogin(api2, "e2e03-e03-b");
+    const create = await api1.post(`${API_URL}/bookings`, {
+      headers: { ...bearer(userA.accessToken), "Content-Type": "application/json" },
+      data: {
+        slotId: SEEDED_LARGE_CAPACITY_SLOT_ID,
+        paymentMethod: "CREDIT_CARD",
+        amount: 10000,
+        currency: "KRW",
+      },
+      failOnStatusCode: false,
+    });
+    if (create.status() !== 202) {
+      test.info().annotations.push({
+        type: "skip-reason",
+        description: `시드 미주입 — user-A booking 생성 실패(${create.status()}), 소유권 검증 보류`,
+      });
+      test.skip();
+      await api1.dispose();
+      await api2.dispose();
+      return;
+    }
+    const { bookingId } = await create.json();
+    const res = await api2.get(`${API_URL}/bookings/${bookingId}`, {
+      headers: bearer(userB.accessToken),
+      failOnStatusCode: false,
+    });
+    expect(res.status()).toBe(403);
     await api1.dispose();
     await api2.dispose();
   });
 
-  test("E2E-03-E03 user-A 의 booking 을 user-B 가 조회 시 403/404", async () => {
+  test("E2E-03-E04 booking 0건인 신규 user 가 /bookings/me 호출 시 200 + 빈 페이지", async () => {
     const api = await playwrightRequest.newContext();
-    // 임의의 id — 다른 user 의 자원
-    const res = await api.get(`${API_URL}/bookings/1`, {
-      headers: { "X-User-Id": "999999" },
-      failOnStatusCode: false,
-    });
-    expect([403, 404]).toContain(res.status());
-    await api.dispose();
-  });
-
-  test("E2E-03-E04 booking 0건 user 가 /bookings/me 호출 시 200 + 빈 페이지", async () => {
-    const api = await playwrightRequest.newContext();
+    const user = await registerAndLogin(api, "e2e03-e04");
     const res = await api.get(`${API_URL}/bookings/me`, {
-      headers: { "X-User-Id": "9999999" },
+      headers: bearer(user.accessToken),
       failOnStatusCode: false,
     });
     expect(res.status()).toBe(200);
     const body = await res.json();
-    const items = body.content ?? body.items ?? [];
-    expect(items.length).toBe(0);
+    expect(body.bookings ?? []).toHaveLength(0);
     expect(body.totalElements ?? 0).toBe(0);
     await api.dispose();
   });
