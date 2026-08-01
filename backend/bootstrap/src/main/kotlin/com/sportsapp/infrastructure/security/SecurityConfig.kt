@@ -77,6 +77,18 @@ class SecurityConfig(
     private fun configureAuthorization(
         auth: AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry,
     ) {
+        // [W1-DEBT-01] LongMethod 정리 — matcher 는 **선언 순서가 곧 우선순위**라 순서를 바꾸지 않고
+        // 경계별로만 쪼갰다. 아래 호출 순서가 원래 선언 순서와 정확히 같다.
+        configurePlatformAuthorization(auth)
+        configureSocialAuthorization(auth)
+        configureOrderAuthorization(auth)
+        configureCatalogAuthorization(auth)
+    }
+
+    /** 인증·관리자·MCP 등 platform 경계 인가 규칙. 순서 의존이므로 이 블록 안에서도 순서를 바꾸지 않는다. */
+    private fun configurePlatformAuthorization(
+        auth: AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry,
+    ) {
         auth.requestMatchers(HttpMethod.POST, "/auth/login", "/auth/refresh", "/users/register").permitAll()
         auth.requestMatchers("/actuator/health", "/actuator/info").permitAll()
         // BE-10: 규칙 엔진(Grafana)·내부 raise 진입점. 컨트롤러가 grafana=Authorization Bearer,
@@ -94,6 +106,12 @@ class SecurityConfig(
         auth.requestMatchers("/api/admin/mcp/usage-analytics/**").hasRole("ADMIN")
         auth.requestMatchers("/api/admin/partners/**").hasRole("ADMIN")
         auth.requestMatchers("/mcp/**").authenticated()
+    }
+
+    /** 커뮤니티·게시글·채팅 등 social 경계 인가 규칙. 순서 의존이므로 이 블록 안에서도 순서를 바꾸지 않는다. */
+    private fun configureSocialAuthorization(
+        auth: AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry,
+    ) {
         // BE-04: WebSocket handshake 는 StompAuthChannelInterceptor 가 CONNECT 시 JWT 를 자체 검증하므로
         // Spring Security 레벨에서는 permitAll. /communities/** 컨트롤러는 BE-08(wave3)에서 추가되며,
         // 규칙 선등록은 무해하다.
@@ -106,6 +124,12 @@ class SecurityConfig(
         // 먼저 매칭되도록 authenticated()를 선언한다 (ProductChatApiController).
         auth.requestMatchers(HttpMethod.POST, "/products/*/chat").authenticated()
         auth.requestMatchers(HttpMethod.POST, "/images/presigned-upload").authenticated()
+    }
+
+    /** 결제·예약·주문 등 거래 경계 인가 규칙. 순서 의존이므로 이 블록 안에서도 순서를 바꾸지 않는다. */
+    private fun configureOrderAuthorization(
+        auth: AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry,
+    ) {
 
         // AUTH-04: 도메인 API를 X-User-Id 헤더 → JWT(@AuthenticationPrincipal UserPrincipal) 전환.
         // 공개 브라우징 목적 GET은 permitAll 유지, 작성·개인화 조회·결제는 authenticated().
@@ -137,6 +161,12 @@ class SecurityConfig(
         auth.requestMatchers("/ticket-orders/**").authenticated() // 주문 생성·조회 전부 개인 데이터
         auth.requestMatchers("/goods-orders/**").authenticated() // 전부 개인 주문 데이터
         auth.requestMatchers("/operator/inbox/**").authenticated() // 운영자 개인 인박스
+    }
+
+    /** 공개 브라우징·통합 파사드 등 나머지 인가 규칙. 순서 의존이므로 이 블록 안에서도 순서를 바꾸지 않는다. */
+    private fun configureCatalogAuthorization(
+        auth: AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry,
+    ) {
 
         // 한정판 상세·통계는 공개 조회, 개설·구매는 로그인 필요
         auth.requestMatchers(HttpMethod.GET, "/limited-drops/**").permitAll()

@@ -55,6 +55,9 @@ import javax.crypto.SecretKey
  * 이 전환은 코드 제거로 수행하며 릴리즈 노트에 전환 일자를 명시한다.
  */
 @Component
+// TooManyFunctions 억제 근거(W1-DEBT-01): JwtIssuer(domain gateway) 계약의 구현체로, 메서드 수가 곧 계약
+// 크기다. 쪼개면 하나의 인터페이스 구현이 여러 클래스로 흩어져 계약-구현 대응이 깨진다.
+@Suppress("TooManyFunctions")
 class JwtTokenProvider(
     @Value("\${app.jwt.secret}") private val hmacSecretValue: String,
     @Value("\${app.jwt.public-key:}") publicKeyPem: String,
@@ -203,6 +206,6 @@ private enum class JwtSigningAlgorithm {
     companion object {
         fun from(value: String): JwtSigningAlgorithm =
             entries.firstOrNull { candidate -> candidate.name.equals(value.trim(), ignoreCase = true) }
-                ?: throw IllegalStateException("지원하지 않는 JWT 발급 알고리즘입니다: $value")
+                ?: error("지원하지 않는 JWT 발급 알고리즘입니다: $value")
     }
 }

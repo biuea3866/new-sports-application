@@ -31,6 +31,9 @@ class WebSocketConfig(
 ) : WebSocketMessageBrokerConfigurer {
 
     override fun registerStompEndpoints(registry: StompEndpointRegistry) {
+        // SpreadOperator 억제 근거(W1-DEBT-01): setAllowedOriginPatterns 가 vararg 전용 API 라 스프레드가 불가피하다.
+        // 원본 배열은 상수 목록(요소 소수)이고 핸드셰이크 설정 시 1회만 평가되므로 복사 비용이 무의미하다.
+        @Suppress("SpreadOperator")
         registry.addEndpoint("/ws").setAllowedOriginPatterns(*ALLOWED_ORIGIN_PATTERNS)
     }
 

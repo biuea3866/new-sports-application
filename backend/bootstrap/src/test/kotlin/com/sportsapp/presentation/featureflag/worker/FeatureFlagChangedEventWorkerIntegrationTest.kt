@@ -87,7 +87,7 @@ class FeatureFlagChangedEventWorkerIntegrationTest(
                 val result = runCatching {
                     transactionTemplate.execute {
                         featureFlagDomainService.create(command)
-                        throw IllegalStateException("강제 롤백")
+                        error("강제 롤백")
                     }
                 }
 
