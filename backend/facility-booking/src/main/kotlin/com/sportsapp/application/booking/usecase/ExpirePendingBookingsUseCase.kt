@@ -49,6 +49,9 @@ class ExpirePendingBookingsUseCase(
     fun execute(): BookingExpiryResult =
         processChunks(afterId = 0L, chunksLeft = bookingExpiryProperties.maxChunksPerRun, accumulated = BookingExpiryResult.empty())
 
+    // guard clause 2개(early return) + 재귀 종료 반환 = 3건. 컨벤션이 권장하는 guard clause의
+    // 부산물이라 억제한다 (private-be-code-convention "Guard clause 적극 사용").
+    @Suppress("ReturnCount")
     private tailrec fun processChunks(afterId: Long, chunksLeft: Int, accumulated: BookingExpiryResult): BookingExpiryResult {
         if (chunksLeft <= 0) return accumulated
         val candidates = bookingDomainService.findExpirableBookingCandidates(

@@ -1,7 +1,7 @@
 package com.sportsapp.application.facility.usecase
 
 import com.sportsapp.domain.facility.dto.RegionTypeCount
-import com.sportsapp.domain.facility.service.FacilityDomainService
+import com.sportsapp.domain.facility.service.FacilityStatsDomainService
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -10,15 +10,15 @@ import io.mockk.mockk
 
 class GetRegionTypeStatsUseCaseTest : BehaviorSpec({
 
-    val facilityDomainService = mockk<FacilityDomainService>()
-    val getRegionTypeStatsUseCase = GetRegionTypeStatsUseCase(facilityDomainService)
+    val facilityStatsDomainService = mockk<FacilityStatsDomainService>()
+    val getRegionTypeStatsUseCase = GetRegionTypeStatsUseCase(facilityStatsDomainService)
 
     Given("시도·시군구·유형별 집계 결과가 2개 그룹인 상태") {
         val aggregationResult = listOf(
             RegionTypeCount(sidoCode = "26", sidoName = "부산광역시", sigunguCode = "26410", sigunguName = "해운대구", type = "수영장", count = 5),
             RegionTypeCount(sidoCode = "11", sidoName = "서울특별시", sigunguCode = "11680", sigunguName = "강남구", type = "헬스장", count = 2),
         )
-        every { facilityDomainService.aggregateRegionType() } returns aggregationResult
+        every { facilityStatsDomainService.aggregateRegionType() } returns aggregationResult
 
         When("execute를 호출하면") {
             val result = getRegionTypeStatsUseCase.execute()
@@ -32,7 +32,7 @@ class GetRegionTypeStatsUseCaseTest : BehaviorSpec({
     }
 
     Given("집계 결과가 빈 상태") {
-        every { facilityDomainService.aggregateRegionType() } returns emptyList()
+        every { facilityStatsDomainService.aggregateRegionType() } returns emptyList()
 
         When("execute를 호출하면") {
             val result = getRegionTypeStatsUseCase.execute()

@@ -82,6 +82,9 @@ class FacilityRepositoryImpl(
         else -> facilityMongoRepository.findAllByDeletedAtIsNull(pageable)
     }
 
+    // Spring Data의 Criteria.andOperator가 vararg만 받아 스프레드가 불가피하다. 필터는 최대 4개
+    // (sidoCode/sigunguCode/gu/type)로 상한이 있어 배열 복사 비용이 무시할 만하다 — 억제.
+    @Suppress("SpreadOperator")
     override fun findAll(
         sidoCode: String?,
         sigunguCode: String?,

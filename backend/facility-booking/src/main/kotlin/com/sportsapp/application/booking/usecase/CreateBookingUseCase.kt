@@ -57,7 +57,7 @@ class CreateBookingUseCase(
                 currency = command.currency,
             )
             Triple(bookingResult, paymentId, idempotencyKey)
-        } ?: throw IllegalStateException("Transaction returned null")
+        } ?: error("Transaction returned null")
     }
 
     private fun buildIdempotencyKey(bookingResult: BookingResult): String =

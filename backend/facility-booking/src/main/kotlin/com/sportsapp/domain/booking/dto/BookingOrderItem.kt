@@ -20,6 +20,15 @@ data class BookingOrderItem(
     val title: String,
     val createdAt: ZonedDateTime,
 ) {
+    /**
+     * 라벨 구성에 필요한 Slot 파생 정보를 묶은 값객체 (LongParameterList 회피).
+     * Slot 부재·삭제 시 둘 다 null일 수 있다.
+     */
+    data class SlotLabelSource(
+        val date: ZonedDateTime?,
+        val timeRange: String?,
+    )
+
     companion object {
         fun of(
             bookingId: Long,
@@ -28,15 +37,14 @@ data class BookingOrderItem(
             status: BookingStatus,
             paymentId: Long?,
             createdAt: ZonedDateTime,
-            slotDate: ZonedDateTime?,
-            slotTimeRange: String?,
+            slotLabelSource: SlotLabelSource,
         ): BookingOrderItem = BookingOrderItem(
             bookingId = bookingId,
             slotId = slotId,
             userId = userId,
             status = status,
             paymentId = paymentId,
-            title = BookingTitleLabel.of(slotDate, slotTimeRange),
+            title = BookingTitleLabel.of(slotLabelSource.date, slotLabelSource.timeRange),
             createdAt = createdAt,
         )
     }

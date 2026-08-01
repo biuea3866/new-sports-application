@@ -2,7 +2,7 @@ package com.sportsapp.application.facility.usecase
 
 import com.sportsapp.application.facility.dto.AddHolidayCommand
 import com.sportsapp.domain.facility.entity.Facility
-import com.sportsapp.domain.facility.service.FacilityOwnerDomainService
+import com.sportsapp.domain.facility.service.FacilityScheduleOwnerDomainService
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -12,8 +12,8 @@ import java.time.LocalDate
 
 class AddHolidayUseCaseTest : BehaviorSpec({
 
-    val facilityOwnerDomainService = mockk<FacilityOwnerDomainService>()
-    val useCase = AddHolidayUseCase(facilityOwnerDomainService)
+    val facilityScheduleOwnerDomainService = mockk<FacilityScheduleOwnerDomainService>()
+    val useCase = AddHolidayUseCase(facilityScheduleOwnerDomainService)
 
     Given("소유 시설에 휴무일 추가 command가 주어졌을 때") {
         val date = LocalDate.of(2026, 7, 6)
@@ -26,7 +26,7 @@ class AddHolidayUseCaseTest : BehaviorSpec({
             meta = emptyMap(), ownerUserId = 1L,
             sidoCode = null, sidoName = null, sigunguCode = null, sigunguName = null,
         ).also { it.addHoliday(date) }
-        every { facilityOwnerDomainService.addHoliday("f-001", 1L, date) } returns updatedFacility
+        every { facilityScheduleOwnerDomainService.addHoliday("f-001", 1L, date) } returns updatedFacility
 
         When("execute를 호출하면") {
             val result = useCase.execute(command)

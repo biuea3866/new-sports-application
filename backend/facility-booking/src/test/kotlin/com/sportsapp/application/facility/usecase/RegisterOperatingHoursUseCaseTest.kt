@@ -3,7 +3,7 @@ package com.sportsapp.application.facility.usecase
 import com.sportsapp.application.facility.dto.RegisterOperatingHoursCommand
 import com.sportsapp.domain.facility.entity.Facility
 import com.sportsapp.domain.facility.exception.UnauthorizedFacilityAccessException
-import com.sportsapp.domain.facility.service.FacilityOwnerDomainService
+import com.sportsapp.domain.facility.service.FacilityScheduleOwnerDomainService
 import com.sportsapp.domain.facility.vo.OperatingHours
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
@@ -16,8 +16,8 @@ import java.time.LocalTime
 
 class RegisterOperatingHoursUseCaseTest : BehaviorSpec({
 
-    val facilityOwnerDomainService = mockk<FacilityOwnerDomainService>()
-    val useCase = RegisterOperatingHoursUseCase(facilityOwnerDomainService)
+    val facilityScheduleOwnerDomainService = mockk<FacilityScheduleOwnerDomainService>()
+    val useCase = RegisterOperatingHoursUseCase(facilityScheduleOwnerDomainService)
 
     Given("소유 시설에 운영시간 등록 command가 주어졌을 때") {
         val hours = listOf(
@@ -38,7 +38,7 @@ class RegisterOperatingHoursUseCaseTest : BehaviorSpec({
             sidoCode = null, sidoName = null, sigunguCode = null, sigunguName = null,
             operatingHours = hours,
         )
-        every { facilityOwnerDomainService.registerOperatingHours("f-001", 1L, hours) } returns updatedFacility
+        every { facilityScheduleOwnerDomainService.registerOperatingHours("f-001", 1L, hours) } returns updatedFacility
 
         When("execute를 호출하면") {
             val result = useCase.execute(command)
@@ -52,7 +52,7 @@ class RegisterOperatingHoursUseCaseTest : BehaviorSpec({
     Given("소유하지 않은 시설에 운영시간 등록 command가 주어졌을 때") {
         val command = RegisterOperatingHoursCommand(facilityId = "f-002", ownerUserId = 99L, operatingHours = emptyList())
         every {
-            facilityOwnerDomainService.registerOperatingHours("f-002", 99L, emptyList())
+            facilityScheduleOwnerDomainService.registerOperatingHours("f-002", 99L, emptyList())
         } throws UnauthorizedFacilityAccessException("f-002")
 
         When("execute를 호출하면") {

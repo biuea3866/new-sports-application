@@ -1,7 +1,7 @@
 package com.sportsapp.application.facility.usecase
 
 import com.sportsapp.domain.facility.entity.Facility
-import com.sportsapp.domain.facility.service.FacilityDomainService
+import com.sportsapp.domain.facility.service.FacilityGeoQueryDomainService
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -9,9 +9,9 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 @Profile("!test-jpa")
 class FindNearbyFacilitiesUseCase(
-    private val facilityDomainService: FacilityDomainService,
+    private val facilityGeoQueryDomainService: FacilityGeoQueryDomainService,
 ) {
     @Transactional(readOnly = true)
     fun execute(lat: Double, lng: Double, radiusMeters: Double): List<Facility> =
-        facilityDomainService.findNear(lat, lng, radiusMeters)
+        facilityGeoQueryDomainService.findNear(lat, lng, radiusMeters)
 }

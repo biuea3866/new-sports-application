@@ -40,6 +40,9 @@ class SlotGenerationDomainService(
             .map { it.date.toLocalDate() to it.timeRange }
             .toSet()
 
+    // guard clause 2개(휴무일·미운영 요일 조기 반환) + 정상 반환 = 3건. 컨벤션이 권장하는
+    // guard clause의 부산물이라 억제한다 (private-be-code-convention "Guard clause 적극 사용").
+    @Suppress("ReturnCount")
     private fun generateForDate(
         schedule: FacilitySchedule,
         date: LocalDate,

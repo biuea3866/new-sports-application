@@ -21,8 +21,10 @@ class BookingOrderItemTest : BehaviorSpec({
                 status = BookingStatus.CONFIRMED,
                 paymentId = 100L,
                 createdAt = createdAt,
-                slotDate = slotDate,
-                slotTimeRange = "09:00-10:00",
+                slotLabelSource = BookingOrderItem.SlotLabelSource(
+                    date = slotDate,
+                    timeRange = "09:00-10:00",
+                ),
             )
 
             Then("title이 자기 데이터로 구성한 서술형 라벨(date timeRange 시설 예약)이다") {
@@ -47,8 +49,10 @@ class BookingOrderItemTest : BehaviorSpec({
                 status = BookingStatus.CONFIRMED,
                 paymentId = null,
                 createdAt = createdAt,
-                slotDate = null,
-                slotTimeRange = null,
+                slotLabelSource = BookingOrderItem.SlotLabelSource(
+                    date = null,
+                    timeRange = null,
+                ),
             )
 
             Then("기본 라벨(시설 예약)로 방어 반환한다") {

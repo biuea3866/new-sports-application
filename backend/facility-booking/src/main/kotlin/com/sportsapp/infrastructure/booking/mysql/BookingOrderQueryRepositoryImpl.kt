@@ -1,5 +1,6 @@
 package com.sportsapp.infrastructure.booking.mysql
 
+import com.querydsl.core.Tuple
 import com.querydsl.jpa.impl.JPAQueryFactory
 import com.sportsapp.domain.booking.dto.BookingOrderItem
 import com.sportsapp.domain.booking.entity.QBooking.booking
@@ -40,16 +41,18 @@ class BookingOrderQueryRepositoryImpl : BookingOrderQueryRepository {
             .where(booking.userId.eq(userId))
             .orderBy(booking.createdAt.desc())
             .fetch()
-            .map { tuple ->
-                BookingOrderItem.of(
-                    bookingId = requireNotNull(tuple.get(booking.id)),
-                    slotId = requireNotNull(tuple.get(booking.slotId)),
-                    userId = requireNotNull(tuple.get(booking.userId)),
-                    status = requireNotNull(tuple.get(booking.status)),
-                    paymentId = tuple.get(booking.paymentId),
-                    createdAt = requireNotNull(tuple.get(booking.createdAt)),
-                    slotDate = tuple.get(slot.date),
-                    slotTimeRange = tuple.get(slot.timeRange),
-                )
-            }
+            .map(::toBookingOrderItem)
+
+    private fun toBookingOrderItem(tuple: Tuple): BookingOrderItem = BookingOrderItem.of(
+        bookingId = requireNotNull(tuple.get(booking.id)),
+        slotId = requireNotNull(tuple.get(booking.slotId)),
+        userId = requireNotNull(tuple.get(booking.userId)),
+        status = requireNotNull(tuple.get(booking.status)),
+        paymentId = tuple.get(booking.paymentId),
+        createdAt = requireNotNull(tuple.get(booking.createdAt)),
+        slotLabelSource = BookingOrderItem.SlotLabelSource(
+            date = tuple.get(slot.date),
+            timeRange = tuple.get(slot.timeRange),
+        ),
+    )
 }

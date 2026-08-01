@@ -1,6 +1,6 @@
 package com.sportsapp.application.facility.usecase
 
-import com.sportsapp.domain.facility.service.FacilityDomainService
+import com.sportsapp.domain.facility.service.FacilityStatsDomainService
 import com.sportsapp.domain.facility.dto.GuTypeCount
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldHaveSize
@@ -10,8 +10,8 @@ import io.mockk.mockk
 
 class GetGuTypeStatsUseCaseTest : BehaviorSpec({
 
-    val facilityDomainService = mockk<FacilityDomainService>()
-    val getGuTypeStatsUseCase = GetGuTypeStatsUseCase(facilityDomainService)
+    val facilityStatsDomainService = mockk<FacilityStatsDomainService>()
+    val getGuTypeStatsUseCase = GetGuTypeStatsUseCase(facilityStatsDomainService)
 
     Given("MongoDB aggregation 결과가 3개 그룹인 상태") {
         val aggregationResult = listOf(
@@ -19,7 +19,7 @@ class GetGuTypeStatsUseCaseTest : BehaviorSpec({
             GuTypeCount(gu = "강남구", type = "풋살장", count = 3),
             GuTypeCount(gu = "서초구", type = "헬스장", count = 2),
         )
-        every { facilityDomainService.aggregateGuType() } returns aggregationResult
+        every { facilityStatsDomainService.aggregateGuType() } returns aggregationResult
 
         When("[U-02] execute를 호출하면") {
             val result = getGuTypeStatsUseCase.execute()
@@ -40,7 +40,7 @@ class GetGuTypeStatsUseCaseTest : BehaviorSpec({
     }
 
     Given("aggregation 결과가 빈 상태") {
-        every { facilityDomainService.aggregateGuType() } returns emptyList()
+        every { facilityStatsDomainService.aggregateGuType() } returns emptyList()
 
         When("execute를 호출하면") {
             val result = getGuTypeStatsUseCase.execute()
