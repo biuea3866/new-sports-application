@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
 import com.sportsapp.domain.message.entity.Room
 import com.sportsapp.domain.message.service.MessageDomainService
+import com.sportsapp.domain.message.service.RoomDomainService
 import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -24,6 +25,7 @@ import org.springframework.web.client.RestTemplate
 class InvitationApiControllerTest(
     @Autowired private val userDomainService: UserDomainService,
     @Autowired private val messageDomainService: MessageDomainService,
+    @Autowired private val roomDomainService: RoomDomainService,
     @Autowired private val jdbcTemplate: JdbcTemplate,
     @Autowired private val objectMapper: ObjectMapper,
     @LocalServerPort private val port: Int,
@@ -63,7 +65,7 @@ class InvitationApiControllerTest(
     }
 
     private fun createGroupRoomHostedBy(hostUserId: Long): Room =
-        messageDomainService.createGroupRoom(
+        roomDomainService.createGroupRoom(
             "게스트 초대 테스트방 ${System.nanoTime()}",
             listOf(hostUserId),
             hostUserId = hostUserId,
