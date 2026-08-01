@@ -50,7 +50,7 @@ function NotificationCard({
     <article
       aria-label={`알림 ${notification.id}: ${notification.templateId}`}
       className={`rounded-lg border p-4 space-y-2 ${
-        isRead ? "bg-white" : "bg-blue-50 border-blue-200"
+        isRead ? "bg-card" : "bg-accent border-accent"
       }`}
     >
       <div className="flex items-start justify-between gap-4">
@@ -96,7 +96,7 @@ function NotificationCard({
       {!isRead && (
         <span
           aria-label="미읽음 알림"
-          className="inline-block w-2 h-2 rounded-full bg-blue-500"
+          className="inline-block w-2 h-2 rounded-full bg-primary"
           aria-hidden="true"
         />
       )}
@@ -185,7 +185,7 @@ export default function NotificationsClient() {
         <div
           role="status"
           aria-live="polite"
-          className="rounded-md bg-gray-800 text-white text-sm px-4 py-2 inline-block"
+          className="rounded-md bg-primary text-primary-foreground text-sm px-4 py-2 inline-block"
         >
           {toast}
         </div>
@@ -193,7 +193,7 @@ export default function NotificationsClient() {
 
       {/* 에러 */}
       {error && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       )}

@@ -22,10 +22,10 @@ const STATUS_LABELS: Record<PaymentStatus, string> = {
 };
 
 const STATUS_COLORS: Record<PaymentStatus, string> = {
-  PENDING: "bg-yellow-100 text-yellow-800",
-  COMPLETED: "bg-green-100 text-green-800",
-  FAILED: "bg-red-100 text-red-700",
-  REFUNDED: "bg-gray-100 text-gray-600",
+  PENDING: "bg-status-warning text-status-warning-foreground",
+  COMPLETED: "bg-status-success text-status-success-foreground",
+  FAILED: "bg-status-danger text-status-danger-foreground",
+  REFUNDED: "bg-status-neutral text-status-neutral-foreground",
 };
 
 const PAGE_SIZE = 20;
@@ -147,14 +147,14 @@ export default function PaymentsPage() {
 
       {/* 오류 */}
       {error && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       )}
 
       {/* 로딩 */}
       {loading && (
-        <p aria-busy="true" className="text-sm text-gray-500">
+        <p aria-busy="true" className="text-sm text-muted-foreground">
           결제 목록을 불러오는 중...
         </p>
       )}
@@ -162,56 +162,56 @@ export default function PaymentsPage() {
       {/* 결제 목록 테이블 */}
       {!loading && (
         <section aria-label="결제 목록">
-          <p className="text-sm text-gray-500 mb-2">
+          <p className="text-sm text-muted-foreground mb-2">
             총 <strong>{totalElements}</strong>건
           </p>
           <div className="overflow-x-auto rounded-md border">
             <table className="min-w-full text-sm">
-              <thead className="bg-gray-50">
+              <thead className="bg-muted/50">
                 <tr>
-                  <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                  <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                     결제 ID
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                  <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                     주문 유형
                   </th>
-                  <th scope="col" className="px-4 py-3 text-right font-medium text-gray-600">
+                  <th scope="col" className="px-4 py-3 text-right font-medium text-muted-foreground">
                     금액
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                  <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                     결제 수단
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                  <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                     PG사
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                  <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                     상태
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                  <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                     결제 일시
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                  <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                     PG 트랜잭션 ID
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-border">
                 {payments.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
+                    <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                       결제 내역이 없습니다.
                     </td>
                   </tr>
                 ) : (
                   payments.map((payment) => (
-                    <tr key={payment.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-gray-700">{payment.id}</td>
+                    <tr key={payment.id} className="hover:bg-muted/50">
+                      <td className="px-4 py-3 text-foreground">{payment.id}</td>
                       <td className="px-4 py-3">{payment.orderType}</td>
                       <td className="px-4 py-3 text-right tabular-nums">
                         {payment.amount.toLocaleString("ko-KR")}원
                       </td>
                       <td className="px-4 py-3">{payment.method}</td>
-                      <td className="px-4 py-3 text-gray-500">
+                      <td className="px-4 py-3 text-muted-foreground">
                         {payment.provider ?? "-"}
                       </td>
                       <td className="px-4 py-3">
@@ -221,12 +221,12 @@ export default function PaymentsPage() {
                           {STATUS_LABELS[payment.status]}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-600">
+                      <td className="px-4 py-3 text-muted-foreground">
                         {payment.paidAt
                           ? new Date(payment.paidAt).toLocaleString("ko-KR")
                           : "-"}
                       </td>
-                      <td className="px-4 py-3 text-gray-500 font-mono text-xs">
+                      <td className="px-4 py-3 text-muted-foreground font-mono text-xs">
                         {payment.pgTransactionId ?? "-"}
                       </td>
                     </tr>
@@ -235,8 +235,8 @@ export default function PaymentsPage() {
               </tbody>
               {payments.length > 0 && (
                 <tfoot>
-                  <tr className="bg-gray-50 font-medium">
-                    <td colSpan={2} className="px-4 py-3 text-gray-600">
+                  <tr className="bg-muted/50 font-medium">
+                    <td colSpan={2} className="px-4 py-3 text-muted-foreground">
                       이 페이지 합계
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">

@@ -4,6 +4,13 @@
 
 @layer base {
   :root {
+    /*
+     * 네이티브 폼 컨트롤(날짜 입력의 달력 아이콘·스피너·셀렉트 화살표·스크롤바)은 브라우저가
+     * 직접 그리며 그 색은 CSS 변수가 아니라 `color-scheme`이 정한다. 선언하지 않으면 브라우저가
+     * light로 가정해 어두운 아이콘을 칠하므로, 다크 모드에서 달력 아이콘이 검은 사각형으로
+     * 뭉개진다. 모드마다 명시해 네이티브 컨트롤도 함께 전환되게 한다.
+     */
+    color-scheme: light;
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
@@ -41,9 +48,25 @@
     /* 차트 시리즈 색 — recharts stroke/fill 에 hsl(var(--chart-N)) 로 주입한다. */
     --chart-1: 217 91% 60%;
     --chart-2: 258 90% 66%;
+    /*
+     * 상태 칩(status chip) — 결제·예약·알림 목록의 상태 배지가 쓰는 옅은 배경 + 진한 글씨 조합.
+     * solid한 --success/--destructive와 달리 표 안에서 눈에 띄되 튀지 않는 톤이 필요해
+     * 대기질 토큰(--aq-*)과 같은 방식으로 라이트/다크 두 벌을 정의한다.
+     */
+    --status-success: 142 60% 94%;
+    --status-success-foreground: 142 70% 28%;
+    --status-warning: 48 96% 89%;
+    --status-warning-foreground: 35 92% 33%;
+    --status-danger: 0 90% 96%;
+    --status-danger-foreground: 0 75% 45%;
+    --status-info: 211 100% 96%;
+    --status-info-foreground: 211 90% 35%;
+    --status-neutral: 210 16% 93%;
+    --status-neutral-foreground: 215 16% 47%;
   }
 
   .dark {
+    color-scheme: dark;
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
     --card: 222.2 84% 4.9%;
@@ -85,6 +108,16 @@
     /* 다크 모드에서는 어두운 카드 위 대비를 위해 채도·명도를 올린다. */
     --chart-1: 213 94% 68%;
     --chart-2: 255 92% 76%;
+    --status-success: 142 40% 18%;
+    --status-success-foreground: 142 60% 75%;
+    --status-warning: 38 50% 20%;
+    --status-warning-foreground: 48 95% 76%;
+    --status-danger: 0 55% 22%;
+    --status-danger-foreground: 0 85% 78%;
+    --status-info: 211 60% 20%;
+    --status-info-foreground: 211 90% 80%;
+    --status-neutral: 217 20% 22%;
+    --status-neutral-foreground: 215 20% 65%;
   }
 }
 
