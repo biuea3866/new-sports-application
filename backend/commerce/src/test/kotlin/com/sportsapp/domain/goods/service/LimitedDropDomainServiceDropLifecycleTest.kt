@@ -86,8 +86,9 @@ class LimitedDropDomainServiceDropLifecycleTest : BehaviorSpec({
                 verify(exactly = 1) { dropReservationStore.seedIfAbsent(0L, limitedQuantity, any()) }
             }
 
-            Then("상품 가격을 함께 반환한다") {
-                result.second shouldBe product.price
+            Then("연결 상품을 함께 반환해 상품명·가격을 쓸 수 있다") {
+                result.second.productName shouldBe product.name
+                result.second.price shouldBe product.price
             }
         }
     }

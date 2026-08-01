@@ -85,7 +85,18 @@ describe('U-02: /cart/me 호출', () => {
     const mockCart: CartDto = {
       cartId: 10,
       userId: 1,
-      items: [{ id: 100, productId: 1, quantity: 2 }],
+      items: [
+        {
+          id: 100,
+          productId: 1,
+          productName: '카본 배드민턴 라켓',
+          productImageUrl: 'https://cdn.example.com/product.jpg',
+          unitPrice: '29000',
+          quantity: 2,
+          subtotal: '58000',
+        },
+      ],
+      totalAmount: '58000',
     };
     mock.onGet('/cart/me').reply(200, mockCart);
 
@@ -104,7 +115,18 @@ describe('U-03: POST /cart/items', () => {
     const mockCart: CartDto = {
       cartId: 10,
       userId: 1,
-      items: [{ id: 100, productId: 5, quantity: 1 }],
+      items: [
+        {
+          id: 100,
+          productId: 5,
+          productName: '카본 배드민턴 라켓',
+          productImageUrl: 'https://cdn.example.com/product.jpg',
+          unitPrice: '29000',
+          quantity: 1,
+          subtotal: '29000',
+        },
+      ],
+      totalAmount: '29000',
     };
     mock.onPost('/cart/items').reply(200, mockCart);
 
@@ -125,7 +147,18 @@ describe('U-04: PATCH /cart/items/{itemId}', () => {
     const mockCart: CartDto = {
       cartId: 10,
       userId: 1,
-      items: [{ id: 100, productId: 1, quantity: 3 }],
+      items: [
+        {
+          id: 100,
+          productId: 1,
+          productName: '카본 배드민턴 라켓',
+          productImageUrl: 'https://cdn.example.com/product.jpg',
+          unitPrice: '29000',
+          quantity: 3,
+          subtotal: '87000',
+        },
+      ],
+      totalAmount: '87000',
     };
     mock.onPatch('/cart/items/100').reply(200, mockCart);
 
@@ -143,7 +176,7 @@ describe('U-04: PATCH /cart/items/{itemId}', () => {
 
 describe('U-05: DELETE /cart/items/{itemId}', () => {
   it('X-User-Id 헤더와 함께 항목 삭제 요청을 보낸다', async () => {
-    const mockCart: CartDto = { cartId: 10, userId: 1, items: [] };
+    const mockCart: CartDto = { cartId: 10, userId: 1, items: [], totalAmount: '0' };
     mock.onDelete('/cart/items/100').reply(200, mockCart);
 
     const res = await testClient.delete<CartDto>('/cart/items/100', {

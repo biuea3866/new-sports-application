@@ -5,7 +5,6 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getBeClient } from './be-client';
-import { useAuthStore } from '../lib/auth';
 
 // ─── 타입 정의 ────────────────────────────────────────────────────────────────
 
@@ -38,16 +37,25 @@ export interface ProductWithStock {
   ownerId?: number;
 }
 
+/**
+ * 장바구니 한 줄 — BE `presentation/goods/dto/response/CartItemResponse.kt` 와 대응.
+ * 상품명·단가·소계는 BE 가 같은 goods 컨텍스트의 Product 를 조인해 내려준다.
+ */
 export interface CartItemDto {
   id: number;
   productId: number;
+  productName: string;
+  productImageUrl: string;
+  unitPrice: string; // BigDecimal → string
   quantity: number;
+  subtotal: string; // BigDecimal → string
 }
 
 export interface CartDto {
   cartId: number;
   userId: number;
   items: CartItemDto[];
+  totalAmount: string; // BigDecimal → string
 }
 
 export interface GoodsOrderCreatedDto {

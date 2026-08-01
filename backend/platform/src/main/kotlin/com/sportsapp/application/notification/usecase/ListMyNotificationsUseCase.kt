@@ -12,7 +12,7 @@ class ListMyNotificationsUseCase(
 ) {
     @Transactional(readOnly = true)
     fun execute(command: ListMyNotificationsCommand): NotificationPageResult {
-        val page = notificationDomainService.listMyNotifications(
+        val page = notificationDomainService.listMyNotificationViews(
             userId = command.userId,
             onlyUnread = command.onlyUnread,
             page = command.page,

@@ -21,6 +21,11 @@ data class ProductWithStock(
 ) {
     val price: BigDecimal get() = product.price
 
+    /** 사람이 읽는 상품명 — 호출부가 product 를 꺼내지 않도록 래퍼가 재노출한다. */
+    val productName: String get() = product.name
+
+    val productImageUrl: String get() = product.imageUrl
+
     fun requireOwnedBy(ownerUserId: Long) {
         product.requireOwnedBy(ownerUserId)
     }

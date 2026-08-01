@@ -1,7 +1,7 @@
 package com.sportsapp.application.goods.usecase
 
 import com.sportsapp.domain.goods.entity.Cart
-import com.sportsapp.domain.goods.entity.CartItem
+import com.sportsapp.domain.goods.vo.CartLineItem
 import com.sportsapp.domain.goods.service.CartDomainService
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.orm.ObjectOptimisticLockingFailureException
@@ -21,6 +21,6 @@ class RemoveCartItemUseCase(
         backoff = Backoff(delay = 20, maxDelay = 250, multiplier = 2.0, random = true),
     )
     @Transactional
-    fun execute(userId: Long, itemId: Long): Pair<Cart, List<CartItem>> =
+    fun execute(userId: Long, itemId: Long): Pair<Cart, List<CartLineItem>> =
         cartDomainService.removeItem(userId, itemId)
 }

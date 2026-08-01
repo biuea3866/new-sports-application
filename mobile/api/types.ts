@@ -495,13 +495,21 @@ export interface CreateGoodsOrderRequest {
 }
 
 // --- Notification ---
-export type NotificationType = 'BOOKING' | 'PAYMENT' | 'EVENT' | 'SYSTEM' | 'PROMOTION';
+/**
+ * 알림 분류 — BE `domain/notification/vo/NotificationCategory.kt` 와 1:1 대응한다.
+ * templateId 접두사에서 파생되는 표시용 분류다.
+ */
+export type NotificationCategory = 'BOOKING' | 'PAYMENT' | 'EVENT' | 'SYSTEM' | 'PROMOTION';
 
+/**
+ * 알림함 한 줄 — BE `presentation/notification/dto/response/MyNotificationResponse.kt` 와 대응.
+ * 제목·본문은 BE 가 templateId + payload 로 렌더해 내려준다.
+ */
 export interface NotificationResponse {
   id: number;
   title: string;
   content: string;
-  type: NotificationType;
+  category: NotificationCategory;
   isRead: boolean;
   readAt: string | null; // ISO 8601
   createdAt: string; // ISO 8601
@@ -511,7 +519,7 @@ export interface NotificationListResponse {
   content: NotificationResponse[];
   totalElements: number;
   totalPages: number;
-  number: number;
+  page: number;
   size: number;
 }
 
@@ -525,6 +533,9 @@ export type LimitedDropStatus = 'SCHEDULED' | 'OPEN' | 'SOLD_OUT' | 'CLOSED';
 export interface LimitedDropResponse {
   dropId: number;
   productId: number;
+  /** 사람이 읽는 상품명 — 상세 화면 제목. BE 가 연결된 Product 에서 채운다. */
+  productName: string;
+  productImageUrl: string;
   status: LimitedDropStatus;
   openAt: string; // ISO 8601
   closeAt: string; // ISO 8601

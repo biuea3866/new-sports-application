@@ -15,7 +15,13 @@ class GetLimitedDropUseCase(
 ) {
     @Transactional(readOnly = true)
     fun execute(dropId: Long): LimitedDropView {
-        val (drop, remaining, price) = limitedDropDomainService.getView(dropId)
-        return LimitedDropView.of(drop, remaining ?: drop.limitedQuantity, price)
+        val (drop, remaining, product) = limitedDropDomainService.getView(dropId)
+        return LimitedDropView.of(
+            drop = drop,
+            remaining = remaining ?: drop.limitedQuantity,
+            productName = product.productName,
+            productImageUrl = product.productImageUrl,
+            price = product.price,
+        )
     }
 }

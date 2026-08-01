@@ -2,7 +2,7 @@ package com.sportsapp.application.goods.usecase
 
 import com.sportsapp.application.goods.dto.AddCartItemCommand
 import com.sportsapp.domain.goods.entity.Cart
-import com.sportsapp.domain.goods.entity.CartItem
+import com.sportsapp.domain.goods.vo.CartLineItem
 import com.sportsapp.domain.goods.service.CartDomainService
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.orm.ObjectOptimisticLockingFailureException
@@ -22,6 +22,6 @@ class AddCartItemUseCase(
         backoff = Backoff(delay = 20, maxDelay = 250, multiplier = 2.0, random = true),
     )
     @Transactional
-    fun execute(command: AddCartItemCommand): Pair<Cart, List<CartItem>> =
+    fun execute(command: AddCartItemCommand): Pair<Cart, List<CartLineItem>> =
         cartDomainService.addItem(command.userId, command.productId, command.quantity)
 }

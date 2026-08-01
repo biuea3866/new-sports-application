@@ -24,6 +24,7 @@ import {
   useCurrentUserId,
   CartItemDto,
 } from '../../api/goods';
+import { formatCurrency } from '../../lib/currency-format';
 import { useTheme } from '../../theme/useTheme';
 import { createStyles } from '../../theme/createStyles';
 import type { ThemeTokens } from '../../theme/tokens';
@@ -52,14 +53,14 @@ function CartItemRow({ item, onIncrease, onDecrease, onRemove, isPending }: Cart
     <View
       style={styles.itemRow}
       accessible
-      accessibilityLabel={`상품 ID ${item.productId}, 수량 ${item.quantity}`}
+      accessibilityLabel={`${item.productName}, 수량 ${item.quantity}, ${formatCurrency(item.subtotal)}`}
     >
       <View style={styles.itemInfo}>
-        <Text style={styles.itemProductId} accessibilityRole="text">
-          상품 #{item.productId}
+        <Text style={styles.itemProductName} accessibilityRole="text" numberOfLines={2}>
+          {item.productName}
         </Text>
-        <Text style={styles.itemQuantityLabel} accessibilityRole="text">
-          수량: {item.quantity}
+        <Text style={styles.itemSubtotal} accessibilityRole="text">
+          {formatCurrency(item.subtotal)}
         </Text>
       </View>
       <View style={styles.itemActions}>
@@ -68,7 +69,7 @@ function CartItemRow({ item, onIncrease, onDecrease, onRemove, isPending }: Cart
           onPress={onDecrease}
           disabled={isPending || item.quantity <= 1}
           accessibilityRole="button"
-          accessibilityLabel={`상품 ${item.productId} 수량 감소`}
+          accessibilityLabel={`${item.productName} 수량 감소`}
           accessibilityState={{ disabled: isPending || item.quantity <= 1 }}
         >
           <Text style={styles.quantityButtonText}>-</Text>
@@ -81,7 +82,7 @@ function CartItemRow({ item, onIncrease, onDecrease, onRemove, isPending }: Cart
           onPress={onIncrease}
           disabled={isPending}
           accessibilityRole="button"
-          accessibilityLabel={`상품 ${item.productId} 수량 증가`}
+          accessibilityLabel={`${item.productName} 수량 증가`}
           accessibilityState={{ disabled: isPending }}
         >
           <Text style={styles.quantityButtonText}>+</Text>
@@ -91,7 +92,7 @@ function CartItemRow({ item, onIncrease, onDecrease, onRemove, isPending }: Cart
           onPress={onRemove}
           disabled={isPending}
           accessibilityRole="button"
-          accessibilityLabel={`상품 ${item.productId} 삭제`}
+          accessibilityLabel={`${item.productName} 삭제`}
           accessibilityState={{ disabled: isPending }}
         >
           <Text style={styles.removeButtonText}>삭제</Text>
@@ -115,11 +116,8 @@ export default function CartScreen() {
   const isMutating =
     updateCartItem.isPending || removeCartItem.isPending || createGoodsOrder.isPending;
 
-  // 합계 계산 (상품 가격 정보가 CartItemDto에 없으므로 수량 합계만 표시)
-  const totalQuantity = useMemo(
-    () => cart?.items.reduce((acc, item) => acc + item.quantity, 0) ?? 0,
-    [cart]
-  );
+  // 합계는 BE 가 내려준 totalAmount 를 그대로 쓴다(서버 계산이 SSOT).
+  const totalAmountLabel = useMemo(() => formatCurrency(cart?.totalAmount ?? '0'), [cart]);
 
   const handleOrder = () => {
     if (!cart || cart.items.length === 0) {
@@ -244,7 +242,7 @@ export default function CartScreen() {
       {items.length > 0 && (
         <View style={styles.footer}>
           <Text style={styles.totalText} accessibilityRole="text">
-            총 {totalQuantity}개 상품
+            총 {totalAmountLabel}
           </Text>
           <TouchableOpacity
             style={[
@@ -320,13 +318,13 @@ const useStyles = createStyles((theme: ThemeTokens) =>
     itemInfo: {
       flex: 1,
     },
-    itemProductId: {
+    itemProductName: {
       fontSize: 15,
       fontWeight: '600',
       color: theme.textPrimary,
       marginBottom: 4,
     },
-    itemQuantityLabel: {
+    itemSubtotal: {
       fontSize: 13,
       color: theme.textMuted,
     },

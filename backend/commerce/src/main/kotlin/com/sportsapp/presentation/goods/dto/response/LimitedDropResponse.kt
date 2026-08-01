@@ -13,6 +13,8 @@ import java.time.ZonedDateTime
 data class LimitedDropResponse(
     val dropId: Long,
     val productId: Long,
+    val productName: String,
+    val productImageUrl: String,
     val status: LimitedDropStatus,
     val openAt: ZonedDateTime,
     val closeAt: ZonedDateTime,
@@ -25,6 +27,8 @@ data class LimitedDropResponse(
         fun of(view: LimitedDropView): LimitedDropResponse = LimitedDropResponse(
             dropId = view.dropId,
             productId = view.productId,
+            productName = view.productName,
+            productImageUrl = view.productImageUrl,
             status = view.status,
             openAt = view.openAt,
             closeAt = view.closeAt,

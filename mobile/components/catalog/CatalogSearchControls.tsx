@@ -1,6 +1,6 @@
 /**
  * CatalogSearchControls — 통합 검색 화면(`/catalog`) 상단의 검색 입력 + itemType/sellerType
- * 세그먼트 필터. 순수 프레젠테이션 컴포넌트로, 확정된 값 변경만 상위(CatalogScreen)로 콜백한다.
+ * 필터 칩. 순수 프레젠테이션 컴포넌트로, 확정된 값 변경만 상위(CatalogScreen)로 콜백한다.
  * 근거: FE-08 티켓, design-fe-app.md 와이어프레임 ①·컴포넌트 트리.
  *
  * 검색어는 300ms 디바운스 후 onKeywordChange를 호출한다(디바운스 로직은 useDebouncedValue로 분리
@@ -10,19 +10,19 @@
  * 색은 항상 useTheme() 토큰을 경유한다(하드코딩 색 없음).
  */
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import type { CatalogItemType, SellerType } from '../../api/catalog-types';
 import { useDebouncedValue } from '../../lib/useDebouncedValue';
 import { useTheme } from '../../theme/useTheme';
 import { ThemedText } from '../themed/ThemedText';
-import { SegmentedControl, type SegmentedControlOption } from '../ui/SegmentedControl';
+import { CatalogFilterChips, type CatalogFilterChipOption } from './CatalogFilterChips';
 
 const KEYWORD_DEBOUNCE_MS = 300;
 
 const ALL_VALUE = 'ALL';
 
-const ITEM_TYPE_OPTIONS: SegmentedControlOption[] = [
+const ITEM_TYPE_OPTIONS: CatalogFilterChipOption[] = [
   { label: '전체', value: ALL_VALUE },
   { label: '상품', value: 'PRODUCT' },
   { label: '한정판', value: 'LIMITED_DROP' },
@@ -31,7 +31,7 @@ const ITEM_TYPE_OPTIONS: SegmentedControlOption[] = [
   { label: '모집', value: 'RECRUITMENT' },
 ];
 
-const SELLER_TYPE_OPTIONS: SegmentedControlOption[] = [
+const SELLER_TYPE_OPTIONS: CatalogFilterChipOption[] = [
   { label: '전체', value: ALL_VALUE },
   { label: '중고', value: 'B2C' },
   { label: '브랜드', value: 'B2B' },
@@ -117,19 +117,19 @@ export function CatalogSearchControls({
         )}
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.segmentScroll}>
-        <SegmentedControl
-          options={ITEM_TYPE_OPTIONS}
-          value={itemType ?? ALL_VALUE}
-          onChange={handleItemTypeChange}
-        />
-      </ScrollView>
+      <CatalogFilterChips
+        options={ITEM_TYPE_OPTIONS}
+        value={itemType ?? ALL_VALUE}
+        onChange={handleItemTypeChange}
+        accessibilityLabel="상품 유형 필터"
+      />
 
       {itemType === 'PRODUCT' && (
-        <SegmentedControl
+        <CatalogFilterChips
           options={SELLER_TYPE_OPTIONS}
           value={sellerType ?? ALL_VALUE}
           onChange={handleSellerTypeChange}
+          accessibilityLabel="판매자 유형 필터"
         />
       )}
     </View>
@@ -162,8 +162,5 @@ const styles = StyleSheet.create({
   clearButton: {
     paddingLeft: 8,
     paddingVertical: 4,
-  },
-  segmentScroll: {
-    flexGrow: 0,
   },
 });

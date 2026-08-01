@@ -17,6 +17,8 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { createPayment, PaymentMethod, OrderType, PaymentStatus } from '../../api/payment';
+import { PaymentInfoError } from '../../components/payment/PaymentInfoError';
+import { parsePaymentAmount } from '../../lib/payment-amount';
 import { useTheme } from '../../theme/useTheme';
 import { createStyles } from '../../theme/createStyles';
 import type { ThemeTokens } from '../../theme/tokens';
@@ -160,7 +162,8 @@ export default function PaymentScreen() {
 
   const { orderType, orderId, amount: amountParam, method: methodParam } = params;
 
-  const parsedAmount = typeof amountParam === 'string' ? parseInt(amountParam, 10) : NaN;
+  // 금액이 확정되지 않은 진입은 0원을 렌더하지 않고 오류 상태로 보낸다.
+  const resolvedAmount = parsePaymentAmount(amountParam);
   const initialMethod =
     typeof methodParam === 'string' && METHOD_OPTIONS.some((o) => o.method === methodParam)
       ? (methodParam as PaymentMethod)
@@ -171,15 +174,10 @@ export default function PaymentScreen() {
   const [doneState, setDoneState] = useState<DoneState | null>(null);
 
   const handlePay = useCallback(async () => {
-    if (!selectedMethod) return;
+    if (!selectedMethod || resolvedAmount === null) return;
 
     if (!isValidOrderType(orderType)) {
       Alert.alert('오류', '유효하지 않은 주문 유형입니다.');
-      return;
-    }
-
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      Alert.alert('오류', '유효하지 않은 결제 금액입니다.');
       return;
     }
 
@@ -198,7 +196,7 @@ export default function PaymentScreen() {
           orderType,
           orderId: parsedOrderId,
           method: selectedMethod,
-          amount: parsedAmount,
+          amount: resolvedAmount,
           currency: 'KRW',
         },
         idempotencyKey
@@ -209,7 +207,7 @@ export default function PaymentScreen() {
       setDoneState({ status: 'FAILED', paymentId: 0 });
       setPhase('done');
     }
-  }, [selectedMethod, orderType, orderId, parsedAmount]);
+  }, [selectedMethod, orderType, orderId, resolvedAmount]);
 
   const handleRetry = useCallback(() => {
     setPhase('select');
@@ -219,6 +217,10 @@ export default function PaymentScreen() {
   const handleGoBack = useCallback(() => {
     router.back();
   }, [router]);
+
+  if (resolvedAmount === null) {
+    return <PaymentInfoError onGoBack={handleGoBack} />;
+  }
 
   if (phase === 'loading') {
     return (
@@ -235,7 +237,7 @@ export default function PaymentScreen() {
 
   return (
     <SelectPhase
-      amount={isNaN(parsedAmount) ? 0 : parsedAmount}
+      amount={resolvedAmount}
       selectedMethod={selectedMethod}
       onSelectMethod={setSelectedMethod}
       onPay={() => void handlePay()}

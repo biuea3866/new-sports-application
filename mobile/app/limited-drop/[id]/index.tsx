@@ -26,6 +26,9 @@ import { isFeatureEnabled } from '../../../lib/feature-flags';
 import { ROUTES } from '../../../lib/navigation';
 import { useLimitedDropDetail } from '../../../lib/useLimitedDropDetail';
 
+/** 상품명이 비어 있을 때 화면 제목이 사라지지 않도록 쓰는 기본 문구. */
+const FALLBACK_PRODUCT_NAME = '한정판 상품';
+
 export default function LimitedDropDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -75,6 +78,10 @@ export default function LimitedDropDetailScreen() {
         </TouchableOpacity>
 
         <DropStatusBadge status={drop.status} />
+
+        <ThemedText variant="primary" style={styles.productName} accessibilityRole="header">
+          {drop.productName?.trim() ? drop.productName : FALLBACK_PRODUCT_NAME}
+        </ThemedText>
 
         <ThemedView style={styles.heroSection}>
           {drop.status === 'SCHEDULED' && (
@@ -135,6 +142,11 @@ const styles = StyleSheet.create({
   },
   backButton: {
     paddingVertical: 12,
+  },
+  productName: {
+    marginTop: 12,
+    fontSize: 22,
+    fontWeight: '700',
   },
   heroSection: {
     paddingVertical: 24,

@@ -18,6 +18,7 @@ import { useEvent } from '../../../lib/useEvent';
 import { isFeatureEnabled } from '../../../lib/feature-flags';
 import { ROUTES } from '../../../lib/navigation';
 import type { SeatInfo, SectionAvailability } from '../../../api/types';
+import { formatSeatDescription, formatSeatLabel } from '../../../lib/seat-format';
 import { useTheme } from '../../../theme/useTheme';
 import { createStyles } from '../../../theme/createStyles';
 import type { ThemeTokens } from '../../../theme/tokens';
@@ -81,7 +82,7 @@ function SeatItem({ seat, selected, onToggle }: SeatItemProps) {
       ]}
       accessible={true}
       accessibilityRole="checkbox"
-      accessibilityLabel={`${seat.section}구역 ${seat.rowNo}열 ${seat.seatNo}번${isUnavailable ? ' 선점중' : ''}`}
+      accessibilityLabel={`${formatSeatDescription(seat.section, seat.rowNo, seat.seatNo)}${isUnavailable ? ' 선점중' : ''}`}
       accessibilityState={{ checked: selected, disabled: isUnavailable }}
       disabled={isUnavailable}
       onPress={() => onToggle(seat.id)}
@@ -93,7 +94,7 @@ function SeatItem({ seat, selected, onToggle }: SeatItemProps) {
           isUnavailable && styles.seatItemTextUnavailable,
         ]}
       >
-        {isUnavailable ? '선점중' : `${seat.section}-${seat.rowNo}-${seat.seatNo}`}
+        {isUnavailable ? '선점중' : formatSeatLabel(seat.section, seat.rowNo, seat.seatNo)}
       </Text>
     </Pressable>
   );

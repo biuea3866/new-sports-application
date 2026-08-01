@@ -4,7 +4,8 @@ import com.sportsapp.application.notification.dto.ListMyNotificationsCommand
 import com.sportsapp.application.notification.dto.NotificationPageResult
 import com.sportsapp.application.notification.usecase.ListMyNotificationsUseCase
 import com.sportsapp.domain.mcp.vo.McpAuthenticatedPrincipal
-import com.sportsapp.domain.notification.dto.NotificationResult
+import com.sportsapp.domain.notification.dto.NotificationView
+import com.sportsapp.domain.notification.vo.NotificationCategory
 import com.sportsapp.domain.mcp.vo.McpScope
 import com.sportsapp.domain.notification.vo.NotificationChannel
 import com.sportsapp.domain.notification.entity.NotificationStatus
@@ -31,18 +32,22 @@ class McpNotificationToolsTest : BehaviorSpec({
     val mcpAuditLogAsyncRecorder = mockk<McpAuditLogAsyncRecorder>(relaxed = true)
     val mcpNotificationTools = McpNotificationTools(listMyNotificationsUseCase, mcpAuditLogAsyncRecorder)
 
-    val notificationResult = NotificationResult(
+    val notificationView = NotificationView(
         id = 1L,
         userId = 42L,
+        title = "예약 확정",
+        content = "잠실 실내체육관 예약이 확정되었습니다.",
+        category = NotificationCategory.BOOKING,
         channel = NotificationChannel.IN_APP,
         templateId = "booking.confirmed",
         status = NotificationStatus.SENT,
+        isRead = false,
         sentAt = ZonedDateTime.now(),
         readAt = null,
         createdAt = ZonedDateTime.now(),
     )
     val pageResponse = NotificationPageResult(
-        content = listOf(notificationResult),
+        content = listOf(notificationView),
         totalElements = 1L,
         totalPages = 1,
         page = 0,

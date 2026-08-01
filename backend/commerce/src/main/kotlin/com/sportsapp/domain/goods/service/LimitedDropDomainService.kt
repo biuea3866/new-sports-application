@@ -5,6 +5,7 @@ import com.sportsapp.domain.common.exceptions.RedisLockException
 import com.sportsapp.domain.goods.dto.LimitedDropStats
 import com.sportsapp.domain.goods.dto.PurchaseLimitedDropCommand
 import com.sportsapp.domain.goods.entity.GoodsOrder
+import com.sportsapp.domain.goods.dto.ProductWithStock
 import com.sportsapp.domain.goods.entity.LimitedDrop
 import com.sportsapp.domain.goods.exception.LimitedDropNotFoundException
 import com.sportsapp.domain.goods.exception.LimitedDropPerUserLimitExceededException
@@ -88,13 +89,13 @@ class LimitedDropDomainService(
 
     /**
      * 회차 상세 조회(FR-9 인접 조회). Redis remaining이 시드되지 않았으면 null을 그대로 넘긴다.
-     * 가격은 연결된 상품에서 조회해 함께 반환한다(FE 재고비율 바·결제 amount 전달용).
+     * 연결된 상품(이름·이미지·가격)을 함께 반환한다 — 상세 화면이 productId 대신 사람이 읽는
+     * 이름을 노출하고 결제 amount 를 전달하기 위해 필요하다.
      */
-    fun getView(dropId: Long): Triple<LimitedDrop, Int?, BigDecimal> {
+    fun getView(dropId: Long): Triple<LimitedDrop, Int?, ProductWithStock> {
         val drop = findById(dropId)
         val remaining = dropReservationStore.remaining(dropId)
-        val price = goodsDomainService.getProductWithStock(drop.productId).price
-        return Triple(drop, remaining, price)
+        return Triple(drop, remaining, goodsDomainService.getProductWithStock(drop.productId))
     }
 
     /**
@@ -209,7 +210,7 @@ class LimitedDropDomainService(
         limitedQuantity: Int,
         perUserLimit: Int,
         ownerUserId: Long,
-    ): Pair<LimitedDrop, BigDecimal> {
+    ): Pair<LimitedDrop, ProductWithStock> {
         val productWithStock = goodsDomainService.getProductWithStock(productId)
         productWithStock.requireOwnedBy(ownerUserId)
         productWithStock.validateQuantityWithin(limitedQuantity)
@@ -223,7 +224,7 @@ class LimitedDropDomainService(
             )
         )
         seedReservationStore(saved)
-        return saved to productWithStock.price
+        return saved to productWithStock
     }
 
     private fun seedReservationStore(drop: LimitedDrop) {

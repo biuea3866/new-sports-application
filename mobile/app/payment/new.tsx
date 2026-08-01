@@ -32,6 +32,8 @@ import {
   OrderType,
   PaymentStatus,
 } from '../../api/payment';
+import { PaymentInfoError } from '../../components/payment/PaymentInfoError';
+import { parsePaymentAmount } from '../../lib/payment-amount';
 import { useTheme } from '../../theme/useTheme';
 import { createStyles } from '../../theme/createStyles';
 import type { ThemeTokens } from '../../theme/tokens';
@@ -206,7 +208,8 @@ export default function PaymentNewScreen() {
     checkoutUrl: checkoutUrlParam,
   } = params;
 
-  const parsedAmount = typeof amountParam === 'string' ? parseInt(amountParam, 10) : NaN;
+  // 금액이 확정되지 않은 진입은 0원을 렌더하지 않고 오류 상태로 보낸다.
+  const resolvedAmount = parsePaymentAmount(amountParam);
   const resolvedItemName = typeof itemNameParam === 'string' ? itemNameParam : '주문 상품';
 
   // "pre-issued" 모드 — 서버가 신청과 동시에 결제를 이미 prepare한 상태(모집 신청 등)로
@@ -227,15 +230,10 @@ export default function PaymentNewScreen() {
   const hasTriggeredPreIssuedRef = useRef(false);
 
   const handlePay = useCallback(async () => {
-    if (!selectedMethod) return;
+    if (!selectedMethod || resolvedAmount === null) return;
 
     if (!isValidOrderType(orderType)) {
       Alert.alert('오류', '유효하지 않은 주문 유형입니다.');
-      return;
-    }
-
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      Alert.alert('오류', '유효하지 않은 결제 금액입니다.');
       return;
     }
 
@@ -256,7 +254,7 @@ export default function PaymentNewScreen() {
           orderType,
           orderId: parsedOrderId,
           method: selectedMethod,
-          amount: parsedAmount,
+          amount: resolvedAmount,
           currency: 'KRW',
           itemName: resolvedItemName,
           returnUrl: appScheme,
@@ -276,7 +274,7 @@ export default function PaymentNewScreen() {
       setDoneState({ status: 'FAILED', paymentId: 0 });
       setPhase('done');
     }
-  }, [selectedMethod, orderType, orderId, parsedAmount, resolvedItemName]);
+  }, [selectedMethod, orderType, orderId, resolvedAmount, resolvedItemName]);
 
   const handlePreIssuedPay = useCallback(async () => {
     if (Number.isNaN(preIssuedPaymentId) || preIssuedCheckoutUrl.length === 0) {
@@ -320,6 +318,11 @@ export default function PaymentNewScreen() {
     router.back();
   }, [router]);
 
+  // pre-issued 모드는 서버가 이미 확정한 결제를 이어받으므로 amount 파라미터를 요구하지 않는다.
+  if (!isPreIssued && resolvedAmount === null) {
+    return <PaymentInfoError onGoBack={handleGoBack} />;
+  }
+
   if (phase === 'loading') {
     return (
       <View style={styles.centered} accessibilityLabel="결제 처리 중">
@@ -335,7 +338,7 @@ export default function PaymentNewScreen() {
 
   return (
     <SelectPhase
-      amount={isNaN(parsedAmount) ? 0 : parsedAmount}
+      amount={resolvedAmount ?? 0}
       selectedMethod={selectedMethod}
       onSelectMethod={setSelectedMethod}
       onPay={() => void handlePay()}
