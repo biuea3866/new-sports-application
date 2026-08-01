@@ -33,6 +33,7 @@ const useCancelApplicationMock = useCancelApplication as jest.MockedFunction<
 const PENDING_APPLICATION: ApplicationResponse = {
   id: 100,
   recruitmentId: 1,
+  applicantUserId: 71,
   status: 'PENDING',
   paymentId: 200,
   appliedAt: '2026-07-06T00:00:00+09:00',
@@ -41,6 +42,7 @@ const PENDING_APPLICATION: ApplicationResponse = {
 const REFUNDED_APPLICATION: ApplicationResponse = {
   id: 101,
   recruitmentId: 2,
+  applicantUserId: 71,
   status: 'REFUNDED',
   paymentId: 201,
   appliedAt: '2026-07-01T00:00:00+09:00',

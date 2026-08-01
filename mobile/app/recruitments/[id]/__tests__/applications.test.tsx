@@ -42,6 +42,7 @@ function mockApplications(overrides: Partial<ReturnType<typeof useApplications>>
 const APPLICATION: ApplicationResponse = {
   id: 100,
   recruitmentId: 1,
+  applicantUserId: 71,
   status: 'CONFIRMED',
   paymentId: 200,
   appliedAt: '2026-07-08T00:00:00+09:00',
@@ -57,13 +58,22 @@ describe('RecruitmentApplicationsScreen', () => {
     jest.clearAllMocks();
   });
 
-  it('신청자 목록이 렌더된다', () => {
+  it('신청 행 PK가 아니라 신청자를 식별해 렌더된다', () => {
     mockApplications({ data: [APPLICATION] });
 
     render(<RecruitmentApplicationsScreen />);
 
-    expect(screen.getByText(/신청 #100/)).toBeTruthy();
+    expect(screen.getByText('신청자 #71')).toBeTruthy();
+    expect(screen.queryByText(/신청 #100/)).toBeNull();
     expect(screen.getByText(/확정/)).toBeTruthy();
+  });
+
+  it('신청 시각에 초 단위를 노출하지 않는다', () => {
+    mockApplications({ data: [APPLICATION] });
+
+    render(<RecruitmentApplicationsScreen />);
+
+    expect(screen.queryByText(/\d{1,2}:\d{2}:\d{2}/)).toBeNull();
   });
 
   it('신청자가 0명이면 빈 상태가 렌더된다(정상)', () => {
@@ -90,6 +100,6 @@ describe('RecruitmentApplicationsScreen', () => {
 
     render(<RecruitmentApplicationsScreen />);
 
-    expect(screen.getByText(/신청 #100/)).toBeTruthy();
+    expect(screen.getByText('신청자 #71')).toBeTruthy();
   });
 });

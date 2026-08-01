@@ -8,9 +8,12 @@
  * 거절/수락 성공 시 로컬에서 즉시 카드를 제거해 목록을 최신 상태로 보여준다
  * (수신함 재조회 전에도 사용자가 결과를 즉시 확인할 수 있도록 함).
  *
- * InvitationResponse에는 방 이름·초대자 이름이 없어(roomId/inviterUserId만 보유),
- * 와이어프레임의 "주말 축구 모임 · 초대자: 김철수" 대신 식별자 기반 표기(`방 #{roomId}`,
- * `초대자 #{inviterUserId}`)로 대체한다 — 이름 해석 API가 계약에 없어 발생한 알려진 차이(open item).
+ * 방 이름은 `InvitationResponse.roomName`(BE가 함께 내려준다)을 쓰고, 이름이 없는 방은
+ * 방 종류 기본 이름(`lib/room-format`)으로 대체한다 — 방 PK(`방 #53`)를 노출하지 않는다.
+ *
+ * 초대자는 여전히 `초대자 #{inviterUserId}`로 표기한다 — 시스템 전체에 사용자 표시 이름
+ * 필드가 없다(`User` 엔티티는 email/passwordHash/status만 보유). 표시 이름 도입은 users
+ * 스키마 + 컨텍스트 간 조회 경로가 필요한 별도 과제다(open item).
  */
 import { useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
@@ -29,6 +32,7 @@ import {
   useRejectInvitation,
 } from '../../lib/useInvitations';
 import { formatExpiryDDay, formatSpeakPermissionLabel } from '../../lib/invitationPresentation';
+import { resolveRoomDisplayName } from '../../lib/room-format';
 import { ROUTES } from '../../lib/navigation';
 import type { InvitationResponse } from '../../api/chat-types';
 
@@ -76,7 +80,7 @@ function InvitationCard({ invitation, onRemove }: InvitationCardProps) {
   return (
     <Card testID={`invitation-card-${invitation.id}`} style={styles.card}>
       <ThemedText variant="primary" style={styles.roomLabel}>
-        {`방 #${invitation.roomId}`}
+        {resolveRoomDisplayName({ name: invitation.roomName, type: 'GROUP' })}
       </ThemedText>
       <ThemedText variant="secondary" style={styles.metaLine}>
         {`${formatSpeakPermissionLabel(invitation.canSpeak)} · ${formatExpiryDDay(invitation.expiresAt)}`}

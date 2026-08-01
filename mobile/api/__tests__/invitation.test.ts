@@ -28,6 +28,7 @@ const mockedGetBeClient = jest.mocked(getBeClient);
 const mockInvitation: InvitationResponse = {
   id: 10,
   roomId: 1,
+  roomName: '테스트 채팅방',
   inviterUserId: 42,
   inviteeUserId: 7,
   status: 'PENDING',

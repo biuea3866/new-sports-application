@@ -53,6 +53,7 @@ function buildInvitation(overrides: Partial<InvitationResponse> = {}): Invitatio
   return {
     id: 1,
     roomId: 10,
+    roomName: '강남 새벽 러닝크루',
     inviterUserId: 7,
     inviteeUserId: 99,
     status: 'PENDING',
@@ -83,6 +84,34 @@ describe('MyInvitationsScreen', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('방 PK 대신 방 이름을 표시한다', () => {
+    mockMyInvitations({ data: [buildInvitation({ id: 1, roomId: 53 })] });
+
+    render(<MyInvitationsScreen />);
+
+    expect(screen.getByText('강남 새벽 러닝크루')).toBeTruthy();
+    expect(screen.queryByText('방 #53')).toBeNull();
+  });
+
+  it('방 이름이 없으면 방 종류 기본 이름으로 표시한다', () => {
+    mockMyInvitations({ data: [buildInvitation({ id: 1, roomId: 53, roomName: null })] });
+
+    render(<MyInvitationsScreen />);
+
+    expect(screen.getByText('그룹 채팅')).toBeTruthy();
+    expect(screen.queryByText('방 #53')).toBeNull();
+  });
+
+  // "발화"는 게스트 초대 맥락에 등장할 이유가 없는 용어다.
+  it('대화 권한을 사용자 언어로 표기한다', () => {
+    mockMyInvitations({ data: [buildInvitation({ id: 1, canSpeak: true })] });
+
+    render(<MyInvitationsScreen />);
+
+    expect(screen.queryByText(/발화/)).toBeNull();
+    expect(screen.getByText(/대화 참여 가능/)).toBeTruthy();
   });
 
   it('수신함이 비면 빈 상태 문구가 렌더된다', () => {

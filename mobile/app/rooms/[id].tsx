@@ -18,7 +18,8 @@ import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, View } from 'reac
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AxiosError } from 'axios';
 
-import { useMessages } from '../../lib/useRooms';
+import { useMessages, useRoom } from '../../lib/useRooms';
+import { resolveRoomDisplayName } from '../../lib/room-format';
 import { useChatSocket } from '../../lib/useChatSocket';
 import { isFeatureEnabled } from '../../lib/feature-flags';
 import { useMarkRead } from '../../lib/useChat';
@@ -72,6 +73,8 @@ export default function RoomChatScreen() {
   const myUserId = profile?.id ?? null;
 
   const { data, isLoading, isError, error, refetch } = useMessages(roomId);
+  const { data: room } = useRoom(roomId);
+  const roomTitle = resolveRoomDisplayName(room);
   const { mutate: markRead } = useMarkRead();
 
   const [lastTypingAt, setLastTypingAt] = useState<number | null>(null);
@@ -151,7 +154,7 @@ export default function RoomChatScreen() {
   if (isLoading) {
     return (
       <ThemedView style={styles.container}>
-        <ScreenHeader title="채팅" onBack={() => router.back()} />
+        <ScreenHeader title={roomTitle} onBack={() => router.back()} />
         <LoadingView variant="skeleton" />
       </ThemedView>
     );
@@ -161,7 +164,7 @@ export default function RoomChatScreen() {
     if (isGuestEvictedError(error)) {
       return (
         <ThemedView style={styles.container}>
-          <ScreenHeader title="채팅" onBack={() => router.back()} />
+          <ScreenHeader title={roomTitle} onBack={() => router.back()} />
           <ThemedView style={styles.centered} accessibilityLabel="게스트 참여 만료">
             <ThemedText variant="primary" style={styles.evictedMessage} accessibilityRole="alert">
               참여 기간이 만료되어 대화를 볼 수 없어요
@@ -173,7 +176,7 @@ export default function RoomChatScreen() {
     }
     return (
       <ThemedView style={styles.container}>
-        <ScreenHeader title="채팅" onBack={() => router.back()} />
+        <ScreenHeader title={roomTitle} onBack={() => router.back()} />
         <ErrorView message="메시지를 불러오지 못했어요" onRetry={() => void refetch()} />
       </ThemedView>
     );
@@ -186,7 +189,7 @@ export default function RoomChatScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <ThemedView background="background" style={styles.container}>
-        <ScreenHeader title="채팅" onBack={() => router.back()} />
+        <ScreenHeader title={roomTitle} onBack={() => router.back()} />
         {isRealtimeEnabled ? (
           <ConnectionBanner isConnected={isConnected} pollingFallback={pollingFallback} />
         ) : null}
@@ -197,8 +200,14 @@ export default function RoomChatScreen() {
           {messages.length === 0 ? (
             <EmptyState message="첫 메시지를 보내보세요" />
           ) : (
+            /*
+             * BE는 `GET /rooms/{id}/messages`를 createdAt DESC(최신 우선)로 응답한다
+             * (MessageCustomRepositoryImpl#findByCursor). inverted 리스트는 data[0]을 화면
+             * 최하단에 렌더하므로 응답 순서를 그대로 넘겨야 "위=과거, 아래=최신"이 된다 —
+             * 여기서 reverse()하면 순서가 뒤집혀 최신 메시지가 맨 위로 올라간다.
+             */
             <FlatList
-              data={[...messages].reverse()}
+              data={messages}
               keyExtractor={(item: MessageResponse) => String(item.id)}
               renderItem={({ item }) => (
                 <MessageBubble

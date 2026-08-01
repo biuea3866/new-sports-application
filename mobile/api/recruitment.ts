@@ -45,6 +45,8 @@ export interface CreateRecruitmentRequest {
 export interface ApplicationResponse {
   id: number;
   recruitmentId: number;
+  /** 신청자 사용자 ID — 신청자 목록(개설자 전용)이 "누가 신청했는가"를 표시하는 데 쓴다. */
+  applicantUserId: number;
   status: ApplicationStatus;
   paymentId: number | null;
   appliedAt: string;

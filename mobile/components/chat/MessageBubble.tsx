@@ -49,7 +49,14 @@ export function MessageBubble({ message, isMine, isRead }: MessageBubbleProps) {
           {isMine && isRead ? (
             <Text style={[styles.meta, { color: tokens.success }]}>읽음</Text>
           ) : null}
-          <Text style={[styles.meta, { color: tokens.textTertiary }]}>
+          {/*
+            시각은 말풍선 배경 위에 얹히므로 배경과 짝이 맞는 텍스트 토큰을 쓴다.
+            공용 textTertiary를 쓰면 accent 계열인 내 말풍선 위에서 대비가 무너진다.
+          */}
+          <Text
+            testID="message-sent-time"
+            style={[styles.meta, styles.metaOnBubble, { color: bubbleTextColor }]}
+          >
             {formatSentTime(message.sentAt)}
           </Text>
         </View>
@@ -87,5 +94,9 @@ const styles = StyleSheet.create({
   },
   meta: {
     fontSize: 11,
+  },
+  /** 본문(15pt)과 위계를 유지하면서도 배경 위에서 읽히도록 살짝 낮춘 투명도. */
+  metaOnBubble: {
+    opacity: 0.75,
   },
 });

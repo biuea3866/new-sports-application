@@ -12,8 +12,12 @@
 const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24;
 const REUSED_THRESHOLD_MILLISECONDS = 3000;
 
+/**
+ * 대화 권한 라벨. "발화"는 게스트 초대 맥락에 등장할 이유가 없는 용어라
+ * 사용자가 바로 이해하는 표현으로 표기한다.
+ */
 export function formatSpeakPermissionLabel(canSpeak: boolean): string {
-  return canSpeak ? '발화 가능' : '읽기 전용';
+  return canSpeak ? '대화 참여 가능' : '읽기 전용';
 }
 
 export function formatExpiryDDay(expiresAt: string, now: Date = new Date()): string {

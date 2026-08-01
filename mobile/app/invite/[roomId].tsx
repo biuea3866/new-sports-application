@@ -23,7 +23,7 @@ import { isReusedPendingInvitation } from '../../lib/invitationPresentation';
 import type { InvitationResponse } from '../../api/chat-types';
 
 const SPEAK_PERMISSION_OPTIONS = [
-  { label: '발화 가능', value: 'true' },
+  { label: '대화 참여 가능', value: 'true' },
   { label: '읽기 전용', value: 'false' },
 ];
 
@@ -120,7 +120,7 @@ export default function InviteGuestScreen() {
 
       <View style={styles.field}>
         <ThemedText variant="secondary" style={styles.label}>
-          발화 권한
+          대화 권한
         </ThemedText>
         <SegmentedControl
           options={SPEAK_PERMISSION_OPTIONS}

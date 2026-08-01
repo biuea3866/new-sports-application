@@ -191,6 +191,7 @@ describe('useApplications', () => {
       {
         id: 100,
         recruitmentId: 1,
+        applicantUserId: 71,
         status: 'CONFIRMED',
         paymentId: 200,
         appliedAt: '2026-07-08T00:00:00Z',
@@ -271,6 +272,7 @@ describe('useMyApplications', () => {
       {
         id: 100,
         recruitmentId: 1,
+        applicantUserId: 71,
         status: 'PENDING',
         paymentId: 200,
         appliedAt: '2026-07-08T00:00:00Z',
@@ -293,6 +295,7 @@ describe('useCancelApplication', () => {
     cancelApplicationMock.mockResolvedValue({
       id: 100,
       recruitmentId: 1,
+      applicantUserId: 71,
       status: 'CANCELLED',
       paymentId: 200,
       appliedAt: '2026-07-08T00:00:00Z',

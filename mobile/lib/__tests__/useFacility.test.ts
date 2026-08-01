@@ -14,10 +14,10 @@ describe('Facility API hooks (via raw client)', () => {
   afterEach(() => mock.reset());
 
   const mockFacility: FacilityResponse = {
-    id: 10,
+    id: 'fac-010',
     name: '서초 실내 체육관',
     gu: '서초구',
-    type: 'INDOOR',
+    type: '체육관',
     address: '서울 서초구 반포대로 1',
     parking: false,
     tel: '02-9876-5432',
@@ -39,14 +39,14 @@ describe('Facility API hooks (via raw client)', () => {
   };
 
   describe('U-02: GET /facilities 응답 검증', () => {
-    it('type=INDOOR 파라미터로 호출 시 시설 목록을 반환한다', async () => {
+    it('type 파라미터로 호출 시 시설 목록을 반환한다', async () => {
       mock.onGet('/facilities').reply(200, mockPage);
 
       const res = await client.get<FacilityPageResponse>('/facilities', {
-        params: { type: 'INDOOR', page: 0, size: 50 },
+        params: { type: '체육관', page: 0, size: 50 },
       });
 
-      expect(res.data.content[0].type).toBe('INDOOR');
+      expect(res.data.content[0].type).toBe('체육관');
       expect(res.data.content[0].parking).toBe(false);
     });
 
@@ -64,7 +64,7 @@ describe('Facility API hooks (via raw client)', () => {
 
       const res = await client.get<FacilityResponse>('/facilities/10');
 
-      expect(res.data.id).toBe(10);
+      expect(res.data.id).toBe('fac-010');
       expect(res.data.name).toBe('서초 실내 체육관');
       expect(res.data.gu).toBe('서초구');
       expect(res.data.address).toBe('서울 서초구 반포대로 1');

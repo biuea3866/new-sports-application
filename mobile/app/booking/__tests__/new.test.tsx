@@ -54,10 +54,10 @@ const baseSlot: SlotResponse = {
 } as SlotResponse;
 
 const baseFacility: FacilityResponse = {
-  id: 1,
+  id: 'fac-001',
   name: '테스트 체육관',
   gu: '강남구',
-  type: 'INDOOR',
+  type: '체육관',
   address: '서울시 강남구',
   parking: true,
   tel: '02-1234-5678',

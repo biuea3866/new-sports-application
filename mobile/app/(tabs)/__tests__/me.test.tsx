@@ -42,6 +42,16 @@ interface MockAuthState {
   logout: () => Promise<void>;
 }
 
+/** 테스트용 JWT — 서명 검증은 하지 않고 payload만 디코딩되므로 base64url payload면 충분하다. */
+function buildAccessToken(payload: Record<string, unknown>): string {
+  const encoded = Buffer.from(JSON.stringify(payload), 'utf-8')
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+  return `header.${encoded}.signature`;
+}
+
 function mockAuthState(overrides: Partial<MockAuthState> = {}): void {
   const state: MockAuthState = {
     accessToken: null,
@@ -153,5 +163,33 @@ describe('마이 화면 — 내 정보 표시', () => {
     render(<MeScreen />);
 
     expect(screen.getAllByText('정보를 불러오지 못했어요').length).toBeGreaterThan(0);
+  });
+
+  it('역할을 영문 enum 원문이 아니라 한글로 표시한다', () => {
+    mockAuthState({ accessToken: null });
+    useMyProfileMock.mockReturnValue({ data: profile, isLoading: false, isError: false });
+
+    render(<MeScreen />);
+
+    expect(screen.getByText('일반 회원')).toBeTruthy();
+    expect(screen.queryByText('USER')).toBeNull();
+  });
+
+  it('여러 역할을 가지면 한글 라벨을 이어서 표시한다', () => {
+    mockAuthState({ accessToken: buildAccessToken({ roles: ['USER', 'FACILITY_OWNER'] }) });
+    useMyProfileMock.mockReturnValue({ data: profile, isLoading: false, isError: false });
+
+    render(<MeScreen />);
+
+    expect(screen.getByText('일반 회원, 시설 운영자')).toBeTruthy();
+  });
+
+  it('알 수 없는 역할 값은 원문 그대로 보여준다(정보 손실 방지)', () => {
+    mockAuthState({ accessToken: buildAccessToken({ roles: ['NEW_ROLE'] }) });
+    useMyProfileMock.mockReturnValue({ data: profile, isLoading: false, isError: false });
+
+    render(<MeScreen />);
+
+    expect(screen.getByText('NEW_ROLE')).toBeTruthy();
   });
 });

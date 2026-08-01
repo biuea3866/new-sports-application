@@ -77,6 +77,7 @@ describe('FacilityMap(웹) — Leaflet 기반 지도', () => {
   beforeEach(() => {
     mockUseColorScheme.mockReturnValue('light');
     markerMock.mockClear();
+    (L.tileLayer as unknown as jest.Mock).mockClear();
   });
 
   it('시설 개수만큼 마커를 생성한다', () => {
@@ -89,6 +90,35 @@ describe('FacilityMap(웹) — Leaflet 기반 지도', () => {
     );
 
     expect(createdMarkers()).toHaveLength(FACILITIES.length);
+  });
+
+  // 지도 타일도 화면의 일부다 — 다크 모드에서 밝은 OSM 타일만 쓰면 화면이 반반으로 갈린다.
+  it('라이트 모드에서는 라이트 타일을 사용한다', () => {
+    render(
+      <FacilityMap
+        facilities={FACILITIES}
+        center={{ lat: 37.4979, lng: 127.0276 }}
+        onMarkerPress={jest.fn()}
+      />
+    );
+
+    const tileUrl = (L.tileLayer as unknown as jest.Mock).mock.calls[0][0] as string;
+    expect(tileUrl).toContain('light_all');
+  });
+
+  it('다크 모드에서는 다크 타일을 사용한다', () => {
+    mockUseColorScheme.mockReturnValue('dark');
+
+    render(
+      <FacilityMap
+        facilities={FACILITIES}
+        center={{ lat: 37.4979, lng: 127.0276 }}
+        onMarkerPress={jest.fn()}
+      />
+    );
+
+    const tileUrl = (L.tileLayer as unknown as jest.Mock).mock.calls[0][0] as string;
+    expect(tileUrl).toContain('dark_all');
   });
 
   it('마커 클릭 시 onMarkerPress에 시설 id를 전달한다', () => {

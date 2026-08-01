@@ -85,12 +85,18 @@ describe('mapRoomsToListItems', () => {
     expect(items[0].unreadCount).toBe(0);
   });
 
-  it('이름이 없는 DIRECT 방은 "1:1 채팅"으로, 미리보기·시각이 없으면 null로 채워진다', () => {
+  it('이름이 없는 DIRECT 방은 "1:1 채팅"으로, 시각이 없으면 null로 채워진다', () => {
     const items = mapRoomsToListItems([directRoomWithoutName], []);
 
     expect(items[0].displayName).toBe('1:1 채팅');
-    expect(items[0].previewText).toBeNull();
     expect(items[0].timeLabel).toBeNull();
+  });
+
+  // 미리보기가 비면 행이 제목만 남아 렌더 실패처럼 보인다 — 상태를 문구로 드러낸다.
+  it('아직 대화가 없는 방은 미리보기 자리에 안내 문구가 채워진다', () => {
+    const items = mapRoomsToListItems([directRoomWithoutName], []);
+
+    expect(items[0].previewText).toBe('아직 대화가 없어요');
   });
 });
 

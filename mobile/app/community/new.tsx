@@ -76,86 +76,106 @@ export default function CommunityNewScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ThemedView style={styles.header} background="background">
-        <Pressable
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel="뒤로 가기"
-        >
-          <ThemedText variant="secondary" style={styles.cancelText}>
-            취소
-          </ThemedText>
-        </Pressable>
-        <ThemedText variant="primary" style={styles.headerTitle} accessibilityRole="header">
-          게시글 작성
-        </ThemedText>
-        <Pressable
-          onPress={handleSubmit}
-          disabled={isSubmitDisabled}
-          accessibilityRole="button"
-          accessibilityLabel="게시글 등록"
-          accessibilityState={{ disabled: isSubmitDisabled, busy: isPending }}
-        >
-          <ThemedText variant={isSubmitDisabled ? 'muted' : 'accent'} style={styles.submitText}>
-            {isPending ? '등록 중' : '등록'}
-          </ThemedText>
-        </Pressable>
-      </ThemedView>
-
-      <ScrollView style={styles.body} keyboardShouldPersistTaps="handled">
-        {errorMessage !== null && (
-          <ThemedText
-            variant="danger"
-            style={styles.errorText}
-            accessibilityRole="alert"
-            accessibilityLabel={errorMessage}
+      <ThemedView
+        testID="community-new-screen-root"
+        style={styles.container}
+        background="background"
+      >
+        <ThemedView style={styles.header} background="background">
+          <Pressable
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="뒤로 가기"
           >
-            {errorMessage}
-          </ThemedText>
-        )}
-
-        {!isCommunityPost && (
-          <View style={styles.fieldGroup}>
-            <ThemedText variant="secondary" style={styles.label}>
-              종목(선택)
+            <ThemedText variant="secondary" style={styles.cancelText}>
+              취소
             </ThemedText>
-            <SportCategoryChips selected={sportCategory} onSelect={setSportCategory} />
+          </Pressable>
+          <ThemedText variant="primary" style={styles.headerTitle} accessibilityRole="header">
+            게시글 작성
+          </ThemedText>
+          <Pressable
+            onPress={handleSubmit}
+            disabled={isSubmitDisabled}
+            accessibilityRole="button"
+            accessibilityLabel="게시글 등록"
+            accessibilityState={{ disabled: isSubmitDisabled, busy: isPending }}
+          >
+            <ThemedText variant={isSubmitDisabled ? 'muted' : 'accent'} style={styles.submitText}>
+              {isPending ? '등록 중' : '등록'}
+            </ThemedText>
+          </Pressable>
+        </ThemedView>
+
+        <ScrollView style={styles.body} keyboardShouldPersistTaps="handled">
+          {errorMessage !== null && (
+            <ThemedText
+              variant="danger"
+              style={styles.errorText}
+              accessibilityRole="alert"
+              accessibilityLabel={errorMessage}
+            >
+              {errorMessage}
+            </ThemedText>
+          )}
+
+          {!isCommunityPost && (
+            <View style={styles.fieldGroup}>
+              <ThemedText variant="secondary" style={styles.label}>
+                종목(선택)
+              </ThemedText>
+              <SportCategoryChips selected={sportCategory} onSelect={setSportCategory} />
+            </View>
+          )}
+
+          <View style={styles.fieldGroup}>
+            <ThemedText nativeID="titleLabel" variant="secondary" style={styles.label}>
+              제목 *
+            </ThemedText>
+            <TextInput
+              style={[
+                styles.titleInput,
+                {
+                  borderColor: tokens.border,
+                  color: tokens.textPrimary,
+                  backgroundColor: tokens.surfaceElevated,
+                },
+              ]}
+              value={title}
+              onChangeText={setTitle}
+              placeholder="제목을 입력하세요"
+              placeholderTextColor={tokens.textTertiary}
+              maxLength={200}
+              accessibilityLabel="제목 입력"
+              returnKeyType="next"
+            />
           </View>
-        )}
 
-        <View style={styles.fieldGroup}>
-          <ThemedText nativeID="titleLabel" variant="secondary" style={styles.label}>
-            제목 *
-          </ThemedText>
-          <TextInput
-            style={[styles.titleInput, { borderColor: tokens.border, color: tokens.textPrimary }]}
-            value={title}
-            onChangeText={setTitle}
-            placeholder="제목을 입력하세요"
-            placeholderTextColor={tokens.textTertiary}
-            maxLength={200}
-            accessibilityLabel="제목 입력"
-            returnKeyType="next"
-          />
-        </View>
-
-        <View style={styles.fieldGroup}>
-          <ThemedText nativeID="contentLabel" variant="secondary" style={styles.label}>
-            내용 *
-          </ThemedText>
-          <TextInput
-            style={[styles.contentInput, { borderColor: tokens.border, color: tokens.textPrimary }]}
-            value={content}
-            onChangeText={setContent}
-            placeholder="내용을 입력하세요"
-            placeholderTextColor={tokens.textTertiary}
-            maxLength={10000}
-            multiline
-            textAlignVertical="top"
-            accessibilityLabel="내용 입력"
-          />
-        </View>
-      </ScrollView>
+          <View style={styles.fieldGroup}>
+            <ThemedText nativeID="contentLabel" variant="secondary" style={styles.label}>
+              내용 *
+            </ThemedText>
+            <TextInput
+              style={[
+                styles.contentInput,
+                {
+                  borderColor: tokens.border,
+                  color: tokens.textPrimary,
+                  backgroundColor: tokens.surfaceElevated,
+                },
+              ]}
+              value={content}
+              onChangeText={setContent}
+              placeholder="내용을 입력하세요"
+              placeholderTextColor={tokens.textTertiary}
+              maxLength={10000}
+              multiline
+              textAlignVertical="top"
+              accessibilityLabel="내용 입력"
+            />
+          </View>
+        </ScrollView>
+      </ThemedView>
     </KeyboardAvoidingView>
   );
 }

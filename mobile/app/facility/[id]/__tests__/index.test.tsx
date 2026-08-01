@@ -54,10 +54,10 @@ const useLocalSearchParamsMock = useLocalSearchParams as jest.MockedFunction<
 const routerPushMock = router.push as jest.MockedFunction<typeof router.push>;
 
 const BASE_FACILITY: FacilityResponse = {
-  id: 1,
+  id: 'fac-001',
   name: '한강 축구장',
   gu: '광진구',
-  type: 'OUTDOOR',
+  type: '풋살장',
   address: '서울 광진구 자양동 123',
   parking: true,
   tel: '02-1234-5678',
@@ -129,6 +129,24 @@ describe('FacilityDetailScreen', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  // BE `Facility.type`은 enum이 아니라 자유 문자열(공공데이터 시설 종류: 풋살장·수영장…)이다.
+  // FE가 이를 INDOOR/OUTDOOR/MIXED enum으로 가정해 매핑하면 "타입" 값이 통째로 비어버린다.
+  it('시설 종류를 BE가 내려준 값 그대로 표시한다', () => {
+    mockFacilityDetail({ data: BASE_FACILITY });
+
+    render(<FacilityDetailScreen />);
+
+    expect(screen.getByText('풋살장')).toBeTruthy();
+  });
+
+  it('시설 종류가 비어 있으면 대체 문구를 표시한다', () => {
+    mockFacilityDetail({ data: { ...BASE_FACILITY, type: '' } });
+
+    render(<FacilityDetailScreen />);
+
+    expect(screen.getByText('정보 없음')).toBeTruthy();
   });
 
   it('시/도명이 있으면 시/도 정보가 표시된다', () => {

@@ -9,8 +9,9 @@ import { Card, ThemedText } from '../ui';
 import { useTheme } from '../../theme/useTheme';
 import {
   RECRUITMENT_STATUS_LABEL,
-  formatDeadlineDday,
+  formatDeadlineSummary,
   formatFeeAmount,
+  resolveRecruitmentDisplayStatus,
 } from '../../lib/recruitment-format';
 
 export interface RecruitmentCardProps {
@@ -20,11 +21,12 @@ export interface RecruitmentCardProps {
 
 export function RecruitmentCard({ recruitment, onPress }: RecruitmentCardProps) {
   const { tokens } = useTheme();
-  const statusLabel = RECRUITMENT_STATUS_LABEL[recruitment.status];
-  const badgeColor = recruitment.status === 'OPEN' ? tokens.success : tokens.disabled;
+  const displayStatus = resolveRecruitmentDisplayStatus(recruitment);
+  const statusLabel = RECRUITMENT_STATUS_LABEL[displayStatus];
+  const badgeColor = displayStatus === 'OPEN' ? tokens.success : tokens.disabled;
   const metaLine = `정원 ${recruitment.capacity} · ${formatFeeAmount(
     recruitment.feeAmount
-  )} · ${formatDeadlineDday(recruitment.applicationDeadline)} 마감`;
+  )} · ${formatDeadlineSummary(recruitment.applicationDeadline)}`;
 
   return (
     <Card

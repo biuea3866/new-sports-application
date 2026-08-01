@@ -20,6 +20,17 @@ const DEFAULT_ZOOM = 14;
 const MAP_HEIGHT = 220;
 
 /**
+ * 지도 타일도 화면의 일부라 라이트/다크 두 벌이 필요하다(no-single-mode).
+ * OSM 표준 타일은 밝은 톤뿐이라 다크 화면에서 지도만 하얗게 뜬다 — 라이트/다크 두 벌을
+ * 제공하는 CARTO Basemaps(OSM 데이터 기반, 무료·API 키 불필요)를 사용한다.
+ */
+const TILE_URL_BY_SCHEME = {
+  light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+  dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+} as const;
+const TILE_ATTRIBUTION = '&copy; OpenStreetMap contributors &copy; CARTO';
+
+/**
  * leaflet/dist/leaflet.css의 기본 마커 아이콘은 상대 경로 CSS `url(images/marker-icon.png)`로
  * 참조된다. Metro 웹 번들은 CSS 안의 로컬 리소스 import를 지원하지 않아("Importing local
  * resources in CSS is not supported yet") 이 아이콘이 깨진 이미지로 렌더된다. 설치된
@@ -67,7 +78,7 @@ function loadLeaflet(): LeafletModule {
 }
 
 export function FacilityMap({ facilities, center, onMarkerPress }: FacilityMapProps) {
-  const { tokens } = useTheme();
+  const { tokens, scheme } = useTheme();
   // Leaflet은 DOM id 문자열로 컨테이너를 찾는다(L.map(id)) — ref 콜백 대신 id를 쓰면
   // "커밋 이후에만 존재하는 실 DOM 노드"에 대한 의존을 없애 테스트 환경(react-test-renderer는
   // 호스트 컴포넌트 ref를 채우지 않음)에서도 동일한 초기화 경로를 검증할 수 있다.
@@ -85,9 +96,7 @@ export function FacilityMap({ facilities, center, onMarkerPress }: FacilityMapPr
 
     const leaflet = loadLeaflet();
     const map = leaflet.map(mapElementId).setView([center.lat, center.lng], DEFAULT_ZOOM);
-    leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-    }).addTo(map);
+    leaflet.tileLayer(TILE_URL_BY_SCHEME[scheme], { attribution: TILE_ATTRIBUTION }).addTo(map);
     mapRef.current = map;
 
     return () => {
@@ -97,7 +106,7 @@ export function FacilityMap({ facilities, center, onMarkerPress }: FacilityMapPr
     // center는 최초 마운트 시점 기준으로만 지도를 생성한다 — 재조회로 center가 흔들려도
     // 지도를 매번 재생성하지 않는다(마커 effect가 별도로 갱신).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasFacilities, mapElementId]);
+  }, [hasFacilities, mapElementId, scheme]);
 
   useEffect(() => {
     // 웹 geolocation은 최초 렌더 이후 비동기로 resolve될 수 있다(useCurrentLocation.web) —

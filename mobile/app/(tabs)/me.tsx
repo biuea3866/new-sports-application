@@ -12,6 +12,7 @@ import { ListItem } from '../../components/ui';
 import { isFeatureEnabled } from '../../lib/feature-flags';
 import { useMyProfile } from '../../lib/useMyProfile';
 import { ROUTES } from '../../lib/navigation';
+import { formatUserRoleLabels } from '../../lib/user-role-format';
 import { useTheme } from '../../theme/useTheme';
 import { createStyles } from '../../theme/createStyles';
 import type { ThemeTokens } from '../../theme/tokens';
@@ -93,9 +94,7 @@ export default function MeScreen() {
         <Text style={styles.value}>{userIdText}</Text>
 
         <Text style={[styles.label, styles.mt]}>역할</Text>
-        <Text style={styles.value}>
-          {payload?.roles && payload.roles.length > 0 ? payload.roles.join(', ') : 'USER'}
-        </Text>
+        <Text style={styles.value}>{formatUserRoleLabels(payload?.roles)}</Text>
       </View>
 
       {isOrdersUnifiedEnabled ? (

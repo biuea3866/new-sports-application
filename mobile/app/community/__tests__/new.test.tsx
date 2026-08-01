@@ -8,6 +8,7 @@ import { AxiosError } from 'axios';
 import mockUseColorScheme from 'react-native/Libraries/Utilities/useColorScheme';
 
 import CommunityNewScreen from '../new';
+import { darkTokens, lightTokens } from '../../../theme/tokens';
 
 jest.mock('../../../lib/usePosts', () => ({
   useCreatePost: jest.fn(),
@@ -155,5 +156,35 @@ describe('CommunityNewScreen', () => {
     render(<CommunityNewScreen />);
 
     expect(screen.getByText('게시글 작성')).toBeTruthy();
+  });
+
+  it('다크 모드에서 본문 영역 배경이 다크 토큰을 따른다', () => {
+    mockUseColorScheme.mockReturnValue('dark');
+    render(<CommunityNewScreen />);
+
+    expect(screen.getByTestId('community-new-screen-root')).toHaveStyle({
+      backgroundColor: darkTokens.background,
+    });
+  });
+
+  it('다크 모드에서 입력 필드 배경이 다크 토큰을 따른다', () => {
+    mockUseColorScheme.mockReturnValue('dark');
+    render(<CommunityNewScreen />);
+
+    expect(screen.getByLabelText('제목 입력')).toHaveStyle({
+      backgroundColor: darkTokens.surfaceElevated,
+    });
+    expect(screen.getByLabelText('내용 입력')).toHaveStyle({
+      backgroundColor: darkTokens.surfaceElevated,
+    });
+  });
+
+  it('라이트 모드에서 본문 영역 배경이 라이트 토큰을 따른다', () => {
+    mockUseColorScheme.mockReturnValue('light');
+    render(<CommunityNewScreen />);
+
+    expect(screen.getByTestId('community-new-screen-root')).toHaveStyle({
+      backgroundColor: lightTokens.background,
+    });
   });
 });

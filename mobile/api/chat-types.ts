@@ -86,6 +86,8 @@ export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'REVOKED' |
 export interface InvitationResponse {
   id: number;
   roomId: number;
+  /** 방 이름. 1:1 방처럼 이름이 없는 방은 null이며, 이때 표시명은 방 종류로 결정한다. */
+  roomName: string | null;
   inviterUserId: number;
   inviteeUserId: number;
   status: InvitationStatus;

@@ -121,6 +121,13 @@ describe('RecruitmentDetailScreen', () => {
     expect(screen.getByText('3명')).toBeTruthy();
   });
 
+  it('활동일·마감 시각에 초 단위를 노출하지 않는다', () => {
+    render(<RecruitmentDetailScreen />);
+
+    const secondsPattern = /\d{1,2}:\d{2}:\d{2}/;
+    expect(screen.queryByText(secondsPattern)).toBeNull();
+  });
+
   it('정원마감(CLOSED) 상태면 신청 CTA가 비활성화된다', () => {
     mockRecruitmentQuery({ data: { ...RECRUITMENT, status: 'CLOSED' } });
 

@@ -155,6 +155,7 @@ describe('U-04: listApplications', () => {
       {
         id: 100,
         recruitmentId: 1,
+        applicantUserId: 71,
         status: 'CONFIRMED',
         paymentId: 200,
         appliedAt: '2026-07-08T00:00:00Z',
@@ -248,6 +249,7 @@ describe('U-08: listMyApplications', () => {
       {
         id: 100,
         recruitmentId: 1,
+        applicantUserId: 71,
         status: 'PENDING',
         paymentId: 200,
         appliedAt: '2026-07-08T00:00:00Z',
@@ -274,6 +276,7 @@ describe('U-09: cancelApplication', () => {
     mock.onPost('/applications/100/cancel').reply(200, {
       id: 100,
       recruitmentId: 1,
+      applicantUserId: 71,
       status: 'CANCELLED',
       paymentId: 200,
       appliedAt: '2026-07-08T00:00:00Z',

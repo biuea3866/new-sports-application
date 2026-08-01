@@ -10,12 +10,13 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import mockUseColorScheme from 'react-native/Libraries/Utilities/useColorScheme';
 import { AxiosError } from 'axios';
 
-import type { ListMessagesResponse, MessageResponse } from '../../../api/types';
+import type { ListMessagesResponse, MessageResponse, RoomResponse } from '../../../api/types';
 import type { ReadEvent, TypingEvent } from '../../../api/chat-types';
 import RoomChatScreen from '../[id]';
 
 jest.mock('../../../lib/useRooms', () => ({
   useMessages: jest.fn(),
+  useRoom: jest.fn(),
   messagesQueryKey: (roomId: number) => ['rooms', roomId, 'messages'],
 }));
 jest.mock('../../../lib/useChatSocket', () => ({
@@ -32,13 +33,14 @@ jest.mock('../../../lib/useMyProfile', () => ({
 }));
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMessages } from '../../../lib/useRooms';
+import { useMessages, useRoom } from '../../../lib/useRooms';
 import { useChatSocket } from '../../../lib/useChatSocket';
 import { isFeatureEnabled } from '../../../lib/feature-flags';
 import { useMarkRead } from '../../../lib/useChat';
 import { useMyProfile } from '../../../lib/useMyProfile';
 
 const useMessagesMock = useMessages as jest.MockedFunction<typeof useMessages>;
+const useRoomMock = useRoom as jest.MockedFunction<typeof useRoom>;
 const useChatSocketMock = useChatSocket as jest.MockedFunction<typeof useChatSocket>;
 const isFeatureEnabledMock = isFeatureEnabled as jest.MockedFunction<typeof isFeatureEnabled>;
 const useMarkReadMock = useMarkRead as jest.MockedFunction<typeof useMarkRead>;
@@ -69,6 +71,21 @@ function mockUseMessagesReturn(overrides: {
     error: overrides.error ?? null,
     refetch: overrides.refetch ?? jest.fn(),
   } as unknown as ReturnType<typeof useMessages>);
+}
+
+function mockUseRoomReturn(overrides: { name?: string | null; type?: RoomResponse['type'] }) {
+  useRoomMock.mockReturnValue({
+    data: {
+      id: 10,
+      type: overrides.type ?? 'GROUP',
+      name: overrides.name ?? null,
+      contextType: null,
+      lastMessagePreview: null,
+      lastMessageAt: null,
+    },
+    isLoading: false,
+    isError: false,
+  } as unknown as ReturnType<typeof useRoom>);
 }
 
 let capturedOnTyping: ((event: TypingEvent) => void) | undefined;
@@ -127,6 +144,7 @@ describe('RoomChatScreen', () => {
     capturedOnTyping = undefined;
     capturedOnRead = undefined;
     mockUseChatSocketReturn({});
+    mockUseRoomReturn({ name: '강남 새벽 러닝크루 단톡' });
   });
 
   afterEach(() => {
@@ -378,5 +396,66 @@ describe('RoomChatScreen', () => {
     });
 
     expect(screen.getByText('읽음')).toBeTruthy();
+  });
+
+  // BE `GET /rooms/{id}/messages`는 createdAt DESC(최신 우선)로 응답한다
+  // (MessageCustomRepositoryImpl#findByCursor). inverted FlatList는 data[0]을 가장 아래에
+  // 렌더하므로, 응답 순서를 그대로 넘겨야 "위=과거, 아래=최신"이 된다.
+  it('최신 메시지가 대화창 맨 아래에 오도록 시간순으로 배치된다', () => {
+    mockUseMessagesReturn({
+      data: buildMessages([
+        {
+          id: 3,
+          roomId: 10,
+          senderId: OTHER_USER_ID,
+          content: '가장 최근 메시지',
+          sentAt: '2026-07-06T00:02:00Z',
+        },
+        {
+          id: 2,
+          roomId: 10,
+          senderId: MY_USER_ID,
+          content: '중간 메시지',
+          sentAt: '2026-07-06T00:01:00Z',
+        },
+        {
+          id: 1,
+          roomId: 10,
+          senderId: OTHER_USER_ID,
+          content: '대화를 시작한 메시지',
+          sentAt: '2026-07-06T00:00:00Z',
+        },
+      ]),
+    });
+
+    render(<RoomChatScreen />);
+
+    // inverted 리스트에서 렌더 순서 index 0 = 화면 최하단.
+    const renderedContents = screen
+      .getAllByTestId('message-bubble-row')
+      .map((row) => row.props.children.props.accessibilityLabel);
+    expect(renderedContents).toEqual([
+      '메시지: 가장 최근 메시지',
+      '메시지: 중간 메시지',
+      '메시지: 대화를 시작한 메시지',
+    ]);
+  });
+
+  it('헤더에 방 이름이 표시된다', () => {
+    mockUseRoomReturn({ name: '강남 새벽 러닝크루 단톡' });
+    mockUseMessagesReturn({ data: buildMessages([]) });
+
+    render(<RoomChatScreen />);
+
+    expect(screen.getByText('강남 새벽 러닝크루 단톡')).toBeTruthy();
+  });
+
+  it('방 이름이 없으면 방 종류 기본 이름으로 표시된다', () => {
+    mockUseRoomReturn({ name: null, type: 'DIRECT' });
+    mockUseMessagesReturn({ data: buildMessages([]) });
+
+    render(<RoomChatScreen />);
+
+    expect(screen.getByText('1:1 채팅')).toBeTruthy();
   });
 });

@@ -4,8 +4,11 @@
  * 근거: design-fe-app.md "텍스트 와이어프레임" A-R3(토스 송금·상품등록 패턴 — 한 화면 한
  * 과업, 하단 고정 단일 CTA), Testing Plan "개설 폼".
  *
- * 날짜/시각은 date-picker 라이브러리가 레포에 없어 ISO 형태 텍스트 입력
- * (`YYYY-MM-DDTHH:mm`)으로 받는다(`lib/recruitment-form.ts` 참조).
+ * 날짜/시각은 date-picker 라이브러리가 레포에 없어 텍스트 입력으로 받는다
+ * (`lib/recruitment-form.ts` 참조).
+ *
+ * 인라인 오류는 "사용자가 건드린 필드"에만 표시한다 — 아직 아무것도 입력하지 않은 초기 폼에
+ * 붉은 오류가 떠 있으면 사용자가 무엇을 잘못했는지 오해한다.
  */
 import { useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
@@ -14,9 +17,11 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useCreateRecruitment } from '../../lib/useRecruitment';
 import {
   isCreateRecruitmentFormValid,
+  pickVisibleErrors,
   toCreateRecruitmentRequest,
   validateCreateRecruitmentForm,
   type CreateRecruitmentFormValues,
+  type TouchedRecruitmentFields,
 } from '../../lib/recruitment-form';
 import { Button, ThemedText } from '../../components/ui';
 import { useTheme } from '../../theme/useTheme';
@@ -37,6 +42,11 @@ export default function RecruitmentNewScreen() {
   const [activityAt, setActivityAt] = useState('');
   const [applicationDeadline, setApplicationDeadline] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [touchedFields, setTouchedFields] = useState<TouchedRecruitmentFields>({});
+
+  function markTouched(field: keyof TouchedRecruitmentFields) {
+    setTouchedFields((previous) => ({ ...previous, [field]: true }));
+  }
 
   const formValues: CreateRecruitmentFormValues = {
     title,
@@ -48,6 +58,7 @@ export default function RecruitmentNewScreen() {
     communityId,
   };
   const errors = validateCreateRecruitmentForm(formValues);
+  const visibleErrors = pickVisibleErrors(errors, touchedFields);
   const isFormValid = isCreateRecruitmentFormValid(formValues);
 
   function handleSubmit() {
@@ -118,7 +129,10 @@ export default function RecruitmentNewScreen() {
         </ThemedText>
         <TextInput
           value={capacityText}
-          onChangeText={setCapacityText}
+          onChangeText={(text) => {
+            markTouched('capacity');
+            setCapacityText(text);
+          }}
           placeholder="예: 3"
           placeholderTextColor={tokens.textTertiary}
           keyboardType="number-pad"
@@ -133,9 +147,9 @@ export default function RecruitmentNewScreen() {
           ]}
           accessibilityLabel="정원"
         />
-        {errors.capacity ? (
+        {visibleErrors.capacity ? (
           <ThemedText variant="danger" style={styles.fieldError}>
-            {errors.capacity}
+            {visibleErrors.capacity}
           </ThemedText>
         ) : null}
 
@@ -144,7 +158,10 @@ export default function RecruitmentNewScreen() {
         </ThemedText>
         <TextInput
           value={feeAmountText}
-          onChangeText={setFeeAmountText}
+          onChangeText={(text) => {
+            markTouched('feeAmount');
+            setFeeAmountText(text);
+          }}
           placeholder="예: 5000 (무료면 0)"
           placeholderTextColor={tokens.textTertiary}
           keyboardType="number-pad"
@@ -159,9 +176,9 @@ export default function RecruitmentNewScreen() {
           ]}
           accessibilityLabel="참가비"
         />
-        {errors.feeAmount ? (
+        {visibleErrors.feeAmount ? (
           <ThemedText variant="danger" style={styles.fieldError}>
-            {errors.feeAmount}
+            {visibleErrors.feeAmount}
           </ThemedText>
         ) : null}
 
@@ -170,8 +187,11 @@ export default function RecruitmentNewScreen() {
         </ThemedText>
         <TextInput
           value={activityAt}
-          onChangeText={setActivityAt}
-          placeholder="YYYY-MM-DDTHH:mm"
+          onChangeText={(text) => {
+            markTouched('deadline');
+            setActivityAt(text);
+          }}
+          placeholder="예: 2026-08-09 20:00"
           placeholderTextColor={tokens.textTertiary}
           editable={!isPending}
           style={[
@@ -190,8 +210,11 @@ export default function RecruitmentNewScreen() {
         </ThemedText>
         <TextInput
           value={applicationDeadline}
-          onChangeText={setApplicationDeadline}
-          placeholder="YYYY-MM-DDTHH:mm"
+          onChangeText={(text) => {
+            markTouched('deadline');
+            setApplicationDeadline(text);
+          }}
+          placeholder="예: 2026-08-08 23:59"
           placeholderTextColor={tokens.textTertiary}
           editable={!isPending}
           style={[
@@ -204,9 +227,9 @@ export default function RecruitmentNewScreen() {
           ]}
           accessibilityLabel="신청마감"
         />
-        {errors.deadline ? (
+        {visibleErrors.deadline ? (
           <ThemedText variant="danger" style={styles.fieldError}>
-            {errors.deadline}
+            {visibleErrors.deadline}
           </ThemedText>
         ) : null}
 

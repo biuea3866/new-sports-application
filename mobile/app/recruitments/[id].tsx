@@ -19,7 +19,11 @@ import {
   useCancelRecruitment,
   useRecruitment,
 } from '../../lib/useRecruitment';
-import { formatDeadlineDday, formatFeeAmount } from '../../lib/recruitment-format';
+import {
+  formatDateTimeMinute,
+  formatDeadlineDday,
+  formatFeeAmount,
+} from '../../lib/recruitment-format';
 import { Button, Card, EmptyState, ErrorView, LoadingView, ThemedText } from '../../components/ui';
 import { useTheme } from '../../theme/useTheme';
 
@@ -144,7 +148,7 @@ export default function RecruitmentDetailScreen() {
               활동일
             </ThemedText>
             <ThemedText variant="primary" style={styles.summaryValue}>
-              {new Date(recruitment.activityAt).toLocaleString('ko-KR')}
+              {formatDateTimeMinute(recruitment.activityAt)}
             </ThemedText>
           </View>
           <View style={styles.summaryRow}>
@@ -152,7 +156,7 @@ export default function RecruitmentDetailScreen() {
               마감
             </ThemedText>
             <ThemedText variant="primary" style={styles.summaryValue}>
-              {new Date(recruitment.applicationDeadline).toLocaleString('ko-KR')} (
+              {formatDateTimeMinute(recruitment.applicationDeadline)} (
               {formatDeadlineDday(recruitment.applicationDeadline)})
             </ThemedText>
           </View>

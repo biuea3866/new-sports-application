@@ -29,10 +29,19 @@ export function Button({
   const backgroundColor = variant === 'accent' ? tokens.accent : tokens.surface;
   const textVariant = variant === 'accent' ? 'onAccent' : 'primary';
   const indicatorColor = variant === 'accent' ? tokens.accentText : tokens.textPrimary;
+  // surface variant는 같은 surface 배경의 Card 위에 놓이는 일이 많아(모집 신청 내역의 "취소")
+  // 배경색만으로는 버튼 경계가 사라진다 — 테두리로 탭 가능한 영역을 드러낸다.
+  const borderStyle =
+    variant === 'accent' ? { borderWidth: 0 } : { borderWidth: 1, borderColor: tokens.border };
 
   return (
     <TouchableOpacity
-      style={[styles.button, { backgroundColor }, isInteractionBlocked && styles.blocked]}
+      style={[
+        styles.button,
+        { backgroundColor },
+        borderStyle,
+        isInteractionBlocked && styles.blocked,
+      ]}
       onPress={onPress}
       disabled={isInteractionBlocked}
       accessibilityRole="button"
