@@ -29,10 +29,17 @@ style:
   ForbiddenImport:
     active: true
     imports:
+      # [W1-DEBT-01] 금지 목록을 컨벤션 범위로 맞춘다.
+      # 이전에는 날짜 전용 타입까지 금지해 facility-booking 의 시설 운영시간·휴무일이 대량 오탐이었다.
+      # 영업 개시 시각은 벽시계 시각이고 휴무일은 달력 날짜라, 타임존을 붙이면 오히려 틀린 모델이 된다.
+      # 반대로 컨벤션이 함께 금지하는 절대시각·시계 추상은 목록에 없어 JWT 경로 위반이 숨어 있었다.
+      # 같은 정정을 harnessCheck 규칙에도 적용했다(buildSrc 컨벤션 플러그인 no-local-datetime).
       - value: 'java.time.LocalDateTime'
-        reason: 'LocalDateTime 금지 — ZonedDateTime / Instant 를 사용합니다.'
-      - value: 'java.time.LocalDate'
-        reason: 'LocalDate 도 ZonedDateTime 으로 통일합니다.'
+        reason: 'LocalDateTime 금지 — ZonedDateTime 을 사용합니다.'
+      - value: 'java.time.Instant'
+        reason: 'Instant 금지 — ZonedDateTime 을 사용합니다. 외부 규격(JWT exp 등) 변환은 infrastructure 어댑터 안에서만 합니다.'
+      - value: 'java.time.Clock'
+        reason: 'Clock 주입 금지 — 도메인 캡슐화 메서드 내부에서 ZonedDateTime.now() 로 해결합니다.'
       - value: 'org.springframework.data.jpa.repository.Query'
         reason: '@Query 금지 — QueryDSL CustomRepository 패턴을 사용합니다.'
       - value: 'org.apache.kafka.clients.consumer.ConsumerRecord'
