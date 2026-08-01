@@ -61,6 +61,13 @@ tasks.withType<Test>().configureEach {
         showExceptions = true
         showCauses = true
     }
+    // Gradle 의 `--tests` 는 Kotest spec 을 걸러내지 못한다 — 단일 클래스만 지정해도 모듈의
+    // 다른 spec 이 함께 실행돼 Testcontainers 를 줄줄이 띄운다(bootstrap 에서 확인).
+    // Kotest 자체 필터(`kotest.filter.specs`)를 gradle JVM → test JVM 으로 전달해
+    // 한 spec 만 실행할 수 있게 한다. 예:
+    //   ./gradlew :bootstrap:test -Dkotest.filter.specs='*HttpResponseJsonNullInclusionTest*'
+    System.getProperty("kotest.filter.specs")?.let { systemProperty("kotest.filter.specs", it) }
+    System.getProperty("kotest.filter.tests")?.let { systemProperty("kotest.filter.tests", it) }
     // 테스트 종료 후 Spring 컨텍스트의 non-daemon 스레드(Kafka 리스너·Tomcat) 누수로
     // 워커 JVM 이 종료 단계에서 멈추면, 이 JVM 이 소유한 Testcontainers 가 무한정 남는다.
     // timeout 으로 멈춘 워커를 강제 종료해 ryuk 가 컨테이너를 회수하도록 한다.
