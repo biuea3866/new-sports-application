@@ -76,7 +76,7 @@ class RoomReadEventWorkerTest(
                 runCatching {
                     transactionTemplate.execute<Unit> {
                         markReadUseCase.execute(roomId = room.id, userId = 40L, lastReadMessageId = message.id)
-                        throw IllegalStateException("강제 롤백")
+                        error("강제 롤백")
                     }
                 }
 

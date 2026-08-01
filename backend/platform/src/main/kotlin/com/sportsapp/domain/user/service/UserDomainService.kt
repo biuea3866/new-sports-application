@@ -17,6 +17,10 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 
 @Service
+// TooManyFunctions 억제 근거(W1-DEBT-01): 이 DomainService 는 타 모듈(bootstrap·edge)과 아키텍처 테스트가
+// 타입을 직접 참조한다 — 책임 분리는 크로스 모듈 호출부 갱신을 동반하므로 별도 티켓으로 분리한다
+// (같은 정리에서 social 의 무분별한 분리가 bootstrap 테스트 12곳을 깨뜨린 선례가 있다).
+@Suppress("TooManyFunctions")
 class UserDomainService(
     private val userRepository: UserRepository,
     private val userCustomRepository: UserCustomRepository,

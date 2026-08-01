@@ -73,7 +73,7 @@ class MessageBroadcastEventWorkerTest(
                         sendMessageUseCase.execute(
                             SendMessageCommand(roomId = room.id, senderId = 20L, content = "롤백 메시지"),
                         )
-                        throw IllegalStateException("강제 롤백")
+                        error("강제 롤백")
                     }
                 }
 

@@ -89,7 +89,13 @@ class ComplimentaryTicketScenarioTest(
                 val complimentaryResult = issueComplimentaryTicketUseCase.execute(complimentaryCommand)
 
                 val normalOrder = ticketOrderRepositoryImpl.save(
-                    TicketOrder(userId = ownerUserId, status = OrderStatus.PENDING, paymentId = null, lockedEventId = event.id, lockedSeatIds = listOf(seat2.id))
+                    TicketOrder(
+                        userId = ownerUserId,
+                        status = OrderStatus.PENDING,
+                        paymentId = null,
+                        lockedEventId = event.id,
+                        lockedSeatIds = listOf(seat2.id),
+                    )
                 )
                 val normalTicket = ticketJpaRepository.save(Ticket.issue(ticketOrder = normalOrder, seatId = seat2.id))
 

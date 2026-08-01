@@ -35,6 +35,9 @@ import org.hibernate.annotations.Type
  */
 @Entity
 @Table(name = "alerts")
+// TooManyFunctions 억제 근거(W1-DEBT-01): Rich Domain Entity 로서 상태 전이·질의 메서드가 한 애그리게이트에
+// 모여 있는 것이 컨벤션이 요구하는 형태다(Anemic Domain Model 금지). 쪼개면 캡슐화가 깨진다.
+@Suppress("TooManyFunctions")
 class Alert private constructor(
     @Column(name = "signal_key", nullable = false)
     val signalKey: String,
@@ -185,6 +188,10 @@ class Alert private constructor(
         )
 
         /** 영속화 계층 복원 — 검증 없이 필드를 그대로 복구한다. */
+        // LongParameterList 억제 근거(W1-DEBT-01): 파라미터가 영속 테이블 컬럼과 1:1 대응하는 복원 팩토리다.
+        // 값 객체로 묶으면 영속 매핑·상태 전이를 함께 건드려야 해 정적 분석 정리 범위를 벗어난다
+        // (후속 리팩토링 티켓 대상). 호출부는 named argument 를 강제해 인자 뒤바뀜 위험을 이미 막고 있다.
+        @Suppress("LongParameterList")
         fun reconstitute(
             signalKey: String,
             endpoint: String,

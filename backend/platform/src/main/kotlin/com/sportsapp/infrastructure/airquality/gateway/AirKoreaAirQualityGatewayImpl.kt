@@ -47,6 +47,9 @@ class AirKoreaAirQualityGatewayImpl(
         return measurement
     }
 
+    // ReturnCount 억제 근거(W1-DEBT-01): guard clause(early return) 다수 사용의 부산물이다.
+    // private-be-code-convention 이 guard clause 를 권장하므로, 중첩 if 로 바꾸면 오히려 규약 위반이다.
+    @Suppress("ReturnCount")
     private fun fetchFromChain(lat: Double, lng: Double): AirQualityMeasurement {
         try {
             val coordinate = AirKoreaTmProjection.toTm(lat, lng)
@@ -95,6 +98,9 @@ class AirKoreaAirQualityGatewayImpl(
         )
     }
 
+    // ReturnCount 억제 근거(W1-DEBT-01): guard clause(early return) 다수 사용의 부산물이다.
+    // private-be-code-convention 이 guard clause 를 권장하므로, 중첩 if 로 바꾸면 오히려 규약 위반이다.
+    @Suppress("ReturnCount")
     private fun <T> AirKoreaEnvelope<T>?.itemsOrNull(key: String, stage: String): List<T>? {
         val resultCode = this?.resultCode()
         if (resultCode != SUCCESS_RESULT_CODE) {

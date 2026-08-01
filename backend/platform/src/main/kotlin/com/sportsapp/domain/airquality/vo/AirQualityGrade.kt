@@ -46,6 +46,9 @@ enum class AirQualityGrade {
         }
 
         /** 두 등급 중 더 나쁜 등급을 대표 등급으로 선정한다. UNKNOWN은 상대가 알려진 등급이면 배제한다. */
+        // ReturnCount 억제 근거(W1-DEBT-01): guard clause(early return) 다수 사용의 부산물이다.
+        // private-be-code-convention 이 guard clause 를 권장하므로, 중첩 if 로 바꾸는 것이 오히려 규약 위반이다.
+        @Suppress("ReturnCount")
         fun worseOf(a: AirQualityGrade, b: AirQualityGrade): AirQualityGrade {
             if (a == UNKNOWN) return b
             if (b == UNKNOWN) return a

@@ -219,7 +219,10 @@ class VirtualQueueApiControllerTest(
             val targetId = 910_008L
 
             When("POST entries를 호출하면") {
-                val result = mockMvc.perform(post("/virtual-queues/not-a-real-type/$targetId/entries").header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(8L)))
+                val result = mockMvc.perform(
+                    post("/virtual-queues/not-a-real-type/$targetId/entries")
+                        .header(HttpHeaders.AUTHORIZATION, jwtIssuer.bearerTokenFor(8L)),
+                )
                     .andExpect(status().isBadRequest)
                     .andReturn()
 

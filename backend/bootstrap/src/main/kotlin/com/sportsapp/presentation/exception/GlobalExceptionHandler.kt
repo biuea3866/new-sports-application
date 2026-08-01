@@ -24,6 +24,10 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.servlet.resource.NoResourceFoundException
 
 @RestControllerAdvice
+// TooManyFunctions 억제 근거(W1-DEBT-01): 예외 타입별 @ExceptionHandler 디스패치 테이블이다.
+// 함수 수 = 처리하는 예외 종류 수이고, 쪼개면 @RestControllerAdvice 가 여러 개로 늘어나 우선순위가
+// 불명확해진다. common testFixtures 의 미러 구현도 같은 사유로 억제돼 있다.
+@Suppress("TooManyFunctions")
 class GlobalExceptionHandler {
 
     private val logger = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
@@ -133,6 +137,9 @@ class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(HttpMessageNotReadableException::class)
+    // UnusedParameter 억제 근거(W1-DEBT-01): @ExceptionHandler 는 **파라미터 타입으로 디스패치**한다.
+    // 본문에서 예외 값을 쓰지 않아도 시그니처에서 뺄 수 없다 — 빼는 순간 이 핸들러가 매칭되지 않는다.
+    @Suppress("UnusedParameter")
     fun handleMessageNotReadableException(exception: HttpMessageNotReadableException): ResponseEntity<ProblemDetail> {
         val problemDetail = ProblemDetailBuilder.build(
             status = ErrorStatus.BAD_REQUEST,
@@ -176,6 +183,9 @@ class GlobalExceptionHandler {
      * 별도 처리하지 않으면 500으로 변환되므로, 404로 명시 매핑한다.
      */
     @ExceptionHandler(NoResourceFoundException::class)
+    // UnusedParameter 억제 근거(W1-DEBT-01): @ExceptionHandler 는 **파라미터 타입으로 디스패치**한다.
+    // 본문에서 예외 값을 쓰지 않아도 시그니처에서 뺄 수 없다 — 빼는 순간 이 핸들러가 매칭되지 않는다.
+    @Suppress("UnusedParameter")
     fun handleNoResourceFoundException(exception: NoResourceFoundException): ResponseEntity<ProblemDetail> {
         val problemDetail = ProblemDetailBuilder.build(
             status = ErrorStatus.NOT_FOUND,

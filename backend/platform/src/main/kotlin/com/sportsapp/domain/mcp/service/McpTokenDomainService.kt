@@ -81,6 +81,9 @@ class McpTokenDomainService(
      * 예외가 아니라 [McpTokenVerification] 결과값으로 반환한다 — 실패 사유(존재하지 않음·해시
      * 불일치·비활성·만료)는 구분하지 않고 전부 `invalid()`로 수렴시킨다(필터의 무누출 401과 동일 경계).
      */
+    // ReturnCount 억제 근거(W1-DEBT-01): guard clause(early return) 다수 사용의 부산물이다.
+    // private-be-code-convention 이 guard clause 를 권장하므로, 중첩 if 로 바꾸는 것이 오히려 규약 위반이다.
+    @Suppress("ReturnCount")
     fun verifyToken(plainToken: String): McpTokenVerification {
         val tokenId = McpToken.parseTokenId(plainToken) ?: return McpTokenVerification.invalid()
         val mcpToken = mcpTokenRepository.findById(tokenId) ?: return McpTokenVerification.invalid()
