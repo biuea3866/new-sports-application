@@ -7,6 +7,7 @@ import com.sportsapp.application.ticketing.dto.PurchaseTicketsCommand
 import com.sportsapp.application.ticketing.dto.TicketOrderResponse
 import com.sportsapp.domain.ticketing.service.TicketingDomainService
 import org.springframework.stereotype.Service
+import java.math.BigDecimal
 
 @Service
 class PurchaseTicketsUseCase(
@@ -21,33 +22,44 @@ class PurchaseTicketsUseCase(
         ticketingDomainService.verifyLockOwner(command.lockId, command.userId)
         val totalAmount = ticketingDomainService.calculateAmount(command.lockId)
         val orderResult = ticketingDomainService.createPendingOrder(command.lockId, command.userId)
-        val paymentId = paymentDomainService.createPending(
-            userId = command.userId,
-            idempotencyKey = command.idempotencyKey,
-            orderType = OrderType.TICKETING,
-            orderId = orderResult.ticketOrderId,
-            method = command.method,
-            amount = totalAmount,
-            currency = command.currency,
-        )
-        paymentDomainService.initiatePg(
-            PgInitiateCommand(
-                paymentId = paymentId,
-                method = command.method,
-                idempotencyKey = command.idempotencyKey,
-                userId = command.userId,
-                orderType = OrderType.TICKETING,
-                orderId = orderResult.ticketOrderId,
-                amount = totalAmount,
-                currency = command.currency,
-                itemName = OrderType.TICKETING.displayName,
-                returnUrl = "",
-                failUrl = "",
-            )
-        )
+        val paymentId = createPendingPayment(command, orderResult.ticketOrderId, totalAmount)
+        paymentDomainService.initiatePg(buildPgInitiateCommand(command, orderResult.ticketOrderId, totalAmount, paymentId))
         return TicketOrderResponse(
             ticketOrderId = orderResult.ticketOrderId,
             status = orderResult.status,
         )
     }
+
+    private fun createPendingPayment(
+        command: PurchaseTicketsCommand,
+        ticketOrderId: Long,
+        totalAmount: BigDecimal,
+    ): Long = paymentDomainService.createPending(
+        userId = command.userId,
+        idempotencyKey = command.idempotencyKey,
+        orderType = OrderType.TICKETING,
+        orderId = ticketOrderId,
+        method = command.method,
+        amount = totalAmount,
+        currency = command.currency,
+    )
+
+    private fun buildPgInitiateCommand(
+        command: PurchaseTicketsCommand,
+        ticketOrderId: Long,
+        totalAmount: BigDecimal,
+        paymentId: Long,
+    ): PgInitiateCommand = PgInitiateCommand(
+        paymentId = paymentId,
+        method = command.method,
+        idempotencyKey = command.idempotencyKey,
+        userId = command.userId,
+        orderType = OrderType.TICKETING,
+        orderId = ticketOrderId,
+        amount = totalAmount,
+        currency = command.currency,
+        itemName = OrderType.TICKETING.displayName,
+        returnUrl = "",
+        failUrl = "",
+    )
 }

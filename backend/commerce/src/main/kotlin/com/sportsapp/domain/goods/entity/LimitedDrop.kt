@@ -73,6 +73,10 @@ class LimitedDrop private constructor(
      * 판매 시작 게이트(FR-2) + SOLD_OUT/CLOSED 즉시 거부를 판정한다.
      * 시각은 인자로 받지 않고 메서드 내부에서 [ZonedDateTime.now]로 해결한다.
      */
+    // [W1-DEBT-01] ThrowsCount 억제 근거: 세 조건은 FR-2의 서로 다른 거부 사유(시작 전·종료·
+    // 소진)로, 호출부([LimitedDropDomainService.validatePurchasable])가 TooEarly·SoldOut을
+    // 각각 catch 해 거부 카운터를 다르게 집계한다. 예외 타입을 병합하면 그 구분이 사라진다.
+    @Suppress("ThrowsCount")
     fun validatePurchasable() {
         val now = ZonedDateTime.now()
         if (now.isBefore(openAt)) throw LimitedDropTooEarlyException(id, openAt)

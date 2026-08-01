@@ -70,6 +70,9 @@ class GoodsOrderCustomRepositoryImpl(
         buildTitle(fetchItemsByOrderId(listOf(orderId))[orderId].orEmpty())
 
     /** 대표 항목의 상품명이 없으면(삭제·부재) 빈 title로 방어 반환한다(엣지). */
+    // guard clause 다수 사용의 부산물(private-be-code-convention 권장) — 빈 목록·상품명
+    // 없음 각각의 조기 반환이 명확성을 높인다.
+    @Suppress("ReturnCount")
     private fun buildTitle(items: List<Tuple>): String {
         if (items.isEmpty()) return ""
         val representativeName = items.first().get(product.name) ?: return ""
