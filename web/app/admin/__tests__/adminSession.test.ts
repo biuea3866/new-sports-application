@@ -42,4 +42,35 @@ describe("resolveAdminSession", () => {
     expect(resolved.isAuthenticated).toBe(true);
     expect(resolved.operatorName).toBe("운영자 #42");
   });
+
+  // 어드민 콘솔은 ADMIN 롤 보유자만 진입한다.
+  // 레포 확립 패턴(app/portal/users/page.tsx:105 등 5곳)과 동일하게 roles.includes("ADMIN")로 판정한다.
+  // BE(SecurityConfig)가 403으로 막지만, 인가 없이 콘솔 셸·토큰 발급 폼·플래그 토글 UI에 도달하는 것 자체를 차단한다.
+  it("ADMIN 롤이 없는 세션은 인증되지 않은 것으로 판정한다", () => {
+    const resolved = resolveAdminSession({
+      userId: 7,
+      email: "member@sports.app",
+      roles: ["FACILITY_OWNER"],
+    });
+
+    expect(resolved.isAuthenticated).toBe(false);
+    expect(resolved.operatorName).toBeUndefined();
+  });
+
+  it("롤이 비어 있는 세션도 차단한다", () => {
+    const resolved = resolveAdminSession({ userId: 7, email: "member@sports.app", roles: [] });
+
+    expect(resolved.isAuthenticated).toBe(false);
+  });
+
+  it("여러 롤 중 ADMIN이 포함돼 있으면 통과한다", () => {
+    const resolved = resolveAdminSession({
+      userId: 7,
+      email: "owner@sports.app",
+      roles: ["FACILITY_OWNER", "ADMIN"],
+    });
+
+    expect(resolved.isAuthenticated).toBe(true);
+    expect(resolved.operatorName).toBe("owner@sports.app");
+  });
 });

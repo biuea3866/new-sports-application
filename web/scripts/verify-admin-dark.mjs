@@ -11,6 +11,10 @@ const OUT_DIR = process.argv[2] ?? "/tmp/admin-verify";
 
 const PAGES = [
   { name: "01-관리자-홈", path: "/admin" },
+  { name: "02-피처플래그-목록", path: "/admin/feature-flags" },
+  { name: "03-피처플래그-생성", path: "/admin/feature-flags/new" },
+  { name: "04-피처플래그-상세", path: "/admin/feature-flags/virtualqueue.enabled" },
+  { name: "05-피처플래그-감사로그", path: "/admin/feature-flags/virtualqueue.enabled/audit-logs" },
   { name: "06-MCP-토큰-관리", path: "/admin/mcp/tokens" },
   { name: "07-MCP-감사로그", path: "/admin/mcp/audit-logs" },
   { name: "08-MCP-이상탐지", path: "/admin/mcp/anomalies" },

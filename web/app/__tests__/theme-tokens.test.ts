@@ -55,7 +55,10 @@ describe("시맨틱 토큰 success/warning", () => {
 
     expect(darkBlock).toMatch(/--background:\s*222\.2 84% 4\.9%;/);
     expect(darkBlock).toMatch(/--primary:\s*210 40% 98%;/);
-    expect(darkBlock).toMatch(/--destructive:\s*0 62\.8% 30\.6%;/);
+    // 다크 --destructive 는 접근성 사유로 의도적으로 조정했다 (0 62.8% 30.6% → 0 72% 62%).
+    // 구 값은 다크 bg-card 위 대비 2.00:1 로 오류 텍스트가 판독 불가였다.
+    // 대비 임계값 자체는 `web/__tests__/themeContrast.test.ts` 가 계산해 강제한다.
+    expect(darkBlock).toMatch(/--destructive:\s*0 72% 62%;/);
   });
 
   it("tailwind.config.ts colors에 success/warning이 DEFAULT+foreground로 hsl(var(--...)) 매핑된다", () => {

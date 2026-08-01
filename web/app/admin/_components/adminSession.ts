@@ -12,9 +12,18 @@ export interface AdminSessionView {
   operatorName: string | undefined;
 }
 
-/** 세션 정보로부터 상단바가 소비할 인증 상태·운영자 표기를 유도한다. */
+/** 어드민 콘솔 진입에 필요한 롤. 레포 확립 패턴(`app/portal/users/page.tsx` 등)과 동일하게 판정한다. */
+const REQUIRED_ROLE = "ADMIN";
+
+/**
+ * 세션 정보로부터 상단바가 소비할 인증 상태·운영자 표기를 유도한다.
+ *
+ * ADMIN 롤이 없으면 미인증으로 취급해 AuthGuard가 /login 으로 보내게 한다.
+ * BE(`SecurityConfig`)가 `hasRole("ADMIN")`으로 403을 내지만, 인가 없는 사용자가
+ * 콘솔 셸·MCP 토큰 발급 폼·플래그 토글 UI에 도달하는 것 자체를 막는다.
+ */
 export function resolveAdminSession(session: SessionInfo | null): AdminSessionView {
-  if (session === null) {
+  if (session === null || !session.roles.includes(REQUIRED_ROLE)) {
     return { isAuthenticated: false, operatorName: undefined };
   }
 

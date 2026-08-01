@@ -24,20 +24,42 @@
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
 
-import {
-  FeatureFlagSnapshotSchema,
-  FeatureFlagResponseSchema,
-  FeatureFlagAuditLogResponseSchema,
-  FeatureFlagAuditLogPageSchema,
-} from "../feature-flags/schemas";
+import * as featureFlagSchemas from "../feature-flags/schemas";
+import * as featureFlagApi from "../feature-flags/api";
+import * as mcpSchemas from "../mcp/schemas";
 
-/** 검사 대상 — BE 응답을 파싱하는 스키마만 등록한다. */
-const RESPONSE_SCHEMAS: ReadonlyArray<{ name: string; schema: z.ZodType }> = [
-  { name: "FeatureFlagSnapshotSchema", schema: FeatureFlagSnapshotSchema },
-  { name: "FeatureFlagResponseSchema", schema: FeatureFlagResponseSchema },
-  { name: "FeatureFlagAuditLogResponseSchema", schema: FeatureFlagAuditLogResponseSchema },
-  { name: "FeatureFlagAuditLogPageSchema", schema: FeatureFlagAuditLogPageSchema },
+/**
+ * 검사 대상은 **자동 수집**한다.
+ *
+ * 수동 등록제로 두면 새 응답 스키마가 목록에서 빠져도 아무도 모른다 —
+ * 원장애(감사 로그 전면 검증 실패)를 만든 드리프트 경로가 정확히 그것이었고,
+ * 실제로 `api.ts`의 `FeatureFlagStatusChangeResponseSchema`가 누락돼 있었다.
+ * 이제 admin 스키마 모듈에서 export된 zod 스키마를 전부 걷어온다.
+ *
+ * 제외: `~InputSchema` — FE가 BE로 **보내는** 요청 스키마다.
+ * 우리가 형태를 정하므로 명시적 null 전송(`.nullable()`)이 올바른 선택이며,
+ * NON_NULL 직렬화(수신 측 관심사)와 무관하다.
+ */
+const SCHEMA_MODULES: ReadonlyArray<{ module: Record<string, unknown>; source: string }> = [
+  { module: featureFlagSchemas, source: "feature-flags/schemas" },
+  { module: featureFlagApi, source: "feature-flags/api" },
+  { module: mcpSchemas, source: "mcp/schemas" },
 ];
+
+const REQUEST_SCHEMA_PATTERN = /InputSchema$/;
+
+function collectResponseSchemas(): Array<{ name: string; schema: z.ZodType }> {
+  return SCHEMA_MODULES.flatMap(({ module, source }) =>
+    Object.entries(module)
+      .filter(
+        (entry): entry is [string, z.ZodType] =>
+          entry[1] instanceof z.ZodType && !REQUEST_SCHEMA_PATTERN.test(entry[0])
+      )
+      .map(([name, schema]) => ({ name: `${source}#${name}`, schema }))
+  );
+}
+
+const RESPONSE_SCHEMAS = collectResponseSchemas();
 
 interface FieldViolation {
   path: string;
@@ -111,6 +133,21 @@ function collectViolations(
 }
 
 describe("응답 스키마는 null과 undefined를 동일하게 취급한다", () => {
+  it("수집이 실제로 동작한다 — 수동 등록 시 누락됐던 스키마를 포함한다", () => {
+    const collectedNames = RESPONSE_SCHEMAS.map(({ name }) => name);
+
+    expect(collectedNames.length).toBeGreaterThan(4);
+    expect(collectedNames).toContain("feature-flags/api#FeatureFlagStatusChangeResponseSchema");
+    expect(collectedNames).toContain("feature-flags/schemas#FeatureFlagAuditLogResponseSchema");
+  });
+
+  it("요청(입력) 스키마는 검사 대상에서 제외한다", () => {
+    const collectedNames = RESPONSE_SCHEMAS.map(({ name }) => name);
+
+    expect(collectedNames).not.toContain("mcp/schemas#IssueMcpTokenInputSchema");
+    expect(collectedNames).not.toContain("feature-flags/schemas#CreateFeatureFlagInputSchema");
+  });
+
   it.each(RESPONSE_SCHEMAS)("$name 의 모든 필드가 불변식을 만족한다", ({ schema }) => {
     const violations = collectViolations(schema, "");
 

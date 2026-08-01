@@ -12,7 +12,9 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "analyze": "ANALYZE=true next build",
-    "bundle:check": "node scripts/check-bundle-budget.mjs"
+    "bundle:check": "node scripts/check-bundle-budget.mjs",
+    "verify:admin-dark": "node scripts/verify-admin-dark.mjs",
+    "verify:admin-data": "node scripts/verify-admin-data.mjs"
   },
   "dependencies": {
     "@next/bundle-analyzer": "^16.2.6",

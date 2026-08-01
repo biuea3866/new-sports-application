@@ -58,7 +58,10 @@
     --muted-foreground: 215 20.2% 65.1%;
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
+    /* 다크 카드(bg-card) 위 text-destructive 대비를 2.00:1 → 5.56:1 로 올린다.
+       기존 값(0 62.8% 30.6%)은 어두운 배경 위 오류 텍스트가 사실상 판독 불가였다.
+       --destructive-foreground 는 유지한다 (bg-destructive 실선 버튼/배지는 별개 조합). */
+    --destructive: 0 72% 62%;
     --destructive-foreground: 210 40% 98%;
     --success: 142 64% 42%;
     --success-foreground: 0 0% 100%;
