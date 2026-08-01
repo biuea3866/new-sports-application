@@ -131,4 +131,18 @@ describe("TokenIssueForm", () => {
       expect(screen.getByRole("alert")).toHaveTextContent("권한이 없습니다.");
     });
   });
+
+  // 다크 모드 회귀 — 입력 필드에 배경 토큰이 없으면 브라우저 기본 흰 배경이 남아
+  // 어두운 카드 위에 흰 입력창이 뜬다(06-MCP-토큰-관리 캡쳐). 공용 Input과 동일하게 bg-background를 쓴다.
+  it("텍스트·날짜 입력이 배경·전경 토큰을 사용한다", () => {
+    render(<TokenIssueForm onIssued={vi.fn()} />);
+
+    const nameInput = screen.getByLabelText(/토큰 이름/);
+    const dateInput = screen.getByLabelText("토큰 만료일 (선택)");
+
+    for (const field of [nameInput, dateInput]) {
+      expect(field.className).toMatch(/bg-background/);
+      expect(field.className).toMatch(/text-foreground/);
+    }
+  });
 });

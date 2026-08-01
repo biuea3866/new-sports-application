@@ -61,6 +61,8 @@ const config: Config = {
         "aq-verybad-foreground": "hsl(var(--aq-verybad-foreground))",
         "aq-unknown": "hsl(var(--aq-unknown))",
         "aq-unknown-foreground": "hsl(var(--aq-unknown-foreground))",
+        "chart-1": "hsl(var(--chart-1))",
+        "chart-2": "hsl(var(--chart-2))",
       },
       borderRadius: {
         lg: "var(--radius)",

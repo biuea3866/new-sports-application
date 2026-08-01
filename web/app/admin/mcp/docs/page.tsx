@@ -159,11 +159,11 @@ function CodeBlock({
   language: string;
 }): JSX.Element {
   return (
-    <div className="relative rounded-md bg-gray-900">
-      <span className="absolute right-3 top-2 text-xs text-gray-400">
+    <div className="relative rounded-md bg-muted">
+      <span className="absolute right-3 top-2 text-xs text-muted-foreground">
         {language}
       </span>
-      <pre className="overflow-x-auto p-4 pt-7 text-sm text-gray-100">
+      <pre className="overflow-x-auto p-4 pt-7 text-sm text-foreground">
         <code>{code}</code>
       </pre>
     </div>
@@ -175,23 +175,23 @@ function ClientSection({ config }: { config: ClientConfig }): JSX.Element {
     <section
       id={config.id}
       aria-labelledby={`heading-${config.id}`}
-      className="rounded-lg border border-gray-200 p-6"
+      className="rounded-lg border border-border p-6"
     >
       <h2
         id={`heading-${config.id}`}
-        className="text-lg font-semibold text-gray-900"
+        className="text-lg font-semibold text-foreground"
       >
         {config.name}
       </h2>
-      <p className="mt-1 text-sm text-gray-600">{config.description}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{config.description}</p>
       <div className="mt-4">
         <CodeBlock code={config.configCode} language={config.configLanguage} />
       </div>
       {config.notes.length > 0 && (
         <ul className="mt-3 space-y-1" aria-label={`${config.name} 유의사항`}>
           {config.notes.map((note) => (
-            <li key={note} className="flex gap-2 text-sm text-gray-600">
-              <span aria-hidden="true" className="mt-0.5 shrink-0 text-amber-500">
+            <li key={note} className="flex gap-2 text-sm text-muted-foreground">
+              <span aria-hidden="true" className="mt-0.5 shrink-0 text-warning">
                 !
               </span>
               {note}
@@ -207,13 +207,13 @@ export default function McpDocsPage(): JSX.Element {
   return (
     <div className="space-y-8">
       <header>
-        <h1 className="text-2xl font-semibold text-gray-900">MCP 사용 가이드</h1>
-        <p className="mt-1 text-sm text-gray-600">
+        <h1 className="text-2xl font-semibold text-foreground">MCP 사용 가이드</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           MCP 클라이언트별 토큰 등록 방법과 설정 예시입니다.
           토큰은{" "}
           <a
             href="/admin/mcp/tokens"
-            className="text-blue-600 underline hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="text-primary underline hover:text-primary/80 focus:outline-none focus:ring-2 focus:ring-ring"
           >
             MCP 토큰 관리
           </a>
@@ -227,7 +227,7 @@ export default function McpDocsPage(): JSX.Element {
             <li key={config.id}>
               <a
                 href={`#${config.id}`}
-                className="rounded-md border border-gray-300 px-3 py-1 text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="rounded-md border border-input px-3 py-1 text-sm hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 {config.name}
               </a>
@@ -244,28 +244,28 @@ export default function McpDocsPage(): JSX.Element {
 
       <section
         aria-labelledby="heading-limitations"
-        className="rounded-lg border border-amber-200 bg-amber-50 p-6"
+        className="rounded-lg border border-warning/30 bg-warning/10 p-6"
       >
         <h2
           id="heading-limitations"
-          className="text-lg font-semibold text-amber-900"
+          className="text-lg font-semibold text-foreground"
         >
           외부 LLM 클라이언트 한계 고지
         </h2>
-        <p className="mt-1 text-sm text-amber-800">
+        <p className="mt-1 text-sm text-muted-foreground">
           외부 LLM 제공자(Claude, ChatGPT 등)를 통한 MCP 연결 시 아래 제약사항을 반드시 확인하세요.
         </p>
         <ul className="mt-4 space-y-4" aria-label="외부 LLM 한계 목록">
           {EXTERNAL_LLM_LIMITATIONS.map((item) => (
             <li key={item.provider}>
-              <h3 className="text-sm font-semibold text-amber-900">
+              <h3 className="text-sm font-semibold text-foreground">
                 {item.provider}
               </h3>
               <ul className="mt-1 space-y-1">
                 {item.limitations.map((limitation) => (
                   <li
                     key={limitation}
-                    className="flex gap-2 text-sm text-amber-800"
+                    className="flex gap-2 text-sm text-muted-foreground"
                   >
                     <span aria-hidden="true" className="mt-0.5 shrink-0">
                       &bull;

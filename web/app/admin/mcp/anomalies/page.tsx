@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { formatDateTime } from "@/lib/admin/datetime";
 import {
   type McpAnomalyEventResponse,
   type AnomalyEventStatus,
@@ -19,9 +20,9 @@ const STATUS_LABEL: Record<AnomalyEventStatus, string> = {
 };
 
 const STATUS_CLASS: Record<AnomalyEventStatus, string> = {
-  OPEN: "bg-red-100 text-red-800",
-  RESOLVED: "bg-green-100 text-green-800",
-  FALSE_POSITIVE: "bg-gray-100 text-gray-600",
+  OPEN: "bg-destructive/15 text-destructive",
+  RESOLVED: "bg-success/15 text-success",
+  FALSE_POSITIVE: "bg-muted text-muted-foreground",
 };
 
 interface FalsePositiveModalProps {
@@ -75,7 +76,7 @@ function FalsePositiveModal({
       }}
       onKeyDown={handleBackdropKeyDown}
     >
-      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+      <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-xl">
         <h2 id="false-positive-title" className="mb-4 text-lg font-semibold">
           오탐(False Positive) 처리
         </h2>
@@ -95,7 +96,7 @@ function FalsePositiveModal({
             />
           </div>
           {error !== null && (
-            <p role="alert" className="text-sm text-red-600">
+            <p role="alert" className="text-sm text-destructive">
               {error}
             </p>
           )}
@@ -167,14 +168,14 @@ export default function AnomaliesPage(): JSX.Element {
 
       {/* 오류 */}
       {error !== null && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       )}
 
       {/* 로딩 */}
       {loading && (
-        <p aria-busy="true" className="text-sm text-gray-500">
+        <p aria-busy="true" className="text-sm text-muted-foreground">
           이상 패턴 목록을 불러오는 중...
         </p>
       )}
@@ -182,49 +183,49 @@ export default function AnomaliesPage(): JSX.Element {
       {/* 목록 테이블 */}
       {!loading && (
         <section aria-label="이상 패턴 목록">
-          <p className="mb-2 text-sm text-gray-500">총 {totalElements}건</p>
+          <p className="mb-2 text-sm text-muted-foreground">총 {totalElements}건</p>
           <div className="overflow-x-auto rounded-md border">
             <table className="min-w-full text-sm">
-              <thead className="bg-gray-50">
+              <thead className="bg-muted/50">
                 <tr>
-                  <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                  <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                     감지 시각
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                  <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                     Token ID
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                  <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                     현재 시간 호출
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                  <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                     기준선 평균
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                  <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                     상태
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                  <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                     처리
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-border">
                 {events.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
                       조회된 이상 패턴이 없습니다.
                     </td>
                   </tr>
                 ) : (
                   events.map((event) => (
-                    <tr key={event.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-gray-600">
-                        {new Date(event.detectedAt).toLocaleString("ko-KR")}
+                    <tr key={event.id} className="hover:bg-muted/50">
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {formatDateTime(event.detectedAt)}
                       </td>
                       <td className="px-4 py-3 font-mono text-xs">{event.tokenId}</td>
-                      <td className="px-4 py-3 font-semibold text-red-700">
+                      <td className="px-4 py-3 font-semibold text-destructive">
                         {event.currentHourCount.toLocaleString("ko-KR")}
                       </td>
-                      <td className="px-4 py-3 text-gray-600">
+                      <td className="px-4 py-3 text-muted-foreground">
                         {event.baselineAverage.toFixed(1)}
                       </td>
                       <td className="px-4 py-3">

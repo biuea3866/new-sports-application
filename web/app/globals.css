@@ -38,6 +38,9 @@
     --aq-verybad-foreground: 0 75% 45%;
     --aq-unknown: 210 16% 93%;
     --aq-unknown-foreground: 215 16% 47%;
+    /* 차트 시리즈 색 — recharts stroke/fill 에 hsl(var(--chart-N)) 로 주입한다. */
+    --chart-1: 217 91% 60%;
+    --chart-2: 258 90% 66%;
   }
 
   .dark {
@@ -74,6 +77,9 @@
     --aq-verybad-foreground: 0 85% 78%;
     --aq-unknown: 217 20% 22%;
     --aq-unknown-foreground: 215 20% 65%;
+    /* 다크 모드에서는 어두운 카드 위 대비를 위해 채도·명도를 올린다. */
+    --chart-1: 213 94% 68%;
+    --chart-2: 255 92% 76%;
   }
 }
 
