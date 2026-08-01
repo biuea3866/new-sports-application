@@ -1,9 +1,7 @@
 package com.sportsapp.domain.facility.service
 
 import com.sportsapp.domain.facility.dto.BulkImportResult
-import com.sportsapp.domain.facility.dto.GuTypeCount
 import com.sportsapp.domain.facility.dto.LegacyRow
-import com.sportsapp.domain.facility.dto.RegionTypeCount
 import com.sportsapp.domain.facility.entity.Facility
 import com.sportsapp.domain.facility.exception.FacilityNotFoundException
 import com.sportsapp.domain.facility.gateway.RegionResolveGateway
@@ -26,15 +24,6 @@ class FacilityDomainService(
         val facility = Facility.create(resolveRegion(attributes))
         return facilityRepository.save(facility)
     }
-
-    fun findByGu(gu: String): List<Facility> =
-        facilityRepository.findAllByGu(gu)
-
-    fun findByGuAndType(gu: String, type: String): List<Facility> =
-        facilityRepository.findAllByGuAndType(gu, type)
-
-    fun findNear(lat: Double, lng: Double, maxDistanceMeters: Double): List<Facility> =
-        facilityRepository.findNear(lat, lng, maxDistanceMeters)
 
     fun list(sidoCode: String?, sigunguCode: String?, gu: String?, type: String?, pageable: Pageable): Page<Facility> =
         facilityRepository.findAll(sidoCode, sigunguCode, gu, type, pageable)
@@ -62,12 +51,6 @@ class FacilityDomainService(
         }
         return facilities
     }
-
-    fun aggregateGuType(): List<GuTypeCount> =
-        facilityRepository.aggregateGuType()
-
-    fun aggregateRegionType(): List<RegionTypeCount> =
-        facilityRepository.aggregateRegionType()
 
     fun findIdsByOwnerUserId(ownerUserId: Long): List<String> =
         facilityRepository.findIdsByOwnerUserId(ownerUserId)

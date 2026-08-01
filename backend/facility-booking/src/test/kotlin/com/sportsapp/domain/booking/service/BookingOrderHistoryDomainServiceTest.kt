@@ -42,8 +42,10 @@ class BookingOrderHistoryDomainServiceTest : BehaviorSpec({
             status = BookingStatus.CONFIRMED,
             paymentId = 100L,
             createdAt = ZonedDateTime.now(),
-            slotDate = ZonedDateTime.now(),
-            slotTimeRange = "09:00-10:00",
+            slotLabelSource = BookingOrderItem.SlotLabelSource(
+                date = ZonedDateTime.now(),
+                timeRange = "09:00-10:00",
+            ),
         )
         every { bookingOrderQueryRepository.findByUserId(7L) } returns listOf(item)
 

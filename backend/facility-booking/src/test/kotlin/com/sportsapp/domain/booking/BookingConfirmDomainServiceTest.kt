@@ -39,7 +39,14 @@ class BookingConfirmDomainServiceTest : BehaviorSpec({
         val slotRepository = mockk<SlotRepository>()
         val eventPublisher = mockk<DomainEventPublisher>(relaxed = true)
         val bookingOrderQueryRepository = mockk<BookingOrderQueryRepository>()
-        val service = BookingDomainService(bookingRepository, slotRepository, distributedLock, eventPublisher, bookingOrderQueryRepository, mockk<FeatureFlagEvaluator>())
+        val service = BookingDomainService(
+            bookingRepository,
+            slotRepository,
+            distributedLock,
+            eventPublisher,
+            bookingOrderQueryRepository,
+            mockk<FeatureFlagEvaluator>(),
+        )
 
         // CAS 성공 후 재조회하면 CONFIRMED로 반영된 최신 행이 보인다(같은 트랜잭션·커넥션 내 가시성).
         val confirmedBooking = Booking.createPending(userId = 1L, slotId = 10L)
@@ -70,7 +77,14 @@ class BookingConfirmDomainServiceTest : BehaviorSpec({
         val slotRepository = mockk<SlotRepository>()
         val eventPublisher = mockk<DomainEventPublisher>(relaxed = true)
         val bookingOrderQueryRepository = mockk<BookingOrderQueryRepository>()
-        val service = BookingDomainService(bookingRepository, slotRepository, distributedLock, eventPublisher, bookingOrderQueryRepository, mockk<FeatureFlagEvaluator>())
+        val service = BookingDomainService(
+            bookingRepository,
+            slotRepository,
+            distributedLock,
+            eventPublisher,
+            bookingOrderQueryRepository,
+            mockk<FeatureFlagEvaluator>(),
+        )
 
         val booking = Booking.createPending(userId = 1L, slotId = 10L)
         booking.confirm(paymentId = 100L)
@@ -95,7 +109,14 @@ class BookingConfirmDomainServiceTest : BehaviorSpec({
         val slotRepository = mockk<SlotRepository>()
         val eventPublisher = mockk<DomainEventPublisher>(relaxed = true)
         val bookingOrderQueryRepository = mockk<BookingOrderQueryRepository>()
-        val service = BookingDomainService(bookingRepository, slotRepository, distributedLock, eventPublisher, bookingOrderQueryRepository, mockk<FeatureFlagEvaluator>())
+        val service = BookingDomainService(
+            bookingRepository,
+            slotRepository,
+            distributedLock,
+            eventPublisher,
+            bookingOrderQueryRepository,
+            mockk<FeatureFlagEvaluator>(),
+        )
 
         val expiredBooking = Booking.createPending(userId = 1L, slotId = 10L)
         expiredBooking.expire()
@@ -119,7 +140,14 @@ class BookingConfirmDomainServiceTest : BehaviorSpec({
         val slotRepository = mockk<SlotRepository>()
         val eventPublisher = mockk<DomainEventPublisher>(relaxed = true)
         val bookingOrderQueryRepository = mockk<BookingOrderQueryRepository>()
-        val service = BookingDomainService(bookingRepository, slotRepository, distributedLock, eventPublisher, bookingOrderQueryRepository, mockk<FeatureFlagEvaluator>())
+        val service = BookingDomainService(
+            bookingRepository,
+            slotRepository,
+            distributedLock,
+            eventPublisher,
+            bookingOrderQueryRepository,
+            mockk<FeatureFlagEvaluator>(),
+        )
 
         val booking = Booking.createPending(userId = 1L, slotId = 10L)
         booking.confirm(paymentId = 50L)

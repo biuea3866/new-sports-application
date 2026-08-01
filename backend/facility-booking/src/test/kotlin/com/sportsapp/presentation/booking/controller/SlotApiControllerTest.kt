@@ -48,7 +48,7 @@ class SlotApiControllerTest : BehaviorSpec({
         .setCustomArgumentResolvers(fixedPrincipalResolver(userId))
         .build()
 
-    fun slot(id: Long = 1L, ownerId: Long = OWNER_USER_ID) = Slot.create(
+    fun slot(ownerId: Long = OWNER_USER_ID) = Slot.create(
         facilityId = "FAC-01",
         date = ZonedDateTime.now().plusDays(1),
         timeRange = "10:00-11:00",

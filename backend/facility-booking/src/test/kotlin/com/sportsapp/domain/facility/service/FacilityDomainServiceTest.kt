@@ -1,7 +1,6 @@
 package com.sportsapp.domain.facility.service
 
 import com.sportsapp.domain.facility.dto.LegacyRow
-import com.sportsapp.domain.facility.dto.RegionTypeCount
 import com.sportsapp.domain.facility.entity.Facility
 import com.sportsapp.domain.facility.gateway.RegionResolveGateway
 import com.sportsapp.domain.facility.repository.FacilityRepository
@@ -98,25 +97,6 @@ class FacilityDomainServiceTest : BehaviorSpec({
 
             Then("repository.findAll에 5개 인자가 그대로 위임된다") {
                 verify(exactly = 1) { facilityRepository.findAll("26", "26410", null, null, pageable) }
-            }
-        }
-    }
-
-    Given("region 집계 요청이 주어졌을 때") {
-        val facilityRepository = mockk<FacilityRepository>()
-        val regionResolveGateway = mockk<RegionResolveGateway>()
-        val service = FacilityDomainService(facilityRepository, regionResolveGateway)
-        val aggregation = listOf(
-            RegionTypeCount(sidoCode = "26", sidoName = "부산광역시", sigunguCode = "26410", sigunguName = "해운대구", type = "수영장", count = 3L),
-        )
-        every { facilityRepository.aggregateRegionType() } returns aggregation
-
-        When("aggregateRegionType을 호출하면") {
-            val result = service.aggregateRegionType()
-
-            Then("repository 집계 결과를 그대로 반환한다") {
-                result shouldHaveSize 1
-                result[0].sidoName shouldBe "부산광역시"
             }
         }
     }

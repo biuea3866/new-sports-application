@@ -18,6 +18,16 @@ import org.springframework.data.mongodb.core.mapping.Document
 import org.springframework.data.mongodb.core.mapping.Field
 import java.time.LocalDate
 
+/**
+ * MongoDB `facilities` 문서 엔티티. 생성자 파라미터 수(19)가 [LongParameterList] 임계값(13)을
+ * 넘지만, `sidoCode`/`sidoName`/`sigunguCode`/`sigunguName`을 값객체([FacilityRegion])로 묶으면
+ * Spring Data MongoDB의 생성자 바인딩이 (파라미터명 == 프로퍼티명) 매칭으로 top-level 필드
+ * (`sido_code` 등)를 찾으므로, 중첩 객체로 바꾸는 순간 기존 문서 역직렬화 시 region 값이
+ * 전부 유실되어 UNSPECIFIED로 되돌아간다 — 정적 분석 정리 범위를 넘는 실제 동작 변경(스키마
+ * 마이그레이션 필요)이라 이번 작업에서는 억제한다. 재구조화가 필요하면 별도 데이터 마이그레이션
+ * 설계(private-mongodb-convention 5단계)로 다룬다.
+ */
+@Suppress("LongParameterList")
 @Document(collection = "facilities")
 @CompoundIndexes(
     CompoundIndex(name = "idx_gu_type", def = "{'gu': 1, 'type': 1}"),

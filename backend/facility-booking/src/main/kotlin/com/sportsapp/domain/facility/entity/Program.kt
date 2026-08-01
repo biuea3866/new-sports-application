@@ -64,13 +64,11 @@ class Program private constructor(
             capacity: Int,
             durationMinutes: Int,
         ): Program {
-            if (facilityId.isBlank()) throw InvalidProgramException("facilityId must not be blank")
-            if (name.isBlank()) throw InvalidProgramException("name must not be blank")
-            if (price < BigDecimal.ZERO) throw InvalidProgramException("price must not be negative, got: $price")
-            if (capacity <= 0) throw InvalidProgramException("capacity must be positive, got: $capacity")
-            if (durationMinutes <= 0) {
-                throw InvalidProgramException("durationMinutes must be positive, got: $durationMinutes")
-            }
+            requireValidFacilityId(facilityId)
+            requireValidName(name)
+            requireValidPrice(price)
+            requireValidCapacity(capacity)
+            requireValidDurationMinutes(durationMinutes)
             return Program(
                 facilityId = facilityId,
                 ownerUserId = ownerUserId,
@@ -80,6 +78,30 @@ class Program private constructor(
                 capacity = capacity,
                 durationMinutes = durationMinutes,
             )
+        }
+
+        // ThrowsCount(임계 2) 해소를 위해 불변조건마다 단일 책임 검증 메서드로 분리했다.
+        // 각 메서드는 기존과 동일한 조건·메시지·평가 순서를 유지한다(동작 변경 없음).
+        private fun requireValidFacilityId(facilityId: String) {
+            if (facilityId.isBlank()) throw InvalidProgramException("facilityId must not be blank")
+        }
+
+        private fun requireValidName(name: String) {
+            if (name.isBlank()) throw InvalidProgramException("name must not be blank")
+        }
+
+        private fun requireValidPrice(price: BigDecimal) {
+            if (price < BigDecimal.ZERO) throw InvalidProgramException("price must not be negative, got: $price")
+        }
+
+        private fun requireValidCapacity(capacity: Int) {
+            if (capacity <= 0) throw InvalidProgramException("capacity must be positive, got: $capacity")
+        }
+
+        private fun requireValidDurationMinutes(durationMinutes: Int) {
+            if (durationMinutes <= 0) {
+                throw InvalidProgramException("durationMinutes must be positive, got: $durationMinutes")
+            }
         }
     }
 }
