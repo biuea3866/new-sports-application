@@ -113,9 +113,18 @@ class NotificationDomainService(
         notificationRepository.save(notification)
     }
 
+    /**
+     * 알림함(인앱) 목록. 같은 사건이 IN_APP·PUSH 두 행으로 적재되므로 IN_APP 만 조회한다 —
+     * 채널을 안 거르면 알림함에 같은 알림이 두 번 노출된다(캡쳐 36-알림함 16행 = 8건 × 2채널).
+     */
     fun listMyNotifications(userId: Long, onlyUnread: Boolean, page: Int, size: Int): Page<Notification> {
         val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
-        return notificationCustomRepository.findByUserIdPaged(userId, onlyUnread, pageable)
+        return notificationCustomRepository.findByUserIdPaged(
+            userId = userId,
+            channel = NotificationChannel.IN_APP,
+            onlyUnread = onlyUnread,
+            pageable = pageable,
+        )
     }
 
     /**

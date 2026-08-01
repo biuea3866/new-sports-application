@@ -16,6 +16,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.spyk
+import io.mockk.verify
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
 import java.time.ZoneOffset
@@ -63,7 +64,7 @@ class NotificationDomainServiceListViewTest : BehaviorSpec({
         ))
         val customRepository = mockk<NotificationCustomRepository>()
         val templateRenderer = mockk<TemplateRenderer>()
-        every { customRepository.findByUserIdPaged(7L, false, any()) } returns
+        every { customRepository.findByUserIdPaged(7L, NotificationChannel.IN_APP, false, any()) } returns
             PageImpl(listOf(notification), PageRequest.of(0, 20), 1)
 
         When("알림함 목록을 조회하면") {
@@ -90,14 +91,14 @@ class NotificationDomainServiceListViewTest : BehaviorSpec({
             userId = 7L,
             channel = NotificationChannel.IN_APP,
             templateId = "booking-confirmed",
-            payload = NotificationPayload(mapOf("facilityName" to "잠실 실내체육관")),
+            payload = NotificationPayload(emptyMap()),
         ))
         val customRepository = mockk<NotificationCustomRepository>()
         val templateRenderer = mockk<TemplateRenderer>()
-        every { customRepository.findByUserIdPaged(7L, false, any()) } returns
+        every { customRepository.findByUserIdPaged(7L, NotificationChannel.IN_APP, false, any()) } returns
             PageImpl(listOf(notification), PageRequest.of(0, 20), 1)
         every { templateRenderer.render("booking-confirmed", any()) } returns
-            RenderedNotification(title = "예약 확정", body = "잠실 실내체육관 예약이 확정되었습니다.")
+            RenderedNotification(title = "예약 확정", body = "예약이 확정되었습니다.")
 
         When("알림함 목록을 조회하면") {
             val views = serviceWith(customRepository, templateRenderer)
@@ -105,7 +106,7 @@ class NotificationDomainServiceListViewTest : BehaviorSpec({
 
             Then("템플릿을 렌더해 제목·본문을 채운다") {
                 views.content.single().title shouldBe "예약 확정"
-                views.content.single().content shouldBe "잠실 실내체육관 예약이 확정되었습니다."
+                views.content.single().content shouldBe "예약이 확정되었습니다."
             }
 
             Then("예약 분류로 결정된다") {
@@ -123,7 +124,7 @@ class NotificationDomainServiceListViewTest : BehaviorSpec({
         ))
         val customRepository = mockk<NotificationCustomRepository>()
         val templateRenderer = mockk<TemplateRenderer>()
-        every { customRepository.findByUserIdPaged(7L, false, any()) } returns
+        every { customRepository.findByUserIdPaged(7L, NotificationChannel.IN_APP, false, any()) } returns
             PageImpl(listOf(notification), PageRequest.of(0, 20), 1)
         every { templateRenderer.render("ticket-issued", any()) } throws
             UnknownTemplateException("ticket-issued")
@@ -152,7 +153,7 @@ class NotificationDomainServiceListViewTest : BehaviorSpec({
         )).also { it.markRead() }
         val customRepository = mockk<NotificationCustomRepository>()
         val templateRenderer = mockk<TemplateRenderer>()
-        every { customRepository.findByUserIdPaged(7L, true, any()) } returns
+        every { customRepository.findByUserIdPaged(7L, NotificationChannel.IN_APP, true, any()) } returns
             PageImpl(listOf(notification), PageRequest.of(0, 20), 1)
 
         When("알림함 목록을 조회하면") {
@@ -162,6 +163,53 @@ class NotificationDomainServiceListViewTest : BehaviorSpec({
             Then("읽음으로 표시되고 분류는 시스템이다") {
                 views.content.single().isRead shouldBe true
                 views.content.single().category shouldBe NotificationCategory.SYSTEM
+            }
+        }
+    }
+
+    Given("같은 알림이 IN_APP·PUSH 두 채널로 적재된 상황") {
+        val inAppNotification = queuedSpy(Notification.queue(
+            userId = 7L,
+            channel = NotificationChannel.IN_APP,
+            templateId = "payment-completed",
+            payload = NotificationPayload(mapOf("_title" to "결제 완료", "_body" to "158000원 결제가 완료되었습니다.")),
+        ))
+        val customRepository = mockk<NotificationCustomRepository>()
+        val templateRenderer = mockk<TemplateRenderer>()
+        every { customRepository.findByUserIdPaged(7L, NotificationChannel.IN_APP, false, any()) } returns
+            PageImpl(listOf(inAppNotification), PageRequest.of(0, 20), 1)
+
+        When("알림함 목록을 조회하면") {
+            val views = serviceWith(customRepository, templateRenderer)
+                .listMyNotificationViews(userId = 7L, onlyUnread = false, page = 0, size = 20)
+
+            Then("PUSH 발송분이 중복 노출되지 않도록 IN_APP 채널만 조회한다") {
+                views.content.size shouldBe 1
+                verify(exactly = 1) {
+                    customRepository.findByUserIdPaged(7L, NotificationChannel.IN_APP, false, any())
+                }
+            }
+        }
+    }
+
+    Given("변수 치환 실패로 본문 앞에 공백이 저장된 예약 알림이 있는 상황") {
+        val notification = queuedSpy(Notification.queue(
+            userId = 7L,
+            channel = NotificationChannel.IN_APP,
+            templateId = "booking-confirmed",
+            payload = NotificationPayload(mapOf("_title" to "예약 확정", "_body" to " 예약이 확정되었습니다.")),
+        ))
+        val customRepository = mockk<NotificationCustomRepository>()
+        val templateRenderer = mockk<TemplateRenderer>()
+        every { customRepository.findByUserIdPaged(7L, NotificationChannel.IN_APP, false, any()) } returns
+            PageImpl(listOf(notification), PageRequest.of(0, 20), 1)
+
+        When("알림함 목록을 조회하면") {
+            val views = serviceWith(customRepository, templateRenderer)
+                .listMyNotificationViews(userId = 7L, onlyUnread = false, page = 0, size = 20)
+
+            Then("저장된 본문의 앞뒤 공백을 제거해 노출한다") {
+                views.content.single().content shouldBe "예약이 확정되었습니다."
             }
         }
     }
