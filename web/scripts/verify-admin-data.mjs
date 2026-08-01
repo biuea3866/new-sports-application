@@ -146,6 +146,29 @@ const PAGES = [
 ];
 
 mkdirSync(OUT_DIR, { recursive: true });
+/**
+ * 어드민 세션 쿠키(`access_token`) 주입.
+ * AuthGuard 는 환경과 무관하게 세션이 없으면 /login 으로 보낸다 — 실제 캡쳐와 동일하게 세션을 넣는다.
+ * `lib/server/auth#getSessionInfo` 는 서명을 검증하지 않고 payload 만 base64 디코딩하므로
+ * 로컬 검증용으로는 서명 없는 토큰이면 충분하다.
+ */
+function base64Url(value) {
+  return Buffer.from(value, "utf-8").toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function adminSessionCookie() {
+  const header = base64Url(JSON.stringify({ alg: "none", typ: "JWT" }));
+  const payload = base64Url(
+    JSON.stringify({ sub: 1, email: "demo.admin@sportsapp.dev", roles: ["ADMIN"] })
+  );
+  return {
+    name: "access_token",
+    value: `${header}.${payload}.`,
+    domain: "localhost",
+    path: "/",
+  };
+}
+
 const browser = await chromium.launch();
 
 function json(body) {
@@ -160,6 +183,7 @@ for (const theme of ["light", "dark"]) {
   await context.addInitScript((value) => {
     window.localStorage.setItem("theme", value);
   }, theme);
+  await context.addCookies([adminSessionCookie()]);
 
   await context.route("**/api/**", async (route) => {
     const url = route.request().url();

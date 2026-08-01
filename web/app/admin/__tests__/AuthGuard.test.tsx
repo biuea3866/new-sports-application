@@ -65,10 +65,20 @@ describe("AuthGuard", () => {
     expect(redirectMock).toHaveBeenCalledWith("/login?redirect=/admin");
   });
 
-  it("비-prod 미리보기 모드에서는 세션 없이도 화면을 확인할 수 있다", () => {
+  // 미리보기 플래그는 production 라우트 차단만 완화한다 — 세션 없는 렌더를 허용하지 않는다.
+  // 세션 없이 화면이 열리면 인증이 깨져도 캡쳐가 정상처럼 보여, 이번에 고친 결함을 다시 가린다.
+  it("비-prod 미리보기 모드여도 세션이 없으면 차단한다", () => {
     setEnv("development", "true");
 
     renderGuard(false);
+
+    expect(redirectMock).toHaveBeenCalledWith("/login?redirect=/admin");
+  });
+
+  it("비-prod 미리보기 모드에서 세션이 있으면 본문을 볼 수 있다", () => {
+    setEnv("development", "true");
+
+    renderGuard(true);
 
     expect(redirectMock).not.toHaveBeenCalled();
   });
