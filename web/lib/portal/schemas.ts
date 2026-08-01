@@ -6,6 +6,18 @@ import { z } from "zod";
 
 // ─── 공통 ───────────────────────────────────────────────────────────────────
 
+/**
+ * "값이 없을 수 있는" 필드 — null, undefined, 키 자체 생략을 모두 받아 **null로 정규화**한다.
+ *
+ * BE ObjectMapper가 NON_NULL로 직렬화하면 값이 null인 필드는 키가 통째로 빠진다. 순수
+ * `.nullable()`은 undefined를 거부해 그 순간 파싱이 실패하고 화면이 비어 버린다. 반대로
+ * `.nullish()`만 쓰면 출력 타입에 undefined가 섞여 "없음"을 표현하는 값이 null과 undefined
+ * 둘로 갈린다 — 소비하는 쪽마다 두 경우를 다 처리해야 한다.
+ * 입력은 넓게 받고 출력은 null 하나로 좁혀, 앱 안에서 "없음"의 표현을 null로 통일한다.
+ */
+export const absentAsNull = <T extends z.ZodTypeAny>(itemSchema: T) =>
+  itemSchema.nullish().transform((value: z.infer<T> | null | undefined) => value ?? null);
+
 // BE는 Spring Data `Page`를 반환한다 (페이지 인덱스 필드명이 `number`, `page` 아님).
 // `number`(Spring)와 `page`(혹시 모를 커스텀) 양쪽을 수용해 FE 표준 `page`로 정규화한다.
 export const PageSchema = <T extends z.ZodTypeAny>(itemSchema: T) =>
@@ -45,9 +57,9 @@ export const MyFacilitySchema = z.object({
   lng: z.number(),
   parking: z.boolean(),
   tel: z.string(),
-  homePage: z.string().nullable(),
+  homePage: absentAsNull(z.string()),
   eduYn: z.boolean(),
-  meta: z.string().nullable(),
+  meta: absentAsNull(z.string()),
   ownerUserId: z.number().int(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -215,8 +227,8 @@ export const NotificationSchema = z.object({
   channel: NotificationChannelSchema,
   templateId: z.string(),
   status: NotificationStatusSchema,
-  sentAt: z.string().nullable(),
-  readAt: z.string().nullable(),
+  sentAt: absentAsNull(z.string()),
+  readAt: absentAsNull(z.string()),
   createdAt: z.string(),
 });
 
@@ -237,8 +249,8 @@ export const BookingSchema = z.object({
   slotId: z.number().int(),
   userId: z.number().int(),
   status: BookingStatusSchema,
-  paymentId: z.number().int().nullable(),
-  paymentStatus: z.string().nullable(),
+  paymentId: absentAsNull(z.number().int()),
+  paymentStatus: absentAsNull(z.string()),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -276,9 +288,9 @@ export const PaymentSummarySchema = z.object({
   amount: z.number(),
   status: PaymentStatusSchema,
   createdAt: z.string(),
-  paidAt: z.string().nullable(),
-  pgTransactionId: z.string().nullable().optional(),
-  provider: z.string().nullable().optional(),
+  paidAt: absentAsNull(z.string()),
+  pgTransactionId: absentAsNull(z.string()),
+  provider: absentAsNull(z.string()),
 });
 
 export const PaymentSummaryPageSchema = PageSchema(PaymentSummarySchema);
@@ -367,7 +379,7 @@ export const ProgramSchema = z.object({
   facilityId: z.string(),
   ownerUserId: z.number().int(),
   name: z.string(),
-  description: z.string().nullable(),
+  description: absentAsNull(z.string()),
   price: z.number().nonnegative(),
   capacity: z.number().int().positive(),
   durationMinutes: z.number().int().positive(),
@@ -395,7 +407,7 @@ export const SlotSchema = z.object({
   capacity: z.number().int(),
   ownerId: z.number().int(),
   status: SlotStatusSchema,
-  programId: z.number().int().nullable(),
+  programId: absentAsNull(z.number().int()),
 });
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
@@ -419,7 +431,7 @@ export const ProductSummarySchema = z.object({
 });
 
 export const DashboardSummarySchema = z.object({
-  facilities: FacilitySummarySchema.nullable(),
-  events: EventSummarySchema.nullable(),
-  products: ProductSummarySchema.nullable(),
+  facilities: absentAsNull(FacilitySummarySchema),
+  events: absentAsNull(EventSummarySchema),
+  products: absentAsNull(ProductSummarySchema),
 });

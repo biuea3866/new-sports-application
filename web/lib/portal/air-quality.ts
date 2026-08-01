@@ -5,6 +5,7 @@
  * (BE TDD 실패 경로) — FE는 이를 별도 에러 분기 없이 UNKNOWN 표시로 처리한다.
  */
 import { z } from "zod";
+import { absentAsNull } from "./schemas";
 
 export type AirQualityGrade = "GOOD" | "MODERATE" | "BAD" | "VERY_BAD" | "UNKNOWN";
 
@@ -25,13 +26,13 @@ export interface AirQualityResponse {
 export const AirQualityGradeSchema = z.enum(["GOOD", "MODERATE", "BAD", "VERY_BAD", "UNKNOWN"]);
 
 export const AirQualityResponseSchema = z.object({
-  pm10: z.number().nullable(),
-  pm25: z.number().nullable(),
+  pm10: absentAsNull(z.number()),
+  pm25: absentAsNull(z.number()),
   pm10Grade: AirQualityGradeSchema,
   pm25Grade: AirQualityGradeSchema,
   representativeGrade: AirQualityGradeSchema,
-  stationName: z.string().nullable(),
-  measuredAt: z.string().nullable(),
+  stationName: absentAsNull(z.string()),
+  measuredAt: absentAsNull(z.string()),
 });
 
 export interface AirQualityGradeDisplay {
