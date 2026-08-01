@@ -118,7 +118,10 @@ export type FeatureFlagResponse = z.infer<typeof FeatureFlagResponseSchema>;
 export const FeatureFlagAuditLogResponseSchema = z.object({
   changeType: ChangeTypeSchema,
   actorUserId: z.number(),
-  before: FeatureFlagSnapshotSchema.nullable(),
+  // BE `FeatureFlagAuditLogResponse.before`는 `FeatureFlagSnapshot?`이고,
+  // 직렬화는 NON_NULL(`McpObjectMapperConfig`)이라 CREATED 로그는 `before` 키 자체가 생략된다.
+  // `.nullable()`은 null만 허용해 undefined를 거부하므로 화면 전체가 검증 실패했다 → `.nullish()`.
+  before: FeatureFlagSnapshotSchema.nullish(),
   after: FeatureFlagSnapshotSchema,
   occurredAt: z.string(),
 });

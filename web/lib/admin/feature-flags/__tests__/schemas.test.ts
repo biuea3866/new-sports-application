@@ -181,4 +181,46 @@ describe("FeatureFlagAuditLogPageSchema", () => {
     };
     expect(FeatureFlagAuditLogPageSchema.safeParse(data).success).toBe(false);
   });
+
+  // ─── 실제 BE 계약 회귀 ─────────────────────────────────────────────────────
+  // BE `McpObjectMapperConfig`(@Primary)는 JsonInclude.NON_NULL 이므로
+  // `before: FeatureFlagSnapshot?` 가 null인 CREATED 로그는 응답에서 `before` 키가 **생략**된다.
+  // 기존 픽스처는 `before: null` 이라 이 계약을 재현하지 못해 운영 장애를 놓쳤다.
+
+  it("CREATED 로그처럼 before 키가 생략된 응답도 파싱을 통과한다", () => {
+    const createdLogWithoutBefore = {
+      changeType: "CREATED",
+      actorUserId: 1,
+      after: auditLog.after,
+      occurredAt: "2026-07-01T00:00:00.000Z",
+    };
+    const data = {
+      content: [createdLogWithoutBefore],
+      totalElements: 1,
+      totalPages: 1,
+      pageNumber: 0,
+      pageSize: 20,
+    };
+
+    const result = FeatureFlagAuditLogPageSchema.safeParse(data);
+
+    expect(result.success).toBe(true);
+  });
+
+  it("before 키가 생략돼도 after는 여전히 필수다", () => {
+    const logWithoutAfter = {
+      changeType: "CREATED",
+      actorUserId: 1,
+      occurredAt: "2026-07-01T00:00:00.000Z",
+    };
+    const data = {
+      content: [logWithoutAfter],
+      totalElements: 1,
+      totalPages: 1,
+      pageNumber: 0,
+      pageSize: 20,
+    };
+
+    expect(FeatureFlagAuditLogPageSchema.safeParse(data).success).toBe(false);
+  });
 });

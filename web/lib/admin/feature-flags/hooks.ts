@@ -8,13 +8,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 
+import { toUserMessage } from "@/lib/admin/toUserMessage";
+
 import { fetchFeatureFlags, fetchFeatureFlag, fetchFlagAuditLogs } from "./api";
 import type { FetchFeatureFlagsFilters } from "./api";
 import type { FeatureFlagResponse, FeatureFlagAuditLogPageView } from "./schemas";
-
-function toUserMessage(err: unknown): string {
-  return err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.";
-}
 
 interface UseFeatureFlagsResult {
   data: FeatureFlagResponse[] | null;
