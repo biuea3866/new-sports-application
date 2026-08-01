@@ -35,8 +35,8 @@ interface KpiCardProps {
 
 function KpiCard({ label, value }: KpiCardProps) {
   return (
-    <div className="rounded-lg border bg-white p-4 shadow-sm">
-      <p className="text-sm text-gray-500">{label}</p>
+    <div className="rounded-lg border bg-card p-4 shadow-sm">
+      <p className="text-sm text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-bold">{value}</p>
     </div>
   );
@@ -95,9 +95,9 @@ export default function InsightsPage(): JSX.Element {
     void loadData();
   }
 
-  // BE 응답 topFacilityIds는 순위순 ID 배열 (index 0 = 1위).
-  // 수치 없이 ID만 있으므로 막대 차트 대신 순위 리스트로 표시한다.
-  const topFacilityIds = data?.facility.topFacilityIds ?? [];
+  // BE 응답 topFacilities는 순위순 배열 (index 0 = 1위)이며 시설명을 함께 싣는다.
+  // 수치 없이 순위만 있으므로 막대 차트 대신 순위 리스트로 표시한다.
+  const topFacilities = data?.facility.topFacilities ?? [];
 
   const PRESET_LABELS: Record<DateRangePreset, string> = {
     today: "오늘",
@@ -167,14 +167,14 @@ export default function InsightsPage(): JSX.Element {
 
       {/* 오류 */}
       {error !== null && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       )}
 
       {/* 로딩 */}
       {loading && (
-        <p aria-busy="true" className="text-sm text-gray-500">
+        <p aria-busy="true" className="text-sm text-muted-foreground">
           데이터를 불러오는 중...
         </p>
       )}
@@ -195,7 +195,7 @@ export default function InsightsPage(): JSX.Element {
               />
               <KpiCard
                 label="인기 시설 수"
-                value={`${data.facility.topFacilityIds.length}개`}
+                value={`${data.facility.topFacilities.length}개`}
               />
             </div>
           </section>
@@ -241,25 +241,25 @@ export default function InsightsPage(): JSX.Element {
           {/* 인기 시설 TOP5 순위 리스트 */}
           <section aria-label="인기 시설 TOP5">
             <h2 className="mb-3 text-lg font-semibold">인기 시설 TOP5</h2>
-            {topFacilityIds.length === 0 ? (
-              <p className="text-sm text-gray-400">데이터가 없습니다.</p>
+            {topFacilities.length === 0 ? (
+              <p className="text-sm text-muted-foreground">데이터가 없습니다.</p>
             ) : (
               <ol
-                className="rounded-lg border bg-white divide-y"
+                className="rounded-lg border bg-card divide-y"
                 aria-label="인기 시설 순위 목록"
               >
-                {topFacilityIds.map((facilityId, index) => (
+                {topFacilities.map((facility, index) => (
                   <li
-                    key={facilityId}
+                    key={facility.id}
                     className="flex items-center gap-4 px-4 py-3 text-sm"
                   >
                     <span
-                      className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center shrink-0"
+                      className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center shrink-0"
                       aria-label={`${index + 1}위`}
                     >
                       {index + 1}
                     </span>
-                    <span>시설 #{facilityId}</span>
+                    <span>{facility.name}</span>
                   </li>
                 ))}
               </ol>
@@ -269,7 +269,7 @@ export default function InsightsPage(): JSX.Element {
       )}
 
       {!loading && data === null && error === null && (
-        <p className="text-sm text-gray-400">표시할 데이터가 없습니다.</p>
+        <p className="text-sm text-muted-foreground">표시할 데이터가 없습니다.</p>
       )}
     </main>
   );

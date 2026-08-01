@@ -3,6 +3,8 @@ import com.sportsapp.application.dashboard.dto.GetOperationKpiCommand
 
 import com.sportsapp.domain.booking.service.BookingDomainService
 import com.sportsapp.domain.booking.dto.FacilityKpiSummary
+import com.sportsapp.domain.facility.entity.Facility
+import com.sportsapp.domain.facility.service.FacilityDomainService
 import com.sportsapp.domain.goods.service.GoodsDomainService
 import com.sportsapp.domain.goods.dto.GoodsKpiSummary
 import com.sportsapp.domain.ticketing.service.TicketingDomainService
@@ -19,12 +21,20 @@ class GetOperationKpiUseCaseTest : BehaviorSpec({
     val bookingDomainService = mockk<BookingDomainService>()
     val goodsDomainService = mockk<GoodsDomainService>()
     val ticketingDomainService = mockk<TicketingDomainService>()
-    val useCase = GetOperationKpiUseCase(bookingDomainService, goodsDomainService, ticketingDomainService)
+    val facilityDomainService = mockk<FacilityDomainService>()
+    val useCase = GetOperationKpiUseCase(
+        bookingDomainService,
+        goodsDomainService,
+        ticketingDomainService,
+        facilityDomainService,
+    )
 
     val ownerUserId = 10L
     val from = ZonedDateTime.now().minusDays(30)
     val to = ZonedDateTime.now()
     val command = GetOperationKpiCommand(ownerUserId = ownerUserId, from = from, to = to)
+
+    every { facilityDomainService.findBy(any()) } returns null
 
     Given("[U-01] 모든 도메인에 정상 KPI 데이터가 있을 때") {
         every { bookingDomainService.aggregateFacilityKpi(ownerUserId, from, to) } returns
@@ -53,7 +63,7 @@ class GetOperationKpiUseCaseTest : BehaviorSpec({
                 result.ownerUserId shouldBe ownerUserId
                 result.facility.utilizationRate shouldBe BigDecimal("72.50")
                 result.facility.noShowRate shouldBe BigDecimal("5.00")
-                result.facility.topFacilityIds.size shouldBe 3
+                result.facility.topFacilities.size shouldBe 3
                 result.goods.dailyRevenueTotal shouldBe BigDecimal("1500000")
                 result.goods.outOfStockSkuCount shouldBe 3L
                 result.ticket.totalSoldCount shouldBe 250L
@@ -88,7 +98,7 @@ class GetOperationKpiUseCaseTest : BehaviorSpec({
 
             Then("[U-02] 모든 집계값이 0인 응답이 반환된다") {
                 result.facility.utilizationRate shouldBe BigDecimal.ZERO
-                result.facility.topFacilityIds shouldBe emptyList()
+                result.facility.topFacilities shouldBe emptyList()
                 result.goods.dailyRevenueTotal shouldBe BigDecimal.ZERO
                 result.ticket.totalSoldCount shouldBe 0L
                 result.ticket.complimentaryCount shouldBe 0L

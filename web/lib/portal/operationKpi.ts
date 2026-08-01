@@ -3,10 +3,19 @@
  * Client Component에서는 /api/operator/dashboard/kpi BFF 엔드포인트만 호출한다.
  */
 
+/**
+ * 인기 시설 순위 항목.
+ * 화면은 이름을 렌더하고, id는 시설 상세로 이동할 때만 쓴다 — id를 화면에 그대로 노출하지 않는다.
+ */
+export interface TopFacility {
+  id: string;
+  name: string;
+}
+
 export interface FacilityKpi {
   utilizationRate: number;
   noShowRate: number;
-  topFacilityIds: number[];
+  topFacilities: TopFacility[];
 }
 
 export interface GoodsKpi {
