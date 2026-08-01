@@ -5,7 +5,7 @@
  * 그대로 화면에 뿌리면 운영자에게 `[{ "expected": "object", "code": "invalid_type" ... }]`가 노출된다
  * (05-피처플래그-감사로그 캡쳐 결함). 검증 실패는 사람이 읽는 메시지로 치환해야 한다.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { z, ZodError } from "zod";
 import { toUserMessage } from "../toUserMessage";
 
@@ -17,6 +17,10 @@ function makeZodError(): ZodError {
 }
 
 describe("toUserMessage", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("일반 Error는 메시지를 그대로 전달한다", () => {
     expect(toUserMessage(new Error("변경 이력을 불러오지 못했습니다."))).toBe(
       "변경 이력을 불러오지 못했습니다."
@@ -47,5 +51,24 @@ describe("toUserMessage", () => {
     const wrapped = new Error(makeZodError().message);
 
     expect(toUserMessage(wrapped)).not.toContain("invalid_type");
+  });
+
+  // 사용자에게 숨긴 상세는 디버깅을 위해 콘솔로 보낸다 — 원인 추적 경로가 사라지면 안 된다.
+  it("검증 실패 상세를 콘솔 오류로 남긴다", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    toUserMessage(makeZodError());
+
+    expect(consoleError).toHaveBeenCalled();
+    const loggedArguments = consoleError.mock.calls[0] ?? [];
+    expect(JSON.stringify(loggedArguments)).toContain("invalid_type");
+  });
+
+  it("일반 Error는 콘솔 오류를 남기지 않는다", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    toUserMessage(new Error("네트워크 오류"));
+
+    expect(consoleError).not.toHaveBeenCalled();
   });
 });

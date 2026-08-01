@@ -86,7 +86,7 @@ describe("FeatureFlagAuditLogsPage", () => {
     expect(screen.getAllByText("전역 ON").length).toBeGreaterThan(0);
   });
 
-  it("before가 null인 CREATED 행은 (없음) → 이후 요약으로 표시된다", async () => {
+  it("before가 null인 CREATED 행은 '이전 값 없음' → 이후 요약으로 표시된다", async () => {
     const { useFlagAuditLogs } = await import("@/lib/admin/feature-flags/hooks");
     vi.mocked(useFlagAuditLogs).mockReturnValue({
       data: { logs: [CREATED_LOG], total: 1, page: 0, size: 10, totalPages: 1 },
@@ -99,7 +99,7 @@ describe("FeatureFlagAuditLogsPage", () => {
     render(<FeatureFlagAuditLogsPage />);
 
     expect(screen.getByText("CREATED")).toBeInTheDocument();
-    expect(screen.getByText("(없음)")).toBeInTheDocument();
+    expect(screen.getByText("이전 값 없음")).toBeInTheDocument();
     expect(screen.getByText("전역 OFF")).toBeInTheDocument();
   });
 

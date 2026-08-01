@@ -93,12 +93,16 @@ export const UpdateFeatureFlagInputSchema = z.object({
 export type UpdateFeatureFlagInput = z.infer<typeof UpdateFeatureFlagInputSchema>;
 
 // ─── 응답 스키마 ─────────────────────────────────────────────────────────────
+//
+// BE nullable 필드는 `.nullish()`로 받는다 (null·undefined 모두 허용).
+// BE가 전역 매퍼를 NON_NULL로 두는 동안에는 null 필드의 키가 응답에서 생략되고,
+// 매퍼가 기본 동작(null 포함)으로 복원되면 `null`이 온다. 양쪽 다 견뎌야 한다.
 
 export const FeatureFlagSnapshotSchema = z.object({
   key: z.string(),
   type: FeatureFlagTypeSchema,
   status: FeatureFlagStatusSchema,
-  description: z.string().nullable(),
+  description: z.string().nullish(),
   strategy: FeatureFlagStrategySchema,
 });
 export type FeatureFlagSnapshot = z.infer<typeof FeatureFlagSnapshotSchema>;
@@ -108,7 +112,7 @@ export const FeatureFlagResponseSchema = z.object({
   key: z.string(),
   type: FeatureFlagTypeSchema,
   status: FeatureFlagStatusSchema,
-  description: z.string().nullable(),
+  description: z.string().nullish(),
   strategy: FeatureFlagStrategySchema,
   createdAt: z.string(),
   updatedAt: z.string(),

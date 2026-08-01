@@ -1,7 +1,7 @@
 /**
  * S5 변경 이력 테이블 — 순수 프레젠테이션.
  * before→after는 StrategySummary(FE-05)로 사람이 읽는 요약으로 변환한다.
- * before가 없으면(CREATED) "(없음)"으로 표시한다 — 값 가공 없이 뷰 분기만 담당(no-logic-in-component).
+ * before가 없으면(최초 CREATED) "이전 값 없음"으로 표시한다 — 값 가공 없이 뷰 분기만 담당(no-logic-in-component).
  * BE는 NON_NULL 직렬화라 before가 null일 때 키 자체가 생략되므로 null·undefined를 함께 다룬다.
  * 근거 티켓: FE-10-audit-log-screen.md, 근거 설계: design-fe-web.md "S5 와이어프레임".
  */
@@ -38,7 +38,7 @@ export function AuditLogTable({ logs }: AuditLogTableProps): JSX.Element {
               <td className="px-4 py-3">#{log.actorUserId}</td>
               <td className="px-4 py-3">
                 {log.before === null || log.before === undefined ? (
-                  <span className="text-muted-foreground">(없음)</span>
+                  <span className="text-muted-foreground">이전 값 없음</span>
                 ) : (
                   <StrategySummary strategy={log.before.strategy} />
                 )}

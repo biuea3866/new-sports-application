@@ -137,6 +137,23 @@ describe("FeatureFlagResponseSchema", () => {
       expect(result.data.description).toBeNull();
     }
   });
+
+  // BE `FeatureFlagResponse.description: String?` + NON_NULL 직렬화 조합이면
+  // 설명 없는 플래그는 description 키가 생략돼 도착한다.
+  // 현재 DB엔 NULL description이 0건이라 아직 드러나지 않았을 뿐, 하나만 생겨도 목록·상세가 파손된다.
+  it("description 키가 생략된 응답도 파싱에 성공한다", () => {
+    const data = {
+      id: baseFlag.id,
+      key: baseFlag.key,
+      type: baseFlag.type,
+      status: baseFlag.status,
+      createdAt: baseFlag.createdAt,
+      updatedAt: baseFlag.updatedAt,
+      strategy: { strategyType: "GLOBAL_TOGGLE", enabled: true },
+    };
+
+    expect(FeatureFlagResponseSchema.safeParse(data).success).toBe(true);
+  });
 });
 
 describe("FeatureFlagSnapshotSchema", () => {
@@ -153,6 +170,17 @@ describe("FeatureFlagSnapshotSchema", () => {
     if (result.success) {
       expect(result.data.description).toBeNull();
     }
+  });
+
+  it("description 키가 생략된 스냅샷도 파싱에 성공한다", () => {
+    const data = {
+      key: "demo.feature.hello",
+      type: "RELEASE",
+      status: "ACTIVE",
+      strategy: { strategyType: "GLOBAL_TOGGLE", enabled: true },
+    };
+
+    expect(FeatureFlagSnapshotSchema.safeParse(data).success).toBe(true);
   });
 });
 

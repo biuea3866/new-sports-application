@@ -12,6 +12,22 @@ import { join } from "path";
 
 const BASE_URL = process.env["BASE_URL"] ?? "http://localhost:3111";
 const OUT_DIR = process.argv[2] ?? "/tmp/admin-data";
+/**
+ * CONTRACT=omitted : 현재 BE (전역 매퍼 NON_NULL) — null 필드의 키가 생략된다.
+ * CONTRACT=null    : BE 매퍼 수정 후 — null 필드가 `null` 로 명시된다.
+ * 두 계약 모두에서 화면이 부러지지 않아야 한다.
+ */
+const CONTRACT = process.env["CONTRACT"] ?? "omitted";
+
+/** CONTRACT=null 이면 생략된 nullable 키를 명시적 null 로 채워 넣는다. */
+function applyContract(value, nullableKeys) {
+  if (CONTRACT !== "null") return value;
+  const filled = { ...value };
+  for (const key of nullableKeys) {
+    if (filled[key] === undefined) filled[key] = null;
+  }
+  return filled;
+}
 
 const SNAPSHOT = {
   key: "virtualqueue.enabled",
@@ -147,8 +163,17 @@ for (const theme of ["light", "dark"]) {
 
   await context.route("**/api/**", async (route) => {
     const url = route.request().url();
-    if (url.includes("/audit-logs") && url.includes("/feature-flags/")) return route.fulfill(json(AUDIT_LOGS));
-    if (url.includes("/api/admin/mcp/tokens")) return route.fulfill(json(TOKENS));
+    if (url.includes("/audit-logs") && url.includes("/feature-flags/")) {
+      return route.fulfill(json({
+        ...AUDIT_LOGS,
+        content: AUDIT_LOGS.content.map((log) => applyContract(log, ["before"])),
+      }));
+    }
+    if (url.includes("/api/admin/mcp/tokens")) {
+      return route.fulfill(json({
+        tokens: TOKENS.tokens.map((token) => applyContract(token, ["expiresAt", "lastUsedAt"])),
+      }));
+    }
     if (url.includes("/api/admin/mcp/audit-logs")) return route.fulfill(json(MCP_AUDIT));
     if (url.includes("anomaly-events")) return route.fulfill(json(ANOMALIES));
     if (url.includes("usage-analytics")) return route.fulfill(json(USAGE));
@@ -169,4 +194,4 @@ for (const theme of ["light", "dark"]) {
 }
 
 await browser.close();
-console.log(`done → ${OUT_DIR}`);
+console.log(`done (CONTRACT=${CONTRACT}) → ${OUT_DIR}`);

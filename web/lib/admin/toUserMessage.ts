@@ -20,12 +20,23 @@ function looksLikeZodIssueJson(message: string): boolean {
   return trimmed.includes('"code"') || trimmed.includes('"expected"') || trimmed.includes('"path"');
 }
 
-/** 알 수 없는 예외 값을 사용자에게 보여줄 한 문장으로 변환한다. */
+/**
+ * 알 수 없는 예외 값을 사용자에게 보여줄 한 문장으로 변환한다.
+ *
+ * 스키마 검증 실패 상세는 화면에서 감추되 **콘솔로는 남긴다** — 사용자에게 raw JSON을
+ * 노출하지 않으면서도 원인 추적 경로(어느 필드가 계약과 어긋났는지)를 잃지 않기 위함이다.
+ */
 export function toUserMessage(error: unknown): string {
-  if (error instanceof ZodError) return SCHEMA_MISMATCH_MESSAGE;
+  if (error instanceof ZodError) {
+    console.error("[admin] 서버 응답이 스키마와 일치하지 않습니다.", error.issues);
+    return SCHEMA_MISMATCH_MESSAGE;
+  }
 
   if (error instanceof Error) {
-    if (looksLikeZodIssueJson(error.message)) return SCHEMA_MISMATCH_MESSAGE;
+    if (looksLikeZodIssueJson(error.message)) {
+      console.error("[admin] 서버 응답이 스키마와 일치하지 않습니다.", error.message);
+      return SCHEMA_MISMATCH_MESSAGE;
+    }
     return error.message.length > 0 ? error.message : UNKNOWN_MESSAGE;
   }
 
