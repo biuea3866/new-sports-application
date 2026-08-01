@@ -209,6 +209,10 @@ class TicketingDomainService(
      * 티켓 발급(Ticket.issue)은 CAS 성공 시 이 메서드가 별도로 수행한다 — CAS 실패(이미
      * CONFIRMED)면 중복 발급을 피하기 위해 재발급하지 않는다.
      */
+    // [W1-DEBT-01] ThrowsCount 억제 근거: 세 throw는 서로 다른 실패 원인(주문 부재·CAS 실패로
+    // 인한 잘못된 상태 전이·연결된 Event 부재)을 나타내는 독립 가드다. CAS 기반 webhook 확정
+    // 계약(KDoc)이 이 순서·원인 구분에 의존하므로 병합하면 장애 원인 판별력을 잃는다.
+    @Suppress("ThrowsCount")
     fun confirmOrder(orderId: Long, paymentId: Long): TicketOrderResult {
         // named argument 강제 — orderId/paymentId가 인접한 동일 타입(Long)이라 위치 인자로
         // 바꿔 넘겨도 컴파일이 통과해 다른 주문을 확정시키는 오동작이 조용히 재발할 수 있다.

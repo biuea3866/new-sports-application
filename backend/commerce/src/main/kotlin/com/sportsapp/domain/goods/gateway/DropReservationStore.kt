@@ -8,7 +8,13 @@ import java.time.Duration
  *
  * Redis 키·TTL·Lua 스크립트 등 구현 상세는 이 interface 의 책임이 아니다 — 구현체는
  * infrastructure 의 `DropReservationStoreImpl` (BE-04) 이 담당한다.
+ *
+ * [W1-DEBT-01] TooManyFunctions 억제 근거: 이 11개 메서드는 모두 하나의 개념(한정판 회차의
+ * Redis 기반 예약 상태 — 시드·판정·완충·거부집계·대사복원)을 구성하는 단일 게이트웨이다.
+ * 시드/판정/완충/집계/대사로 인터페이스를 쪼개면 구현체(Redis 키·Lua 스크립트 공유)가
+ * 여러 인터페이스에 흩어져 DI·구현 응집이 오히려 나빠진다 — 분리가 응집을 해치는 사례.
  */
+@Suppress("TooManyFunctions")
 interface DropReservationStore {
 
     /** 회차 개설 시 재고 카운터를 시드한다 (SET NX 의미 — 이미 존재하면 아무 것도 하지 않는다). 재실행 안전. */

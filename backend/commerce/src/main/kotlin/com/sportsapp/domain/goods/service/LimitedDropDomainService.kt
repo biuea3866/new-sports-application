@@ -34,7 +34,15 @@ import org.springframework.stereotype.Service
  *
  * [domainEventPublisher]는 구매 흐름에서는 사용하지 않고, [reconcile]/[reconcileAllActive]의
  * 오버셀 감지([LimitedDrop.recordOversold] 적재분) 발행에만 사용한다 (BE-11, Observability).
+ *
+ * [W1-DEBT-01] TooManyFunctions 억제 근거: 이 서비스는 "한정판 구매 오케스트레이션"이라는 단일
+ * 책임 아래 구매(purchase)·개설(createDrop/openDrop)·조회(getView/getStats)·대사(reconcile*)를
+ * 담당한다. 각 흐름은 ADR-001/ADR-003/FIX-02~04 문서화된 fail-open·롤백 보상·언더셀 복원
+ * 계약으로 서로 얽혀 있어(예: [admit]이 [persistWithThrottle]·[registerCancelOnRollback]과
+ * 공유하는 상태), 클래스를 쪼개면 이 계약이 여러 클래스에 흩어져 동작 변경 위험 없이는
+ * 분리할 수 없다. 이번 정리는 정적 분석 부채 정리이지 리팩토링 범위가 아니므로 억제한다.
  */
+@Suppress("TooManyFunctions")
 @Service
 class LimitedDropDomainService(
     private val limitedDropRepository: LimitedDropRepository,
@@ -164,6 +172,9 @@ class LimitedDropDomainService(
      *
      * 복원 대상이 없으면 Redis 쓰기 명령을 발행하지 않는다(early return).
      */
+    // guard clause 다수 사용의 부산물(private-be-code-convention 권장) — 플래그 OFF·스캔
+    // 결과 없음·복원 대상 없음 각각의 조기 반환이 병합보다 읽기 쉽다.
+    @Suppress("ReturnCount")
     private fun reconcileUnderSell(drop: LimitedDrop) {
         if (!underSellReconciliationEnabled) return
         val staleReservations = dropReservationStore.scanStaleReservations(drop.id, underSellGraceSeconds)

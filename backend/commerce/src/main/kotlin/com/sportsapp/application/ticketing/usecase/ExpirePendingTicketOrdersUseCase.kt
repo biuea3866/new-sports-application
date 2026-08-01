@@ -38,6 +38,10 @@ class ExpirePendingTicketOrdersUseCase(
     fun execute(): TicketOrderExpiryResult =
         processChunks(afterId = 0L, chunksLeft = ticketOrderExpiryProperties.maxChunksPerRun, accumulated = TicketOrderExpiryResult.empty())
 
+    // guard clause 다수 사용의 부산물(private-be-code-convention 권장) — tailrec 종료 조건
+    // 2개(chunksLeft 소진·candidates 없음)의 조기 반환 + 재귀 호출 자체가 3번째 return으로
+    // 잡힌다. tailrec 최적화를 유지하려면 이 형태가 필수라 병합하지 않는다.
+    @Suppress("ReturnCount")
     private tailrec fun processChunks(afterId: Long, chunksLeft: Int, accumulated: TicketOrderExpiryResult): TicketOrderExpiryResult {
         if (chunksLeft <= 0) return accumulated
         val candidates = ticketingDomainService.findExpirableTicketOrderCandidates(

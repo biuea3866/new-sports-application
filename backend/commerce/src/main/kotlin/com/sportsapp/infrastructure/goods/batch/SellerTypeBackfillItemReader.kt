@@ -36,6 +36,9 @@ class SellerTypeBackfillItemReader(
     private var buffer: Iterator<Product> = emptyList<Product>().iterator()
     private var exhausted = false
 
+    // guard clause 다수 사용의 부산물(private-be-code-convention 권장) — 버퍼 소진·exhausted
+    // 상태 각각의 조기 반환이 명확성을 높인다.
+    @Suppress("ReturnCount")
     override fun read(): Product? {
         if (buffer.hasNext()) return buffer.next()
         if (exhausted) return null

@@ -20,6 +20,13 @@ import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.ZonedDateTime
 
+// [W1-DEBT-01] LongParameterList 억제 근거: 15개 파라미터는 모두 `payments` 테이블의 영속
+// 컬럼을 1:1로 매핑하는 JPA 엔티티 private 생성자다. 값 객체로 묶으려면(예: PgDetails(tid,
+// provider, checkoutUrl)) 컬럼 매핑·[markReady]/[markCompleted] 등 상태 전이 메서드 시그니처·
+// `create()` 팩토리를 함께 바꿔야 하는 구조 변경이 되고, 이는 결제 도메인의 상태 전이·영속
+// 매핑에 직접 닿는 변경이라 이번 정적 분석 정리 범위(동작 불변)를 벗어난다. 값 객체 그룹화는
+// 별도 리팩토링 티켓에서 테스트와 함께 다룰 것을 권장한다(완료 보고 참고).
+@Suppress("LongParameterList")
 @Entity
 @Table(name = "payments")
 class Payment private constructor(

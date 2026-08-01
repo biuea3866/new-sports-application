@@ -58,7 +58,7 @@ class CreateGoodsOrderUseCase(
                 currency = Currency.KRW.code,
             )
             order to paymentId
-        } ?: throw IllegalStateException("Transaction returned null")
+        } ?: error("Transaction returned null")
     }
 
     private fun buildIdempotentResult(order: GoodsOrder) = OrderWithPayment(

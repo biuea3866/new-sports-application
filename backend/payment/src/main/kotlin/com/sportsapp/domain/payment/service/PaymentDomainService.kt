@@ -186,6 +186,10 @@ class PaymentDomainService(
         failUrl = "",
     )
 
+    // guard clause 다수 사용의 부산물(private-be-code-convention 권장) — 이미 COMPLETED/
+    // CANCELLED로 전이된 webhook 중복 수신을 각각 조기 반환하는 멱등 가드다. when 분기 안에
+    // 중첩시키면 오히려 멱등 처리 의도가 흐려진다. 결제 상태 전이 로직 자체는 변경하지 않는다.
+    @Suppress("ReturnCount")
     @Transactional
     fun confirmWebhook(tid: String, eventType: String): ConfirmWebhookResult {
         val payment = paymentRepository.findByPgTransactionId(tid)

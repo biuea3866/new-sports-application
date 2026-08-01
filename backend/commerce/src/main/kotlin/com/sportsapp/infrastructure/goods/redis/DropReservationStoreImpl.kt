@@ -33,7 +33,13 @@ import org.springframework.stereotype.Component
  *
  * Redis 인프라 장애(`DataAccessException`)는 여기서 삼키지 않고 그대로 전파한다.
  * 호출부(`LimitedDropDomainService`)가 fail-open 폴백을 처리한다.
+ *
+ * [W1-DEBT-01] TooManyFunctions 억제 근거: 11개 override + 16개 private 헬퍼가 모두 하나의
+ * Redis 어댑터(reserve/cancel Lua 스크립트 실행, 키 조립, SCAN 기반 대사)를 구성한다. 키
+ * 조립·스크립트 실행·레거시 마커 파싱을 별도 클래스로 쪼개면 ADR-003 이 문서화한 Redis
+ * 키·스크립트 계약이 여러 클래스에 흩어져 오히려 추적이 어려워진다 — 분리가 응집을 해치는 사례.
  */
+@Suppress("TooManyFunctions")
 @Component
 class DropReservationStoreImpl(
     private val redisTemplate: StringRedisTemplate,
@@ -128,6 +134,10 @@ class DropReservationStoreImpl(
         return scanKeys("$prefix*").mapNotNull { key -> toPendingReservationIfStale(key, prefix, staleThresholdTtlSeconds) }
     }
 
+    // guard clause 다수 사용의 부산물(private-be-code-convention "Guard clause 적극 사용" 권장) —
+    // 레이스로 키가 사라지거나(만료·복원 완료) 레거시 포맷이면 조용히 건너뛰는 각 조건이
+    // 독립적인 조기 반환이라 병합하면 오히려 depth 가 깊어진다.
+    @Suppress("ReturnCount")
     private fun toPendingReservationIfStale(key: String, prefix: String, staleThresholdTtlSeconds: Long): PendingReservation? {
         val ttlSeconds = redisTemplate.getExpire(key, TimeUnit.SECONDS)
         if (ttlSeconds < 0 || ttlSeconds > staleThresholdTtlSeconds) return null
@@ -139,6 +149,9 @@ class DropReservationStoreImpl(
         return PendingReservation(idempotencyKey = key.removePrefix(prefix), userId = userId, quantity = quantity)
     }
 
+    // guard clause 다수 사용의 부산물 — 파싱 실패 3가지(구분자 개수·userId·quantity)를
+    // 각각 조기 반환하는 편이 병합보다 읽기 쉽다(private-be-code-convention 권장).
+    @Suppress("ReturnCount")
     private fun parseMarkerValue(value: String): Pair<Long, Int>? {
         val parts = value.split(':')
         if (parts.size != 2) return null
