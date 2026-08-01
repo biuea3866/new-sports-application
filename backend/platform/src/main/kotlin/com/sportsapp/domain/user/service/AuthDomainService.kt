@@ -11,7 +11,7 @@ import com.sportsapp.domain.user.vo.TokenPair
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import java.time.Duration
-import java.time.Instant
+import java.time.ZonedDateTime
 
 @Service
 class AuthDomainService(
@@ -46,7 +46,7 @@ class AuthDomainService(
     fun logout(accessToken: String, userId: Long) {
         val jti = jwtIssuer.extractJti(accessToken)
         val expiration = jwtIssuer.extractExpiration(accessToken)
-        val ttl = Duration.between(Instant.now(), expiration).coerceAtLeast(Duration.ZERO)
+        val ttl = Duration.between(ZonedDateTime.now(), expiration).coerceAtLeast(Duration.ZERO)
         jwtBlacklistStore.add(jti, ttl)
         refreshTokenRepository.invalidateByUserId(userId)
     }

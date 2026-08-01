@@ -11,7 +11,8 @@ import org.springframework.mock.env.MockEnvironment
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
 import java.security.spec.PKCS8EncodedKeySpec
-import java.time.Instant // private-allow:no-instant — JwtIssuer 계약(Instant) 및 JJWT Date API 정합 테스트, 인터페이스 변경은 범위 밖
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
 import java.util.Base64
 import java.util.Date
 
@@ -77,7 +78,7 @@ class JwtTokenProviderTest : BehaviorSpec({
                 provider.extractEmail(token) shouldBe "user@example.com"
                 provider.extractRoles(token) shouldBe listOf("USER", "ADMIN")
                 provider.extractJti(token).shouldNotBeBlank()
-                provider.extractExpiration(token).isAfter(Instant.now()) shouldBe true
+                provider.extractExpiration(token).isAfter(ZonedDateTime.now(ZoneOffset.UTC)) shouldBe true
             }
 
             Then("accessTokenExpiresInSeconds 는 기존과 동일하게 1800(30분)을 반환한다") {
@@ -186,8 +187,8 @@ class JwtTokenProviderTest : BehaviorSpec({
         val forgedToken = Jwts.builder()
             .subject("999")
             .id("forged-jti")
-            .issuedAt(Date.from(Instant.now()))
-            .expiration(Date.from(Instant.now().plusSeconds(600)))
+            .issuedAt(Date.from(ZonedDateTime.now(ZoneOffset.UTC).toInstant()))
+            .expiration(Date.from(ZonedDateTime.now(ZoneOffset.UTC).plusSeconds(600).toInstant()))
             .signWith(foreignKeyPair.private)
             .compact()
 
@@ -208,8 +209,8 @@ class JwtTokenProviderTest : BehaviorSpec({
             val expiredToken = Jwts.builder()
                 .subject("5")
                 .id("expired-jti")
-                .issuedAt(Date.from(Instant.now().minusSeconds(3600)))
-                .expiration(Date.from(Instant.now().minusSeconds(10)))
+                .issuedAt(Date.from(ZonedDateTime.now(ZoneOffset.UTC).minusSeconds(3600).toInstant()))
+                .expiration(Date.from(ZonedDateTime.now(ZoneOffset.UTC).minusSeconds(10).toInstant()))
                 .signWith(privateKey)
                 .compact()
 
@@ -245,8 +246,8 @@ class JwtTokenProviderTest : BehaviorSpec({
             val rs256SignedToken = Jwts.builder()
                 .subject("4")
                 .id("rs256-while-unconfigured-jti")
-                .issuedAt(Date.from(Instant.now()))
-                .expiration(Date.from(Instant.now().plusSeconds(600)))
+                .issuedAt(Date.from(ZonedDateTime.now(ZoneOffset.UTC).toInstant()))
+                .expiration(Date.from(ZonedDateTime.now(ZoneOffset.UTC).plusSeconds(600).toInstant()))
                 .signWith(foreignPrivateKey, Jwts.SIG.RS256)
                 .compact()
 
@@ -266,8 +267,8 @@ class JwtTokenProviderTest : BehaviorSpec({
                 val legacyToken = Jwts.builder()
                     .subject("11")
                     .id("legacy-${legacyAlgorithm.id}-jti")
-                    .issuedAt(Date.from(Instant.now()))
-                    .expiration(Date.from(Instant.now().plusSeconds(600)))
+                    .issuedAt(Date.from(ZonedDateTime.now(ZoneOffset.UTC).toInstant()))
+                    .expiration(Date.from(ZonedDateTime.now(ZoneOffset.UTC).plusSeconds(600).toInstant()))
                     .signWith(hmacKey, legacyAlgorithm)
                     .compact()
 
