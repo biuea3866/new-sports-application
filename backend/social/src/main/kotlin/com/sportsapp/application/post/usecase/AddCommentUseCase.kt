@@ -3,6 +3,7 @@ package com.sportsapp.application.post.usecase
 import com.sportsapp.application.post.dto.AddCommentCommand
 import com.sportsapp.domain.community.service.CommunityDomainService
 import com.sportsapp.domain.post.entity.Comment
+import com.sportsapp.domain.post.service.CommentDomainService
 import com.sportsapp.domain.post.service.PostDomainService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -14,12 +15,13 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class AddCommentUseCase(
     private val postDomainService: PostDomainService,
+    private val commentDomainService: CommentDomainService,
     private val communityDomainService: CommunityDomainService,
 ) {
     @Transactional
     fun execute(command: AddCommentCommand): Comment {
         val post = postDomainService.getPost(command.postId)
         post.currentCommunityId?.let { communityDomainService.requireActiveMember(it, command.userId) }
-        return postDomainService.addComment(postId = command.postId, userId = command.userId, content = command.content)
+        return commentDomainService.addComment(postId = command.postId, userId = command.userId, content = command.content)
     }
 }

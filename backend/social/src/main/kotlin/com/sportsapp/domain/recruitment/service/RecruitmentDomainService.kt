@@ -12,6 +12,7 @@ import com.sportsapp.domain.recruitment.dto.ApplicationExpiryCandidate
 import com.sportsapp.domain.recruitment.dto.ApplicationExpiryFilterResult
 import com.sportsapp.domain.recruitment.dto.ApplicationExpiryTtlPolicy
 import com.sportsapp.domain.recruitment.dto.ApplicationWithRecruitmentTitle
+import com.sportsapp.domain.recruitment.dto.RecruitmentCreationDetails
 import com.sportsapp.domain.recruitment.entity.Application
 import com.sportsapp.domain.recruitment.entity.Recruitment
 import com.sportsapp.domain.recruitment.exception.RecruitmentBusyException
@@ -38,6 +39,19 @@ private val LOCK_WAIT_TIMEOUT = Duration.ofSeconds(5)
 private val LOCK_RETRY_INTERVAL = Duration.ofMillis(50)
 private const val REFUND_SCALE = 2
 
+/**
+ * TooManyFunctions 억제 근거(W1-DEBT-01): 이 클래스는 모집 CRUD·신청 동시성 제어(분산
+ * 락)·환불 계산·만료 스위퍼(W1-11d)까지 최소 6개 서로 다른 책임 축을 갖고 있고, 실제로
+ * 테스트 파일도 이미 책임별로 나뉘어 있다 — [RecruitmentQueryDomainServiceTest],
+ * [RecruitmentApplyDomainServiceTest], [RecruitmentCancelApplicationDomainServiceTest],
+ * [RecruitmentCancelRecruitmentDomainServiceTest], [RecruitmentExpiryDomainServiceTest],
+ * [RecruitmentDomainServiceCatalogReadTest] (테스트는 모두 이 단일 클래스를 생성한다).
+ * 다만 실제 클래스 분리는 14개 UseCase 호출부 재배선 + `apply()`의 스핀락/트랜잭션 동기화
+ * 헬퍼(`doApply`/`registerUnlockOnCompletion`/`spinLock`)가 서로 강하게 얽혀 있어, "동작을
+ * 바꾸지 않는" 정적분석 정리 티켓 범위에서 안전하게 끝내기엔 위험도가 크다. 분리는 별도
+ * 설계 문서(TDD)를 갖는 후속 티켓으로 진행하는 것이 맞다고 판단해 여기서는 억제만 한다.
+ */
+@Suppress("TooManyFunctions")
 @Service
 class RecruitmentDomainService(
     private val recruitmentRepository: RecruitmentRepository,
@@ -50,25 +64,16 @@ class RecruitmentDomainService(
     private val featureFlagEvaluator: FeatureFlagEvaluator,
 ) {
 
-    fun create(
-        title: String,
-        description: String?,
-        capacity: Int,
-        feeAmount: BigDecimal,
-        activityAt: ZonedDateTime,
-        applicationDeadline: ZonedDateTime,
-        communityId: Long?,
-        recruiterUserId: Long,
-    ): Recruitment {
+    fun create(details: RecruitmentCreationDetails): Recruitment {
         val recruitment = Recruitment.create(
-            title = title,
-            description = description,
-            capacity = capacity,
-            feeAmount = feeAmount,
-            activityAt = activityAt,
-            applicationDeadline = applicationDeadline,
-            communityId = communityId,
-            recruiterUserId = recruiterUserId,
+            title = details.title,
+            description = details.description,
+            capacity = details.capacity,
+            feeAmount = details.feeAmount,
+            activityAt = details.activityAt,
+            applicationDeadline = details.applicationDeadline,
+            communityId = details.communityId,
+            recruiterUserId = details.recruiterUserId,
         )
         return recruitmentRepository.save(recruitment)
     }

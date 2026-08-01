@@ -1,6 +1,8 @@
 package com.sportsapp.infrastructure.message.mysql
 
+import com.querydsl.core.types.dsl.BooleanExpression
 import com.querydsl.jpa.JPAExpressions
+import com.querydsl.jpa.impl.JPAQuery
 import com.querydsl.jpa.impl.JPAQueryFactory
 import com.sportsapp.domain.message.entity.QMessage
 import com.sportsapp.domain.message.entity.QRoom
@@ -41,22 +43,20 @@ class RoomCustomRepositoryImpl(
     }
 
     override fun findMyRoomViews(userId: Long, keyword: String?): List<RoomListView> {
+        val query = buildMyRoomViewsQuery(userId)
+        if (!keyword.isNullOrBlank()) {
+            query.where(QRoom.room.name.containsIgnoreCase(keyword))
+        }
+        return query.fetch()
+    }
+
+    private fun buildMyRoomViewsQuery(userId: Long): JPAQuery<RoomListView> {
         val room = QRoom.room
         val participant = QRoomParticipant.roomParticipant
-        val message = QMessage.message
         val lastMessage = QMessage("lastMessage")
 
-        val query = queryFactory
-            .select(
-                QRoomListView(
-                    room.id,
-                    room.type,
-                    room.name,
-                    room.contextType,
-                    lastMessage.content,
-                    lastMessage.createdAt,
-                ),
-            )
+        return queryFactory
+            .select(selectRoomListView(room, lastMessage))
             .from(room)
             .join(participant).on(
                 participant.room.id.eq(room.id),
@@ -65,20 +65,31 @@ class RoomCustomRepositoryImpl(
             )
             .leftJoin(lastMessage).on(
                 lastMessage.room.id.eq(room.id),
-                lastMessage.id.eq(
-                    JPAExpressions.select(message.id.max())
-                        .from(message)
-                        .where(
-                            message.room.id.eq(room.id),
-                            message.deletedAt.isNull,
-                        ),
-                ),
+                lastMessageIdCondition(room, lastMessage),
             )
             .where(room.deletedAt.isNull)
-        if (!keyword.isNullOrBlank()) {
-            query.where(room.name.containsIgnoreCase(keyword))
-        }
-        return query.fetch()
+    }
+
+    private fun selectRoomListView(room: QRoom, lastMessage: QMessage): QRoomListView =
+        QRoomListView(
+            room.id,
+            room.type,
+            room.name,
+            room.contextType,
+            lastMessage.content,
+            lastMessage.createdAt,
+        )
+
+    private fun lastMessageIdCondition(room: QRoom, lastMessage: QMessage): BooleanExpression {
+        val message = QMessage.message
+        return lastMessage.id.eq(
+            JPAExpressions.select(message.id.max())
+                .from(message)
+                .where(
+                    message.room.id.eq(room.id),
+                    message.deletedAt.isNull,
+                ),
+        )
     }
 
     override fun findByContext(contextType: RoomContextType, contextId: Long): Room? {

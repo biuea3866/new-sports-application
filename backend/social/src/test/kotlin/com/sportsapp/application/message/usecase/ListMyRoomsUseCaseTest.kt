@@ -1,6 +1,6 @@
 package com.sportsapp.application.message.usecase
 
-import com.sportsapp.domain.message.service.MessageDomainService
+import com.sportsapp.domain.message.service.RoomDomainService
 import com.sportsapp.domain.message.vo.RoomContextType
 import com.sportsapp.domain.message.vo.RoomListView
 import com.sportsapp.domain.message.vo.RoomType
@@ -15,8 +15,8 @@ import java.time.ZonedDateTime
 
 class ListMyRoomsUseCaseTest : BehaviorSpec({
 
-    val messageDomainService = mockk<MessageDomainService>()
-    val listMyRoomsUseCase = ListMyRoomsUseCase(messageDomainService)
+    val roomDomainService = mockk<RoomDomainService>()
+    val listMyRoomsUseCase = ListMyRoomsUseCase(roomDomainService)
 
     Given("userId=1 의 룸 2개 projection 이 존재") {
         val lastMessageAt = ZonedDateTime.now()
@@ -38,7 +38,7 @@ class ListMyRoomsUseCaseTest : BehaviorSpec({
                 lastMessageAt = lastMessageAt,
             ),
         )
-        every { messageDomainService.findMyRoomViews(1L, null) } returns views
+        every { roomDomainService.findMyRoomViews(1L, null) } returns views
 
         When("keyword 없이 execute 를 호출하면") {
             val result = listMyRoomsUseCase.execute(userId = 1L, keyword = null)
@@ -61,7 +61,7 @@ class ListMyRoomsUseCaseTest : BehaviorSpec({
             lastMessageContent = "다음 경기 몇시?",
             lastMessageAt = ZonedDateTime.now(),
         )
-        every { messageDomainService.findMyRoomViews(1L, "축구") } returns listOf(matchedView)
+        every { roomDomainService.findMyRoomViews(1L, "축구") } returns listOf(matchedView)
 
         When("keyword='축구' 로 execute 를 호출하면") {
             val result = listMyRoomsUseCase.execute(userId = 1L, keyword = "축구")

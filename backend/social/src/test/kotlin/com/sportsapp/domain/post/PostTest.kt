@@ -3,6 +3,7 @@ package com.sportsapp.domain.post
 import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.post.entity.Post
 import com.sportsapp.domain.post.exception.NoticeRequiresHostException
+import com.sportsapp.domain.post.vo.CommunityPostContext
 import com.sportsapp.domain.post.vo.PostType
 
 import io.kotest.assertions.throwables.shouldThrow
@@ -144,10 +145,12 @@ class PostTest : BehaviorSpec({
             title = "공지",
             content = "이번 주 공지사항",
             type = PostType.NOTICE,
-            communityId = 10L,
-            sportCategory = SportCategory.SOCCER,
-            authorIsHost = true,
-            communityIsPublic = true,
+            context = CommunityPostContext(
+                communityId = 10L,
+                sportCategory = SportCategory.SOCCER,
+                authorIsHost = true,
+                communityIsPublic = true,
+            ),
         )
 
         Then("게시글이 정상 생성되고 communityId·sportCategory 가 상속된다") {
@@ -165,10 +168,12 @@ class PostTest : BehaviorSpec({
                     title = "공지",
                     content = "이번 주 공지사항",
                     type = PostType.NOTICE,
-                    communityId = 10L,
-                    sportCategory = SportCategory.SOCCER,
-                    authorIsHost = false,
-                    communityIsPublic = true,
+                    context = CommunityPostContext(
+                        communityId = 10L,
+                        sportCategory = SportCategory.SOCCER,
+                        authorIsHost = false,
+                        communityIsPublic = true,
+                    ),
                 )
             }
         }
@@ -180,10 +185,12 @@ class PostTest : BehaviorSpec({
             title = "잡담",
             content = "오늘 날씨가 좋네요",
             type = PostType.FREE,
-            communityId = 10L,
-            sportCategory = SportCategory.BASKETBALL,
-            authorIsHost = false,
-            communityIsPublic = true,
+            context = CommunityPostContext(
+                communityId = 10L,
+                sportCategory = SportCategory.BASKETBALL,
+                authorIsHost = false,
+                communityIsPublic = true,
+            ),
         )
 
         Then("host 여부와 무관하게 정상 생성된다") {
@@ -198,10 +205,12 @@ class PostTest : BehaviorSpec({
             title = "제목",
             content = "내용",
             type = PostType.FREE,
-            communityId = 20L,
-            sportCategory = SportCategory.TENNIS,
-            authorIsHost = true,
-            communityIsPublic = false,
+            context = CommunityPostContext(
+                communityId = 20L,
+                sportCategory = SportCategory.TENNIS,
+                authorIsHost = true,
+                communityIsPublic = false,
+            ),
         )
 
         Then("globalListed 가 false 다") {
@@ -215,10 +224,12 @@ class PostTest : BehaviorSpec({
             title = "제목",
             content = "내용",
             type = PostType.FREE,
-            communityId = 20L,
-            sportCategory = SportCategory.TENNIS,
-            authorIsHost = true,
-            communityIsPublic = true,
+            context = CommunityPostContext(
+                communityId = 20L,
+                sportCategory = SportCategory.TENNIS,
+                authorIsHost = true,
+                communityIsPublic = true,
+            ),
         )
 
         Then("globalListed 가 true 다") {

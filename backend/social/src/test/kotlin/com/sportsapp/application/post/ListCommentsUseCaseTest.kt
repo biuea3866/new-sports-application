@@ -7,7 +7,9 @@ import com.sportsapp.domain.community.exception.NotCommunityMemberException
 import com.sportsapp.domain.community.service.CommunityDomainService
 import com.sportsapp.domain.post.entity.Comment
 import com.sportsapp.domain.post.entity.Post
+import com.sportsapp.domain.post.service.CommentDomainService
 import com.sportsapp.domain.post.service.PostDomainService
+import com.sportsapp.domain.post.vo.CommunityPostContext
 import com.sportsapp.domain.post.vo.PostType
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
@@ -21,10 +23,23 @@ import java.time.ZonedDateTime
 
 class ListCommentsUseCaseTest : BehaviorSpec({
 
-    fun newUseCase(): Triple<PostDomainService, CommunityDomainService, ListCommentsUseCase> {
+    data class UseCaseFixture(
+        val postDomainService: PostDomainService,
+        val commentDomainService: CommentDomainService,
+        val communityDomainService: CommunityDomainService,
+        val useCase: ListCommentsUseCase,
+    )
+
+    fun newUseCase(): UseCaseFixture {
         val postDomainService = mockk<PostDomainService>()
+        val commentDomainService = mockk<CommentDomainService>()
         val communityDomainService = mockk<CommunityDomainService>()
-        return Triple(postDomainService, communityDomainService, ListCommentsUseCase(postDomainService, communityDomainService))
+        return UseCaseFixture(
+            postDomainService,
+            commentDomainService,
+            communityDomainService,
+            ListCommentsUseCase(postDomainService, commentDomainService, communityDomainService),
+        )
     }
 
     fun makeComment(post: Post, userId: Long, content: String): Comment {
@@ -39,35 +54,35 @@ class ListCommentsUseCaseTest : BehaviorSpec({
     }
 
     Given("전역 Post에 댓글이 3건 있는 상태에서") {
-        val (postDomainService, communityDomainService, listCommentsUseCase) = newUseCase()
+        val fixture = newUseCase()
         val post = Post.create(userId = 1L, title = "제목", content = "내용")
         val comments = (1..3).map { makeComment(post = post, userId = it.toLong(), content = "댓글 $it") }
         val commentPage = PageImpl(comments, PageRequest.of(0, 20), 3)
-        every { postDomainService.findPost(1L) } returns post
-        every { postDomainService.listComments(postId = 1L, page = 0, size = 20) } returns commentPage
+        every { fixture.postDomainService.findPost(1L) } returns post
+        every { fixture.commentDomainService.listComments(postId = 1L, page = 0, size = 20) } returns commentPage
 
         When("execute를 호출하면") {
-            val result = listCommentsUseCase.execute(postId = 1L, page = 0, size = 20)
+            val result = fixture.useCase.execute(postId = 1L, page = 0, size = 20)
 
             Then("댓글 3건이 담긴 Page가 반환되고 community 인가는 호출되지 않는다") {
                 result.totalElements shouldBe 3
                 result.content.size shouldBe 3
                 result.number shouldBe 0
                 result.size shouldBe 20
-                verify(exactly = 0) { communityDomainService.getCommunity(any(), any()) }
+                verify(exactly = 0) { fixture.communityDomainService.getCommunity(any(), any()) }
             }
         }
     }
 
     Given("전역 Post에 댓글이 없는 상태에서") {
-        val (postDomainService, _, listCommentsUseCase) = newUseCase()
+        val fixture = newUseCase()
         val post = Post.create(userId = 1L, title = "제목", content = "내용")
         val commentPage = PageImpl(emptyList<Comment>(), PageRequest.of(0, 20), 0)
-        every { postDomainService.findPost(1L) } returns post
-        every { postDomainService.listComments(postId = 1L, page = 0, size = 20) } returns commentPage
+        every { fixture.postDomainService.findPost(1L) } returns post
+        every { fixture.commentDomainService.listComments(postId = 1L, page = 0, size = 20) } returns commentPage
 
         When("execute를 호출하면") {
-            val result = listCommentsUseCase.execute(postId = 1L, page = 0, size = 20)
+            val result = fixture.useCase.execute(postId = 1L, page = 0, size = 20)
 
             Then("빈 CommentPageResponse가 반환된다") {
                 result.totalElements shouldBe 0
@@ -77,24 +92,26 @@ class ListCommentsUseCaseTest : BehaviorSpec({
     }
 
     Given("PUBLIC 모임 소속 Post의 댓글을 비멤버가 조회하면") {
-        val (postDomainService, communityDomainService, listCommentsUseCase) = newUseCase()
+        val fixture = newUseCase()
         val post = Post.createInCommunity(
             userId = 1L,
             title = "제목",
             content = "내용",
             type = PostType.FREE,
-            communityId = 10L,
-            sportCategory = SportCategory.SOCCER,
-            authorIsHost = true,
-            communityIsPublic = true,
+            context = CommunityPostContext(
+                communityId = 10L,
+                sportCategory = SportCategory.SOCCER,
+                authorIsHost = true,
+                communityIsPublic = true,
+            ),
         )
         val commentPage = PageImpl(emptyList<Comment>(), PageRequest.of(0, 20), 0)
-        every { postDomainService.findPost(2L) } returns post
-        every { communityDomainService.getCommunity(10L, 9L) } returns mockk(relaxed = true)
-        every { postDomainService.listComments(postId = 2L, page = 0, size = 20) } returns commentPage
+        every { fixture.postDomainService.findPost(2L) } returns post
+        every { fixture.communityDomainService.getCommunity(10L, 9L) } returns mockk(relaxed = true)
+        every { fixture.commentDomainService.listComments(postId = 2L, page = 0, size = 20) } returns commentPage
 
         When("execute를 requesterId=9L로 호출하면") {
-            val result = listCommentsUseCase.execute(postId = 2L, requesterId = 9L, page = 0, size = 20)
+            val result = fixture.useCase.execute(postId = 2L, requesterId = 9L, page = 0, size = 20)
 
             Then("정상 통과한다") {
                 result.totalElements shouldBe 0
@@ -103,39 +120,41 @@ class ListCommentsUseCaseTest : BehaviorSpec({
     }
 
     Given("PRIVATE 모임 소속 Post의 댓글을 비멤버가 조회하면") {
-        val (postDomainService, communityDomainService, listCommentsUseCase) = newUseCase()
+        val fixture = newUseCase()
         val post = Post.createInCommunity(
             userId = 1L,
             title = "제목",
             content = "내용",
             type = PostType.FREE,
-            communityId = 20L,
-            sportCategory = SportCategory.TENNIS,
-            authorIsHost = true,
-            communityIsPublic = false,
+            context = CommunityPostContext(
+                communityId = 20L,
+                sportCategory = SportCategory.TENNIS,
+                authorIsHost = true,
+                communityIsPublic = false,
+            ),
         )
-        every { postDomainService.findPost(3L) } returns post
-        every { communityDomainService.getCommunity(20L, 9L) } throws NotCommunityMemberException(20L, 9L)
+        every { fixture.postDomainService.findPost(3L) } returns post
+        every { fixture.communityDomainService.getCommunity(20L, 9L) } throws NotCommunityMemberException(20L, 9L)
 
         Then("NotCommunityMemberException 을 던진다") {
             shouldThrow<NotCommunityMemberException> {
-                listCommentsUseCase.execute(postId = 3L, requesterId = 9L, page = 0, size = 20)
+                fixture.useCase.execute(postId = 3L, requesterId = 9L, page = 0, size = 20)
             }
         }
     }
 
     Given("소프트 삭제되었거나 존재하지 않는 Post의 댓글을 조회하면") {
-        val (postDomainService, communityDomainService, listCommentsUseCase) = newUseCase()
+        val fixture = newUseCase()
         val commentPage = PageImpl(emptyList<Comment>(), PageRequest.of(0, 20), 0)
-        every { postDomainService.findPost(4L) } returns null
-        every { postDomainService.listComments(postId = 4L, page = 0, size = 20) } returns commentPage
+        every { fixture.postDomainService.findPost(4L) } returns null
+        every { fixture.commentDomainService.listComments(postId = 4L, page = 0, size = 20) } returns commentPage
 
         When("execute를 호출하면") {
-            val result = listCommentsUseCase.execute(postId = 4L, requesterId = 9L, page = 0, size = 20)
+            val result = fixture.useCase.execute(postId = 4L, requesterId = 9L, page = 0, size = 20)
 
             Then("community 가시성 재판정을 건너뛰고 댓글 목록을 그대로 반환한다") {
                 result.totalElements shouldBe 0
-                verify(exactly = 0) { communityDomainService.getCommunity(any(), any()) }
+                verify(exactly = 0) { fixture.communityDomainService.getCommunity(any(), any()) }
             }
         }
     }

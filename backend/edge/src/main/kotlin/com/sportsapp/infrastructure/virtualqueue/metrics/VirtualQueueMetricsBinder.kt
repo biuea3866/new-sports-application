@@ -89,6 +89,9 @@ class VirtualQueueMetricsBinder(
     private fun totalWaitingSize(): Double =
         virtualQueueStore.activeTargets().sumOf { virtualQueueStore.waitingSize(it) }.toDouble()
 
+    // ReturnCount 억제 근거(W1-DEBT-01): 최초 조회 기준점·경과시간 0 가드 클로즈 — 대기열 지표
+    // 계산 로직이라 억제만 한다.
+    @Suppress("ReturnCount")
     private fun admissionRatePerSecond(): Double {
         val currentTotal = virtualQueueStore.activeTargets().sumOf { virtualQueueStore.admittedCount(it) }
         val now = ZonedDateTime.now()

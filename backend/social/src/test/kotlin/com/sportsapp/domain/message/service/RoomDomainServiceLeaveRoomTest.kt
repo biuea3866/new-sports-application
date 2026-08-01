@@ -1,11 +1,8 @@
 package com.sportsapp.domain.message.service
 
-import com.sportsapp.domain.common.DomainEventPublisher
-import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
 import com.sportsapp.domain.message.entity.Room
 import com.sportsapp.domain.message.entity.RoomParticipant
 import com.sportsapp.domain.message.exception.NotRoomParticipantException
-import com.sportsapp.domain.message.gateway.MessageBroadcastGateway
 import com.sportsapp.domain.message.repository.MessageRepository
 import com.sportsapp.domain.message.repository.RoomParticipantRepository
 import com.sportsapp.domain.message.repository.RoomRepository
@@ -16,21 +13,13 @@ import io.mockk.justRun
 import io.mockk.mockk
 import io.mockk.verify
 
-class MessageDomainServiceLeaveRoomTest : BehaviorSpec({
+class RoomDomainServiceLeaveRoomTest : BehaviorSpec({
 
     Given("마지막 참가자가 탈퇴하는 경우") {
         val roomRepository = mockk<RoomRepository>()
         val messageRepository = mockk<MessageRepository>()
         val roomParticipantRepository = mockk<RoomParticipantRepository>()
-        val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
-        val messageBroadcastGateway = mockk<MessageBroadcastGateway>(relaxed = true)
-        val service = MessageDomainService(
-            roomRepository,
-            messageRepository,
-            roomParticipantRepository,
-            domainEventPublisher,
-            messageBroadcastGateway,
-        )
+        val service = RoomDomainService(roomRepository, roomParticipantRepository, messageRepository)
 
         val room = Room.createDirect()
         val participant = RoomParticipant.create(room = room, userId = 1L)
@@ -56,15 +45,7 @@ class MessageDomainServiceLeaveRoomTest : BehaviorSpec({
         val roomRepository = mockk<RoomRepository>()
         val messageRepository = mockk<MessageRepository>()
         val roomParticipantRepository = mockk<RoomParticipantRepository>()
-        val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
-        val messageBroadcastGateway = mockk<MessageBroadcastGateway>(relaxed = true)
-        val service = MessageDomainService(
-            roomRepository,
-            messageRepository,
-            roomParticipantRepository,
-            domainEventPublisher,
-            messageBroadcastGateway,
-        )
+        val service = RoomDomainService(roomRepository, roomParticipantRepository, messageRepository)
 
         val room = Room.createGroup("테스트")
         val participant = RoomParticipant.create(room = room, userId = 1L)
@@ -89,15 +70,7 @@ class MessageDomainServiceLeaveRoomTest : BehaviorSpec({
         val roomRepository = mockk<RoomRepository>()
         val messageRepository = mockk<MessageRepository>()
         val roomParticipantRepository = mockk<RoomParticipantRepository>()
-        val domainEventPublisher = mockk<DomainEventPublisher>(relaxed = true)
-        val messageBroadcastGateway = mockk<MessageBroadcastGateway>(relaxed = true)
-        val service = MessageDomainService(
-            roomRepository,
-            messageRepository,
-            roomParticipantRepository,
-            domainEventPublisher,
-            messageBroadcastGateway,
-        )
+        val service = RoomDomainService(roomRepository, roomParticipantRepository, messageRepository)
 
         val room = Room.createDirect()
         every { roomRepository.findById(3L) } returns room

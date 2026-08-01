@@ -2,6 +2,7 @@ package com.sportsapp.presentation.post.dto.response
 
 import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.post.entity.Post
+import com.sportsapp.domain.post.vo.CommunityPostContext
 import com.sportsapp.domain.post.vo.PostType
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -37,10 +38,12 @@ class PostResponseTest : BehaviorSpec({
             title = "제목",
             content = "내용",
             type = PostType.FREE,
-            communityId = 10L,
-            sportCategory = SportCategory.SOCCER,
-            authorIsHost = true,
-            communityIsPublic = true,
+            context = CommunityPostContext(
+                communityId = 10L,
+                sportCategory = SportCategory.SOCCER,
+                authorIsHost = true,
+                communityIsPublic = true,
+            ),
         ).also { initAuditFields(it) }
 
         When("변환하면") {

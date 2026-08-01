@@ -35,6 +35,10 @@ import org.springframework.stereotype.Component
  * (`VirtualQueueDomainService`/`AdmissionDomainService`)가 fail-open 폴백을 판단한다. 이 지점에서는
  * [REDIS_DEGRADED_COUNTER] 카운터만 증가시킨다.
  */
+// TooManyFunctions 억제 근거(W1-DEBT-01): 대기열 Redis 어댑터로 enter/admit/evict/heartbeat/
+// 순번조회/active 인덱스 관리가 하나의 Lua 계약(virtual-queue-keys.md)을 공유한다. 보안·정합에
+// 민감한 대기열 인프라라 로직 변경 없이 억제만 한다 — 분리는 별도 설계 검토가 필요하다.
+@Suppress("TooManyFunctions")
 @Component
 class VirtualQueueStoreImpl(
     private val redisTemplate: StringRedisTemplate,

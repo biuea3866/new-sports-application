@@ -228,7 +228,13 @@ class OrderCompositionServiceTest : BehaviorSpec({
             TicketOrderWithEventTitle(ticketOrderId = 34L, status = OrderStatus.CONFIRMED, eventTitle = "티켓", paymentId = 7L, createdAt = now),
         )
         every { recruitmentDomainService.listApplicationsWithTitleBy(userId) } returns listOf(
-            ApplicationWithRecruitmentTitle(applicationId = 44L, status = ApplicationStatus.CONFIRMED, recruitmentTitle = "모집", paymentId = 8L, createdAt = now),
+            ApplicationWithRecruitmentTitle(
+                applicationId = 44L,
+                status = ApplicationStatus.CONFIRMED,
+                recruitmentTitle = "모집",
+                paymentId = 8L,
+                createdAt = now,
+            ),
         )
 
         // 실 ThreadPoolTaskExecutor의 코어/큐 크기로 포화를 재현하면 소비 스레드와 제출 스레드 간
@@ -275,7 +281,13 @@ class OrderCompositionServiceTest : BehaviorSpec({
             TicketOrderWithEventTitle(ticketOrderId = 32L, status = OrderStatus.CONFIRMED, eventTitle = "티켓", paymentId = 3L, createdAt = now),
         )
         every { recruitmentDomainService.listApplicationsWithTitleBy(userId) } returns listOf(
-            ApplicationWithRecruitmentTitle(applicationId = 42L, status = ApplicationStatus.CONFIRMED, recruitmentTitle = "모집", paymentId = 4L, createdAt = now),
+            ApplicationWithRecruitmentTitle(
+                applicationId = 42L,
+                status = ApplicationStatus.CONFIRMED,
+                recruitmentTitle = "모집",
+                paymentId = 4L,
+                createdAt = now,
+            ),
         )
 
         val service = buildService(bookingDomainService, goodsDomainService, ticketingDomainService, recruitmentDomainService)
@@ -299,7 +311,15 @@ class OrderCompositionServiceTest : BehaviorSpec({
         val now = ZonedDateTime.of(2026, 6, 1, 9, 0, 0, 0, ZoneOffset.UTC)
 
         every { bookingDomainService.findOrderHistory(userId) } returns listOf(
-            BookingOrderItem(bookingId = 13L, slotId = 103L, userId = userId, status = BookingStatus.CANCELLED, paymentId = null, title = "예약", createdAt = now),
+            BookingOrderItem(
+                bookingId = 13L,
+                slotId = 103L,
+                userId = userId,
+                status = BookingStatus.CANCELLED,
+                paymentId = null,
+                title = "예약",
+                createdAt = now,
+            ),
         )
         every { goodsDomainService.listMyOrdersWithTitle(userId, any()) } returns PageImpl(
             listOf(GoodsOrderWithTitle(order = goodsOrderMock(22L, GoodsOrderStatus.CANCELLED, null, now), title = "상품")),
@@ -309,7 +329,13 @@ class OrderCompositionServiceTest : BehaviorSpec({
             TicketOrderWithEventTitle(ticketOrderId = 33L, status = OrderStatus.CANCELLED, eventTitle = "티켓", paymentId = null, createdAt = now),
         )
         every { recruitmentDomainService.listApplicationsWithTitleBy(userId) } returns listOf(
-            ApplicationWithRecruitmentTitle(applicationId = 43L, status = ApplicationStatus.CANCELLED, recruitmentTitle = "모집", paymentId = null, createdAt = now),
+            ApplicationWithRecruitmentTitle(
+                applicationId = 43L,
+                status = ApplicationStatus.CANCELLED,
+                recruitmentTitle = "모집",
+                paymentId = null,
+                createdAt = now,
+            ),
         )
 
         val service = buildService(bookingDomainService, goodsDomainService, ticketingDomainService, recruitmentDomainService)

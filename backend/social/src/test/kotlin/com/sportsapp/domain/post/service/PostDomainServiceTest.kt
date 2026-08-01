@@ -5,6 +5,7 @@ import com.sportsapp.domain.post.exception.NoticeRequiresHostException
 import com.sportsapp.domain.post.repository.CommentRepository
 import com.sportsapp.domain.post.repository.PostCustomRepository
 import com.sportsapp.domain.post.repository.PostRepository
+import com.sportsapp.domain.post.vo.CommunityPostContext
 import com.sportsapp.domain.post.vo.PostType
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
@@ -69,10 +70,12 @@ class PostDomainServiceTest : BehaviorSpec({
                 title = "공지",
                 content = "이번 주 공지",
                 type = PostType.NOTICE,
-                communityId = 10L,
-                sportCategory = SportCategory.SOCCER,
-                authorIsHost = true,
-                communityIsPublic = true,
+                context = CommunityPostContext(
+                    communityId = 10L,
+                    sportCategory = SportCategory.SOCCER,
+                    authorIsHost = true,
+                    communityIsPublic = true,
+                ),
             )
 
             Then("게시글이 정상 생성되고 저장된다") {
@@ -94,10 +97,12 @@ class PostDomainServiceTest : BehaviorSpec({
                     title = "공지",
                     content = "이번 주 공지",
                     type = PostType.NOTICE,
-                    communityId = 10L,
-                    sportCategory = SportCategory.SOCCER,
-                    authorIsHost = false,
-                    communityIsPublic = true,
+                    context = CommunityPostContext(
+                        communityId = 10L,
+                        sportCategory = SportCategory.SOCCER,
+                        authorIsHost = false,
+                        communityIsPublic = true,
+                    ),
                 )
             }
             verify(exactly = 0) { postRepository.save(any()) }
@@ -113,10 +118,12 @@ class PostDomainServiceTest : BehaviorSpec({
                 title = "제목",
                 content = "내용",
                 type = PostType.FREE,
-                communityId = 20L,
-                sportCategory = SportCategory.TENNIS,
-                authorIsHost = true,
-                communityIsPublic = false,
+                context = CommunityPostContext(
+                    communityId = 20L,
+                    sportCategory = SportCategory.TENNIS,
+                    authorIsHost = true,
+                    communityIsPublic = false,
+                ),
             )
 
             Then("globalListed 가 false 인 채로 저장된다") {

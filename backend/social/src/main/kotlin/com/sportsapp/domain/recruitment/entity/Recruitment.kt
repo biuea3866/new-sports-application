@@ -61,7 +61,13 @@ class Recruitment private constructor(
     /**
      * 신청 가능 여부를 자기 상태로 판단해 검증한다. 모집중(OPEN)이 아니거나, 마감이 지났거나,
      * 정원이 가득 찼으면 각 사유에 맞는 예외를 던진다.
+     *
+     * ThrowsCount 억제 근거(W1-DEBT-01): 3개 가드 클로즈(open 상태·마감·정원)가 각자 다른
+     * 실패 사유에 대응하는 서로 다른 도메인 예외를 던진다. 이 검증들을 별도 private 메서드로
+     * 쪼개도 총 throw 횟수는 줄지 않고 지표만 우회하게 되며, 오히려 하나의 응집된 신청
+     * 가능 여부 판정을 인위적으로 분산시킨다 — guard clause 권장 컨벤션에 부합하는 형태다.
      */
+    @Suppress("ThrowsCount")
     fun requireApplicable(currentApplicantCount: Int) {
         if (status != RecruitmentStatus.OPEN) throw RecruitmentNotOpenException(id, status)
         if (isDeadlinePassed()) throw RecruitmentApplicationClosedException(id)
