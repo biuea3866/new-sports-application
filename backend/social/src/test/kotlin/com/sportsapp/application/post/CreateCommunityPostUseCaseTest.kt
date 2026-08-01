@@ -10,6 +10,7 @@ import com.sportsapp.domain.community.vo.CommunityVisibility
 import com.sportsapp.domain.post.entity.Post
 import com.sportsapp.domain.post.exception.NoticeRequiresHostException
 import com.sportsapp.domain.post.service.PostDomainService
+import com.sportsapp.domain.post.vo.CommunityPostContext
 import com.sportsapp.domain.post.vo.PostType
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
@@ -55,20 +56,24 @@ class CreateCommunityPostUseCaseTest : BehaviorSpec({
                 title = "공지",
                 content = "내용",
                 type = PostType.NOTICE,
-                communityId = 10L,
-                sportCategory = SportCategory.SOCCER,
-                authorIsHost = true,
-                communityIsPublic = true,
+                context = CommunityPostContext(
+                    communityId = 10L,
+                    sportCategory = SportCategory.SOCCER,
+                    authorIsHost = true,
+                    communityIsPublic = true,
+                ),
             )
         } returns Post.createInCommunity(
             userId = 1L,
             title = "공지",
             content = "내용",
             type = PostType.NOTICE,
-            communityId = 10L,
-            sportCategory = SportCategory.SOCCER,
-            authorIsHost = true,
-            communityIsPublic = true,
+            context = CommunityPostContext(
+                communityId = 10L,
+                sportCategory = SportCategory.SOCCER,
+                authorIsHost = true,
+                communityIsPublic = true,
+            ),
         )
 
         When("execute 를 호출하면") {
@@ -120,10 +125,12 @@ class CreateCommunityPostUseCaseTest : BehaviorSpec({
                 title = "공지",
                 content = "내용",
                 type = PostType.NOTICE,
-                communityId = 10L,
-                sportCategory = SportCategory.SOCCER,
-                authorIsHost = false,
-                communityIsPublic = true,
+                context = CommunityPostContext(
+                    communityId = 10L,
+                    sportCategory = SportCategory.SOCCER,
+                    authorIsHost = false,
+                    communityIsPublic = true,
+                ),
             )
         } throws NoticeRequiresHostException(10L, 2L)
 
@@ -153,20 +160,24 @@ class CreateCommunityPostUseCaseTest : BehaviorSpec({
                 title = "제목",
                 content = "내용",
                 type = PostType.FREE,
-                communityId = 20L,
-                sportCategory = SportCategory.TENNIS,
-                authorIsHost = false,
-                communityIsPublic = false,
+                context = CommunityPostContext(
+                    communityId = 20L,
+                    sportCategory = SportCategory.TENNIS,
+                    authorIsHost = false,
+                    communityIsPublic = false,
+                ),
             )
         } returns Post.createInCommunity(
             userId = 3L,
             title = "제목",
             content = "내용",
             type = PostType.FREE,
-            communityId = 20L,
-            sportCategory = SportCategory.TENNIS,
-            authorIsHost = false,
-            communityIsPublic = false,
+            context = CommunityPostContext(
+                communityId = 20L,
+                sportCategory = SportCategory.TENNIS,
+                authorIsHost = false,
+                communityIsPublic = false,
+            ),
         )
 
         When("execute 를 호출하면") {

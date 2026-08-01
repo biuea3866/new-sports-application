@@ -15,6 +15,8 @@ import org.springframework.transaction.support.TransactionTemplate
 
 class MessageDomainServiceScenarioTest(
     @Autowired private val messageDomainService: MessageDomainService,
+    // [W1-DEBT-01] TooManyFunctions 정리로 룸 생성·참여·퇴장 책임이 RoomDomainService 로 분리됐다.
+    @Autowired private val roomDomainService: RoomDomainService,
     @Autowired private val roomRepository: RoomRepository,
     @Autowired private val roomParticipantRepository: RoomParticipantRepository,
     @Autowired private val messageRepository: MessageRepository,
@@ -24,9 +26,9 @@ class MessageDomainServiceScenarioTest(
     init {
         Given("createRoom + joinRoom + sendMessage 전체 플로우") {
             When("그룹 룸 생성 → 2명 참여 → 메시지 전송") {
-                val room = messageDomainService.createGroupRoom("축구 모임", emptyList())
-                messageDomainService.joinRoom(room.id, userId = 10L)
-                messageDomainService.joinRoom(room.id, userId = 20L)
+                val room = roomDomainService.createGroupRoom("축구 모임", emptyList())
+                roomDomainService.joinRoom(room.id, userId = 10L)
+                roomDomainService.joinRoom(room.id, userId = 20L)
                 val message = messageDomainService.sendMessage(
                     roomId = room.id,
                     userId = 10L,
@@ -43,7 +45,7 @@ class MessageDomainServiceScenarioTest(
         }
 
         Given("삭제된 Room 에 sendMessage 요청") {
-            val room = messageDomainService.createDirectRoom()
+            val room = roomDomainService.createDirectRoom()
             val savedRoom = roomRepository.findById(room.id)
                 ?: error("Room not found: ${room.id}")
             savedRoom.softDelete(null)
@@ -63,13 +65,13 @@ class MessageDomainServiceScenarioTest(
         }
 
         Given("이미 참여한 사용자가 다시 joinRoom 요청") {
-            val room = messageDomainService.createDirectRoom()
-            messageDomainService.joinRoom(room.id, userId = 5L)
+            val room = roomDomainService.createDirectRoom()
+            roomDomainService.joinRoom(room.id, userId = 5L)
 
             When("동일 userId 로 다시 joinRoom 을 호출하면") {
                 Then("BusinessRuleViolationException 을 던진다") {
                     shouldThrow<BusinessRuleViolationException> {
-                        messageDomainService.joinRoom(room.id, userId = 5L)
+                        roomDomainService.joinRoom(room.id, userId = 5L)
                     }
                 }
             }
@@ -79,21 +81,21 @@ class MessageDomainServiceScenarioTest(
             When("존재하지 않는 roomId 로 joinRoom 을 호출하면") {
                 Then("ResourceNotFoundException 을 던진다") {
                     shouldThrow<ResourceNotFoundException> {
-                        messageDomainService.joinRoom(roomId = 999999L, userId = 1L)
+                        roomDomainService.joinRoom(roomId = 999999L, userId = 1L)
                     }
                 }
             }
         }
 
         Given("마지막 참가자가 탈퇴하면 Room soft-delete 시 Message 도 soft-delete 된다") {
-            val room = messageDomainService.createDirectRoom()
-            messageDomainService.joinRoom(room.id, userId = 100L)
+            val room = roomDomainService.createDirectRoom()
+            roomDomainService.joinRoom(room.id, userId = 100L)
             messageDomainService.sendMessage(roomId = room.id, userId = 100L, content = "안녕")
             messageDomainService.sendMessage(roomId = room.id, userId = 100L, content = "잘가")
 
             When("마지막 참가자가 leaveRoom 을 호출하면") {
                 transactionTemplate.execute {
-                    messageDomainService.leaveRoom(roomId = room.id, userId = 100L)
+                    roomDomainService.leaveRoom(roomId = room.id, userId = 100L)
                 }
 
                 Then("Room 이 soft-delete 되고 해당 Room 의 Message 조회가 0건이다") {
@@ -104,8 +106,8 @@ class MessageDomainServiceScenarioTest(
         }
 
         Given("sendMessage 호출 후 createdAt 초기화 및 room.lastMessageAt 원자적 갱신 검증") {
-            val room = messageDomainService.createDirectRoom()
-            messageDomainService.joinRoom(room.id, userId = 200L)
+            val room = roomDomainService.createDirectRoom()
+            roomDomainService.joinRoom(room.id, userId = 200L)
 
             When("sendMessage 를 호출하면") {
                 val message = messageDomainService.sendMessage(

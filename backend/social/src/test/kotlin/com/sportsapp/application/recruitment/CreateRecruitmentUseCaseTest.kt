@@ -2,6 +2,7 @@ package com.sportsapp.application.recruitment
 
 import com.sportsapp.application.recruitment.dto.CreateRecruitmentCommand
 import com.sportsapp.application.recruitment.usecase.CreateRecruitmentUseCase
+import com.sportsapp.domain.recruitment.dto.RecruitmentCreationDetails
 import com.sportsapp.domain.recruitment.entity.Recruitment
 import com.sportsapp.domain.recruitment.entity.RecruitmentStatus
 import com.sportsapp.domain.recruitment.service.RecruitmentDomainService
@@ -42,14 +43,16 @@ class CreateRecruitmentUseCaseTest : BehaviorSpec({
         )
         every {
             recruitmentDomainService.create(
-                title = command.title,
-                description = command.description,
-                capacity = command.capacity,
-                feeAmount = command.feeAmount,
-                activityAt = command.activityAt,
-                applicationDeadline = command.applicationDeadline,
-                communityId = command.communityId,
-                recruiterUserId = command.recruiterUserId,
+                RecruitmentCreationDetails(
+                    title = command.title,
+                    description = command.description,
+                    capacity = command.capacity,
+                    feeAmount = command.feeAmount,
+                    activityAt = command.activityAt,
+                    applicationDeadline = command.applicationDeadline,
+                    communityId = command.communityId,
+                    recruiterUserId = command.recruiterUserId,
+                ),
             )
         } returns recruitment
 

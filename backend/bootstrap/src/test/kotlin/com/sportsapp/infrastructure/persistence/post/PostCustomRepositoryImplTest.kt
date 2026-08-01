@@ -5,6 +5,7 @@ import com.sportsapp.infrastructure.post.mysql.PostCustomRepositoryImpl
 
 import com.sportsapp.BaseJpaIntegrationTest
 import com.sportsapp.domain.common.vo.SportCategory
+import com.sportsapp.domain.post.vo.CommunityPostContext
 import com.sportsapp.domain.post.entity.Post
 import com.sportsapp.domain.post.dto.PostSearchCriteria
 import com.sportsapp.domain.post.vo.PostType
@@ -122,10 +123,12 @@ class PostCustomRepositoryImplTest(
                     title = "모임10 글",
                     content = "내용",
                     type = PostType.FREE,
-                    communityId = 10L,
-                    sportCategory = SportCategory.SOCCER,
-                    authorIsHost = true,
-                    communityIsPublic = true,
+                    context = CommunityPostContext(
+                        communityId = 10L,
+                        sportCategory = SportCategory.SOCCER,
+                        authorIsHost = true,
+                        communityIsPublic = true,
+                    ),
                 ),
             )
             postJpaRepository.save(
@@ -134,10 +137,12 @@ class PostCustomRepositoryImplTest(
                     title = "모임20 글",
                     content = "내용",
                     type = PostType.FREE,
-                    communityId = 20L,
-                    sportCategory = SportCategory.TENNIS,
-                    authorIsHost = true,
-                    communityIsPublic = true,
+                    context = CommunityPostContext(
+                        communityId = 20L,
+                        sportCategory = SportCategory.TENNIS,
+                        authorIsHost = true,
+                        communityIsPublic = true,
+                    ),
                 ),
             )
 
@@ -182,10 +187,12 @@ class PostCustomRepositoryImplTest(
                     title = "공개모임 글",
                     content = "내용",
                     type = PostType.FREE,
-                    communityId = 30L,
-                    sportCategory = SportCategory.RUNNING,
-                    authorIsHost = true,
-                    communityIsPublic = true,
+                    context = CommunityPostContext(
+                        communityId = 30L,
+                        sportCategory = SportCategory.RUNNING,
+                        authorIsHost = true,
+                        communityIsPublic = true,
+                    ),
                 ),
             )
             postJpaRepository.save(
@@ -194,10 +201,12 @@ class PostCustomRepositoryImplTest(
                     title = "비공개모임 글",
                     content = "내용",
                     type = PostType.FREE,
-                    communityId = 40L,
-                    sportCategory = SportCategory.RUNNING,
-                    authorIsHost = true,
-                    communityIsPublic = false,
+                    context = CommunityPostContext(
+                        communityId = 40L,
+                        sportCategory = SportCategory.RUNNING,
+                        authorIsHost = true,
+                        communityIsPublic = false,
+                    ),
                 ),
             )
 

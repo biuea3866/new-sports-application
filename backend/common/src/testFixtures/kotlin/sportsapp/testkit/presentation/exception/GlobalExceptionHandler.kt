@@ -63,6 +63,11 @@ import org.springframework.web.servlet.resource.NoResourceFoundException
  * 원본(bootstrap main)이 변경되면 이 공용 복제본도 함께 갱신해야 한다 — 완료 보고 "미해결·후속" 참고
  * (2단계 물리 분리 시 서비스별 실제 소유 GlobalExceptionHandler 로 전환).
  */
+// TooManyFunctions 억제 근거(W1-DEBT-01): 이 클래스는 bootstrap main 소스셋의 운영 원본
+// GlobalExceptionHandler 를 1:1로 미러링하는 테스트 하네스다(클래스 문서 참고). @ExceptionHandler
+// 메서드 1개 = 예외 타입 1개인 표준 Spring advice 패턴이라 쪼개면 원본과의 대응 관계를 추적하기
+// 어려워진다 — 공유 커널(common)의 사전 존재 코드라 기계적 정리만 하고 분리는 하지 않는다.
+@Suppress("TooManyFunctions")
 @RestControllerAdvice
 class GlobalExceptionHandler {
 
@@ -153,6 +158,9 @@ class GlobalExceptionHandler {
         return ResponseEntity.status(ErrorStatus.BAD_REQUEST.httpStatus).body(problemDetail)
     }
 
+    // UnusedParameter 억제 근거(W1-DEBT-01): Spring 이 @ExceptionHandler 를 예외 타입으로
+    // 디스패치하므로 파라미터 선언이 필요하다 — 본문에서 값을 쓰지 않아도 시그니처는 유지해야 한다.
+    @Suppress("UnusedParameter")
     @ExceptionHandler(HttpMessageNotReadableException::class)
     fun handleMessageNotReadableException(exception: HttpMessageNotReadableException): ResponseEntity<ProblemDetail> {
         val problemDetail = ProblemDetailBuilder.build(
@@ -191,6 +199,8 @@ class GlobalExceptionHandler {
         return ResponseEntity.status(ErrorStatus.CONFLICT.httpStatus).body(problemDetail)
     }
 
+    // UnusedParameter 억제 근거(W1-DEBT-01): 위와 동일 — Spring 디스패치용 시그니처 파라미터.
+    @Suppress("UnusedParameter")
     @ExceptionHandler(NoResourceFoundException::class)
     fun handleNoResourceFoundException(exception: NoResourceFoundException): ResponseEntity<ProblemDetail> {
         val problemDetail = ProblemDetailBuilder.build(

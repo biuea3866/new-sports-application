@@ -6,6 +6,7 @@ import com.sportsapp.application.message.usecase.SendMessageUseCase
 import com.sportsapp.domain.message.gateway.BroadcastMessage
 import com.sportsapp.domain.message.gateway.MessageBroadcastGateway
 import com.sportsapp.domain.message.service.MessageDomainService
+import com.sportsapp.domain.message.service.RoomDomainService
 import io.kotest.matchers.shouldBe
 import io.mockk.clearMocks
 import io.mockk.mockk
@@ -35,6 +36,7 @@ class MessageBroadcastEventWorkerTestConfig {
 @Import(MessageBroadcastEventWorkerTestConfig::class)
 class MessageBroadcastEventWorkerTest(
     @Autowired private val messageDomainService: MessageDomainService,
+    @Autowired private val roomDomainService: RoomDomainService,
     @Autowired private val sendMessageUseCase: SendMessageUseCase,
     @Autowired private val messageBroadcastGateway: MessageBroadcastGateway,
     @Autowired private val transactionTemplate: TransactionTemplate,
@@ -46,8 +48,8 @@ class MessageBroadcastEventWorkerTest(
         }
 
         Given("메시지 전송 트랜잭션이 정상 커밋되면") {
-            val room = messageDomainService.createGroupRoom("커밋 테스트 방", emptyList())
-            messageDomainService.joinRoom(room.id, userId = 10L)
+            val room = roomDomainService.createGroupRoom("커밋 테스트 방", emptyList())
+            roomDomainService.joinRoom(room.id, userId = 10L)
 
             When("sendMessage 를 커밋까지 완료하면") {
                 sendMessageUseCase.execute(SendMessageCommand(roomId = room.id, senderId = 10L, content = "커밋 메시지"))
@@ -62,8 +64,8 @@ class MessageBroadcastEventWorkerTest(
         }
 
         Given("메시지 전송 이후 트랜잭션이 롤백되면") {
-            val room = messageDomainService.createGroupRoom("롤백 테스트 방", emptyList())
-            messageDomainService.joinRoom(room.id, userId = 20L)
+            val room = roomDomainService.createGroupRoom("롤백 테스트 방", emptyList())
+            roomDomainService.joinRoom(room.id, userId = 20L)
 
             When("동일 트랜잭션 내에서 sendMessage 호출 후 예외로 롤백되면") {
                 runCatching {

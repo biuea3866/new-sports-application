@@ -5,6 +5,7 @@ import com.sportsapp.BaseIntegrationTest
 import com.sportsapp.domain.message.entity.Room
 import com.sportsapp.domain.message.service.GuestInvitationDomainService
 import com.sportsapp.domain.message.service.MessageDomainService
+import com.sportsapp.domain.message.service.RoomDomainService
 import com.sportsapp.domain.message.vo.ParticipantType
 import com.sportsapp.domain.user.service.UserDomainService
 import com.sportsapp.presentation.message.dto.response.MyRoomParticipationResponse
@@ -32,6 +33,7 @@ import org.springframework.web.client.RestTemplate
 class RoomParticipationApiControllerTest(
     @Autowired private val userDomainService: UserDomainService,
     @Autowired private val messageDomainService: MessageDomainService,
+    @Autowired private val roomDomainService: RoomDomainService,
     @Autowired private val guestInvitationDomainService: GuestInvitationDomainService,
     @Autowired private val jdbcTemplate: JdbcTemplate,
     @Autowired private val objectMapper: ObjectMapper,
@@ -72,7 +74,7 @@ class RoomParticipationApiControllerTest(
     }
 
     private fun createGroupRoomHostedBy(hostUserId: Long): Room =
-        messageDomainService.createGroupRoom(
+        roomDomainService.createGroupRoom(
             "참여정보 테스트방 ${System.nanoTime()}",
             listOf(hostUserId),
             hostUserId = hostUserId,

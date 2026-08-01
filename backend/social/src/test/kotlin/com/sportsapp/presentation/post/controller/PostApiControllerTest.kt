@@ -9,6 +9,7 @@ import com.sportsapp.application.post.usecase.SearchPostsUseCase
 import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.community.exception.NotCommunityMemberException
 import com.sportsapp.domain.post.entity.Post
+import com.sportsapp.domain.post.vo.CommunityPostContext
 import com.sportsapp.domain.post.vo.PostType
 import sportsapp.testkit.presentation.exception.GlobalExceptionHandler
 import sportsapp.testkit.presentation.support.fixedPrincipalResolver
@@ -78,10 +79,12 @@ class PostApiControllerTest : BehaviorSpec({
             title = "공지",
             content = "내용",
             type = PostType.NOTICE,
-            communityId = 10L,
-            sportCategory = SportCategory.SOCCER,
-            authorIsHost = true,
-            communityIsPublic = true,
+            context = CommunityPostContext(
+                communityId = 10L,
+                sportCategory = SportCategory.SOCCER,
+                authorIsHost = true,
+                communityIsPublic = true,
+            ),
         ).also { initAuditFields(it) }
         every { createCommunityPostUseCase.execute(any()) } returns post
         val mockMvc = buildMockMvc(createCommunityPostUseCase = createCommunityPostUseCase)

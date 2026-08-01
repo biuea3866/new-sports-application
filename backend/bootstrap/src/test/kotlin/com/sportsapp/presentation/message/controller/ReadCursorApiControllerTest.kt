@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseJpaIntegrationTest
 import com.sportsapp.application.message.dto.RoomUnreadResponse
 import com.sportsapp.domain.message.service.MessageDomainService
+import com.sportsapp.domain.message.service.RoomDomainService
 import com.sportsapp.domain.user.gateway.JwtIssuer
 import io.kotest.matchers.shouldBe
 import org.apache.hc.client5.http.impl.classic.HttpClients
@@ -25,6 +26,7 @@ import org.springframework.web.client.RestTemplate
  */
 class ReadCursorApiControllerTest(
     @Autowired private val messageDomainService: MessageDomainService,
+    @Autowired private val roomDomainService: RoomDomainService,
     @Autowired private val jwtIssuer: JwtIssuer,
     @Autowired private val objectMapper: ObjectMapper,
     @LocalServerPort private val port: Int,
@@ -51,9 +53,9 @@ class ReadCursorApiControllerTest(
 
     init {
         Given("방에 참여 중인 사용자가 읽음 처리를 요청할 때") {
-            val room = messageDomainService.createGroupRoom("읽음 커서 테스트 방", emptyList())
-            messageDomainService.joinRoom(room.id, userId = 8001L)
-            messageDomainService.joinRoom(room.id, userId = 8002L)
+            val room = roomDomainService.createGroupRoom("읽음 커서 테스트 방", emptyList())
+            roomDomainService.joinRoom(room.id, userId = 8001L)
+            roomDomainService.joinRoom(room.id, userId = 8002L)
             val messages = (1..5).map { index ->
                 messageDomainService.sendMessage(room.id, 8002L, "상대 메시지$index")
             }
@@ -78,13 +80,13 @@ class ReadCursorApiControllerTest(
         }
 
         Given("서로 다른 두 방에 참여 중인 사용자") {
-            val roomA = messageDomainService.createGroupRoom("안읽은 방 A", emptyList())
-            messageDomainService.joinRoom(roomA.id, userId = 8003L)
-            messageDomainService.joinRoom(roomA.id, userId = 8004L)
+            val roomA = roomDomainService.createGroupRoom("안읽은 방 A", emptyList())
+            roomDomainService.joinRoom(roomA.id, userId = 8003L)
+            roomDomainService.joinRoom(roomA.id, userId = 8004L)
             messageDomainService.sendMessage(roomA.id, 8004L, "A 방 안읽은 메시지")
 
-            val roomB = messageDomainService.createGroupRoom("읽은 방 B", emptyList())
-            messageDomainService.joinRoom(roomB.id, userId = 8003L)
+            val roomB = roomDomainService.createGroupRoom("읽은 방 B", emptyList())
+            roomDomainService.joinRoom(roomB.id, userId = 8003L)
 
             When("GET /rooms/me/unread 를 호출하면") {
                 val response = restTemplate.exchange(
@@ -108,8 +110,8 @@ class ReadCursorApiControllerTest(
         }
 
         Given("방에 참여하지 않은 사용자") {
-            val room = messageDomainService.createGroupRoom("비참여자 테스트 방", emptyList())
-            messageDomainService.joinRoom(room.id, userId = 8005L)
+            val room = roomDomainService.createGroupRoom("비참여자 테스트 방", emptyList())
+            roomDomainService.joinRoom(room.id, userId = 8005L)
 
             When("비참여자가 POST /rooms/{roomId}/read 를 호출하면") {
                 val body = objectMapper.writeValueAsString(mapOf("lastReadMessageId" to 1L))

@@ -4,6 +4,7 @@ import com.sportsapp.application.post.dto.CreateCommunityPostCommand
 import com.sportsapp.domain.community.service.CommunityDomainService
 import com.sportsapp.domain.post.entity.Post
 import com.sportsapp.domain.post.service.PostDomainService
+import com.sportsapp.domain.post.vo.CommunityPostContext
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -25,10 +26,12 @@ class CreateCommunityPostUseCase(
             title = command.title,
             content = command.content,
             type = command.type,
-            communityId = command.communityId,
-            sportCategory = community.sportCategory,
-            authorIsHost = community.isHostedBy(command.userId),
-            communityIsPublic = community.isPublic(),
+            context = CommunityPostContext(
+                communityId = command.communityId,
+                sportCategory = community.sportCategory,
+                authorIsHost = community.isHostedBy(command.userId),
+                communityIsPublic = community.isPublic(),
+            ),
         )
     }
 }

@@ -1,7 +1,5 @@
 package com.sportsapp.domain.message.service
 
-import com.sportsapp.domain.common.DomainEventPublisher
-import com.sportsapp.domain.message.gateway.MessageBroadcastGateway
 import com.sportsapp.domain.message.repository.MessageRepository
 import com.sportsapp.domain.message.repository.RoomParticipantRepository
 import com.sportsapp.domain.message.repository.RoomRepository
@@ -17,22 +15,18 @@ import io.mockk.verify
 import java.time.ZonedDateTime
 
 /**
- * MessageDomainService 가 방목록 미리보기 조회를 [RoomRepository.findMyRoomViews] 로
+ * RoomDomainService 가 방목록 미리보기 조회를 [RoomRepository.findMyRoomViews] 로
  * 위임하는지 검증한다 (BE-12, N+1 회피 projection 전환).
  */
-class MessageDomainServiceFindMyRoomViewsTest : BehaviorSpec({
+class RoomDomainServiceFindMyRoomViewsTest : BehaviorSpec({
 
     val roomRepository = mockk<RoomRepository>()
     val messageRepository = mockk<MessageRepository>()
     val roomParticipantRepository = mockk<RoomParticipantRepository>()
-    val domainEventPublisher = mockk<DomainEventPublisher>()
-    val messageBroadcastGateway = mockk<MessageBroadcastGateway>()
-    val messageDomainService = MessageDomainService(
+    val roomDomainService = RoomDomainService(
         roomRepository = roomRepository,
-        messageRepository = messageRepository,
         roomParticipantRepository = roomParticipantRepository,
-        domainEventPublisher = domainEventPublisher,
-        messageBroadcastGateway = messageBroadcastGateway,
+        messageRepository = messageRepository,
     )
 
     Given("userId=1 이 참여한 방 목록 projection 이 존재") {
@@ -49,7 +43,7 @@ class MessageDomainServiceFindMyRoomViewsTest : BehaviorSpec({
         every { roomRepository.findMyRoomViews(1L, null) } returns views
 
         When("findMyRoomViews 를 호출하면") {
-            val result = messageDomainService.findMyRoomViews(1L, null)
+            val result = roomDomainService.findMyRoomViews(1L, null)
 
             Then("RoomRepository.findMyRoomViews 위임 결과가 그대로 반환된다") {
                 result shouldHaveSize 1

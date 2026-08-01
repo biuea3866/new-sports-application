@@ -75,6 +75,9 @@ class HmacEntryTokenGateway(
      * ① 서명 일치 ② 만료 ③ target·user 일치를 전부 확인한다. 무상태(Redis 불요) — 형식이 깨지거나
      * 위조된 토큰은 예외 없이 false를 반환한다(구매 앞단 게이트가 요청마다 호출하는 경로라 방어적).
      */
+    // ReturnCount 억제 근거(W1-DEBT-01): 서명·만료·target·user 4중 검증 가드 클로즈 — 토큰 검증은
+    // 보안에 민감한 로직이라 분리·재구성 없이 억제만 한다.
+    @Suppress("ReturnCount")
     override fun verify(targetType: String, targetId: Long, userId: Long, rawToken: String?): Boolean {
         if (rawToken.isNullOrBlank()) return false
         val parsed = parseAndValidateSignature(rawToken) ?: return false
@@ -100,6 +103,8 @@ class HmacEntryTokenGateway(
         return EntryToken(raw = raw, expiresAt = parsed.expiresAt)
     }
 
+    // ReturnCount 억제 근거(W1-DEBT-01): 토큰 파싱·서명 검증 가드 클로즈 — 보안 로직이라 억제만 한다.
+    @Suppress("ReturnCount")
     private fun parseAndValidateSignature(rawToken: String): ParsedPayload? {
         val separatorIndex = rawToken.indexOf('.')
         if (separatorIndex <= 0 || separatorIndex == rawToken.length - 1) return null
@@ -133,6 +138,9 @@ class HmacEntryTokenGateway(
         val expiresAt: ZonedDateTime,
     ) {
         companion object {
+            // ReturnCount 억제 근거(W1-DEBT-01): payload 세그먼트 파싱 가드 클로즈 — 보안 토큰
+            // 파싱 로직이라 억제만 한다.
+            @Suppress("ReturnCount")
             fun from(payload: String): ParsedPayload? {
                 val segments = payload.split(PAYLOAD_DELIMITER)
                 if (segments.size != 4) return null

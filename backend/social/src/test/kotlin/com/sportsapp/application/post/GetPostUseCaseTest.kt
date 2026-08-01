@@ -11,6 +11,7 @@ import com.sportsapp.domain.community.vo.CommunityVisibility
 import com.sportsapp.domain.post.entity.Comment
 import com.sportsapp.domain.post.entity.Post
 import com.sportsapp.domain.post.service.PostDomainService
+import com.sportsapp.domain.post.vo.CommunityPostContext
 import com.sportsapp.domain.post.vo.PostType
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
@@ -77,10 +78,12 @@ class GetPostUseCaseTest : BehaviorSpec({
             title = "제목",
             content = "내용",
             type = PostType.FREE,
-            communityId = 10L,
-            sportCategory = SportCategory.SOCCER,
-            authorIsHost = true,
-            communityIsPublic = true,
+            context = CommunityPostContext(
+                communityId = 10L,
+                sportCategory = SportCategory.SOCCER,
+                authorIsHost = true,
+                communityIsPublic = true,
+            ),
         ).also { initAuditFields(it) }
         val community = Community.create(
             name = "모임",
@@ -108,10 +111,12 @@ class GetPostUseCaseTest : BehaviorSpec({
             title = "제목",
             content = "내용",
             type = PostType.FREE,
-            communityId = 20L,
-            sportCategory = SportCategory.TENNIS,
-            authorIsHost = true,
-            communityIsPublic = false,
+            context = CommunityPostContext(
+                communityId = 20L,
+                sportCategory = SportCategory.TENNIS,
+                authorIsHost = true,
+                communityIsPublic = false,
+            ),
         ).also { initAuditFields(it) }
         every { postDomainService.getDetail(2L) } returns Pair(post, emptyList())
         every { communityDomainService.getCommunity(20L, 2L) } throws NotCommunityMemberException(20L, 2L)
@@ -130,10 +135,12 @@ class GetPostUseCaseTest : BehaviorSpec({
             title = "제목",
             content = "내용",
             type = PostType.FREE,
-            communityId = 30L,
-            sportCategory = SportCategory.TENNIS,
-            authorIsHost = true,
-            communityIsPublic = false,
+            context = CommunityPostContext(
+                communityId = 30L,
+                sportCategory = SportCategory.TENNIS,
+                authorIsHost = true,
+                communityIsPublic = false,
+            ),
         ).also { initAuditFields(it) }
         every { postDomainService.getDetail(3L) } returns Pair(post, emptyList())
         every { communityDomainService.getCommunity(30L, 0L) } throws NotCommunityMemberException(30L, 0L)

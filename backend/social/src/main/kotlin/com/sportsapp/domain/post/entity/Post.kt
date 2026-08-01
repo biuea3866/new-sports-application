@@ -3,6 +3,7 @@ package com.sportsapp.domain.post.entity
 import com.sportsapp.domain.common.JpaAuditingBase
 import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.post.exception.NoticeRequiresHostException
+import com.sportsapp.domain.post.vo.CommunityPostContext
 import com.sportsapp.domain.post.vo.PostType
 import jakarta.persistence.CascadeType
 import jakarta.persistence.Column
@@ -104,26 +105,23 @@ class Post private constructor(
             title: String,
             content: String,
             type: PostType,
-            communityId: Long,
-            sportCategory: SportCategory?,
-            authorIsHost: Boolean,
-            communityIsPublic: Boolean,
+            context: CommunityPostContext,
         ): Post {
             require(title.isNotBlank()) { "title must not be blank" }
             require(title.length <= 200) { "title must not exceed 200 characters" }
             require(content.isNotBlank()) { "content must not be blank" }
             require(content.length <= 10000) { "content must not exceed 10000 characters" }
-            if (type == PostType.NOTICE && !authorIsHost) {
-                throw NoticeRequiresHostException(communityId, userId)
+            if (type == PostType.NOTICE && !context.authorIsHost) {
+                throw NoticeRequiresHostException(context.communityId, userId)
             }
             return Post(
                 userId = userId,
                 title = title,
                 content = content,
                 type = type,
-                communityId = communityId,
-                sportCategory = sportCategory,
-                globalListed = communityIsPublic,
+                communityId = context.communityId,
+                sportCategory = context.sportCategory,
+                globalListed = context.communityIsPublic,
             )
         }
     }

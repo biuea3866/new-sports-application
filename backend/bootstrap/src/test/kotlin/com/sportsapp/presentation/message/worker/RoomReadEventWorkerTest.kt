@@ -5,6 +5,7 @@ import com.sportsapp.application.message.usecase.MarkReadUseCase
 import com.sportsapp.domain.message.gateway.MessageBroadcastGateway
 import com.sportsapp.domain.message.gateway.ReadEvent
 import com.sportsapp.domain.message.service.MessageDomainService
+import com.sportsapp.domain.message.service.RoomDomainService
 import io.kotest.matchers.shouldBe
 import io.mockk.clearMocks
 import io.mockk.mockk
@@ -36,6 +37,7 @@ class RoomReadEventWorkerTestConfig {
 @Import(RoomReadEventWorkerTestConfig::class)
 class RoomReadEventWorkerTest(
     @Autowired private val messageDomainService: MessageDomainService,
+    @Autowired private val roomDomainService: RoomDomainService,
     @Autowired private val markReadUseCase: MarkReadUseCase,
     @Autowired private val messageBroadcastGateway: MessageBroadcastGateway,
     @Autowired private val transactionTemplate: TransactionTemplate,
@@ -47,9 +49,9 @@ class RoomReadEventWorkerTest(
         }
 
         Given("읽음 처리 트랜잭션이 정상 커밋되면") {
-            val room = messageDomainService.createGroupRoom("읽음 커밋 테스트 방", emptyList())
-            messageDomainService.joinRoom(room.id, userId = 30L)
-            messageDomainService.joinRoom(room.id, userId = 31L)
+            val room = roomDomainService.createGroupRoom("읽음 커밋 테스트 방", emptyList())
+            roomDomainService.joinRoom(room.id, userId = 30L)
+            roomDomainService.joinRoom(room.id, userId = 31L)
             val message = messageDomainService.sendMessage(room.id, 31L, "상대 메시지")
 
             When("markRead 를 커밋까지 완료하면") {
@@ -65,9 +67,9 @@ class RoomReadEventWorkerTest(
         }
 
         Given("읽음 처리 이후 트랜잭션이 롤백되면") {
-            val room = messageDomainService.createGroupRoom("읽음 롤백 테스트 방", emptyList())
-            messageDomainService.joinRoom(room.id, userId = 40L)
-            messageDomainService.joinRoom(room.id, userId = 41L)
+            val room = roomDomainService.createGroupRoom("읽음 롤백 테스트 방", emptyList())
+            roomDomainService.joinRoom(room.id, userId = 40L)
+            roomDomainService.joinRoom(room.id, userId = 41L)
             val message = messageDomainService.sendMessage(room.id, 41L, "상대 메시지")
 
             When("동일 트랜잭션 내에서 markRead 호출 후 예외로 롤백되면") {

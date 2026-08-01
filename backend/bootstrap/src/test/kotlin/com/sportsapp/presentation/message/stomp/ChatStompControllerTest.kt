@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseJpaIntegrationTest
 import com.sportsapp.domain.message.repository.MessageRepository
 import com.sportsapp.domain.message.service.MessageDomainService
+import com.sportsapp.domain.message.service.RoomDomainService
 import com.sportsapp.domain.user.gateway.JwtIssuer
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -27,6 +28,7 @@ import org.springframework.web.socket.messaging.WebSocketStompClient
  */
 class ChatStompControllerTest(
     @Autowired private val messageDomainService: MessageDomainService,
+    @Autowired private val roomDomainService: RoomDomainService,
     @Autowired private val messageRepository: MessageRepository,
     @Autowired private val jwtIssuer: JwtIssuer,
     @LocalServerPort private val port: Int,
@@ -95,8 +97,8 @@ class ChatStompControllerTest(
         }
 
         Given("방에 참여 중인 사용자가 실시간 발화하면") {
-            val room = messageDomainService.createGroupRoom("실시간 발화 테스트 방", emptyList())
-            messageDomainService.joinRoom(room.id, userId = 9002L)
+            val room = roomDomainService.createGroupRoom("실시간 발화 테스트 방", emptyList())
+            roomDomainService.joinRoom(room.id, userId = 9002L)
             val client = newClient()
             val session = connect(client, tokenFor(9002L))
             val received = rawFrameQueue()
@@ -118,8 +120,8 @@ class ChatStompControllerTest(
         }
 
         Given("타이핑 이벤트를 보내면") {
-            val room = messageDomainService.createGroupRoom("타이핑 테스트 방", emptyList())
-            messageDomainService.joinRoom(room.id, userId = 9003L)
+            val room = roomDomainService.createGroupRoom("타이핑 테스트 방", emptyList())
+            roomDomainService.joinRoom(room.id, userId = 9003L)
             val client = newClient()
             val session = connect(client, tokenFor(9003L))
             val received = rawFrameQueue()

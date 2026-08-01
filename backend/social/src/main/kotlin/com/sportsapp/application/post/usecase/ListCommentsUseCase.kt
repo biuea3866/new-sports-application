@@ -3,6 +3,7 @@ package com.sportsapp.application.post.usecase
 import com.sportsapp.application.common.GuestRequester
 import com.sportsapp.domain.community.service.CommunityDomainService
 import com.sportsapp.domain.post.entity.Comment
+import com.sportsapp.domain.post.service.CommentDomainService
 import com.sportsapp.domain.post.service.PostDomainService
 import org.springframework.data.domain.Page
 import org.springframework.stereotype.Service
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class ListCommentsUseCase(
     private val postDomainService: PostDomainService,
+    private val commentDomainService: CommentDomainService,
     private val communityDomainService: CommunityDomainService,
 ) {
     @Transactional(readOnly = true)
@@ -24,6 +26,6 @@ class ListCommentsUseCase(
         // 가시성만 재판정하고, Post 가 없거나 삭제됐으면 재판정을 건너뛴다.
         postDomainService.findPost(postId)?.currentCommunityId
             ?.let { communityDomainService.getCommunity(it, requesterId ?: GuestRequester.ID) }
-        return postDomainService.listComments(postId = postId, page = page, size = size)
+        return commentDomainService.listComments(postId = postId, page = page, size = size)
     }
 }
