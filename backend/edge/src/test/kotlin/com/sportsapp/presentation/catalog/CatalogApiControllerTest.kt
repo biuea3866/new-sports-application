@@ -1,11 +1,11 @@
 package com.sportsapp.presentation.catalog
 
 import com.sportsapp.application.catalog.SearchCatalogUseCase
-import com.sportsapp.application.catalog.dto.CatalogItem
-import com.sportsapp.application.catalog.dto.CatalogItemType
 import com.sportsapp.application.catalog.dto.CatalogSearchCriteria
 import com.sportsapp.application.catalog.dto.CatalogSearchResponse
-import com.sportsapp.domain.goods.vo.SellerType
+import com.sportsapp.domain.catalog.dto.CatalogItem
+import com.sportsapp.domain.catalog.dto.CatalogItemType
+import com.sportsapp.domain.catalog.vo.SellerType
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every
 import io.mockk.mockk

@@ -1,9 +1,15 @@
 // [W1-01a] edge — virtualqueue + catalog·order 파사드 + image + 게이트웨이 라우팅.
 // [W1-01d] 4 컨텍스트 55 main 파일(virtualqueue 37·catalog 7·order 6·image 5) + 대기열 Lua 3
 // (resources/redis/{enter,admit,evict}.lua) 이관 + 이 모듈이 실제로 쓰는 기술 의존만 선언한다.
-// edge->commerce 13 / facility-booking 6 / social 2 (실측) — C6·C7 파사드 읽기 조합이며 2단계에서
-// 원격 REST + 300ms 타임아웃으로 전환한다(`CatalogCompositionService.DOMAIN_TIMEOUT_MILLIS`·
-// `failedDomains` 부분 저하 로직 보존).
+// [S2-01] edge->commerce 13 / facility-booking 6 / social 2 (W1-01d 실측)였던 파사드 읽기 fan-out
+// (C6·C7)을 edge 소유 CatalogSearchGateway·OrderHistoryGateway 뒤로 역전했다 — 1단계 구현(로컬
+// 어댑터)은 bootstrap이 소유해 commerce·facility-booking·social을 컴파일 의존한다. edge main은
+// 더 이상 이 3모듈을 의존하지 않는다(`ModuleDependencyGraphTest`). 2단계에는 어댑터를 edge 안의
+// RestClient 구현으로 교체한다(300ms 타임아웃·`failedDomains` 부분 저하 로직은 CatalogCompositionService·
+// OrderCompositionService에 그대로 남아 동작 변화가 없다).
+// [S2-01] commerce는 virtualqueue 테스트(EntryTokenGateInterceptorTest·VirtualQueueWebMvcConfigTest가
+// LimitedDropApiController·EventApiController를 실 컨트롤러로 라우팅 검증)가 여전히 필요해
+// testImplementation으로 유지한다 — platform이 이미 이 패턴(VirtualQueueFeatureFlagKeysTest 전용)이다.
 //
 // [소유 테이블 0] edge 는 자기 테이블이 없다 — W1-04 GRANT 에서 `svc_edge` 무권한이고 상태는 전부
 // Redis(대기열·입장 토큰)에 있다. 따라서 `kotlin("plugin.jpa")`·QueryDSL kapt·starter-data-jpa 를
@@ -24,9 +30,6 @@ val kotlinVersion: String by project
 
 dependencies {
     implementation(project(":common"))
-    implementation(project(":commerce"))
-    implementation(project(":facility-booking"))
-    implementation(project(":social"))
 
     implementation(enforcedPlatform("org.springframework.boot:spring-boot-dependencies:$springBootVersion"))
     implementation("org.springframework.boot:spring-boot-starter-web")
@@ -66,6 +69,12 @@ dependencies {
     // VirtualQueueFeatureFlagKeysTest 만 platform 의 FeatureFlag·EvaluationStrategy 를 참조한다.
     // main 소스는 platform 을 쓰지 않으므로 컴파일 경계를 좁게 유지하려고 testImplementation 이다.
     testImplementation(project(":platform"))
+
+    // [S2-01] EntryTokenGateInterceptorTest·VirtualQueueWebMvcConfigTest 가 실 컨트롤러
+    // (LimitedDropApiController·EventApiController)·UseCase(commerce 의 goods/ticketing)를 라우팅
+    // 검증 픽스처로 그대로 쓴다. main 소스는 더 이상 commerce 를 쓰지 않으므로(catalog·order 파사드가
+    // CatalogSearchGateway·OrderHistoryGateway 로 역전) testImplementation 으로 좁힌다.
+    testImplementation(project(":commerce"))
 }
 
 // [W1-01d] 1.9.25 압력의 출처는 spring-boot-dependencies BOM 자신이다(enforcedPlatform 의 constraint

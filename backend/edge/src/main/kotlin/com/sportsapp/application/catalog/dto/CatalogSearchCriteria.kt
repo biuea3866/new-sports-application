@@ -1,6 +1,7 @@
 package com.sportsapp.application.catalog.dto
 
-import com.sportsapp.domain.goods.vo.SellerType
+import com.sportsapp.domain.catalog.dto.CatalogItemType
+import com.sportsapp.domain.catalog.vo.SellerType
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort

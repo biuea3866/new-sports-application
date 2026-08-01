@@ -1,17 +1,10 @@
 package com.sportsapp.application.order
 
 import com.sportsapp.application.order.dto.OrderHistoryCriteria
-import com.sportsapp.application.order.dto.OrderHistoryItem
 import com.sportsapp.application.order.dto.OrderHistoryResponse
-import com.sportsapp.domain.booking.dto.BookingOrderItem
-import com.sportsapp.domain.booking.service.BookingDomainService
 import com.sportsapp.domain.common.order.OrderType
-import com.sportsapp.domain.goods.dto.GoodsOrderWithTitle
-import com.sportsapp.domain.goods.service.GoodsDomainService
-import com.sportsapp.domain.recruitment.dto.ApplicationWithRecruitmentTitle
-import com.sportsapp.domain.recruitment.service.RecruitmentDomainService
-import com.sportsapp.domain.ticketing.dto.TicketOrderWithEventTitle
-import com.sportsapp.domain.ticketing.service.TicketingDomainService
+import com.sportsapp.domain.order.dto.OrderHistoryItem
+import com.sportsapp.domain.order.gateway.OrderHistoryGateway
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
@@ -25,18 +18,21 @@ private val logger = LoggerFactory.getLogger(OrderCompositionService::class.java
 private const val DOMAIN_TIMEOUT_MILLIS = 300L
 
 /**
- * order 통합조회(BE-08) 조합 로직 — 4개 코어 DomainService(booking/goods/ticketing/recruitment)의
- * 이름 포함 주문 읽기를 병렬 fan-out하고, `OrderHistoryItem`으로 매핑해 단일 응답으로 합친다.
+ * order 통합조회(BE-08) 조합 로직 — 4개 주문 도메인(booking/goods/ticketing/recruitment)의 이름
+ * 포함 주문 읽기를 [OrderHistoryGateway]로 위임하고 병렬 fan-out해 `OrderHistoryItem`으로 매핑한
+ * 단일 응답으로 합친다.
  *
  * 파사드는 이름을 만들지 않는다 — 각 컨텍스트가 반환한 title을 그대로 매핑만 한다(TDD
- * "주문 표시명 확보 방식"). domain 레이어 없음(dashboard 패턴), read-only 조합 전용.
+ * "주문 표시명 확보 방식"). DomainService 없음(dashboard 패턴), read-only 조합 전용.
+ *
+ * [S2-01] 이전에는 4개 코어 DomainService(BookingDomainService 등)를 직접 주입했다 — edge가 이
+ * 서비스들의 소유 모듈(commerce·facility-booking·social)을 컴파일 의존해야 했다. 지금은 edge
+ * 소유 [OrderHistoryGateway] 하나만 주입한다 — fan-out·타임아웃·부분 저하 로직은 이동 전과
+ * 완전히 동일하고, "무엇을 조회하는가"만 Gateway 뒤로 숨었다.
  */
 @Service
 class OrderCompositionService(
-    private val bookingDomainService: BookingDomainService,
-    private val goodsDomainService: GoodsDomainService,
-    private val ticketingDomainService: TicketingDomainService,
-    private val recruitmentDomainService: RecruitmentDomainService,
+    private val orderHistoryGateway: OrderHistoryGateway,
     @Qualifier("orderHistoryExecutor") private val orderHistoryExecutor: AsyncTaskExecutor,
 ) {
     fun history(userId: Long, criteria: OrderHistoryCriteria): OrderHistoryResponse {
@@ -62,13 +58,10 @@ class OrderCompositionService(
     }
 
     private fun buildTasks(userId: Long, windowSize: Int): Map<OrderType, () -> List<OrderHistoryItem>> = mapOf(
-        OrderType.BOOKING to { bookingDomainService.findOrderHistory(userId).map { it.toOrderHistoryItem() } },
-        OrderType.GOODS to {
-            goodsDomainService.listMyOrdersWithTitle(userId, PageRequest.of(0, windowSize))
-                .content.map { it.toOrderHistoryItem() }
-        },
-        OrderType.TICKETING to { ticketingDomainService.listTicketOrdersBy(userId).map { it.toOrderHistoryItem() } },
-        OrderType.RECRUITMENT to { recruitmentDomainService.listApplicationsWithTitleBy(userId).map { it.toOrderHistoryItem() } },
+        OrderType.BOOKING to { orderHistoryGateway.findBookingOrders(userId) },
+        OrderType.GOODS to { orderHistoryGateway.findGoodsOrders(userId, PageRequest.of(0, windowSize)) },
+        OrderType.TICKETING to { orderHistoryGateway.findTicketingOrders(userId) },
+        OrderType.RECRUITMENT to { orderHistoryGateway.findRecruitmentOrders(userId) },
     )
 
     /**
@@ -102,43 +95,3 @@ class OrderCompositionService(
         return items.subList(fromIndex, toIndex)
     }
 }
-
-private fun BookingOrderItem.toOrderHistoryItem(): OrderHistoryItem = OrderHistoryItem(
-    orderType = OrderType.BOOKING,
-    sourceId = bookingId,
-    title = title,
-    status = status.name,
-    paymentId = paymentId,
-    detailPath = "/bookings/$bookingId",
-    createdAt = createdAt,
-)
-
-private fun GoodsOrderWithTitle.toOrderHistoryItem(): OrderHistoryItem = OrderHistoryItem(
-    orderType = OrderType.GOODS,
-    sourceId = order.id,
-    title = title,
-    status = order.status.name,
-    paymentId = order.paymentId,
-    detailPath = "/goods-orders/${order.id}",
-    createdAt = order.createdAt,
-)
-
-private fun TicketOrderWithEventTitle.toOrderHistoryItem(): OrderHistoryItem = OrderHistoryItem(
-    orderType = OrderType.TICKETING,
-    sourceId = ticketOrderId,
-    title = eventTitle,
-    status = status.name,
-    paymentId = paymentId,
-    detailPath = "/ticket-orders/$ticketOrderId",
-    createdAt = createdAt,
-)
-
-private fun ApplicationWithRecruitmentTitle.toOrderHistoryItem(): OrderHistoryItem = OrderHistoryItem(
-    orderType = OrderType.RECRUITMENT,
-    sourceId = applicationId,
-    title = recruitmentTitle,
-    status = status.name,
-    paymentId = paymentId,
-    detailPath = "/applications/$applicationId",
-    createdAt = createdAt,
-)

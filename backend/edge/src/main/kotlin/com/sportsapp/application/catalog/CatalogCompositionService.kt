@@ -1,17 +1,10 @@
 package com.sportsapp.application.catalog
 
-import com.sportsapp.application.catalog.dto.CatalogItem
-import com.sportsapp.application.catalog.dto.CatalogItemType
 import com.sportsapp.application.catalog.dto.CatalogSearchCriteria
 import com.sportsapp.application.catalog.dto.CatalogSearchResponse
-import com.sportsapp.domain.facility.entity.Program
-import com.sportsapp.domain.facility.service.ProgramDomainService
-import com.sportsapp.domain.goods.dto.ProductWithStock
-import com.sportsapp.domain.goods.service.GoodsDomainService
-import com.sportsapp.domain.recruitment.entity.Recruitment
-import com.sportsapp.domain.recruitment.service.RecruitmentDomainService
-import com.sportsapp.domain.ticketing.dto.EventWithMinSeatPrice
-import com.sportsapp.domain.ticketing.service.TicketingDomainService
+import com.sportsapp.domain.catalog.dto.CatalogItem
+import com.sportsapp.domain.catalog.dto.CatalogItemType
+import com.sportsapp.domain.catalog.gateway.CatalogSearchGateway
 import java.util.concurrent.Callable
 import java.util.concurrent.Future
 import java.util.concurrent.RejectedExecutionException
@@ -32,19 +25,21 @@ private const val DOMAIN_RECRUITMENT = "recruitment"
 private const val DOMAIN_TICKETING = "ticketing"
 
 /**
- * catalog 통합검색 조합 서비스 (BE-07). 4개 코어 DomainService(goods/facility/recruitment/
- * ticketing)의 catalog 읽기 메서드를 [catalogSearchExecutor]로 병렬 fan-out하고, 도메인당
- * [DOMAIN_TIMEOUT_MILLIS] 타임아웃을 적용한다. 실패·타임아웃 도메인은 결과에서 제외하고
+ * catalog 통합검색 조합 서비스 (BE-07). 4개 코어 도메인(goods/facility/recruitment/ticketing)의
+ * catalog 읽기를 [CatalogSearchGateway]로 위임하고 [catalogSearchExecutor]로 병렬 fan-out한다.
+ * 도메인당 [DOMAIN_TIMEOUT_MILLIS] 타임아웃을 적용하며, 실패·타임아웃 도메인은 결과에서 제외하고
  * [CatalogSearchResponse.failedDomains]에 기록한다(FR-11).
  *
- * catalog는 읽기 전용 조합(dashboard 패턴)이므로 domain 레이어를 신설하지 않는다.
+ * catalog는 읽기 전용 조합(dashboard 패턴)이므로 DomainService를 신설하지 않는다.
+ *
+ * [S2-01] 이전에는 4개 코어 DomainService(GoodsDomainService 등)를 직접 주입했다 — edge가 이
+ * 서비스들의 소유 모듈(commerce·facility-booking·social)을 컴파일 의존해야 했다. 지금은 edge
+ * 소유 [CatalogSearchGateway] 하나만 주입한다 — fan-out·타임아웃·부분 저하 로직은 이동 전과
+ * 완전히 동일하고, "무엇을 조회하는가"만 Gateway 뒤로 숨었다.
  */
 @Service
 class CatalogCompositionService(
-    private val goodsDomainService: GoodsDomainService,
-    private val programDomainService: ProgramDomainService,
-    private val recruitmentDomainService: RecruitmentDomainService,
-    private val ticketingDomainService: TicketingDomainService,
+    private val catalogSearchGateway: CatalogSearchGateway,
     @Qualifier("catalogSearchExecutor") private val catalogSearchExecutor: AsyncTaskExecutor,
 ) {
     fun search(criteria: CatalogSearchCriteria): CatalogSearchResponse {
@@ -109,22 +104,14 @@ class CatalogCompositionService(
     private fun fetchItems(domainName: String, criteria: CatalogSearchCriteria, pageable: Pageable): List<CatalogItem> =
         when (domainName) {
             DOMAIN_GOODS -> fetchGoodsItems(criteria, pageable)
-            DOMAIN_FACILITY -> programDomainService.searchForCatalog(criteria.keyword, pageable).content.map { it.toCatalogItem() }
-            DOMAIN_RECRUITMENT -> recruitmentDomainService.searchOpenRecruitments(criteria.keyword, pageable).content.map { it.toCatalogItem() }
-            DOMAIN_TICKETING -> ticketingDomainService.searchOpenEventsForCatalog(criteria.keyword, pageable).content.map { it.toCatalogItem() }
+            DOMAIN_FACILITY -> catalogSearchGateway.searchPrograms(criteria.keyword, pageable)
+            DOMAIN_RECRUITMENT -> catalogSearchGateway.searchRecruitments(criteria.keyword, pageable)
+            DOMAIN_TICKETING -> catalogSearchGateway.searchTicketingEvents(criteria.keyword, pageable)
             else -> emptyList()
         }
 
     private fun fetchGoodsItems(criteria: CatalogSearchCriteria, pageable: Pageable): List<CatalogItem> {
-        val page = goodsDomainService.search(
-            category = null,
-            keyword = criteria.keyword,
-            priceMin = null,
-            priceMax = null,
-            sellerType = criteria.sellerType,
-            pageable = pageable,
-        )
-        val items = page.content.map { it.toCatalogItem() }
+        val items = catalogSearchGateway.searchGoods(criteria.keyword, criteria.sellerType, pageable)
         return if (criteria.itemType == null) items else items.filter { it.itemType == criteria.itemType }
     }
 
@@ -149,62 +136,3 @@ class CatalogCompositionService(
 
     private data class DomainOutcome(val domainName: String, val items: List<CatalogItem>, val failed: Boolean)
 }
-
-/**
- * LIMITED_DROP 분기의 status는 Product.status(ACTIVE/INACTIVE)가 아니라
- * [com.sportsapp.domain.goods.entity.LimitedDrop.effectiveStatus]가 파생한
- * SCHEDULED/OPEN/SOLD_OUT/CLOSED를 노출한다 — 품절 한정판을 ACTIVE로 오노출하지 않기 위함이다.
- * `limitedDropId`가 채워지는 시점([GoodsDomainService.enrichWithLimitedDropId])에 항상
- * `limitedDropStatus`도 함께 채워지므로 `requireNotNull`로 그 불변식을 강제한다.
- */
-private fun ProductWithStock.toCatalogItem(): CatalogItem {
-    val isLimitedDrop = limitedDropId != null
-    val itemType = if (isLimitedDrop) CatalogItemType.LIMITED_DROP else CatalogItemType.PRODUCT
-    val sourceId = if (isLimitedDrop) requireNotNull(limitedDropId) else product.id
-    val detailPath = if (isLimitedDrop) "/limited-drops/$limitedDropId" else "/products/${product.id}"
-    val status = if (isLimitedDrop) requireNotNull(limitedDropStatus).name else product.status.name
-    return CatalogItem(
-        itemType = itemType,
-        sourceId = sourceId,
-        title = product.name,
-        price = product.price,
-        sellerType = product.sellerType,
-        status = status,
-        detailPath = detailPath,
-        createdAt = product.createdAt,
-    )
-}
-
-private fun Program.toCatalogItem(): CatalogItem = CatalogItem(
-    itemType = CatalogItemType.PROGRAM,
-    sourceId = id,
-    title = name,
-    price = price,
-    sellerType = null,
-    status = "ACTIVE",
-    detailPath = "/programs/$id",
-    createdAt = createdAt,
-)
-
-private fun Recruitment.toCatalogItem(): CatalogItem = CatalogItem(
-    itemType = CatalogItemType.RECRUITMENT,
-    sourceId = id,
-    title = title,
-    price = feeAmount,
-    sellerType = null,
-    status = status.name,
-    detailPath = "/recruitments/$id",
-    createdAt = createdAt,
-)
-
-private fun EventWithMinSeatPrice.toCatalogItem(): CatalogItem = CatalogItem(
-    itemType = CatalogItemType.TICKET,
-    sourceId = event.id,
-    title = event.title,
-    // 경기는 좌석마다 가격이 달라 최저 좌석가를 대표가로 노출한다(좌석 미등록 경기는 null).
-    price = minSeatPrice,
-    sellerType = null,
-    status = event.status.name,
-    detailPath = "/events/${event.id}",
-    createdAt = event.createdAt,
-)

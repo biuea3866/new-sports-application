@@ -2,10 +2,10 @@ package com.sportsapp.presentation.order.controller
 
 import com.sportsapp.application.order.GetOrderHistoryUseCase
 import com.sportsapp.application.order.dto.OrderHistoryCriteria
-import com.sportsapp.application.order.dto.OrderHistoryItem
 import com.sportsapp.application.order.dto.OrderHistoryResponse
 import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.common.security.UserPrincipal
+import com.sportsapp.domain.order.dto.OrderHistoryItem
 import sportsapp.testkit.presentation.support.fixedPrincipalResolver
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe

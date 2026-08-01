@@ -1,4 +1,4 @@
-package com.sportsapp.application.order.dto
+package com.sportsapp.domain.order.dto
 
 import com.sportsapp.domain.common.order.OrderType
 import java.time.ZonedDateTime
@@ -18,6 +18,9 @@ import java.time.ZonedDateTime
  *
  * [title]은 각 주문 컨텍스트가 자기 데이터로 구성해 반환한 값을 그대로 매핑한 것이다
  * (파사드는 이름을 만들지 않는다).
+ *
+ * [S2-01] [com.sportsapp.domain.order.gateway.OrderHistoryGateway] 계약의 반환 타입이라 domain
+ * 레이어로 옮겼다 — Gateway는 application을 참조할 수 없다.
  */
 data class OrderHistoryItem(
     val orderType: OrderType,

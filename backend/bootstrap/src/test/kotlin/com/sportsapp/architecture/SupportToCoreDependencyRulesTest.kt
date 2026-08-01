@@ -26,6 +26,11 @@ object DomainClassification {
         // 코어 도메인을 import 하지 않고 common 만 의존하므로 support 분류가 맞다 — virtualqueue 와 동일하게
         // edge 소유이며, 검증 판정 자체는 platform 이 수행하고 edge 는 계약만 가진다.
         "identity",
+        // S2-01: edge 가 소유한 파사드 읽기 계약(CatalogSearchGateway·OrderHistoryGateway)과 그 값 객체.
+        // 반환 타입이 전부 edge 소유라 코어 도메인을 import 하지 않는다 — identity 와 같은 성격이며,
+        // R3 스캔에 편입돼 "edge 계약이 코어를 동기 의존하지 않는다"를 상시 강제한다.
+        // 구현체(로컬 어댑터)는 조립자(bootstrap) 의 infrastructure 소유라 이 축의 대상이 아니다.
+        "catalog", "order",
     )
     val subsystem = listOf("mcp")
 
@@ -196,8 +201,8 @@ class SupportToCoreDependencyRulesTest : FunSpec({
         classifiedDomains shouldBe actualDomainSubPackages
     }
 
-    test("분류 합계가 21이다") {
-        (DomainClassification.core.size + DomainClassification.support.size + DomainClassification.subsystem.size) shouldBe 21
+    test("분류 합계가 23이다") {
+        (DomainClassification.core.size + DomainClassification.support.size + DomainClassification.subsystem.size) shouldBe 23
     }
 
     test("R3 스캔 대상에 기존 5개와 신규 편입 4개를 합한 9개 도메인이 모두 포함된다") {

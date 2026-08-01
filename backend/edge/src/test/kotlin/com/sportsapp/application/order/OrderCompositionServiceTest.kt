@@ -1,20 +1,9 @@
 package com.sportsapp.application.order
 
 import com.sportsapp.application.order.dto.OrderHistoryCriteria
-import com.sportsapp.domain.booking.dto.BookingOrderItem
-import com.sportsapp.domain.booking.entity.BookingStatus
-import com.sportsapp.domain.booking.service.BookingDomainService
 import com.sportsapp.domain.common.order.OrderType
-import com.sportsapp.domain.goods.entity.GoodsOrder
-import com.sportsapp.domain.goods.entity.GoodsOrderStatus
-import com.sportsapp.domain.goods.dto.GoodsOrderWithTitle
-import com.sportsapp.domain.goods.service.GoodsDomainService
-import com.sportsapp.domain.recruitment.dto.ApplicationWithRecruitmentTitle
-import com.sportsapp.domain.recruitment.entity.ApplicationStatus
-import com.sportsapp.domain.recruitment.service.RecruitmentDomainService
-import com.sportsapp.domain.ticketing.dto.TicketOrderWithEventTitle
-import com.sportsapp.domain.ticketing.entity.OrderStatus
-import com.sportsapp.domain.ticketing.service.TicketingDomainService
+import com.sportsapp.domain.order.dto.OrderHistoryItem
+import com.sportsapp.domain.order.gateway.OrderHistoryGateway
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.inspectors.forAll
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -25,9 +14,6 @@ import io.mockk.every
 import io.mockk.mockk
 import org.springframework.core.task.AsyncTaskExecutor
 import org.springframework.core.task.TaskRejectedException
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.PageImpl
-import org.springframework.data.domain.PageRequest
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
@@ -55,30 +41,34 @@ private class SaturatedAfterFirstSubmissionExecutor : AsyncTaskExecutor {
     }
 }
 
-private fun goodsOrderMock(
-    id: Long,
-    status: GoodsOrderStatus,
+private fun orderHistoryItem(
+    orderType: OrderType,
+    sourceId: Long,
+    title: String,
+    status: String,
     paymentId: Long?,
     createdAt: ZonedDateTime,
-): GoodsOrder = mockk(relaxed = true) {
-    every { this@mockk.id } returns id
-    every { this@mockk.status } returns status
-    every { this@mockk.paymentId } returns paymentId
-    every { this@mockk.createdAt } returns createdAt
-}
+) = OrderHistoryItem(
+    orderType = orderType,
+    sourceId = sourceId,
+    title = title,
+    status = status,
+    paymentId = paymentId,
+    detailPath = "/orders/$sourceId",
+    createdAt = createdAt,
+)
 
+/**
+ * S2-01 — [OrderCompositionService]는 이제 4개 코어 DomainService가 아니라 edge 소유
+ * [OrderHistoryGateway] 하나만 주입받는다. fan-out·타임아웃·부분 저하·페이지네이션 로직은
+ * 이동 전과 동일해야 하므로(동작 변화 0), 여기서는 Gateway를 mock으로 대체해 같은 시나리오를
+ * 검증한다. 타 모듈 DTO → OrderHistoryItem 매핑 자체는 bootstrap의
+ * `LocalOrderHistoryAdapterTest`가 검증한다.
+ */
 class OrderCompositionServiceTest : BehaviorSpec({
 
-    fun buildService(
-        bookingDomainService: BookingDomainService = mockk(),
-        goodsDomainService: GoodsDomainService = mockk(),
-        ticketingDomainService: TicketingDomainService = mockk(),
-        recruitmentDomainService: RecruitmentDomainService = mockk(),
-    ) = OrderCompositionService(
-        bookingDomainService = bookingDomainService,
-        goodsDomainService = goodsDomainService,
-        ticketingDomainService = ticketingDomainService,
-        recruitmentDomainService = recruitmentDomainService,
+    fun buildService(orderHistoryGateway: OrderHistoryGateway = mockk()) = OrderCompositionService(
+        orderHistoryGateway = orderHistoryGateway,
         orderHistoryExecutor = executor,
     )
 
@@ -87,47 +77,27 @@ class OrderCompositionServiceTest : BehaviorSpec({
 
     Given("4개 도메인 모두 주문 이력이 있는 사용자") {
         val userId = 1L
-        val bookingDomainService = mockk<BookingDomainService>()
-        val goodsDomainService = mockk<GoodsDomainService>()
-        val ticketingDomainService = mockk<TicketingDomainService>()
-        val recruitmentDomainService = mockk<RecruitmentDomainService>()
+        val gateway = mockk<OrderHistoryGateway>()
 
         val bookingCreatedAt = ZonedDateTime.of(2026, 6, 1, 9, 0, 0, 0, ZoneOffset.UTC)
         val goodsCreatedAt = ZonedDateTime.of(2026, 6, 2, 9, 0, 0, 0, ZoneOffset.UTC)
         val ticketingCreatedAt = ZonedDateTime.of(2026, 6, 3, 9, 0, 0, 0, ZoneOffset.UTC)
         val recruitmentCreatedAt = ZonedDateTime.of(2026, 6, 4, 9, 0, 0, 0, ZoneOffset.UTC)
 
-        every { bookingDomainService.findOrderHistory(userId) } returns listOf(
-            BookingOrderItem(
-                bookingId = 10L, slotId = 100L, userId = userId,
-                status = BookingStatus.EXPIRED, paymentId = null,
-                title = "2026-06-01 09:00-10:00 시설 예약", createdAt = bookingCreatedAt,
-            ),
+        every { gateway.findBookingOrders(userId) } returns listOf(
+            orderHistoryItem(OrderType.BOOKING, 10L, "2026-06-01 09:00-10:00 시설 예약", "EXPIRED", null, bookingCreatedAt),
         )
-        every { goodsDomainService.listMyOrdersWithTitle(userId, any()) } returns PageImpl(
-            listOf(
-                GoodsOrderWithTitle(
-                    order = goodsOrderMock(id = 20L, status = GoodsOrderStatus.SHIPPED, paymentId = 200L, createdAt = goodsCreatedAt),
-                    title = "요가매트 프리미엄 외 1건",
-                ),
-            ),
-            PageRequest.of(0, 20),
-            1L,
+        every { gateway.findGoodsOrders(userId, any()) } returns listOf(
+            orderHistoryItem(OrderType.GOODS, 20L, "요가매트 프리미엄 외 1건", "SHIPPED", 200L, goodsCreatedAt),
         )
-        every { ticketingDomainService.listTicketOrdersBy(userId) } returns listOf(
-            TicketOrderWithEventTitle(
-                ticketOrderId = 30L, status = OrderStatus.CONFIRMED, eventTitle = "Concert Dec",
-                paymentId = 300L, createdAt = ticketingCreatedAt,
-            ),
+        every { gateway.findTicketingOrders(userId) } returns listOf(
+            orderHistoryItem(OrderType.TICKETING, 30L, "Concert Dec", "CONFIRMED", 300L, ticketingCreatedAt),
         )
-        every { recruitmentDomainService.listApplicationsWithTitleBy(userId) } returns listOf(
-            ApplicationWithRecruitmentTitle(
-                applicationId = 40L, status = ApplicationStatus.REFUNDED, recruitmentTitle = "주말 축구 모임",
-                paymentId = 400L, createdAt = recruitmentCreatedAt,
-            ),
+        every { gateway.findRecruitmentOrders(userId) } returns listOf(
+            orderHistoryItem(OrderType.RECRUITMENT, 40L, "주말 축구 모임", "REFUNDED", 400L, recruitmentCreatedAt),
         )
 
-        val service = buildService(bookingDomainService, goodsDomainService, ticketingDomainService, recruitmentDomainService)
+        val service = buildService(gateway)
 
         When("history(userId, 조건 없음)를 호출하면") {
             val result = service.history(userId, emptyCriteria())
@@ -167,37 +137,24 @@ class OrderCompositionServiceTest : BehaviorSpec({
 
     Given("goods 도메인 조회가 300ms 타임아웃을 초과할 때") {
         val userId = 2L
-        val bookingDomainService = mockk<BookingDomainService>()
-        val goodsDomainService = mockk<GoodsDomainService>()
-        val ticketingDomainService = mockk<TicketingDomainService>()
-        val recruitmentDomainService = mockk<RecruitmentDomainService>()
-
+        val gateway = mockk<OrderHistoryGateway>()
         val now = ZonedDateTime.of(2026, 6, 1, 9, 0, 0, 0, ZoneOffset.UTC)
-        every { bookingDomainService.findOrderHistory(userId) } returns listOf(
-            BookingOrderItem(
-                bookingId = 11L, slotId = 101L, userId = userId,
-                status = BookingStatus.CONFIRMED, paymentId = 111L,
-                title = "예약 라벨", createdAt = now,
-            ),
+
+        every { gateway.findBookingOrders(userId) } returns listOf(
+            orderHistoryItem(OrderType.BOOKING, 11L, "예약 라벨", "CONFIRMED", 111L, now),
         )
-        every { goodsDomainService.listMyOrdersWithTitle(userId, any()) } answers {
+        every { gateway.findGoodsOrders(userId, any()) } answers {
             Thread.sleep(500)
-            PageImpl(emptyList(), PageRequest.of(0, 20), 0L)
+            emptyList()
         }
-        every { ticketingDomainService.listTicketOrdersBy(userId) } returns listOf(
-            TicketOrderWithEventTitle(
-                ticketOrderId = 31L, status = OrderStatus.CONFIRMED, eventTitle = "Concert",
-                paymentId = 311L, createdAt = now,
-            ),
+        every { gateway.findTicketingOrders(userId) } returns listOf(
+            orderHistoryItem(OrderType.TICKETING, 31L, "Concert", "CONFIRMED", 311L, now),
         )
-        every { recruitmentDomainService.listApplicationsWithTitleBy(userId) } returns listOf(
-            ApplicationWithRecruitmentTitle(
-                applicationId = 41L, status = ApplicationStatus.CONFIRMED, recruitmentTitle = "모임",
-                paymentId = 411L, createdAt = now,
-            ),
+        every { gateway.findRecruitmentOrders(userId) } returns listOf(
+            orderHistoryItem(OrderType.RECRUITMENT, 41L, "모임", "CONFIRMED", 411L, now),
         )
 
-        val service = buildService(bookingDomainService, goodsDomainService, ticketingDomainService, recruitmentDomainService)
+        val service = buildService(gateway)
 
         When("history(userId, 조건 없음)를 호출하면") {
             val result = service.history(userId, emptyCriteria())
@@ -211,30 +168,20 @@ class OrderCompositionServiceTest : BehaviorSpec({
 
     Given("orderHistoryExecutor가 포화 상태(코어+큐 가득)일 때") {
         val userId = 8L
-        val bookingDomainService = mockk<BookingDomainService>()
-        val goodsDomainService = mockk<GoodsDomainService>()
-        val ticketingDomainService = mockk<TicketingDomainService>()
-        val recruitmentDomainService = mockk<RecruitmentDomainService>()
+        val gateway = mockk<OrderHistoryGateway>()
         val now = ZonedDateTime.of(2026, 6, 1, 9, 0, 0, 0, ZoneOffset.UTC)
 
-        every { bookingDomainService.findOrderHistory(userId) } returns listOf(
-            BookingOrderItem(bookingId = 14L, slotId = 104L, userId = userId, status = BookingStatus.CONFIRMED, paymentId = 5L, title = "예약", createdAt = now),
+        every { gateway.findBookingOrders(userId) } returns listOf(
+            orderHistoryItem(OrderType.BOOKING, 14L, "예약", "CONFIRMED", 5L, now),
         )
-        every { goodsDomainService.listMyOrdersWithTitle(userId, any()) } returns PageImpl(
-            listOf(GoodsOrderWithTitle(order = goodsOrderMock(23L, GoodsOrderStatus.CONFIRMED, 6L, now), title = "상품")),
-            PageRequest.of(0, 20), 1L,
+        every { gateway.findGoodsOrders(userId, any()) } returns listOf(
+            orderHistoryItem(OrderType.GOODS, 23L, "상품", "CONFIRMED", 6L, now),
         )
-        every { ticketingDomainService.listTicketOrdersBy(userId) } returns listOf(
-            TicketOrderWithEventTitle(ticketOrderId = 34L, status = OrderStatus.CONFIRMED, eventTitle = "티켓", paymentId = 7L, createdAt = now),
+        every { gateway.findTicketingOrders(userId) } returns listOf(
+            orderHistoryItem(OrderType.TICKETING, 34L, "티켓", "CONFIRMED", 7L, now),
         )
-        every { recruitmentDomainService.listApplicationsWithTitleBy(userId) } returns listOf(
-            ApplicationWithRecruitmentTitle(
-                applicationId = 44L,
-                status = ApplicationStatus.CONFIRMED,
-                recruitmentTitle = "모집",
-                paymentId = 8L,
-                createdAt = now,
-            ),
+        every { gateway.findRecruitmentOrders(userId) } returns listOf(
+            orderHistoryItem(OrderType.RECRUITMENT, 44L, "모집", "CONFIRMED", 8L, now),
         )
 
         // 실 ThreadPoolTaskExecutor의 코어/큐 크기로 포화를 재현하면 소비 스레드와 제출 스레드 간
@@ -245,10 +192,7 @@ class OrderCompositionServiceTest : BehaviorSpec({
         val saturatedExecutor = SaturatedAfterFirstSubmissionExecutor()
 
         val service = OrderCompositionService(
-            bookingDomainService = bookingDomainService,
-            goodsDomainService = goodsDomainService,
-            ticketingDomainService = ticketingDomainService,
-            recruitmentDomainService = recruitmentDomainService,
+            orderHistoryGateway = gateway,
             orderHistoryExecutor = saturatedExecutor,
         )
 
@@ -264,33 +208,23 @@ class OrderCompositionServiceTest : BehaviorSpec({
 
     Given("orderType=TICKETING 필터가 주어졌을 때") {
         val userId = 3L
-        val bookingDomainService = mockk<BookingDomainService>()
-        val goodsDomainService = mockk<GoodsDomainService>()
-        val ticketingDomainService = mockk<TicketingDomainService>()
-        val recruitmentDomainService = mockk<RecruitmentDomainService>()
+        val gateway = mockk<OrderHistoryGateway>()
         val now = ZonedDateTime.of(2026, 6, 1, 9, 0, 0, 0, ZoneOffset.UTC)
 
-        every { bookingDomainService.findOrderHistory(userId) } returns listOf(
-            BookingOrderItem(bookingId = 12L, slotId = 102L, userId = userId, status = BookingStatus.CONFIRMED, paymentId = 1L, title = "예약", createdAt = now),
+        every { gateway.findBookingOrders(userId) } returns listOf(
+            orderHistoryItem(OrderType.BOOKING, 12L, "예약", "CONFIRMED", 1L, now),
         )
-        every { goodsDomainService.listMyOrdersWithTitle(userId, any()) } returns PageImpl(
-            listOf(GoodsOrderWithTitle(order = goodsOrderMock(21L, GoodsOrderStatus.CONFIRMED, 2L, now), title = "상품")),
-            PageRequest.of(0, 20), 1L,
+        every { gateway.findGoodsOrders(userId, any()) } returns listOf(
+            orderHistoryItem(OrderType.GOODS, 21L, "상품", "CONFIRMED", 2L, now),
         )
-        every { ticketingDomainService.listTicketOrdersBy(userId) } returns listOf(
-            TicketOrderWithEventTitle(ticketOrderId = 32L, status = OrderStatus.CONFIRMED, eventTitle = "티켓", paymentId = 3L, createdAt = now),
+        every { gateway.findTicketingOrders(userId) } returns listOf(
+            orderHistoryItem(OrderType.TICKETING, 32L, "티켓", "CONFIRMED", 3L, now),
         )
-        every { recruitmentDomainService.listApplicationsWithTitleBy(userId) } returns listOf(
-            ApplicationWithRecruitmentTitle(
-                applicationId = 42L,
-                status = ApplicationStatus.CONFIRMED,
-                recruitmentTitle = "모집",
-                paymentId = 4L,
-                createdAt = now,
-            ),
+        every { gateway.findRecruitmentOrders(userId) } returns listOf(
+            orderHistoryItem(OrderType.RECRUITMENT, 42L, "모집", "CONFIRMED", 4L, now),
         )
 
-        val service = buildService(bookingDomainService, goodsDomainService, ticketingDomainService, recruitmentDomainService)
+        val service = buildService(gateway)
 
         When("history(userId, orderType=TICKETING)를 호출하면") {
             val result = service.history(userId, emptyCriteria(orderType = OrderType.TICKETING))
@@ -304,41 +238,23 @@ class OrderCompositionServiceTest : BehaviorSpec({
 
     Given("status=CANCELLED 필터가 주어졌을 때") {
         val userId = 4L
-        val bookingDomainService = mockk<BookingDomainService>()
-        val goodsDomainService = mockk<GoodsDomainService>()
-        val ticketingDomainService = mockk<TicketingDomainService>()
-        val recruitmentDomainService = mockk<RecruitmentDomainService>()
+        val gateway = mockk<OrderHistoryGateway>()
         val now = ZonedDateTime.of(2026, 6, 1, 9, 0, 0, 0, ZoneOffset.UTC)
 
-        every { bookingDomainService.findOrderHistory(userId) } returns listOf(
-            BookingOrderItem(
-                bookingId = 13L,
-                slotId = 103L,
-                userId = userId,
-                status = BookingStatus.CANCELLED,
-                paymentId = null,
-                title = "예약",
-                createdAt = now,
-            ),
+        every { gateway.findBookingOrders(userId) } returns listOf(
+            orderHistoryItem(OrderType.BOOKING, 13L, "예약", "CANCELLED", null, now),
         )
-        every { goodsDomainService.listMyOrdersWithTitle(userId, any()) } returns PageImpl(
-            listOf(GoodsOrderWithTitle(order = goodsOrderMock(22L, GoodsOrderStatus.CANCELLED, null, now), title = "상품")),
-            PageRequest.of(0, 20), 1L,
+        every { gateway.findGoodsOrders(userId, any()) } returns listOf(
+            orderHistoryItem(OrderType.GOODS, 22L, "상품", "CANCELLED", null, now),
         )
-        every { ticketingDomainService.listTicketOrdersBy(userId) } returns listOf(
-            TicketOrderWithEventTitle(ticketOrderId = 33L, status = OrderStatus.CANCELLED, eventTitle = "티켓", paymentId = null, createdAt = now),
+        every { gateway.findTicketingOrders(userId) } returns listOf(
+            orderHistoryItem(OrderType.TICKETING, 33L, "티켓", "CANCELLED", null, now),
         )
-        every { recruitmentDomainService.listApplicationsWithTitleBy(userId) } returns listOf(
-            ApplicationWithRecruitmentTitle(
-                applicationId = 43L,
-                status = ApplicationStatus.CANCELLED,
-                recruitmentTitle = "모집",
-                paymentId = null,
-                createdAt = now,
-            ),
+        every { gateway.findRecruitmentOrders(userId) } returns listOf(
+            orderHistoryItem(OrderType.RECRUITMENT, 43L, "모집", "CANCELLED", null, now),
         )
 
-        val service = buildService(bookingDomainService, goodsDomainService, ticketingDomainService, recruitmentDomainService)
+        val service = buildService(gateway)
 
         When("history(userId, status=CANCELLED)를 호출하면") {
             val result = service.history(userId, emptyCriteria(status = "CANCELLED"))
@@ -354,17 +270,14 @@ class OrderCompositionServiceTest : BehaviorSpec({
 
     Given("주문 이력이 하나도 없는 사용자") {
         val userId = 5L
-        val bookingDomainService = mockk<BookingDomainService>()
-        val goodsDomainService = mockk<GoodsDomainService>()
-        val ticketingDomainService = mockk<TicketingDomainService>()
-        val recruitmentDomainService = mockk<RecruitmentDomainService>()
+        val gateway = mockk<OrderHistoryGateway>()
 
-        every { bookingDomainService.findOrderHistory(userId) } returns emptyList()
-        every { goodsDomainService.listMyOrdersWithTitle(userId, any()) } returns PageImpl(emptyList(), PageRequest.of(0, 20), 0L)
-        every { ticketingDomainService.listTicketOrdersBy(userId) } returns emptyList()
-        every { recruitmentDomainService.listApplicationsWithTitleBy(userId) } returns emptyList()
+        every { gateway.findBookingOrders(userId) } returns emptyList()
+        every { gateway.findGoodsOrders(userId, any()) } returns emptyList()
+        every { gateway.findTicketingOrders(userId) } returns emptyList()
+        every { gateway.findRecruitmentOrders(userId) } returns emptyList()
 
-        val service = buildService(bookingDomainService, goodsDomainService, ticketingDomainService, recruitmentDomainService)
+        val service = buildService(gateway)
 
         When("history(userId, 조건 없음)를 호출하면") {
             val result = service.history(userId, emptyCriteria())
