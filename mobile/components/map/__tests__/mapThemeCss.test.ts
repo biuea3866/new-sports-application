@@ -17,11 +17,7 @@ import {
 import { darkTokens, lightTokens } from '../../../theme/tokens';
 
 describe('지도 컨트롤 다크 스타일', () => {
-  const css = buildDarkControlCss(
-    darkTokens.surface,
-    darkTokens.textPrimary,
-    darkTokens.border
-  );
+  const css = buildDarkControlCss(darkTokens.surface, darkTokens.textPrimary, darkTokens.border);
 
   it('줌 컨트롤 배경·글자색을 덮는다', () => {
     expect(css).toContain(`.${DARK_MAP_CLASS_NAME} .leaflet-control-zoom a`);
