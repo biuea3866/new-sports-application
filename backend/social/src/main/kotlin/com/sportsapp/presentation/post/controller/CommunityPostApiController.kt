@@ -3,7 +3,7 @@ package com.sportsapp.presentation.post.controller
 import com.sportsapp.application.post.usecase.ListCommunityPostsUseCase
 import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.common.security.UserPrincipal
-import com.sportsapp.presentation.post.dto.response.PostResponse
+import com.sportsapp.application.post.dto.PostResponse
 import org.springframework.data.domain.Page
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -40,6 +40,6 @@ class CommunityPostApiController(
             page = page,
             size = size,
         )
-        return ResponseEntity.ok(posts.map { PostResponse.of(it) })
+        return ResponseEntity.ok(posts)
     }
 }

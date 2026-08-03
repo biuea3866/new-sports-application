@@ -15,6 +15,7 @@ import com.sportsapp.domain.recruitment.entity.ApplicationStatus
 import com.sportsapp.domain.recruitment.entity.RecruitmentStatus
 import com.sportsapp.domain.recruitment.exception.NotRecruiterException
 import com.sportsapp.domain.recruitment.exception.RecruitmentFullException
+import com.sportsapp.application.recruitment.dto.RecruitmentApplicantResponse
 import sportsapp.testkit.presentation.exception.GlobalExceptionHandler
 import sportsapp.testkit.presentation.support.fixedPrincipalResolver
 import io.kotest.core.spec.style.BehaviorSpec
@@ -192,12 +193,12 @@ class RecruitmentApiControllerTest : BehaviorSpec({
     Given("개설자의 신청자 목록 조회") {
         val listApplicationsUseCase = mockk<ListApplicationsUseCase>()
         every { listApplicationsUseCase.execute(1L, TEST_USER_ID) } returns listOf(
-            ApplicationResponse(
+            RecruitmentApplicantResponse(
                 id = 11L,
                 recruitmentId = 1L,
                 applicantUserId = 71L,
+                applicantDisplayName = "김철수",
                 status = ApplicationStatus.CONFIRMED,
-                paymentId = 99L,
                 appliedAt = ZonedDateTime.now(),
             ),
         )

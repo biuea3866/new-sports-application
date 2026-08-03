@@ -7,6 +7,7 @@ import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.post.entity.Post
 import com.sportsapp.domain.post.service.PostDomainService
 import com.sportsapp.domain.post.vo.PostType
+import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -16,8 +17,9 @@ import java.time.ZonedDateTime
 
 class CreatePostUseCaseTest : BehaviorSpec({
 
+    val userDomainService = mockk<UserDomainService>(relaxed = true)
     val postDomainService = mockk<PostDomainService>()
-    val createPostUseCase = CreatePostUseCase(postDomainService)
+    val createPostUseCase = CreatePostUseCase(postDomainService, userDomainService)
 
     fun buildSavedPost(userId: Long, title: String, content: String): Post {
         val post = Post.create(userId = userId, title = title, content = content)

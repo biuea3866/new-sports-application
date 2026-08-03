@@ -9,6 +9,7 @@ import com.sportsapp.domain.community.vo.CommunityVisibility
 import com.sportsapp.domain.post.dto.PostSearchCriteria
 import com.sportsapp.domain.post.entity.Post
 import com.sportsapp.domain.post.service.PostDomainService
+import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -19,10 +20,12 @@ import org.springframework.data.domain.PageImpl
 
 class ListCommunityPostsUseCaseTest : BehaviorSpec({
 
+    val userDomainService = mockk<UserDomainService>(relaxed = true)
+
     fun newUseCase(): Triple<PostDomainService, CommunityDomainService, ListCommunityPostsUseCase> {
         val postDomainService = mockk<PostDomainService>()
         val communityDomainService = mockk<CommunityDomainService>()
-        return Triple(postDomainService, communityDomainService, ListCommunityPostsUseCase(postDomainService, communityDomainService))
+        return Triple(postDomainService, communityDomainService, ListCommunityPostsUseCase(postDomainService, communityDomainService, userDomainService))
     }
 
     fun publicCommunity() = Community.create(

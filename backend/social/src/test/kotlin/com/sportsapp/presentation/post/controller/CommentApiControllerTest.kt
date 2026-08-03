@@ -5,6 +5,7 @@ import com.sportsapp.application.post.usecase.DeleteCommentUseCase
 import com.sportsapp.application.post.usecase.ListCommentsUseCase
 import com.sportsapp.domain.post.entity.Comment
 import com.sportsapp.domain.post.entity.Post
+import com.sportsapp.application.post.dto.CommentResponse
 import sportsapp.testkit.presentation.exception.GlobalExceptionHandler
 import sportsapp.testkit.presentation.support.fixedPrincipalResolver
 import io.kotest.core.spec.style.BehaviorSpec
@@ -55,7 +56,7 @@ class CommentApiControllerTest : BehaviorSpec({
         val addCommentUseCase = mockk<AddCommentUseCase>()
         val post = Post.create(userId = TEST_USER_ID, title = "제목", content = "내용").also { initAuditFields(it) }
         val comment = Comment.create(post, TEST_USER_ID, "댓글 내용").also { initAuditFields(it) }
-        every { addCommentUseCase.execute(match { it.postId == 1L && it.userId == TEST_USER_ID }) } returns comment
+        every { addCommentUseCase.execute(match { it.postId == 1L && it.userId == TEST_USER_ID }) } returns CommentResponse.of(comment, "김철수")
         val mockMvc = buildMockMvc(addCommentUseCase = addCommentUseCase)
 
         When("POST /posts/1/comments 요청 시") {

@@ -12,6 +12,7 @@ import com.sportsapp.domain.post.exception.NoticeRequiresHostException
 import com.sportsapp.domain.post.service.PostDomainService
 import com.sportsapp.domain.post.vo.CommunityPostContext
 import com.sportsapp.domain.post.vo.PostType
+import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -20,13 +21,26 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.verify
+import java.time.ZonedDateTime
 
 class CreateCommunityPostUseCaseTest : BehaviorSpec({
+
+    val userDomainService = mockk<UserDomainService>(relaxed = true)
+
+    // PostResponse.of 가 읽는 JPA auditing lateinit 필드를 실제 영속화 없이 채운다.
+    fun initAuditFields(entity: Any) {
+        val superclass = entity.javaClass.superclass
+        listOf("createdAt", "updatedAt").forEach { fieldName ->
+            val field = superclass.getDeclaredField(fieldName)
+            field.isAccessible = true
+            field.set(entity, ZonedDateTime.now())
+        }
+    }
 
     fun newUseCase(): Triple<PostDomainService, CommunityDomainService, CreateCommunityPostUseCase> {
         val postDomainService = mockk<PostDomainService>()
         val communityDomainService = mockk<CommunityDomainService>()
-        return Triple(postDomainService, communityDomainService, CreateCommunityPostUseCase(postDomainService, communityDomainService))
+        return Triple(postDomainService, communityDomainService, CreateCommunityPostUseCase(postDomainService, communityDomainService, userDomainService))
     }
 
     fun publicCommunity(hostUserId: Long = 1L) = Community.create(
@@ -47,6 +61,18 @@ class CreateCommunityPostUseCaseTest : BehaviorSpec({
 
     Given("ACTIVE 멤버(방장)가 모임 게시글을 작성하면") {
         val (postDomainService, communityDomainService, useCase) = newUseCase()
+        val createdPost = Post.createInCommunity(
+            userId = 1L,
+            title = "공지",
+            content = "내용",
+            type = PostType.NOTICE,
+            context = CommunityPostContext(
+                communityId = 10L,
+                sportCategory = SportCategory.SOCCER,
+                authorIsHost = true,
+                communityIsPublic = true,
+            ),
+        ).also { initAuditFields(it) }
         val community = publicCommunity(hostUserId = 1L)
         every { communityDomainService.requireActiveMember(10L, 1L) } just Runs
         every { communityDomainService.getCommunity(10L, 1L) } returns community
@@ -63,18 +89,7 @@ class CreateCommunityPostUseCaseTest : BehaviorSpec({
                     communityIsPublic = true,
                 ),
             )
-        } returns Post.createInCommunity(
-            userId = 1L,
-            title = "공지",
-            content = "내용",
-            type = PostType.NOTICE,
-            context = CommunityPostContext(
-                communityId = 10L,
-                sportCategory = SportCategory.SOCCER,
-                authorIsHost = true,
-                communityIsPublic = true,
-            ),
-        )
+        } returns createdPost
 
         When("execute 를 호출하면") {
             val command = CreateCommunityPostCommand(
@@ -87,9 +102,9 @@ class CreateCommunityPostUseCaseTest : BehaviorSpec({
             val result = useCase.execute(command)
 
             Then("게시글이 생성되고 community 의 sportCategory·공개여부가 상속된다") {
-                result.currentCommunityId shouldBe 10L
-                result.currentSportCategory shouldBe SportCategory.SOCCER
-                result.isGlobalListed shouldBe true
+                result.communityId shouldBe 10L
+                result.sportCategory shouldBe SportCategory.SOCCER
+                createdPost.isGlobalListed shouldBe true
                 verify(exactly = 1) { communityDomainService.requireActiveMember(10L, 1L) }
             }
         }
@@ -152,6 +167,18 @@ class CreateCommunityPostUseCaseTest : BehaviorSpec({
     Given("PRIVATE 모임 ACTIVE 멤버가 게시글을 작성하면") {
         val (postDomainService, communityDomainService, useCase) = newUseCase()
         val community = privateCommunity(hostUserId = 1L)
+        val createdPost = Post.createInCommunity(
+            userId = 3L,
+            title = "제목",
+            content = "내용",
+            type = PostType.FREE,
+            context = CommunityPostContext(
+                communityId = 20L,
+                sportCategory = SportCategory.TENNIS,
+                authorIsHost = false,
+                communityIsPublic = false,
+            ),
+        ).also { initAuditFields(it) }
         every { communityDomainService.requireActiveMember(20L, 3L) } just Runs
         every { communityDomainService.getCommunity(20L, 3L) } returns community
         every {
@@ -167,18 +194,7 @@ class CreateCommunityPostUseCaseTest : BehaviorSpec({
                     communityIsPublic = false,
                 ),
             )
-        } returns Post.createInCommunity(
-            userId = 3L,
-            title = "제목",
-            content = "내용",
-            type = PostType.FREE,
-            context = CommunityPostContext(
-                communityId = 20L,
-                sportCategory = SportCategory.TENNIS,
-                authorIsHost = false,
-                communityIsPublic = false,
-            ),
-        )
+        } returns createdPost
 
         When("execute 를 호출하면") {
             val result = useCase.execute(
@@ -192,7 +208,7 @@ class CreateCommunityPostUseCaseTest : BehaviorSpec({
             )
 
             Then("globalListed 가 false 로 저장된다") {
-                result.isGlobalListed shouldBe false
+                createdPost.isGlobalListed shouldBe false
             }
         }
     }

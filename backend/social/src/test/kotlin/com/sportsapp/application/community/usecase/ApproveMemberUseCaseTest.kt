@@ -4,6 +4,7 @@ import com.sportsapp.application.community.dto.ApproveMemberCommand
 import com.sportsapp.domain.community.entity.CommunityMember
 import com.sportsapp.domain.community.service.CommunityDomainService
 import com.sportsapp.domain.community.vo.MembershipStatus
+import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -12,8 +13,9 @@ import io.mockk.verify
 
 class ApproveMemberUseCaseTest : BehaviorSpec({
 
+    val userDomainService = mockk<UserDomainService>(relaxed = true)
     val communityDomainService = mockk<CommunityDomainService>()
-    val useCase = ApproveMemberUseCase(communityDomainService)
+    val useCase = ApproveMemberUseCase(communityDomainService, userDomainService)
 
     Given("방장의 승인 커맨드") {
         val pending = CommunityMember.join(communityId = 1L, userId = 2L, isPublic = false)

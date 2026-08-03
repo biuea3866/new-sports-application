@@ -7,6 +7,7 @@ import com.sportsapp.domain.post.entity.Post
 import com.sportsapp.domain.post.service.PostDomainService
 import com.sportsapp.domain.post.dto.PostSearchCriteria
 import com.sportsapp.domain.post.vo.PostType
+import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -18,8 +19,9 @@ import java.time.ZonedDateTime
 
 class SearchPostsUseCaseTest : BehaviorSpec({
 
+    val userDomainService = mockk<UserDomainService>(relaxed = true)
     val postDomainService = mockk<PostDomainService>()
-    val searchPostsUseCase = SearchPostsUseCase(postDomainService)
+    val searchPostsUseCase = SearchPostsUseCase(postDomainService, userDomainService)
 
     fun buildPost(userId: Long = 1L, type: PostType = PostType.FREE): Post {
         val post = Post.create(userId = userId, title = "제목", content = "내용", type = type)

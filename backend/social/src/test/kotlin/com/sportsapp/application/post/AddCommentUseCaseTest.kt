@@ -12,6 +12,7 @@ import com.sportsapp.domain.post.service.CommentDomainService
 import com.sportsapp.domain.post.service.PostDomainService
 import com.sportsapp.domain.post.vo.CommunityPostContext
 import com.sportsapp.domain.post.vo.PostType
+import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -23,6 +24,8 @@ import io.mockk.verify
 import java.time.ZonedDateTime
 
 class AddCommentUseCaseTest : BehaviorSpec({
+
+    val userDomainService = mockk<UserDomainService>(relaxed = true)
 
     data class UseCaseFixture(
         val postDomainService: PostDomainService,
@@ -39,7 +42,7 @@ class AddCommentUseCaseTest : BehaviorSpec({
             postDomainService,
             commentDomainService,
             communityDomainService,
-            AddCommentUseCase(postDomainService, commentDomainService, communityDomainService),
+            AddCommentUseCase(postDomainService, commentDomainService, communityDomainService, userDomainService),
         )
     }
 

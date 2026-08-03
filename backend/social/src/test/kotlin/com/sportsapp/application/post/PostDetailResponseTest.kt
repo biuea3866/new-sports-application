@@ -1,9 +1,11 @@
-package com.sportsapp.presentation.post.dto.response
+package com.sportsapp.application.post
 
+import com.sportsapp.application.post.dto.PostDetailResponse
 import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.post.entity.Post
 import com.sportsapp.domain.post.vo.CommunityPostContext
 import com.sportsapp.domain.post.vo.PostType
+import com.sportsapp.domain.user.dto.UserDisplayNames
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import java.time.ZonedDateTime
@@ -23,7 +25,7 @@ class PostDetailResponseTest : BehaviorSpec({
         val post = Post.create(userId = 1L, title = "제목", content = "내용").also { initAuditFields(it) }
 
         When("변환하면") {
-            val response = PostDetailResponse.of(post, emptyList())
+            val response = PostDetailResponse.of(post, emptyList(), UserDisplayNames.from(emptyList()))
 
             Then("communityId·sportCategory 가 null 로 매핑된다") {
                 response.communityId shouldBe null
@@ -47,7 +49,7 @@ class PostDetailResponseTest : BehaviorSpec({
         ).also { initAuditFields(it) }
 
         When("변환하면") {
-            val response = PostDetailResponse.of(post, emptyList())
+            val response = PostDetailResponse.of(post, emptyList(), UserDisplayNames.from(emptyList()))
 
             Then("communityId·sportCategory 가 게시글 값 그대로 매핑된다") {
                 response.communityId shouldBe 10L

@@ -1,8 +1,8 @@
 package com.sportsapp.presentation.recruitment.controller
 
-import com.sportsapp.application.recruitment.dto.ApplicationResponse
 import com.sportsapp.application.recruitment.dto.ApplyRecruitmentResult
 import com.sportsapp.application.recruitment.dto.CancelRecruitmentCommand
+import com.sportsapp.application.recruitment.dto.RecruitmentApplicantResponse
 import com.sportsapp.application.recruitment.dto.RecruitmentResponse
 import com.sportsapp.application.recruitment.usecase.ApplyRecruitmentUseCase
 import com.sportsapp.application.recruitment.usecase.CancelRecruitmentUseCase
@@ -61,7 +61,7 @@ class RecruitmentApiController(
     fun listApplications(
         @AuthenticationPrincipal principal: UserPrincipal,
         @PathVariable id: Long,
-    ): ResponseEntity<List<ApplicationResponse>> =
+    ): ResponseEntity<List<RecruitmentApplicantResponse>> =
         ResponseEntity.ok(listApplicationsUseCase.execute(id, principal.id))
 
     @PostMapping("/{id}/applications")

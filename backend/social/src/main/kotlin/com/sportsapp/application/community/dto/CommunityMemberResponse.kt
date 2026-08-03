@@ -12,16 +12,19 @@ data class CommunityMemberResponse(
     val id: Long,
     val communityId: Long,
     val userId: Long,
+    /** 멤버 표시 이름. user 컨텍스트 소유 값이라 application 레이어가 조회해 채운다. */
+    val displayName: String,
     val role: CommunityRole,
     val status: MembershipStatus,
     val joinedAt: ZonedDateTime?,
     val isHost: Boolean,
 ) {
     companion object {
-        fun of(member: CommunityMember): CommunityMemberResponse = CommunityMemberResponse(
+        fun of(member: CommunityMember, displayName: String): CommunityMemberResponse = CommunityMemberResponse(
             id = member.id,
             communityId = member.communityId,
             userId = member.userId,
+            displayName = displayName,
             role = member.currentRole,
             status = member.currentStatus,
             joinedAt = member.currentJoinedAt,
