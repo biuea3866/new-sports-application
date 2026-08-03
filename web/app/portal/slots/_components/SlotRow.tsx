@@ -28,9 +28,13 @@ export function SlotRow({ slot, onEdit, onDelete, onClose, onOpen, closing, open
 
   return (
     <li className="flex flex-wrap items-center gap-1">
+      {/*
+        시간은 한 줄을 통째로 차지한다(basis-full). 배지·액션과 한 줄을 나눠 쓰면 좁은 달력 칸에서
+        `07:0…` 로 잘려 분 단위를 읽을 수 없었다(02-파트너포털/06 캡쳐).
+      */}
       <button
         type="button"
-        className="flex-1 truncate rounded bg-accent px-1 py-0.5 text-left text-xs text-accent-foreground hover:opacity-80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className="basis-full rounded bg-accent px-1 py-0.5 text-left text-xs tabular-nums text-accent-foreground hover:opacity-80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         onClick={(e) => {
           e.stopPropagation();
           onEdit();

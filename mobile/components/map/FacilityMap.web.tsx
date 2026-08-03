@@ -14,6 +14,11 @@ import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '../ui';
 import { useTheme } from '../../theme/useTheme';
+import {
+  MAP_THEME_STYLE_ATTRIBUTE,
+  buildDarkControlCss,
+  mapContainerClassName,
+} from './mapThemeCss';
 import { filterValidFacilities, type FacilityMapProps } from './types';
 
 const DEFAULT_ZOOM = 14;
@@ -152,6 +157,25 @@ export function FacilityMap({ facilities, center, onMarkerPress }: FacilityMapPr
   }, [scheme]);
 
   useEffect(() => {
+    // 컨트롤 다크 규칙은 문서 전역에 한 벌만 둔다 — 지도가 여러 개 떠도 중복 주입되지 않게
+    // 표식 속성으로 기존 태그를 찾아 내용만 갱신한다.
+    if (typeof document === 'undefined') {
+      return;
+    }
+    const existing = document.querySelector(`style[${MAP_THEME_STYLE_ATTRIBUTE}]`);
+    const styleElement = existing ?? document.createElement('style');
+    if (existing === null) {
+      styleElement.setAttribute(MAP_THEME_STYLE_ATTRIBUTE, '');
+      document.head.appendChild(styleElement);
+    }
+    styleElement.textContent = buildDarkControlCss(
+      tokens.surface,
+      tokens.textPrimary,
+      tokens.border
+    );
+  }, [tokens.surface, tokens.textPrimary, tokens.border]);
+
+  useEffect(() => {
     // 웹 geolocation은 최초 렌더 이후 비동기로 resolve될 수 있다(useCurrentLocation.web) —
     // 지도를 재생성하지 않고 이미 만들어진 지도의 중심만 갱신한다.
     mapRef.current?.setView([center.lat, center.lng]);
@@ -198,7 +222,11 @@ export function FacilityMap({ facilities, center, onMarkerPress }: FacilityMapPr
       testID="facility-map-web-wrapper"
     >
       {/* react-native-web은 raw DOM 엘리먼트를 그대로 렌더한다 — Leaflet이 id로 찾는 컨테이너. */}
-      <div id={mapElementId} style={{ width: '100%', height: MAP_HEIGHT, borderRadius: 12 }} />
+      <div
+        id={mapElementId}
+        className={mapContainerClassName(scheme)}
+        style={{ width: '100%', height: MAP_HEIGHT, borderRadius: 12 }}
+      />
     </View>
   );
 }
