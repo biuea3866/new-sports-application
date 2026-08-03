@@ -18,6 +18,9 @@ import {
   paymentStatusBadgeClass,
   paymentStatusLabel,
 } from "@/lib/portal/paymentStatus";
+import { orderTypeLabel } from "@/lib/portal/orderType";
+import { paymentMethodLabel } from "@/lib/portal/paymentMethod";
+import { formatKrw } from "@/lib/portal/formatKrw";
 import { toUserMessage } from "@/lib/portal/toUserMessage";
 import { DateField } from "@/components/ui/date-field";
 
@@ -75,7 +78,11 @@ export default function PaymentsPage() {
 
   // 파트너가 실제로 번 금액만 합산한다 — 결제 총액은 혼합 주문에서 남의 몫을 포함해
   // 응답에 싣지 않는다.
-  const pageSellerTotal = payments.reduce((sum, sale) => sum + sale.sellerAmount, 0);
+  // 행별 표시값(formatKrw로 반올림한 정수)을 먼저 반올림한 뒤 합산한다 — 원시값을 더한 뒤
+  // 표시 단계에서만 반올림하면, 사용자가 화면의 행들을 손으로 더한 값과 "이 페이지 합계"가
+  // 어긋날 수 있다(예: 100.5원·200.5원 두 행 → 표시는 101원+201원=302원인데 원시 합 301원을
+  // 반올림하면 301원으로 어긋남).
+  const pageSellerTotal = payments.reduce((sum, sale) => sum + Math.round(sale.sellerAmount), 0);
 
   return (
     <main className="min-h-screen p-6 space-y-6">
@@ -174,9 +181,6 @@ export default function PaymentsPage() {
                     결제 수단
                   </th>
                   <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
-                    PG사
-                  </th>
-                  <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                     상태
                   </th>
                   <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
@@ -190,7 +194,7 @@ export default function PaymentsPage() {
               <tbody className="divide-y divide-border">
                 {payments.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
+                    <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                       결제 내역이 없습니다.
                     </td>
                   </tr>
@@ -198,14 +202,11 @@ export default function PaymentsPage() {
                   payments.map((payment) => (
                     <tr key={payment.paymentId} className="hover:bg-muted/50">
                       <td className="px-4 py-3 text-foreground">{payment.paymentId}</td>
-                      <td className="px-4 py-3">{payment.orderType}</td>
+                      <td className="px-4 py-3">{orderTypeLabel(payment.orderType)}</td>
                       <td className="px-4 py-3 text-right tabular-nums font-medium">
-                        {payment.sellerAmount.toLocaleString("ko-KR")}원
+                        {formatKrw(payment.sellerAmount)}
                       </td>
-                      <td className="px-4 py-3">{payment.method}</td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {payment.provider ?? "-"}
-                      </td>
+                      <td className="px-4 py-3">{paymentMethodLabel(payment.method)}</td>
                       <td className="px-4 py-3">
                         <span
                           className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${paymentStatusBadgeClass(payment.status)}`}
@@ -232,9 +233,9 @@ export default function PaymentsPage() {
                       이 페이지 합계
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">
-                      {pageSellerTotal.toLocaleString("ko-KR")}원
+                      {formatKrw(pageSellerTotal)}
                     </td>
-                    <td colSpan={5} />
+                    <td colSpan={4} />
                   </tr>
                 </tfoot>
               )}

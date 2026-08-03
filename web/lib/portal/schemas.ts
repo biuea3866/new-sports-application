@@ -298,7 +298,11 @@ export const PaymentMethodSchema = z.enum([
   "NAVER",
   "DANAL",
 ]);
-export const OrderTypeSchema = z.enum(["BOOKING", "TICKETING", "GOODS"]);
+// 값 목록·라벨은 `orderType.ts`가 단일 출처다. BE `common/.../order/OrderType.kt`는 4종
+// (BOOKING·TICKETING·GOODS·RECRUITMENT)인데, 굿즈/매출 응답은 현재 앞 3종만 낼 수 있어도
+// PaymentStatusSchema와 같은 방침으로 union(enum, string)을 쓴다 — 계약 밖 값 1건으로 응답
+// 전체가 parse에서 throw하는 사고(02-파트너포털 결제 상태 결함과 동일 패턴)를 막기 위함이다.
+export const OrderTypeSchema = z.union([z.enum(["BOOKING", "TICKETING", "GOODS", "RECRUITMENT"]), z.string()]);
 
 export const PaymentSummarySchema = z.object({
   id: z.number().int().positive(),

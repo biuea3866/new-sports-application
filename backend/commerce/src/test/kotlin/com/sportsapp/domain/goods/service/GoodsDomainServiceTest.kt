@@ -660,6 +660,69 @@ class GoodsDomainServiceTest : BehaviorSpec({
         }
     }
 
+    // 회귀 방지(p1-1): ChronoUnit.DAYS.between은 종료일 미포함인데, 매출 합산 조회 창(goe(from)~
+    // loe(to))은 양끝 포함이라 분모가 분자보다 하루 작았다(N일 매출 ÷ N-1일 = 체계적 과대).
+    // 양끝 포함 일수(+1)로 나눠야 "일 평균"이 실제 평균과 일치한다.
+    Given("기간이 하루(from==to)인 굿즈 KPI를 집계할 때") {
+        val ownerUserId = 200L
+        val day = ZonedDateTime.parse("2026-08-01T00:00:00+09:00")
+        val endOfDay = ZonedDateTime.parse("2026-08-01T23:59:59.999+09:00")
+
+        every {
+            goodsOrderCustomRepository.sumRevenueByProductOwnerUserIdAndDateRange(ownerUserId, day, endOfDay)
+        } returns BigDecimal("10000")
+        every { stockRepository.countOutOfStockByOwnerId(ownerUserId) } returns 0L
+        every { productRepository.countByOwnerIdAndStatus(ownerUserId, ProductStatus.ACTIVE) } returns 0L
+
+        When("aggregateGoodsKpi를 호출하면") {
+            val result = service.aggregateGoodsKpi(ownerUserId, day, endOfDay)
+
+            Then("분모는 1일이라 일 평균 매출은 매출 합계와 같다") {
+                result.dailyRevenueTotal.compareTo(BigDecimal("10000.00")) shouldBe 0
+            }
+        }
+    }
+
+    Given("기간이 최근 7일(양끝 포함 7일)인 굿즈 KPI를 집계할 때") {
+        val ownerUserId = 201L
+        val from = ZonedDateTime.parse("2026-07-26T00:00:00+09:00")
+        val to = ZonedDateTime.parse("2026-08-01T23:59:59.999+09:00")
+
+        every {
+            goodsOrderCustomRepository.sumRevenueByProductOwnerUserIdAndDateRange(ownerUserId, from, to)
+        } returns BigDecimal("70000")
+        every { stockRepository.countOutOfStockByOwnerId(ownerUserId) } returns 0L
+        every { productRepository.countByOwnerIdAndStatus(ownerUserId, ProductStatus.ACTIVE) } returns 0L
+
+        When("aggregateGoodsKpi를 호출하면") {
+            val result = service.aggregateGoodsKpi(ownerUserId, from, to)
+
+            Then("분모는 7일이라 일 평균 매출은 10000원이다 (6일로 나눈 11666.67원이 아니다)") {
+                result.dailyRevenueTotal.compareTo(BigDecimal("10000.00")) shouldBe 0
+            }
+        }
+    }
+
+    Given("기간이 최근 30일(양끝 포함 30일)인 굿즈 KPI를 집계할 때") {
+        val ownerUserId = 202L
+        val from = ZonedDateTime.parse("2026-07-03T00:00:00+09:00")
+        val to = ZonedDateTime.parse("2026-08-01T23:59:59.999+09:00")
+
+        every {
+            goodsOrderCustomRepository.sumRevenueByProductOwnerUserIdAndDateRange(ownerUserId, from, to)
+        } returns BigDecimal("300000")
+        every { stockRepository.countOutOfStockByOwnerId(ownerUserId) } returns 0L
+        every { productRepository.countByOwnerIdAndStatus(ownerUserId, ProductStatus.ACTIVE) } returns 0L
+
+        When("aggregateGoodsKpi를 호출하면") {
+            val result = service.aggregateGoodsKpi(ownerUserId, from, to)
+
+            Then("분모는 30일이라 일 평균 매출은 10000원이다 (29일로 나눈 값이 아니다)") {
+                result.dailyRevenueTotal.compareTo(BigDecimal("10000.00")) shouldBe 0
+            }
+        }
+    }
+
     // @Transactional은 UseCase 레이어에서만 선언한다(DomainService 메서드에는 선언하지 않음).
     Given("GoodsDomainService 메서드 시그니처") {
         When("public 메서드 어노테이션을 검사하면") {

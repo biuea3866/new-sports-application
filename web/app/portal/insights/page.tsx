@@ -6,7 +6,7 @@
  */
 import React, { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { formatKrw } from "./format-krw";
+import { formatKrw } from "@/lib/portal/formatKrw";
 import {
   type OperationKpiResponse,
   type FetchKpiParams,
@@ -202,14 +202,20 @@ export default function InsightsPage(): JSX.Element {
           <section aria-label="굿즈 KPI">
             <h2 className="mb-3 text-lg font-semibold">굿즈</h2>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              {/*
+                BE 필드명은 dailyRevenueTotal이지만 실제 계산은 `기간매출 ÷ 기간일수`라
+                합계가 아니라 일 평균 매출액(원)이다(GoodsDomainService#aggregateGoodsKpi).
+                "합계"라는 라벨이 실제 계산과 달라 옆 칸(상품당 평균 매출)과 값이 같아 보이는
+                결함이 있었다 — 두 칸 모두 "평균"이므로 무엇의 평균인지(일별 vs 상품당)로 구분한다.
+              */}
               <KpiCard
-                label="일 매출 합계"
+                label="일 평균 매출"
                 value={formatKrw(data.goods.dailyRevenueTotal)}
               />
               {/*
                 BE 필드명은 inventoryTurnoverRate지만 실제 계산은 `기간매출 ÷ 활성상품수`라
                 회전율(횟수)이 아니라 상품당 평균 매출액(원)이다(GoodsDomainService#aggregateGoodsKpi).
-                옆 칸 "일 매출 합계"(`기간매출 ÷ 기간일수`)와 값이 같아 보일 수 있는데, 분자가 같고
+                옆 칸 "일 평균 매출"(`기간매출 ÷ 기간일수`)과 값이 같아 보일 수 있는데, 분자가 같고
                 분모가 우연히 일치할 때(활성상품수 == 기간일수)뿐이다 — 같은 소스가 아니다.
                 진짜 회전율(판매수량 ÷ 평균재고)은 집계 쿼리가 없어 별도 과제로 남아 있다.
               */}

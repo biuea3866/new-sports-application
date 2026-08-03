@@ -457,7 +457,11 @@ class GoodsDomainService(
         val outOfStockSkuCount = stockRepository.countOutOfStockByOwnerId(ownerUserId)
         val activeProductCount = productRepository.countByOwnerIdAndStatus(ownerUserId, ProductStatus.ACTIVE)
 
-        val dayCount = ChronoUnit.DAYS.between(from.toLocalDate(), to.toLocalDate()).coerceAtLeast(1)
+        // 매출 합산 조회 창(sumRevenueByProductOwnerUserIdAndDateRange)은 goe(from)~loe(to)로
+        // 양끝을 포함한다. ChronoUnit.DAYS.between은 종료일을 포함하지 않으므로 그대로 쓰면
+        // 분자(N일 매출)를 분모(N-1일)로 나눠 일 평균이 체계적으로 과대해진다(off-by-one).
+        // +1을 더해 양끝 포함 일수로 맞춘다.
+        val dayCount = (ChronoUnit.DAYS.between(from.toLocalDate(), to.toLocalDate()) + 1).coerceAtLeast(1)
         val dailyRevenueTotal = periodRevenue.divide(BigDecimal(dayCount), 2, RoundingMode.HALF_UP)
 
         val inventoryTurnoverRate = if (activeProductCount > 0) {
