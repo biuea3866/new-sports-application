@@ -24,6 +24,19 @@ dependencies {
     implementation("jakarta.persistence:jakarta.persistence-api")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 
+    // [S2-02] 공유 런타임 커널 승격 — GlobalExceptionHandler·ProblemDetailBuilder·LoadSheddingFilter·
+    // RedisDistributedLock 이 bootstrap main 에서 이 모듈로 이동하며 필요해진 main 의존. 새 기술
+    // 스택 도입이 아니라 이미 정확히 같은 목록을 선언 중인 testFixtures(아래)의 main 승격이다 —
+    // edge 를 별 프로세스로 띄우면 bootstrap 이 공급하던 이 빈들이 사라지므로, 6개 서비스가 공통으로
+    // 의존하는 지점(common)으로 옮긴다.
+    implementation("org.springframework:spring-web")
+    implementation("org.springframework:spring-webmvc")
+    implementation("org.springframework.security:spring-security-core")
+    implementation("org.springframework:spring-tx")
+    implementation("org.springframework.data:spring-data-redis")
+    implementation("jakarta.servlet:jakarta.servlet-api")
+    implementation("jakarta.validation:jakarta.validation-api")
+
     // JpaAuditingBase(@MappedSuperclass)가 common 소유라, 이를 상속하는 각 컨텍스트 모듈의 @Entity가
     // 참조할 QJpaAuditingBase 도 common 자신의 kapt 실행에서 생성돼야 한다 — 그래야 bootstrap 등
     // 하위 모듈의 kapt 가 컴파일된 클래스로 그것을 참조할 수 있다 (cross-module Q-supertype 문제).
