@@ -7,7 +7,7 @@
  * fallback 문구를 렌더하는지"를 컴포넌트 로직 수준에서 검증한다.
  */
 import React from 'react';
-import { render, screen } from '@testing-library/react-native';
+import { act, render, screen } from '@testing-library/react-native';
 import mockUseColorScheme from 'react-native/Libraries/Utilities/useColorScheme';
 
 interface MockMarker {
@@ -23,6 +23,13 @@ interface MockLeafletMap {
   remove: jest.Mock;
 }
 
+interface MockTileLayer {
+  addTo: jest.Mock;
+  setUrl: jest.Mock;
+  on: jest.Mock;
+  _errorHandler?: () => void;
+}
+
 jest.mock('leaflet', () => {
   const mapInstance: MockLeafletMap = {
     setView: jest.fn(() => mapInstance),
@@ -33,7 +40,19 @@ jest.mock('leaflet', () => {
     __esModule: true,
     default: {
       map: jest.fn(() => mapInstance),
-      tileLayer: jest.fn(() => ({ addTo: jest.fn() })),
+      tileLayer: jest.fn(() => {
+        const layer: MockTileLayer = {
+          addTo: jest.fn(() => layer),
+          setUrl: jest.fn(() => layer),
+          on: jest.fn((event: string, handler: () => void) => {
+            if (event === 'tileerror') {
+              layer._errorHandler = handler;
+            }
+            return layer;
+          }),
+        };
+        return layer;
+      }),
       marker: jest.fn(() => {
         const marker: MockMarker = {
           addTo: jest.fn(() => marker),
@@ -63,6 +82,12 @@ import { FacilityMap } from '../FacilityMap.web';
 import type { MapFacility } from '../types';
 
 const markerMock = L.marker as unknown as jest.Mock<MockMarker, [[number, number]]>;
+const tileLayerMock = L.tileLayer as unknown as jest.Mock<MockTileLayer, [string, object]>;
+const mapMock = L.map as unknown as jest.Mock;
+
+function createdTileLayers(): MockTileLayer[] {
+  return tileLayerMock.mock.results.map((result) => result.value as MockTileLayer);
+}
 
 function createdMarkers(): MockMarker[] {
   return markerMock.mock.results.map((result) => result.value as MockMarker);
@@ -77,7 +102,8 @@ describe('FacilityMap(웹) — Leaflet 기반 지도', () => {
   beforeEach(() => {
     mockUseColorScheme.mockReturnValue('light');
     markerMock.mockClear();
-    (L.tileLayer as unknown as jest.Mock).mockClear();
+    tileLayerMock.mockClear();
+    mapMock.mockClear();
   });
 
   it('시설 개수만큼 마커를 생성한다', () => {
@@ -102,7 +128,7 @@ describe('FacilityMap(웹) — Leaflet 기반 지도', () => {
       />
     );
 
-    const tileUrl = (L.tileLayer as unknown as jest.Mock).mock.calls[0][0] as string;
+    const tileUrl = tileLayerMock.mock.calls[0][0];
     expect(tileUrl).toContain('light_all');
   });
 
@@ -117,8 +143,52 @@ describe('FacilityMap(웹) — Leaflet 기반 지도', () => {
       />
     );
 
-    const tileUrl = (L.tileLayer as unknown as jest.Mock).mock.calls[0][0] as string;
+    const tileUrl = tileLayerMock.mock.calls[0][0];
     expect(tileUrl).toContain('dark_all');
+  });
+
+  // 테마 토글로 지도를 재생성하면 사용자가 이동·확대해 둔 위치가 초기값으로 되돌아간다.
+  it('테마가 바뀌어도 지도를 재생성하지 않고 타일 URL만 교체한다', () => {
+    const { rerender } = render(
+      <FacilityMap
+        facilities={FACILITIES}
+        center={{ lat: 37.4979, lng: 127.0276 }}
+        onMarkerPress={jest.fn()}
+      />
+    );
+    expect(mapMock).toHaveBeenCalledTimes(1);
+
+    mockUseColorScheme.mockReturnValue('dark');
+    rerender(
+      <FacilityMap
+        facilities={FACILITIES}
+        center={{ lat: 37.4979, lng: 127.0276 }}
+        onMarkerPress={jest.fn()}
+      />
+    );
+
+    expect(mapMock).toHaveBeenCalledTimes(1);
+    const setUrlCalls = createdTileLayers().flatMap((layer) => layer.setUrl.mock.calls);
+    expect(setUrlCalls).toHaveLength(1);
+    expect(setUrlCalls[0][0] as string).toContain('dark_all');
+  });
+
+  // 새 서드파티 타일(basemaps.cartocdn.com)이 죽으면 "빈 회색 판 위 마커"만 남는 조용한 실패가 된다.
+  it('타일 로드가 실패하면 표준 OSM 타일로 폴백한다', () => {
+    render(
+      <FacilityMap
+        facilities={FACILITIES}
+        center={{ lat: 37.4979, lng: 127.0276 }}
+        onMarkerPress={jest.fn()}
+      />
+    );
+
+    const layer = createdTileLayers()[0];
+    act(() => {
+      layer._errorHandler?.();
+    });
+
+    expect(layer.setUrl).toHaveBeenCalledWith(expect.stringContaining('tile.openstreetmap.org'));
   });
 
   it('마커 클릭 시 onMarkerPress에 시설 id를 전달한다', () => {

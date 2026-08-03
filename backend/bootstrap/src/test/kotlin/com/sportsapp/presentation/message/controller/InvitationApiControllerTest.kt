@@ -315,6 +315,14 @@ class InvitationApiControllerTest(
                     val invitationIds = objectMapper.readTree(response.body).map { it.get("id").asLong() }
                     invitationIds shouldBe listOf(pendingInvitationId)
                 }
+
+                // 수신함 화면이 방 PK(`방 #53`) 대신 방 이름을 보여주려면 응답에 roomName 이 실려야 한다.
+                // room 은 @ManyToOne(LAZY) 이고 open-in-view=false 라, 트랜잭션이 닫힌 뒤
+                // 컨트롤러에서 DTO 로 변환해도 이름이 채워지는지(fetch join) 실제 응답으로 확인한다.
+                Then("응답에 방 이름(roomName)이 채워진다") {
+                    val roomNames = objectMapper.readTree(response.body).map { it.get("roomName").asText() }
+                    roomNames shouldBe listOf(pendingRoom.name)
+                }
             }
         }
 

@@ -31,6 +31,12 @@ const TILE_URL_BY_SCHEME = {
 const TILE_ATTRIBUTION = '&copy; OpenStreetMap contributors &copy; CARTO';
 
 /**
+ * CARTO 타일이 응답하지 않으면 "빈 회색 판 위에 마커만" 뜨는 조용한 실패가 된다 —
+ * 라이트/다크 구분은 없지만 항상 떠 있는 OSM 표준 타일로 한 번 폴백한다.
+ */
+const FALLBACK_TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+/**
  * leaflet/dist/leaflet.css의 기본 마커 아이콘은 상대 경로 CSS `url(images/marker-icon.png)`로
  * 참조된다. Metro 웹 번들은 CSS 안의 로컬 리소스 import를 지원하지 않아("Importing local
  * resources in CSS is not supported yet") 이 아이콘이 깨진 이미지로 렌더된다. 설치된
@@ -43,6 +49,7 @@ const LEAFLET_CDN_IMAGES = `https://unpkg.com/leaflet@${LEAFLET_VERSION}/dist/im
 type LeafletModule = typeof import('leaflet');
 type LeafletMap = ReturnType<LeafletModule['map']>;
 type LeafletMarker = ReturnType<LeafletModule['marker']>;
+type LeafletTileLayer = ReturnType<LeafletModule['tileLayer']>;
 
 let cachedLeaflet: LeafletModule | null = null;
 
@@ -85,6 +92,10 @@ export function FacilityMap({ facilities, center, onMarkerPress }: FacilityMapPr
   const mapElementId = `facility-map-${useId()}`;
   const mapRef = useRef<LeafletMap | null>(null);
   const markersRef = useRef<LeafletMarker[]>([]);
+  const tileLayerRef = useRef<LeafletTileLayer | null>(null);
+  const hasFallenBackToStandardTilesRef = useRef(false);
+  /** 타일 레이어에 실제로 적용돼 있는 URL — 같은 값을 다시 setUrl 하지 않기 위한 기준. */
+  const appliedTileUrlRef = useRef<string | null>(null);
 
   const validFacilities = filterValidFacilities(facilities);
   const hasFacilities = validFacilities.length > 0;
@@ -96,17 +107,49 @@ export function FacilityMap({ facilities, center, onMarkerPress }: FacilityMapPr
 
     const leaflet = loadLeaflet();
     const map = leaflet.map(mapElementId).setView([center.lat, center.lng], DEFAULT_ZOOM);
-    leaflet.tileLayer(TILE_URL_BY_SCHEME[scheme], { attribution: TILE_ATTRIBUTION }).addTo(map);
+    const tileLayer = leaflet.tileLayer(TILE_URL_BY_SCHEME[scheme], {
+      attribution: TILE_ATTRIBUTION,
+    });
+    // 타일 CDN 장애 시 1회만 표준 OSM으로 갈아탄다(폴백 타일도 실패하면 무한 교체를 막는다).
+    tileLayer.on('tileerror', () => {
+      if (hasFallenBackToStandardTilesRef.current) {
+        return;
+      }
+      hasFallenBackToStandardTilesRef.current = true;
+      appliedTileUrlRef.current = FALLBACK_TILE_URL;
+      tileLayer.setUrl(FALLBACK_TILE_URL);
+    });
+    tileLayer.addTo(map);
+    tileLayerRef.current = tileLayer;
+    appliedTileUrlRef.current = TILE_URL_BY_SCHEME[scheme];
     mapRef.current = map;
 
     return () => {
       map.remove();
       mapRef.current = null;
+      tileLayerRef.current = null;
+      appliedTileUrlRef.current = null;
+      hasFallenBackToStandardTilesRef.current = false;
     };
-    // center는 최초 마운트 시점 기준으로만 지도를 생성한다 — 재조회로 center가 흔들려도
-    // 지도를 매번 재생성하지 않는다(마커 effect가 별도로 갱신).
+    // center·scheme는 최초 마운트 시점 기준으로만 지도를 생성한다 — 재조회로 center가 흔들리거나
+    // 사용자가 테마를 토글해도 지도를 재생성하지 않는다. 지도를 다시 만들면 사용자가 이동·확대해
+    // 둔 위치가 초기값으로 되돌아간다(마커·중심·타일은 각각 별도 effect가 갱신).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasFacilities, mapElementId, scheme]);
+  }, [hasFacilities, mapElementId]);
+
+  useEffect(() => {
+    // 테마 전환은 타일 URL만 교체한다 — 지도 인스턴스는 유지해 현재 보고 있는 위치를 지킨다.
+    // 폴백 상태에서는 CARTO로 되돌리지 않는다(장애가 끝났는지 알 수 없다).
+    if (hasFallenBackToStandardTilesRef.current) {
+      return;
+    }
+    const nextTileUrl = TILE_URL_BY_SCHEME[scheme];
+    if (appliedTileUrlRef.current === nextTileUrl) {
+      return;
+    }
+    appliedTileUrlRef.current = nextTileUrl;
+    tileLayerRef.current?.setUrl(nextTileUrl);
+  }, [scheme]);
 
   useEffect(() => {
     // 웹 geolocation은 최초 렌더 이후 비동기로 resolve될 수 있다(useCurrentLocation.web) —

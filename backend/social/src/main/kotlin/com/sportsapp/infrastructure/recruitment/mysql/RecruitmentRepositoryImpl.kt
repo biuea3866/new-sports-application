@@ -2,6 +2,7 @@ package com.sportsapp.infrastructure.recruitment.mysql
 
 import com.sportsapp.domain.recruitment.entity.Recruitment
 import com.sportsapp.domain.recruitment.repository.RecruitmentRepository
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Repository
 
 @Repository
@@ -14,6 +15,9 @@ class RecruitmentRepositoryImpl(
 
     override fun findById(id: Long): Recruitment? =
         recruitmentJpaRepository.findByIdAndDeletedAtIsNull(id)
+
+    override fun findByIdIncludingDeleted(id: Long): Recruitment? =
+        recruitmentJpaRepository.findByIdOrNull(id)
 
     override fun findForUpdateById(id: Long): Recruitment? =
         recruitmentJpaRepository.findForUpdateByIdAndDeletedAtIsNull(id)
