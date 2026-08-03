@@ -28,7 +28,33 @@ import kotlin.math.ceil
  */
 class NginxLbTimeoutConfigTest : BehaviorSpec({
 
-    fun readLbConf(): String = File("../infra/nginx/lb.conf").readText()
+    // 테스트 JVM의 working dir는 이 모듈(bootstrap/)이다 — 멀티모듈 골격(W1-01a) 이전에는
+    // backend/가 곧 모듈 루트라 한 단계로 충분했으나, backend/bootstrap/으로 한 단계 더
+    // 들어간 뒤에는 레포 루트까지 두 단계 올라가야 한다.
+    fun readLbConf(): String = File("../../infra/nginx/lb.conf").readText()
+
+    /**
+     * `location /ws { ... proxy_read_timeout 3600s; ... }` 블록이 `location / { ... }` 보다
+     * 파일 앞쪽에 추가되면서, 전체 파일 텍스트에서 첫 매치를 찾는 정규식이 의도한 "location /"
+     * 블록이 아니라 `/ws` 블록의 값을 집어 온다 — 반드시 "location /" 블록 텍스트로 좁혀서
+     * 지시어를 찾는다(중괄호 깊이를 세어 해당 블록만 잘라낸다).
+     */
+    fun locationRootBlock(conf: String): String {
+        val locationStart = conf.indexOf("location / {")
+        require(locationStart >= 0) { "location / 블록을 lb.conf 에서 찾을 수 없습니다" }
+        val braceStart = conf.indexOf('{', locationStart)
+        var depth = 0
+        for (index in braceStart until conf.length) {
+            when (conf[index]) {
+                '{' -> depth++
+                '}' -> {
+                    depth--
+                    if (depth == 0) return conf.substring(braceStart, index + 1)
+                }
+            }
+        }
+        error("location / 블록의 닫는 중괄호를 lb.conf 에서 찾지 못했습니다")
+    }
 
     fun secondsOf(conf: String, directive: String): Int {
         val match = Regex("""$directive\s+(\d+)s;""").find(conf)
@@ -83,19 +109,19 @@ class NginxLbTimeoutConfigTest : BehaviorSpec({
     }
 
     Given("infra/nginx/lb.conf 의 location / 블록") {
-        val conf = readLbConf()
+        val locationRoot = locationRootBlock(readLbConf())
 
         When("proxy_read_timeout, proxy_send_timeout 을 확인하면") {
             Then("둘 다 15초다 (구 30초 — HikariCP 풀 대기 5초와의 2배 이상 여유)") {
-                secondsOf(conf, "proxy_read_timeout") shouldBe 15
-                secondsOf(conf, "proxy_send_timeout") shouldBe 15
+                secondsOf(locationRoot, "proxy_read_timeout") shouldBe 15
+                secondsOf(locationRoot, "proxy_send_timeout") shouldBe 15
             }
         }
 
         When("HikariCP connection-timeout(application.yml 실제 값)과 비교하면") {
             Then("proxy_read_timeout 이 백엔드 커넥션 대기 시간의 2배 이상이다 (설정 정합 검증)") {
                 val hikariConnectionTimeoutSeconds = hikariConnectionTimeoutSecondsFromApplicationYml()
-                secondsOf(conf, "proxy_read_timeout") shouldBeGreaterThanOrEqual hikariConnectionTimeoutSeconds * 2
+                secondsOf(locationRoot, "proxy_read_timeout") shouldBeGreaterThanOrEqual hikariConnectionTimeoutSeconds * 2
             }
         }
 
@@ -106,20 +132,20 @@ class NginxLbTimeoutConfigTest : BehaviorSpec({
                     ceil(retryBudgetUpperBoundMillisFromUseCase() / 1000.0).toInt()
                 val backendMaxRequestLifetimeSeconds = hikariConnectionTimeoutSeconds + retryBudgetUpperBoundSeconds
 
-                secondsOf(conf, "proxy_read_timeout") shouldBeGreaterThan backendMaxRequestLifetimeSeconds
+                secondsOf(locationRoot, "proxy_read_timeout") shouldBeGreaterThan backendMaxRequestLifetimeSeconds
             }
         }
 
         When("proxy_connect_timeout 을 확인하면") {
             Then("5초로 그대로 유지된다 (변경 대상 아님)") {
-                secondsOf(conf, "proxy_connect_timeout") shouldBe 5
+                secondsOf(locationRoot, "proxy_connect_timeout") shouldBe 5
             }
         }
 
         When("proxy_next_upstream 설정을 확인하면") {
             Then("error timeout http_502 http_503 재시도 정책이 그대로 유지된다 (변경 대상 아님)") {
-                conf.contains("proxy_next_upstream error timeout http_502 http_503;") shouldBe true
-                conf.contains("proxy_next_upstream_tries 3;") shouldBe true
+                locationRoot.contains("proxy_next_upstream error timeout http_502 http_503;") shouldBe true
+                locationRoot.contains("proxy_next_upstream_tries 3;") shouldBe true
             }
         }
     }

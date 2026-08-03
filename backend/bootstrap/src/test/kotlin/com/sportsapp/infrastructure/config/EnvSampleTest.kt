@@ -11,8 +11,10 @@ import java.io.File
  */
 class EnvSampleTest : BehaviorSpec({
 
-    // backend 모듈 working dir 기준 레포 루트로 한 단계 올라간다.
-    val envSampleFile = File("../.env.sample")
+    // 테스트 JVM의 working dir는 이 모듈(bootstrap/)이다 — 멀티모듈 골격(W1-01a) 이전에는
+    // backend/가 곧 모듈 루트라 한 단계로 충분했으나, backend/bootstrap/으로 한 단계 더
+    // 들어간 뒤에는 레포 루트까지 두 단계 올라가야 한다.
+    val envSampleFile = File("../../.env.sample")
 
     val requiredKeys = listOf(
         "KAKAO_REST_API_KEY",
