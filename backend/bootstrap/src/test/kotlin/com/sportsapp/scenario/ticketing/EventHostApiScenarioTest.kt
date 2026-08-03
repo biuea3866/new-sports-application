@@ -2,7 +2,6 @@ package com.sportsapp.scenario.ticketing
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.presentation.user.dto.response.LoginResponse
 import com.sportsapp.domain.ticketing.entity.Event
 import com.sportsapp.domain.ticketing.entity.EventStatus
 import com.sportsapp.domain.ticketing.entity.Seat
@@ -12,6 +11,7 @@ import com.sportsapp.domain.user.service.UserDomainService
 import com.sportsapp.infrastructure.ticketing.mysql.EventJpaRepository
 import com.sportsapp.infrastructure.ticketing.mysql.SeatJpaRepository
 import com.sportsapp.infrastructure.ticketing.mysql.TicketJpaRepository
+import com.sportsapp.presentation.user.dto.response.LoginResponse
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.apache.hc.client5.http.impl.classic.HttpClients

@@ -1,11 +1,11 @@
 package com.sportsapp.presentation.post.controller
 
+import com.sportsapp.application.post.dto.CommentResponse
 import com.sportsapp.application.post.usecase.AddCommentUseCase
 import com.sportsapp.application.post.usecase.DeleteCommentUseCase
 import com.sportsapp.application.post.usecase.ListCommentsUseCase
 import com.sportsapp.domain.post.entity.Comment
 import com.sportsapp.domain.post.entity.Post
-import com.sportsapp.application.post.dto.CommentResponse
 import sportsapp.testkit.presentation.exception.GlobalExceptionHandler
 import sportsapp.testkit.presentation.support.fixedPrincipalResolver
 import io.kotest.core.spec.style.BehaviorSpec

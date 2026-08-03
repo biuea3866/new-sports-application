@@ -3,9 +3,9 @@ package com.sportsapp.application.post
 import com.sportsapp.application.post.dto.PostCriteria
 import com.sportsapp.application.post.usecase.SearchPostsUseCase
 
+import com.sportsapp.domain.post.dto.PostSearchCriteria
 import com.sportsapp.domain.post.entity.Post
 import com.sportsapp.domain.post.service.PostDomainService
-import com.sportsapp.domain.post.dto.PostSearchCriteria
 import com.sportsapp.domain.post.vo.PostType
 import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.core.spec.style.BehaviorSpec

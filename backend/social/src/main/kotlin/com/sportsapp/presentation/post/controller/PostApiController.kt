@@ -1,16 +1,16 @@
 package com.sportsapp.presentation.post.controller
 
+import com.sportsapp.application.post.dto.PostCriteria
+import com.sportsapp.application.post.dto.PostDetailResponse
+import com.sportsapp.application.post.dto.PostResponse
 import com.sportsapp.application.post.usecase.CreateCommunityPostUseCase
 import com.sportsapp.application.post.usecase.CreatePostUseCase
 import com.sportsapp.application.post.usecase.GetPostUseCase
 import com.sportsapp.application.post.usecase.SearchPostsUseCase
-import com.sportsapp.application.post.dto.PostCriteria
+import com.sportsapp.domain.common.security.UserPrincipal
 import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.post.vo.PostType
-import com.sportsapp.domain.common.security.UserPrincipal
 import com.sportsapp.presentation.post.dto.request.CreatePostRequest
-import com.sportsapp.application.post.dto.PostDetailResponse
-import com.sportsapp.application.post.dto.PostResponse
 import jakarta.validation.Valid
 import org.springframework.data.domain.Page
 import org.springframework.http.ResponseEntity

@@ -2,20 +2,20 @@ package com.sportsapp.scenario.b2b
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.presentation.user.dto.response.LoginResponse
 import com.sportsapp.domain.facility.entity.Facility
-import com.sportsapp.domain.facility.vo.FacilityAttributes
 import com.sportsapp.domain.facility.repository.FacilityRepository
+import com.sportsapp.domain.facility.vo.FacilityAttributes
 import com.sportsapp.domain.goods.entity.Product
-import com.sportsapp.domain.goods.vo.ProductCategory
 import com.sportsapp.domain.goods.entity.ProductStatus
 import com.sportsapp.domain.goods.entity.Stock
+import com.sportsapp.domain.goods.vo.ProductCategory
 import com.sportsapp.domain.ticketing.entity.Event
 import com.sportsapp.domain.ticketing.entity.EventStatus
 import com.sportsapp.domain.user.service.UserDomainService
 import com.sportsapp.infrastructure.goods.mysql.ProductJpaRepository
 import com.sportsapp.infrastructure.goods.mysql.StockJpaRepository
 import com.sportsapp.infrastructure.ticketing.mysql.EventJpaRepository
+import com.sportsapp.presentation.user.dto.response.LoginResponse
 import io.kotest.matchers.shouldBe
 import org.apache.hc.client5.http.impl.classic.HttpClients
 import org.springframework.beans.factory.annotation.Autowired

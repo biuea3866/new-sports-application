@@ -1,11 +1,11 @@
 package com.sportsapp.application.community.usecase
 
+import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.community.entity.Community
 import com.sportsapp.domain.community.entity.CommunityMember
 import com.sportsapp.domain.community.service.CommunityDomainService
 import com.sportsapp.domain.community.vo.CommunityRole
 import com.sportsapp.domain.community.vo.CommunityVisibility
-import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.message.service.RoomContextQueryService
 import com.sportsapp.domain.user.dto.UserDisplayNames
 import com.sportsapp.domain.user.entity.User

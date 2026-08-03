@@ -8,6 +8,7 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import mockUseColorScheme from 'react-native/Libraries/Utilities/useColorScheme';
+import { AxiosError } from 'axios';
 
 jest.mock('../../../lib/auth', () => ({
   useAuthStore: jest.fn(),
@@ -273,6 +274,53 @@ describe('마이 화면 — 닉네임', () => {
       expect(screen.getByText('닉네임을 입력해 주세요')).toBeTruthy();
     });
     expect(mutateMock).not.toHaveBeenCalled();
+  });
+
+  it('프로필을 불러오는 중에는 닉네임 자리에 안내 문구를 표시하고 수정을 막는다', () => {
+    useMyProfileMock.mockReturnValue({ data: undefined, isLoading: true, isError: false });
+
+    render(<MeScreen />);
+
+    expect(screen.queryByText('닉네임을 설정해 주세요')).toBeNull();
+    // 닉네임·이메일·사용자 ID 3필드가 같은 로딩 표기를 쓴다 (형제 필드와 4상태 일치)
+    expect(screen.getAllByText('불러오는 중...')).toHaveLength(3);
+    expect(screen.getByLabelText('닉네임 수정').props.accessibilityState.disabled).toBe(true);
+  });
+
+  it('프로필 조회에 실패하면 미설정으로 오인시키지 않고 수정을 막는다', () => {
+    useMyProfileMock.mockReturnValue({ data: undefined, isLoading: false, isError: true });
+
+    render(<MeScreen />);
+
+    expect(screen.queryByText('닉네임을 설정해 주세요')).toBeNull();
+    // 닉네임·이메일·사용자 ID 3필드가 같은 실패 표기를 쓴다 (형제 필드와 4상태 일치)
+    expect(screen.getAllByText('정보를 불러오지 못했어요')).toHaveLength(3);
+    expect(screen.getByLabelText('닉네임 수정').props.accessibilityState.disabled).toBe(true);
+  });
+
+  it('닉네임 변경이 규칙 위반(400)으로 실패하면 규칙 안내를 보여준다', async () => {
+    const mutateMock = jest.fn((_nickname: string, options: { onError: (e: unknown) => void }) => {
+      options.onError(
+        new AxiosError('boom', undefined, undefined, undefined, {
+          status: 400,
+          data: { properties: { code: 'INVALID_NICKNAME' } },
+          statusText: '',
+          headers: {},
+          config: {} as never,
+        })
+      );
+    });
+    changeMyNicknameMock.mockReturnValue({ mutate: mutateMock, isPending: false });
+    useMyProfileMock.mockReturnValue({ data: profileWithNickname, isLoading: false, isError: false });
+
+    render(<MeScreen />);
+    fireEvent.press(screen.getByLabelText('닉네임 수정'));
+    fireEvent.changeText(screen.getByLabelText('닉네임 입력'), 'x');
+    fireEvent.press(screen.getByLabelText('닉네임 저장'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/닉네임은 한글·영문·숫자·밑줄 2~20자/)).toBeTruthy();
+    });
   });
 
   it('다크 모드에서도 닉네임이 렌더된다', () => {

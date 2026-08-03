@@ -11,6 +11,8 @@ import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../lib/auth';
 import { ListItem } from '../../components/ui';
 import { isFeatureEnabled } from '../../lib/feature-flags';
+import { hasProblemCode } from '../../lib/http-error';
+import { INVALID_NICKNAME_CODE, NICKNAME_RULE_MESSAGE } from '../../lib/nickname';
 import { useChangeMyNickname, useMyProfile } from '../../lib/useMyProfile';
 import { ROUTES } from '../../lib/navigation';
 import { formatUserRoleLabels } from '../../lib/user-role-format';
@@ -78,7 +80,15 @@ export default function MeScreen() {
   const [nicknameDraft, setNicknameDraft] = useState('');
   const [nicknameError, setNicknameError] = useState<string | null>(null);
 
-  const nicknameText = profile?.nickname ?? NICKNAME_UNSET_LABEL;
+  // 형제 필드(이메일·사용자 ID)와 같은 4상태 규칙을 따른다 — 로딩·조회 실패를 "미설정" 으로
+  // 오인시키지 않기 위해서다. 서버 응답이 왔을 때만 미설정 안내를 띄운다.
+  const isProfileLoaded = profile !== undefined;
+  const nicknameText = resolveProfileField(
+    isProfileLoaded ? (profile.nickname ?? NICKNAME_UNSET_LABEL) : undefined,
+    undefined,
+    isLoading,
+    isError
+  );
 
   function startEditingNickname() {
     setNicknameDraft(profile?.nickname ?? '');
@@ -97,7 +107,12 @@ export default function MeScreen() {
         setIsEditingNickname(false);
         setNicknameError(null);
       },
-      onError: () => setNicknameError(NICKNAME_FAILED_MESSAGE),
+      onError: (error: unknown) =>
+        setNicknameError(
+          hasProblemCode(error, 400, INVALID_NICKNAME_CODE)
+            ? NICKNAME_RULE_MESSAGE
+            : NICKNAME_FAILED_MESSAGE
+        ),
     });
   }
 
@@ -159,10 +174,13 @@ export default function MeScreen() {
             <Text style={styles.value}>{nicknameText}</Text>
             <Pressable
               onPress={startEditingNickname}
+              disabled={!isProfileLoaded}
               accessibilityRole="button"
               accessibilityLabel="닉네임 수정"
             >
-              <Text style={styles.nicknameAction}>수정</Text>
+              <Text style={isProfileLoaded ? styles.nicknameAction : styles.nicknameActionMuted}>
+                수정
+              </Text>
             </Pressable>
           </View>
         )}

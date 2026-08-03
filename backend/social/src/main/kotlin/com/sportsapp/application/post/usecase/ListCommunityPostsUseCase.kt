@@ -30,18 +30,25 @@ class ListCommunityPostsUseCase(
         size: Int,
     ): Page<PostResponse> {
         communityDomainService.getCommunity(communityId, requesterId ?: GuestRequester.ID)
-        val criteria = PostCriteria(
-            type = null,
-            userId = null,
-            keyword = null,
-            communityId = communityId,
-            sportCategory = sportCategory,
-            globalFeedOnly = false,
-            page = page,
-            size = size,
-        )
+        val criteria = criteriaOf(communityId, sportCategory, page, size)
         val posts = postDomainService.search(criteria.toSearchCriteria(), criteria.toPageable())
         val authorNames = userDomainService.findDisplayNamesBy(posts.content.map { it.userId })
         return posts.map { PostResponse.of(it, authorNames.of(it.userId)) }
     }
+
+    private fun criteriaOf(
+        communityId: Long,
+        sportCategory: SportCategory?,
+        page: Int,
+        size: Int,
+    ): PostCriteria = PostCriteria(
+        type = null,
+        userId = null,
+        keyword = null,
+        communityId = communityId,
+        sportCategory = sportCategory,
+        globalFeedOnly = false,
+        page = page,
+        size = size,
+    )
 }

@@ -3,6 +3,7 @@ package com.sportsapp.presentation.recruitment.controller
 import com.sportsapp.application.recruitment.dto.ApplicationResponse
 import com.sportsapp.application.recruitment.dto.ApplyRecruitmentResult
 import com.sportsapp.application.recruitment.dto.CancelRecruitmentCommand
+import com.sportsapp.application.recruitment.dto.RecruitmentApplicantResponse
 import com.sportsapp.application.recruitment.dto.RecruitmentResponse
 import com.sportsapp.application.recruitment.usecase.ApplyRecruitmentUseCase
 import com.sportsapp.application.recruitment.usecase.CancelRecruitmentUseCase
@@ -15,7 +16,6 @@ import com.sportsapp.domain.recruitment.entity.ApplicationStatus
 import com.sportsapp.domain.recruitment.entity.RecruitmentStatus
 import com.sportsapp.domain.recruitment.exception.NotRecruiterException
 import com.sportsapp.domain.recruitment.exception.RecruitmentFullException
-import com.sportsapp.application.recruitment.dto.RecruitmentApplicantResponse
 import sportsapp.testkit.presentation.exception.GlobalExceptionHandler
 import sportsapp.testkit.presentation.support.fixedPrincipalResolver
 import io.kotest.core.spec.style.BehaviorSpec

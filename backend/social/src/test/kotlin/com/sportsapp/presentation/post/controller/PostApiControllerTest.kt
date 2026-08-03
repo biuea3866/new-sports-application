@@ -2,6 +2,8 @@ package com.sportsapp.presentation.post.controller
 
 import com.sportsapp.application.post.dto.CreateCommunityPostCommand
 import com.sportsapp.application.post.dto.CreatePostCommand
+import com.sportsapp.application.post.dto.PostDetailResponse
+import com.sportsapp.application.post.dto.PostResponse
 import com.sportsapp.application.post.usecase.CreateCommunityPostUseCase
 import com.sportsapp.application.post.usecase.CreatePostUseCase
 import com.sportsapp.application.post.usecase.GetPostUseCase
@@ -11,8 +13,6 @@ import com.sportsapp.domain.community.exception.NotCommunityMemberException
 import com.sportsapp.domain.post.entity.Post
 import com.sportsapp.domain.post.vo.CommunityPostContext
 import com.sportsapp.domain.post.vo.PostType
-import com.sportsapp.application.post.dto.PostResponse
-import com.sportsapp.application.post.dto.PostDetailResponse
 import com.sportsapp.domain.user.dto.UserDisplayNames
 import sportsapp.testkit.presentation.exception.GlobalExceptionHandler
 import sportsapp.testkit.presentation.support.fixedPrincipalResolver

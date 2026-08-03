@@ -1,10 +1,10 @@
 package com.sportsapp.application.community.usecase
 
 import com.sportsapp.application.community.dto.CreateCommunityCommand
+import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.community.entity.Community
 import com.sportsapp.domain.community.service.CommunityDomainService
 import com.sportsapp.domain.community.vo.CommunityVisibility
-import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe

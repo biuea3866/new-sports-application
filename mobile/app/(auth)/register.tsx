@@ -8,6 +8,8 @@ import { useRouter, Link } from 'expo-router';
 import { AxiosError } from 'axios';
 import { getBeClient } from '../../api/be-client';
 import { useAuthStore } from '../../lib/auth';
+import { hasProblemCode } from '../../lib/http-error';
+import { INVALID_NICKNAME_CODE, NICKNAME_RULE_MESSAGE } from '../../lib/nickname';
 import { useTheme } from '../../theme/useTheme';
 import { createStyles } from '../../theme/createStyles';
 import type { ThemeTokens } from '../../theme/tokens';
@@ -15,30 +17,6 @@ import type { ThemeTokens } from '../../theme/tokens';
 interface LoginResponse {
   accessToken: string;
   refreshToken: string;
-}
-
-const NICKNAME_RULE_MESSAGE = '닉네임은 한글·영문·숫자·밑줄 2~20자로 입력해 주세요.';
-
-interface ErrorResponseBody {
-  errorCode?: string;
-}
-
-/** AxiosError 인스턴스 판별은 모킹 환경에서 깨질 수 있어 응답 형태로 판단한다. */
-function responseOf(error: unknown): { status?: number; data?: ErrorResponseBody } | undefined {
-  if (error instanceof AxiosError) return error.response;
-  if (typeof error === 'object' && error !== null && 'response' in error) {
-    return (error as { response?: { status?: number; data?: ErrorResponseBody } }).response;
-  }
-  return undefined;
-}
-
-function isStatus(error: unknown, status: number): boolean {
-  return responseOf(error)?.status === status;
-}
-
-function isNicknameRuleViolation(error: unknown): boolean {
-  const response = responseOf(error);
-  return response?.status === 400 && response?.data?.errorCode === 'INVALID_NICKNAME';
 }
 
 export default function RegisterScreen() {
@@ -85,11 +63,11 @@ export default function RegisterScreen() {
       });
       router.replace('/(tabs)');
     } catch (e) {
-      if (isStatus(e, 409)) {
+      if (e instanceof AxiosError && e.response?.status === 409) {
         setError('이미 가입된 이메일입니다.');
-      } else if (isNicknameRuleViolation(e)) {
+      } else if (hasProblemCode(e, 400, INVALID_NICKNAME_CODE)) {
         setError(NICKNAME_RULE_MESSAGE);
-      } else if (isStatus(e, 422)) {
+      } else if (e instanceof AxiosError && e.response?.status === 422) {
         setError('입력값을 확인해 주세요. (이메일 형식 / 비밀번호 8자 이상)');
       } else {
         setError('회원가입에 실패했습니다. 잠시 후 다시 시도해 주세요.');

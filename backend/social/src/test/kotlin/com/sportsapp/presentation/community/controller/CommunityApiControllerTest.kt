@@ -12,13 +12,13 @@ import com.sportsapp.application.community.usecase.ListCommunityMembersUseCase
 import com.sportsapp.application.community.usecase.ListMyCommunitiesUseCase
 import com.sportsapp.application.community.usecase.ListPublicCommunitiesUseCase
 import com.sportsapp.application.community.usecase.TransferHostUseCase
+import com.sportsapp.domain.common.security.UserPrincipal
+import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.community.exception.AlreadyCommunityMemberException
 import com.sportsapp.domain.community.exception.NotCommunityMemberException
 import com.sportsapp.domain.community.vo.CommunityRole
 import com.sportsapp.domain.community.vo.CommunityVisibility
 import com.sportsapp.domain.community.vo.MembershipStatus
-import com.sportsapp.domain.common.vo.SportCategory
-import com.sportsapp.domain.common.security.UserPrincipal
 import sportsapp.testkit.presentation.exception.GlobalExceptionHandler
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every

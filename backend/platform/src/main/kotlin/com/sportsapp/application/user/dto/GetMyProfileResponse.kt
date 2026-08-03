@@ -1,4 +1,4 @@
-package com.sportsapp.presentation.user.dto.response
+package com.sportsapp.application.user.dto
 
 import com.sportsapp.domain.user.entity.User
 import com.sportsapp.domain.user.entity.UserStatus

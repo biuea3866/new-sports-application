@@ -1,9 +1,9 @@
 package com.sportsapp.presentation.post.controller
 
-import com.sportsapp.application.post.usecase.ListCommunityPostsUseCase
-import com.sportsapp.domain.common.vo.SportCategory
-import com.sportsapp.domain.common.security.UserPrincipal
 import com.sportsapp.application.post.dto.PostResponse
+import com.sportsapp.application.post.usecase.ListCommunityPostsUseCase
+import com.sportsapp.domain.common.security.UserPrincipal
+import com.sportsapp.domain.common.vo.SportCategory
 import org.springframework.data.domain.Page
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal

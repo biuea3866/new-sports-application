@@ -4,9 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseJpaIntegrationTest
 import com.sportsapp.application.partner.dto.CreatePartnerResponse
 import com.sportsapp.application.ticketing.dto.CreateMyEventResult
+import com.sportsapp.domain.common.security.UserPrincipal
 import com.sportsapp.domain.user.entity.User
 import com.sportsapp.domain.user.service.UserDomainService
-import com.sportsapp.domain.common.security.UserPrincipal
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc

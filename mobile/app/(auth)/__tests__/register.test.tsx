@@ -6,6 +6,7 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import mockUseColorScheme from 'react-native/Libraries/Utilities/useColorScheme';
+import { AxiosError } from 'axios';
 
 jest.mock('expo-router', () => ({
   useRouter: jest.fn(),
@@ -88,11 +89,27 @@ describe('회원가입 화면 — 닉네임', () => {
     });
   });
 
-  it('닉네임 규칙 위반(400)이면 규칙 안내 문구를 보여준다', async () => {
-    postMock.mockRejectedValueOnce({
-      isAxiosError: true,
-      response: { status: 400, data: { errorCode: 'INVALID_NICKNAME' } },
+  // BE 는 Spring ProblemDetail 로 내려주고 code 는 `properties.code` 에 중첩 직렬화된다
+  // (ProblemDetailBuilder.setProperty("code", ...), BE 통합 테스트가 `$.properties.code` 로 검증).
+  // 더블이 계약을 발명하지 않도록 실제 응답 모양을 그대로 쓴다.
+  function problemDetailError(status: number, code: string) {
+    return new AxiosError('boom', undefined, undefined, undefined, {
+      status,
+      data: {
+        type: `https://errors.sports-application/${code.toLowerCase().replace(/_/g, '-')}`,
+        title: 'Invalid Nickname',
+        status,
+        detail: `Invalid nickname: x`,
+        properties: { code },
+      },
+      statusText: '',
+      headers: {},
+      config: {} as never,
     });
+  }
+
+  it('닉네임 규칙 위반(400)이면 규칙 안내 문구를 보여준다', async () => {
+    postMock.mockRejectedValueOnce(problemDetailError(400, 'INVALID_NICKNAME'));
 
     render(<RegisterScreen />);
 

@@ -98,7 +98,7 @@ class UserRepositoryTest(
                     listOf(nicknamedUser.id, unsetNicknameUser.id, -1L),
                 )
 
-                Then("[R-05] nickname 컬럼이 왕복 저장·조회된다") {
+                Then("nickname 컬럼이 왕복 저장·조회된다") {
                     users.map { it.id }.toSet() shouldBe setOf(nicknamedUser.id, unsetNicknameUser.id)
                     users.first { it.id == nicknamedUser.id }.nickname shouldBe "김철수"
                     users.first { it.id == unsetNicknameUser.id }.nickname.shouldBeNull()
@@ -106,7 +106,7 @@ class UserRepositoryTest(
             }
 
             When("빈 목록으로 조회하면") {
-                Then("[R-05] 빈 결과를 반환한다") {
+                Then("빈 결과를 반환한다") {
                     userRepository.findAllBy(emptyList()).isEmpty() shouldBe true
                 }
             }

@@ -23,6 +23,11 @@ class CreateCommunityUseCase(
         )
         // 개설 직후에는 컨텍스트 방이 아직 provisioning 되지 않았다(BE-09 비동기 이벤트 소비) — roomId는 null.
         val hostNames = userDomainService.findDisplayNamesBy(listOf(command.hostUserId))
-        return CommunityResponse.of(community, 1, null, hostNames.of(command.hostUserId))
+        return CommunityResponse.of(
+            community = community,
+            memberCount = 1,
+            roomId = null,
+            hostDisplayName = hostNames.of(command.hostUserId),
+        )
     }
 }

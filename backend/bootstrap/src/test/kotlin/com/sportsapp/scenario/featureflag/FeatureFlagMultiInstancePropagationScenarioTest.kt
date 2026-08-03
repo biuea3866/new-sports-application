@@ -13,9 +13,9 @@ import com.sportsapp.domain.user.service.UserDomainService
 import com.sportsapp.infrastructure.config.FeatureFlagRedisPubSubConfig
 import com.sportsapp.infrastructure.featureflag.local.LocalFeatureFlagStore
 import com.sportsapp.infrastructure.featureflag.metrics.FeatureFlagCacheMetrics
-import com.sportsapp.presentation.featureflag.dto.CreateFeatureFlagRequest
 import com.sportsapp.infrastructure.featureflag.redis.FeatureFlagChangeSubscriber
 import com.sportsapp.infrastructure.featureflag.redis.RedisFeatureFlagCacheStore
+import com.sportsapp.presentation.featureflag.dto.CreateFeatureFlagRequest
 import io.kotest.assertions.nondeterministic.eventually
 import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.shouldBe

@@ -2,9 +2,9 @@ package com.sportsapp.scenario.auth
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.presentation.user.dto.response.GetMyProfileResponse
-import com.sportsapp.domain.user.service.UserDomainService
+import com.sportsapp.application.user.dto.GetMyProfileResponse
 import com.sportsapp.domain.user.entity.UserStatus
+import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.apache.hc.client5.http.impl.classic.HttpClients
