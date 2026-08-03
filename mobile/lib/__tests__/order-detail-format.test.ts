@@ -53,11 +53,12 @@ describe('toBookingDetailViewModel', () => {
     expect(toBookingDetailViewModel(42, withoutTitle).title).toBe('예약 #42');
   });
 
-  it('상태·결제·일시를 응답에서 정확히 매핑한다', () => {
+  it('상태·결제·일시를 응답에서 정확히 매핑한다(내부 결제 PK는 노출하지 않는다)', () => {
     const viewModel = toBookingDetailViewModel(42, booking);
     expect(viewModel.statusLabel).toBe('결제완료');
     expect(viewModel.isPaymentConfirmed).toBe(true);
-    expect(viewModel.paymentLabel).toBe('결제 #900');
+    expect(viewModel.paymentLabel).toBe('결제완료');
+    expect(viewModel.paymentLabel).not.toContain('900');
     expect(viewModel.dateTimeLabel).not.toBe('정보 없음');
   });
 
@@ -159,13 +160,24 @@ describe('toTicketOrderDetailViewModel', () => {
     expect(toTicketOrderDetailViewModel(ticketOrder).originRoute).toBe('/event/77');
   });
 
-  it('paymentId를 응답에서 그대로 반영한 결제 라벨을 쓴다', () => {
-    expect(toTicketOrderDetailViewModel(ticketOrder).paymentLabel).toBe('결제 #500');
+  it('결제가 확정된 상태(CONFIRMED)면 내부 결제 PK 없이 결제완료로 표시한다', () => {
+    const viewModel = toTicketOrderDetailViewModel(ticketOrder);
+    expect(viewModel.paymentLabel).toBe('결제완료');
+    expect(viewModel.paymentLabel).not.toContain('500');
   });
 
-  it('paymentId가 null이면 "미결제"로 표시한다', () => {
-    const unpaid: TicketOrderDetailResponse = { ...ticketOrder, paymentId: null };
+  it('paymentId가 null이고 확정 전(PENDING)이면 "미결제"로 표시한다', () => {
+    const unpaid: TicketOrderDetailResponse = {
+      ...ticketOrder,
+      status: 'PENDING',
+      paymentId: null,
+    };
     expect(toTicketOrderDetailViewModel(unpaid).paymentLabel).toBe('미결제');
+  });
+
+  it('paymentId는 있지만 아직 확정 전(PENDING)이면 결제 진행 중으로 표시한다', () => {
+    const attempting: TicketOrderDetailResponse = { ...ticketOrder, status: 'PENDING' };
+    expect(toTicketOrderDetailViewModel(attempting).paymentLabel).toBe('결제 진행 중');
   });
 
   it('createdAt을 응답에서 그대로 반영한다(리치 계약)', () => {

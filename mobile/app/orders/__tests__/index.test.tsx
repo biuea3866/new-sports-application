@@ -47,7 +47,7 @@ function makeItem(overrides: Partial<OrderHistoryItem> = {}): OrderHistoryItem {
     detailPath: '/booking/4821',
     createdAt: '2026-07-05T10:00:00.000Z',
     amount: 30000,
-    subtitle: null,
+    seats: null,
     ...overrides,
   };
 }

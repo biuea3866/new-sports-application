@@ -17,6 +17,7 @@ import {
   ORDER_TYPE_LABEL,
   formatOrderHistoryAmount,
   formatOrderHistoryDisplayName,
+  formatOrderHistorySeatSummary,
   formatOrderHistoryStatusLabel,
   formatPaymentLabel,
   isPaymentConfirmedStatus,
@@ -37,6 +38,7 @@ export function OrderHistoryItemCard({ item, onPress }: OrderHistoryItemCardProp
   const relativeTime = formatRelativeTime(item.createdAt);
   const showSuccessDot = isPaymentConfirmedStatus(item.status);
   const amountLabel = formatOrderHistoryAmount(item.amount);
+  const seatSummaryLabel = formatOrderHistorySeatSummary(item.seats);
 
   const testId = `order-history-item-card-${item.orderType}-${item.sourceId}`;
 
@@ -68,14 +70,14 @@ export function OrderHistoryItemCard({ item, onPress }: OrderHistoryItemCardProp
       <ThemedText variant="primary" style={styles.title} numberOfLines={1}>
         {displayName}
       </ThemedText>
-      {item.subtitle ? (
+      {seatSummaryLabel !== null ? (
         <ThemedText
-          testID={`${testId}-subtitle`}
+          testID={`${testId}-seats`}
           variant="secondary"
           style={styles.subtitle}
           numberOfLines={1}
         >
-          {item.subtitle}
+          {seatSummaryLabel}
         </ThemedText>
       ) : null}
       {amountLabel !== null ? (
@@ -85,7 +87,7 @@ export function OrderHistoryItemCard({ item, onPress }: OrderHistoryItemCardProp
       ) : null}
       <View style={styles.footerRow}>
         <ThemedText variant="secondary" style={styles.meta}>
-          {paymentLabel}
+          {paymentLabel ?? ''}
         </ThemedText>
         <ThemedText variant="secondary" style={styles.meta}>
           {relativeTime}

@@ -8,10 +8,12 @@ import com.sportsapp.domain.goods.dto.GoodsOrderWithTitle
 import com.sportsapp.domain.goods.entity.GoodsOrder
 import com.sportsapp.domain.goods.entity.GoodsOrderStatus
 import com.sportsapp.domain.goods.service.GoodsDomainService
+import com.sportsapp.domain.order.dto.OrderHistorySeat
 import com.sportsapp.domain.recruitment.dto.ApplicationWithRecruitmentTitle
 import com.sportsapp.domain.recruitment.entity.ApplicationStatus
 import com.sportsapp.domain.recruitment.service.RecruitmentDomainService
 import com.sportsapp.domain.ticketing.dto.TicketOrderWithEventTitle
+import com.sportsapp.domain.ticketing.dto.TicketSeatLabel
 import com.sportsapp.domain.ticketing.entity.OrderStatus
 import com.sportsapp.domain.ticketing.service.TicketingDomainService
 import io.kotest.core.spec.style.BehaviorSpec
@@ -132,7 +134,11 @@ class LocalOrderHistoryAdapterTest : BehaviorSpec({
             TicketOrderWithEventTitle(
                 ticketOrderId = 30L, status = OrderStatus.CONFIRMED, eventTitle = "Concert Dec",
                 paymentId = 300L, createdAt = now,
-                totalAmount = BigDecimal("60000"), seatSummary = "R 1열 R-01 외 1석",
+                totalAmount = BigDecimal("60000"),
+                seats = listOf(
+                    TicketSeatLabel(section = "R", rowNo = "1", seatNo = "R-01"),
+                    TicketSeatLabel(section = "R", rowNo = "1", seatNo = "R-02"),
+                ),
             ),
         )
 
@@ -154,10 +160,13 @@ class LocalOrderHistoryAdapterTest : BehaviorSpec({
                 item.detailPath shouldBe "/ticket-orders/30"
             }
 
-            Then("좌석가 합계(totalAmount)가 amount로, 좌석 요약이 subtitle로 매핑된다") {
+            Then("좌석가 합계(totalAmount)가 amount로, 좌석 원본 필드가 seats로 매핑된다") {
                 val item = items.single()
                 item.amount shouldBe BigDecimal("60000")
-                item.subtitle shouldBe "R 1열 R-01 외 1석"
+                item.seats shouldBe listOf(
+                    OrderHistorySeat(section = "R", rowNo = "1", seatNo = "R-01"),
+                    OrderHistorySeat(section = "R", rowNo = "1", seatNo = "R-02"),
+                )
             }
         }
     }

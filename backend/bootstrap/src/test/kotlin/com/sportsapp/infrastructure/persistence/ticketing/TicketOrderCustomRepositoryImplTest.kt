@@ -10,6 +10,7 @@ import com.sportsapp.domain.ticketing.entity.EventStatus
 import com.sportsapp.domain.ticketing.entity.OrderStatus
 import com.sportsapp.domain.ticketing.entity.Seat
 import com.sportsapp.domain.ticketing.entity.TicketOrder
+import com.sportsapp.domain.ticketing.dto.TicketSeatLabel
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import java.math.BigDecimal
@@ -159,8 +160,11 @@ class TicketOrderCustomRepositoryImplTest(
                     result.first().totalAmount shouldBe BigDecimal("60000")
                 }
 
-                Then("좌석 요약이 seatSummary로 반환된다") {
-                    result.first().seatSummary shouldBe "R 1열 R-01 외 1석"
+                Then("잠긴 좌석 2석이 section/rowNo/seatNo 구조로 반환된다") {
+                    result.first().seats shouldBe listOf(
+                        TicketSeatLabel(section = "R", rowNo = "1", seatNo = "R-01"),
+                        TicketSeatLabel(section = "R", rowNo = "1", seatNo = "R-02"),
+                    )
                 }
             }
         }
@@ -187,8 +191,10 @@ class TicketOrderCustomRepositoryImplTest(
                     result.first().totalAmount shouldBe BigDecimal("45000")
                 }
 
-                Then("좌석 요약에 '외 N석' 접미사가 붙지 않는다") {
-                    result.first().seatSummary shouldBe "S 2열 S-05"
+                Then("좌석 1건이 단일 원소 리스트로 반환된다") {
+                    result.first().seats shouldBe listOf(
+                        TicketSeatLabel(section = "S", rowNo = "2", seatNo = "S-05"),
+                    )
                 }
             }
         }

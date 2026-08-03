@@ -27,7 +27,7 @@ function makeOrderHistoryItem(overrides: Partial<OrderHistoryItem> = {}): OrderH
     detailPath: '/booking/4821',
     createdAt: '2026-07-05T10:00:00.000Z',
     amount: 50000,
-    subtitle: null,
+    seats: null,
     ...overrides,
   };
 }
@@ -66,12 +66,13 @@ describe('OrderHistoryItemCard', () => {
     expect(screen.getByText('상품 #1203')).toBeTruthy();
   });
 
-  it('paymentId가 있으면 결제 #id를 렌더한다', () => {
+  it('paymentId가 있어도 내부 결제 PK를 렌더하지 않는다', () => {
     const item = makeOrderHistoryItem({ paymentId: 4790 });
 
     render(<OrderHistoryItemCard item={item} onPress={jest.fn()} />);
 
-    expect(screen.getByText('결제 #4790')).toBeTruthy();
+    expect(screen.queryByText(/결제 #/)).toBeNull();
+    expect(screen.queryByText('4790')).toBeNull();
   });
 
   it('paymentId가 없으면 미결제를 렌더한다', () => {
@@ -136,23 +137,26 @@ describe('OrderHistoryItemCard', () => {
     expect(screen.queryByTestId(`${testIdFor(item)}-amount`)).toBeNull();
   });
 
-  it('subtitle이 있으면 부가 정보를 렌더한다(같은 제목 주문 구분용)', () => {
+  it('좌석 정보가 있으면 서술형 라벨로 부가 정보를 렌더한다(같은 제목 주문 구분용)', () => {
     const item = makeOrderHistoryItem({
       orderType: 'TICKETING',
-      subtitle: 'R석 1열 R-01 외 1석',
+      seats: [
+        { section: 'R', rowNo: '1', seatNo: 'R-01' },
+        { section: 'R', rowNo: '1', seatNo: 'R-02' },
+      ],
     });
 
     render(<OrderHistoryItemCard item={item} onPress={jest.fn()} />);
 
-    expect(screen.getByText('R석 1열 R-01 외 1석')).toBeTruthy();
+    expect(screen.getByText('R구역 1열 01번 외 1석')).toBeTruthy();
   });
 
-  it('subtitle이 없으면 부가 정보를 렌더하지 않는다', () => {
-    const item = makeOrderHistoryItem({ subtitle: null });
+  it('좌석 정보가 없으면 부가 정보를 렌더하지 않는다', () => {
+    const item = makeOrderHistoryItem({ seats: null });
 
     render(<OrderHistoryItemCard item={item} onPress={jest.fn()} />);
 
-    expect(screen.queryByTestId(`${testIdFor(item)}-subtitle`)).toBeNull();
+    expect(screen.queryByTestId(`${testIdFor(item)}-seats`)).toBeNull();
   });
 
   it('라이트 모드에서 surface 토큰으로 카드가 렌더된다', () => {

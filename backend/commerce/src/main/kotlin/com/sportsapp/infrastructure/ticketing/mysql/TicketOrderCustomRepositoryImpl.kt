@@ -10,6 +10,7 @@ import com.sportsapp.domain.ticketing.entity.Seat
 import com.sportsapp.domain.ticketing.repository.TicketOrderCustomRepository
 import com.sportsapp.domain.ticketing.dto.TicketOrderWithEventTitle
 import com.sportsapp.domain.ticketing.dto.TicketSalesSummary
+import com.sportsapp.domain.ticketing.dto.TicketSeatLabel
 import com.sportsapp.domain.ticketing.entity.TicketStatus
 import jakarta.persistence.EntityManager
 import jakarta.persistence.PersistenceContext
@@ -137,7 +138,7 @@ class TicketOrderCustomRepositoryImpl : TicketOrderCustomRepository {
                 paymentId = order.paymentId,
                 createdAt = order.createdAt,
                 totalAmount = lockedSeats.fold(BigDecimal.ZERO) { sum, seatEntity -> sum + seatEntity.price },
-                seatSummary = buildSeatSummary(lockedSeats),
+                seats = lockedSeats.map { TicketSeatLabel(section = it.section, rowNo = it.rowNo, seatNo = it.seatNo) },
             )
         }
     }
@@ -145,14 +146,5 @@ class TicketOrderCustomRepositoryImpl : TicketOrderCustomRepository {
     private fun findSeatsByIds(seatIds: List<Long>): List<Seat> {
         if (seatIds.isEmpty()) return emptyList()
         return queryFactory.selectFrom(seat).where(seat.id.`in`(seatIds)).fetch()
-    }
-
-    private fun buildSeatSummary(lockedSeats: List<Seat>): String {
-        val representative = lockedSeats.firstOrNull() ?: return ""
-        return if (lockedSeats.size > 1) {
-            "${representative.displayLabel} 외 ${lockedSeats.size - 1}석"
-        } else {
-            representative.displayLabel
-        }
     }
 }

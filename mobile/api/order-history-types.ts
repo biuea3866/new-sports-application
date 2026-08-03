@@ -7,6 +7,17 @@
 
 export type OrderType = 'BOOKING' | 'TICKETING' | 'GOODS' | 'RECRUITMENT';
 
+/**
+ * TICKETING 주문이 잠근 좌석 1건의 원본 필드. BE가 조합한 문자열이 아니라 원본 필드로
+ * 내려온다 — 표시 조합(`"A석구역 1열 05번"`)은 모바일이 이미 쓰는
+ * `seat-format.ts#formatSeatDescription`으로 통일한다(`lib/order-history-format.ts#formatOrderHistorySeatSummary`).
+ */
+export interface OrderHistorySeat {
+  section: string;
+  rowNo: string;
+  seatNo: string;
+}
+
 export interface OrderHistoryItem {
   orderType: OrderType;
   sourceId: number;
@@ -18,8 +29,10 @@ export interface OrderHistoryItem {
   // 결제 금액 — 4개 주문 컨텍스트가 각자 자기 데이터로 채운다. 금액을 확정할 수 없으면(과거
   // BOOKING 예약 등) null — 무료(0, RECRUITMENT)와 구분해야 하므로 0으로 방어하지 않는다.
   amount: number | null;
-  // 같은 title을 가진 서로 다른 주문을 구분하는 부가 정보(현재는 TICKETING 좌석 라벨만 채움).
-  subtitle: string | null;
+  // 같은 title을 가진 서로 다른 TICKETING 주문을 좌석으로 구분하기 위한 원본 필드 목록.
+  // TICKETING 외 유형은 구분에 쓸 자기 데이터가 없어 null이다(유형마다 다른 필드를 억지로
+  // 한 칸에 밀어넣지 않는다).
+  seats: OrderHistorySeat[] | null;
 }
 
 export interface OrderHistoryResponse {
