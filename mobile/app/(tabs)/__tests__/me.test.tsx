@@ -6,7 +6,7 @@
  * 사용자 관점으로 검증한다.
  */
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import mockUseColorScheme from 'react-native/Libraries/Utilities/useColorScheme';
 
 jest.mock('../../../lib/auth', () => ({
@@ -23,15 +23,17 @@ jest.mock('expo-router', () => ({
 
 jest.mock('../../../lib/useMyProfile', () => ({
   useMyProfile: jest.fn(),
+  useChangeMyNickname: jest.fn(),
 }));
 
 import { useAuthStore } from '../../../lib/auth';
 import { useRouter } from 'expo-router';
 import { isFeatureEnabled } from '../../../lib/feature-flags';
-import { useMyProfile } from '../../../lib/useMyProfile';
+import { useChangeMyNickname, useMyProfile } from '../../../lib/useMyProfile';
 import MeScreen from '../me';
 
 const useMyProfileMock = useMyProfile as unknown as jest.Mock;
+const changeMyNicknameMock = useChangeMyNickname as unknown as jest.Mock;
 
 const useAuthStoreMock = useAuthStore as unknown as jest.Mock;
 const useRouterMock = useRouter as jest.MockedFunction<typeof useRouter>;
@@ -73,6 +75,7 @@ describe('마이 화면 — 내 주문 내역 진입점', () => {
       replace: replaceMock,
     } as unknown as ReturnType<typeof useRouter>);
     useMyProfileMock.mockReturnValue({ data: undefined, isLoading: false, isError: false });
+    changeMyNicknameMock.mockReturnValue({ mutate: jest.fn(), isPending: false });
   });
 
   afterEach(() => {
@@ -125,6 +128,7 @@ describe('마이 화면 — 내 정보 표시', () => {
   beforeEach(() => {
     mockUseColorScheme.mockReturnValue('light');
     isFeatureEnabledMock.mockReturnValue(false);
+    changeMyNicknameMock.mockReturnValue({ mutate: jest.fn(), isPending: false });
     useRouterMock.mockReturnValue({
       push: jest.fn(),
       replace: jest.fn(),
@@ -191,5 +195,92 @@ describe('마이 화면 — 내 정보 표시', () => {
     render(<MeScreen />);
 
     expect(screen.getByText('NEW_ROLE')).toBeTruthy();
+  });
+});
+
+describe('마이 화면 — 닉네임', () => {
+  const profileWithNickname = {
+    id: 68,
+    email: 'demo.user@sportsapp.dev',
+    nickname: '김철수',
+    displayName: '김철수',
+    status: 'ACTIVE' as const,
+    createdAt: '2026-07-31T05:00:00Z',
+  };
+
+  beforeEach(() => {
+    mockUseColorScheme.mockReturnValue('light');
+    isFeatureEnabledMock.mockReturnValue(false);
+    mockAuthState({ accessToken: null });
+    useRouterMock.mockReturnValue({
+      push: jest.fn(),
+      replace: jest.fn(),
+    } as unknown as ReturnType<typeof useRouter>);
+    changeMyNicknameMock.mockReset();
+    changeMyNicknameMock.mockReturnValue({ mutate: jest.fn(), isPending: false });
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('설정된 닉네임을 보여준다', () => {
+    useMyProfileMock.mockReturnValue({ data: profileWithNickname, isLoading: false, isError: false });
+
+    render(<MeScreen />);
+
+    expect(screen.getByText('김철수')).toBeTruthy();
+  });
+
+  it('닉네임이 없으면 설정을 유도한다', () => {
+    useMyProfileMock.mockReturnValue({
+      data: { ...profileWithNickname, nickname: null, displayName: '닉네임 미설정' },
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<MeScreen />);
+
+    expect(screen.getByText('닉네임을 설정해 주세요')).toBeTruthy();
+  });
+
+  it('닉네임을 수정해 저장하면 변경 요청을 보낸다', async () => {
+    const mutateMock = jest.fn();
+    changeMyNicknameMock.mockReturnValue({ mutate: mutateMock, isPending: false });
+    useMyProfileMock.mockReturnValue({ data: profileWithNickname, isLoading: false, isError: false });
+
+    render(<MeScreen />);
+    fireEvent.press(screen.getByLabelText('닉네임 수정'));
+    fireEvent.changeText(screen.getByLabelText('닉네임 입력'), '박영희');
+    fireEvent.press(screen.getByLabelText('닉네임 저장'));
+
+    await waitFor(() => {
+      expect(mutateMock).toHaveBeenCalledWith('박영희', expect.anything());
+    });
+  });
+
+  it('닉네임을 비운 채 저장하면 요청하지 않고 안내한다', async () => {
+    const mutateMock = jest.fn();
+    changeMyNicknameMock.mockReturnValue({ mutate: mutateMock, isPending: false });
+    useMyProfileMock.mockReturnValue({ data: profileWithNickname, isLoading: false, isError: false });
+
+    render(<MeScreen />);
+    fireEvent.press(screen.getByLabelText('닉네임 수정'));
+    fireEvent.changeText(screen.getByLabelText('닉네임 입력'), '   ');
+    fireEvent.press(screen.getByLabelText('닉네임 저장'));
+
+    await waitFor(() => {
+      expect(screen.getByText('닉네임을 입력해 주세요')).toBeTruthy();
+    });
+    expect(mutateMock).not.toHaveBeenCalled();
+  });
+
+  it('다크 모드에서도 닉네임이 렌더된다', () => {
+    mockUseColorScheme.mockReturnValue('dark');
+    useMyProfileMock.mockReturnValue({ data: profileWithNickname, isLoading: false, isError: false });
+
+    render(<MeScreen />);
+
+    expect(screen.getByText('김철수')).toBeTruthy();
   });
 });
