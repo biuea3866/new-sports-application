@@ -51,7 +51,7 @@ export function DatePickerDialog({
             <label htmlFor="holiday-date" className="block text-sm font-medium">
               날짜
             </label>
-            <DateField id="holiday-date" value={dateInput} onChange={setDateInput} />
+            <DateField id="holiday-date" value={dateInput} onChange={setDateInput} aria-required />
             {error && (
               <p role="alert" className="text-sm text-destructive">
                 {error}

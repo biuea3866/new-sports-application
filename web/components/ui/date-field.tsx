@@ -40,6 +40,10 @@ export interface DateFieldProps {
   max?: string;
   "aria-label"?: string;
   "aria-describedby"?: string;
+  /** 필수 입력 여부. 네이티브 입력에서 쓰던 값을 그대로 받는다. */
+  "aria-required"?: boolean;
+  /** 호출부(서버 검증·폼 검증)가 판정한 오류 상태. 형식 오류와 함께 반영된다. */
+  "aria-invalid"?: boolean;
 }
 
 function digitsOf(rawText: string): string {
@@ -74,26 +78,88 @@ function isRealDate(year: number, month: number, day: number): boolean {
 }
 
 /**
- * 자릿수를 값 계약 문자열로 바꾼다.
- * 자릿수가 모자라거나 실재하지 않는 날짜·시각이면 빈 문자열 — "아직 값 없음"으로 다룬다.
+ * 입력 판정 결과.
+ *
+ * 네이티브 입력이 하던 검증(달력 실재 여부·`min`/`max` 범위)을 직접 하게 되면서, "왜 값이
+ * 확정되지 않았는가"를 구분해야 안내 문구를 고를 수 있다. 빈 문자열 하나로 뭉개면 사용자는
+ * 입력이 사라진 이유를 알 수 없다.
  */
-function toContractValue(digits: string, withTime: boolean): string {
+type TemporalParseResult =
+  | { kind: "empty" }
+  | { kind: "incomplete" }
+  | { kind: "unrealDate" }
+  | { kind: "outOfRange" }
+  | { kind: "confirmed"; value: string };
+
+/** 값 계약 문자열끼리는 사전순 비교가 곧 시간순 비교다(`yyyy-MM-dd`·`yyyy-MM-ddTHH:mm`). */
+function isWithinRange(contractValue: string, min?: string, max?: string): boolean {
+  if (min !== undefined && min.length > 0 && contractValue < min) return false;
+  if (max !== undefined && max.length > 0 && contractValue > max) return false;
+  return true;
+}
+
+/**
+ * 자릿수를 판정한다. 확정된 경우에만 값 계약 문자열을 돌려준다.
+ *
+ * `min`/`max`를 여기서 함께 본다 — 숨은 달력 입력에만 넘기면 직접 입력으로 범위 밖 날짜를
+ * 그대로 확정할 수 있다(네이티브는 `:invalid` + 제출 차단이었다).
+ */
+function parseDigits(
+  digits: string,
+  withTime: boolean,
+  min?: string,
+  max?: string
+): TemporalParseResult {
+  if (digits.length === 0) return { kind: "empty" };
+
   const requiredCount = withTime ? DATE_TIME_DIGIT_COUNT : DATE_DIGIT_COUNT;
-  if (digits.length !== requiredCount) return "";
+  if (digits.length !== requiredCount) return { kind: "incomplete" };
 
   const year = Number(digits.slice(0, 4));
   const month = Number(digits.slice(4, 6));
   const day = Number(digits.slice(6, 8));
-  if (!isRealDate(year, month, day)) return "";
+  if (!isRealDate(year, month, day)) return { kind: "unrealDate" };
 
   const datePart = `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
-  if (!withTime) return datePart;
+  let contractValue = datePart;
 
-  const hour = Number(digits.slice(8, 10));
-  const minute = Number(digits.slice(10, 12));
-  if (hour > 23 || minute > 59) return "";
+  if (withTime) {
+    const hour = Number(digits.slice(8, 10));
+    const minute = Number(digits.slice(10, 12));
+    if (hour > 23 || minute > 59) return { kind: "unrealDate" };
+    contractValue = `${datePart}T${digits.slice(8, 10)}:${digits.slice(10, 12)}`;
+  }
 
-  return `${datePart}T${digits.slice(8, 10)}:${digits.slice(10, 12)}`;
+  if (!isWithinRange(contractValue, min, max)) return { kind: "outOfRange" };
+
+  return { kind: "confirmed", value: contractValue };
+}
+
+/** 판정 결과별 안내 문구. `empty`·`confirmed`는 알릴 것이 없다. */
+function validationMessageOf(
+  result: TemporalParseResult,
+  withTime: boolean,
+  min?: string,
+  max?: string
+): string | null {
+  switch (result.kind) {
+    case "incomplete":
+      return withTime
+        ? "날짜와 시각을 YYYY-MM-DD HH:mm 형식으로 모두 입력해 주세요."
+        : "날짜를 YYYY-MM-DD 형식으로 모두 입력해 주세요.";
+    case "unrealDate":
+      return "없는 날짜입니다. 다시 확인해 주세요.";
+    case "outOfRange": {
+      if (min !== undefined && min.length > 0 && max !== undefined && max.length > 0) {
+        return `${min} ~ ${max} 사이로 입력해 주세요.`;
+      }
+      if (min !== undefined && min.length > 0) return `${min} 이후로 입력해 주세요.`;
+      if (max !== undefined && max.length > 0) return `${max} 이전으로 입력해 주세요.`;
+      return "입력할 수 있는 범위를 벗어났습니다.";
+    }
+    default:
+      return null;
+  }
 }
 
 /** 값 계약 문자열(`yyyy-MM-dd`/`yyyy-MM-ddTHH:mm[:ss]`)을 화면 표기로 바꾼다. */
@@ -120,23 +186,35 @@ function MaskedTemporalField({
   max,
   "aria-label": ariaLabel,
   "aria-describedby": ariaDescribedBy,
+  "aria-required": ariaRequired,
+  "aria-invalid": ariaInvalid,
 }: MaskedTemporalFieldProps) {
-  // 입력 중인 미완성 문자열은 화면에만 남는다. 확정된 값만 부모(onChange)로 올린다.
+  /**
+   * 사용자가 실제로 입력한 문자열. 확정되지 않아도 **버리지 않는다** — blur 시 지우면 사용자가
+   * `2026-07-1`까지 치고 포커스를 옮겼을 때 입력이 아무 안내 없이 사라진다(무음 데이터 손실).
+   * 대신 확정 못 한 이유를 안내로 알린다.
+   */
   const [editingText, setEditingText] = React.useState<string | null>(null);
+  // 안내는 입력을 마친 뒤에만 띄운다 — 타이핑 중 매 글자마다 다그치지 않기 위함이다.
+  const [isEditing, setIsEditing] = React.useState(false);
+  const generatedId = React.useId();
+  const validationMessageId = `${id ?? generatedId}-date-validation`;
   const pickerRef = React.useRef<HTMLInputElement>(null);
 
   const displayText = editingText ?? toDisplayText(value, withTime);
   const maxDigitCount = withTime ? DATE_TIME_DIGIT_COUNT : DATE_DIGIT_COUNT;
 
+  const parseResult = parseDigits(digitsOf(displayText), withTime, min, max);
+  const pendingMessage = validationMessageOf(parseResult, withTime, min, max);
+  const validationMessage = isEditing ? null : pendingMessage;
+  // 호출부가 알린 오류(서버 검증 등)와 이 컴포넌트가 찾은 형식 오류를 함께 반영한다.
+  const isInvalid = ariaInvalid === true || validationMessage !== null;
+
   function handleTextChange(event: React.ChangeEvent<HTMLInputElement>) {
     const digits = digitsOf(event.target.value).slice(0, maxDigitCount);
     setEditingText(maskDigits(digits, withTime));
-    onChange(toContractValue(digits, withTime));
-  }
-
-  function handleBlur() {
-    // 입력을 마치면 확정된 값 기준 표기로 되돌린다 — 미완성 문자열이 화면에 남지 않게 한다.
-    setEditingText(null);
+    const result = parseDigits(digits, withTime, min, max);
+    onChange(result.kind === "confirmed" ? result.value : "");
   }
 
   function handlePickerChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -152,6 +230,10 @@ function MaskedTemporalField({
     }
   }
 
+  const describedBy = [ariaDescribedBy, validationMessage !== null ? validationMessageId : null]
+    .filter((token): token is string => token !== null && token !== undefined)
+    .join(" ");
+
   return (
     <div className={cn("relative", className)}>
       <input
@@ -162,11 +244,14 @@ function MaskedTemporalField({
         name={name}
         value={displayText}
         onChange={handleTextChange}
-        onBlur={handleBlur}
+        onFocus={() => setIsEditing(true)}
+        onBlur={() => setIsEditing(false)}
         disabled={disabled}
         required={required}
         aria-label={ariaLabel}
-        aria-describedby={ariaDescribedBy}
+        aria-required={ariaRequired}
+        aria-invalid={isInvalid}
+        aria-describedby={describedBy.length > 0 ? describedBy : undefined}
         placeholder={withTime ? DATE_TIME_PLACEHOLDER : DATE_PLACEHOLDER}
         className={cn(INPUT_CLASS_NAME, "pr-9")}
       />
@@ -193,11 +278,7 @@ function MaskedTemporalField({
           <path d="M16 2v4M8 2v4M3 10h18" />
         </svg>
       </button>
-      {/*
-        달력 팝업 전용 — 화면에는 보이지 않고 표시 형식에도 관여하지 않는다.
-        min/max 는 달력이 고를 수 있는 범위를 좁히는 용도로만 넘긴다(직접 입력까지 막지는
-        않는다 — 범위 검증은 호출부·서버 책임이며 네이티브 입력일 때도 마찬가지였다).
-      */}
+      {/* 달력 팝업 전용 — 화면에는 보이지 않고 표시 형식에도 관여하지 않는다. */}
       <input
         ref={pickerRef}
         type={withTime ? "datetime-local" : "date"}
@@ -209,6 +290,11 @@ function MaskedTemporalField({
         onChange={handlePickerChange}
         className="pointer-events-none absolute bottom-0 right-0 h-0 w-0 opacity-0"
       />
+      {validationMessage !== null && (
+        <p id={validationMessageId} role="alert" className="mt-1 text-xs text-destructive">
+          {validationMessage}
+        </p>
+      )}
     </div>
   );
 }

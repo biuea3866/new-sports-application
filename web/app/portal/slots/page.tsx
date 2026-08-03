@@ -427,6 +427,7 @@ export default function SlotsPage() {
                   value={form.date}
                   onChange={(nextValue) => setForm((prev) => ({ ...prev, date: nextValue }))}
                   required
+                  aria-required
                   disabled={modalState?.mode === "edit"}
                 />
               </div>

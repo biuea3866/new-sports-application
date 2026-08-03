@@ -10,6 +10,7 @@ import {
   markNotificationRead,
 } from "@/lib/portal/notifications";
 import type { NotificationCategory } from "@/lib/portal/types";
+import { toUserMessage } from "@/lib/portal/toUserMessage";
 
 const PAGE_SIZE = 20;
 
@@ -165,9 +166,9 @@ export default function NotificationsClient() {
       setTotalPages(data.totalPages);
       setTotalElements(data.totalElements);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "알림 목록을 불러오지 못했습니다."
-      );
+      // 응답을 실제로 파싱하므로 계약 위반 시 ZodError 가 온다 — issue 배열 원문이 화면에
+      // 새지 않도록 사람이 읽는 문장으로 치환한다(상세는 콘솔).
+      setError(toUserMessage(err));
     } finally {
       setLoading(false);
     }
@@ -195,9 +196,7 @@ export default function NotificationsClient() {
       setToast("알림을 읽음 처리했습니다.");
       void loadNotifications();
     } catch (err) {
-      setToast(
-        err instanceof Error ? err.message : "읽음 처리에 실패했습니다."
-      );
+      setToast(toUserMessage(err));
     } finally {
       setMarkingId(null);
     }

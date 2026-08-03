@@ -459,8 +459,18 @@ describe("[U-02] NotificationSchema 검증", () => {
       expect(NotificationSchema.safeParse(data).success).toBe(true);
     });
 
-    it("category가 유효하지 않으면 파싱에 실패한다", () => {
-      const data = { ...baseNotification, category: "UNKNOWN" };
+    // BE가 분류를 추가했다고 알림함 전체가 비면 안 된다 — 모르는 값은 원문으로 통과시키고
+    // 화면이 한글 라벨을 못 찾으면 원문을 보여준다.
+    it("모르는 category는 원문으로 통과시킨다", () => {
+      const data = { ...baseNotification, category: "BRAND_NEW" };
+      const result = NotificationSchema.safeParse(data);
+
+      expect(result.success).toBe(true);
+      expect(result.data?.category).toBe("BRAND_NEW");
+    });
+
+    it("category가 문자열이 아니면 파싱에 실패한다", () => {
+      const data = { ...baseNotification, category: 42 };
       expect(NotificationSchema.safeParse(data).success).toBe(false);
     });
 
@@ -533,8 +543,18 @@ describe("[U-04] PaymentSummarySchema 검증", () => {
     expect(PaymentSummarySchema.safeParse(withoutPg).success).toBe(true);
   });
 
-  it("status가 유효하지 않으면 파싱에 실패한다", () => {
-    const invalid = { ...validPayment, status: "UNKNOWN" };
+  // 목록 응답은 통째로 파싱되므로 미지 상태 한 건에 전량 실패하면 화면이 `총 0건`이 된다
+  // (02-파트너포털/14 결함). 상태값에만 내성을 주고 원문을 보존한다.
+  it("모르는 status는 원문으로 통과시킨다", () => {
+    const unknownStatus = { ...validPayment, status: "SOMETHING_NEW" };
+    const result = PaymentSummarySchema.safeParse(unknownStatus);
+
+    expect(result.success).toBe(true);
+    expect(result.data?.status).toBe("SOMETHING_NEW");
+  });
+
+  it("status가 문자열이 아니면 파싱에 실패한다", () => {
+    const invalid = { ...validPayment, status: 42 };
     expect(PaymentSummarySchema.safeParse(invalid).success).toBe(false);
   });
 

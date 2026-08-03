@@ -220,12 +220,14 @@ export const AdminUserPageSchema = PageSchema(AdminUserSchema);
 
 // ─── Notification ────────────────────────────────────────────────────────────
 
-export const NotificationCategorySchema = z.enum([
-  "BOOKING",
-  "PAYMENT",
-  "EVENT",
-  "SYSTEM",
-  "PROMOTION",
+/**
+ * 알림 분류 — 결제 상태와 같은 이유로 응답에서는 enum을 강제하지 않는다.
+ * BE가 분류를 하나 추가했다고 알림함 전체가 비면 안 된다. 모르는 값은 원문으로 통과시키고
+ * 화면이 한글 라벨을 못 찾으면 원문을 그대로 보여준다.
+ */
+export const NotificationCategorySchema = z.union([
+  z.enum(["BOOKING", "PAYMENT", "EVENT", "SYSTEM", "PROMOTION"]),
+  z.string(),
 ]);
 
 /**
@@ -280,8 +282,14 @@ export const CancelBookingInputSchema = z.object({
 // ─── Payment ─────────────────────────────────────────────────────────────────
 
 // 값 목록은 BE PaymentStatus enum을 그대로 옮긴 `paymentStatus.ts`가 단일 출처다.
-// 여기서 다시 나열하면 BE에 값이 추가될 때 한쪽만 갱신돼 응답이 전량 파싱 실패한다.
-export const PaymentStatusSchema = z.enum(PAYMENT_STATUS_VALUES);
+// 여기서 다시 나열하면 BE에 값이 추가될 때 한쪽만 갱신된다.
+//
+// **응답에는 enum을 강제하지 않는다.** 목록 응답은 통째로 파싱되므로 계약 밖 상태가 한 건이라도
+// 섞이면 `parse`가 throw하고 화면은 `총 0건`이 된다 — enum을 넓히기만 하면 다음 값에서 같은
+// 사고가 반복된다. 알려진 값 집합은 문서로 남기되(union 앞 분기) 모르는 값은 원문 그대로 통과시켜
+// **그 행만** 원문으로 남게 하고, 한글 표기는 `paymentStatusLabel`이 담당한다.
+// 구조(필드 존재·타입)는 계속 엄하게 본다 — 내성은 이 값 하나에만 준다.
+export const PaymentStatusSchema = z.union([z.enum(PAYMENT_STATUS_VALUES), z.string()]);
 export const PaymentMethodSchema = z.enum([
   "CREDIT_CARD",
   "BANK_TRANSFER",

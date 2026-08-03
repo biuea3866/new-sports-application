@@ -182,8 +182,11 @@ export interface AdminUser {
 // ─── Notification ────────────────────────────────────────────────────────────
 
 /**
- * 알림함 분류 — BE `domain/notification/vo/NotificationCategory`.
+ * 알림함의 **알려진** 분류 — BE `domain/notification/vo/NotificationCategory`.
  * templateId 에서 파생하는 표시용 값이라 BE가 미등록 접두사를 SYSTEM 으로 수렴시킨다.
+ *
+ * 응답 필드 타입으로 쓰지 않는다 — BE가 분류를 추가하면 실제 값이 이 목록 밖일 수 있고,
+ * 좁은 타입으로 선언하면 그 사실을 타입이 감춘다. 라벨 조회 시 좁히는 용도로만 쓴다.
  */
 export type NotificationCategory = "BOOKING" | "PAYMENT" | "EVENT" | "SYSTEM" | "PROMOTION";
 
@@ -197,7 +200,8 @@ export interface Notification {
   id: number;
   title: string;
   content: string;
-  category: NotificationCategory;
+  /** 알려진 분류([NotificationCategory]) 또는 BE가 새로 추가한 값의 원문. */
+  category: string;
   isRead: boolean;
   readAt: string | null;
   createdAt: string;

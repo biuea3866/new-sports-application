@@ -68,8 +68,33 @@ describe("결제 상태 계약", () => {
     expect(result.success).toBe(true);
   });
 
-  it("계약에 없는 상태는 스키마가 거부한다", () => {
-    const result = PartnerSalesResponseSchema.safeParse(buildResponse(["UNKNOWN_STATUS"]));
+  /**
+   * 목록 응답은 통째로 파싱된다 — 계약 밖 상태 하나에 `parse`가 throw하면 화면이 다시 `총 0건`이
+   * 된다(이번 결함과 같은 실패 모드). enum을 넓히기만 하면 다음 값에서 반복되므로, 미지 값은
+   * **그 행만** 원문으로 남기고 나머지 행은 살린다.
+   */
+  it("계약 밖 상태가 섞여도 파싱에 성공하고 그 값은 원문으로 남는다", () => {
+    const result = PartnerSalesResponseSchema.safeParse(
+      buildResponse(["COMPLETED", "UNKNOWN_STATUS", "READY"])
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.data?.sales.map((sale) => sale.status)).toEqual([
+      "COMPLETED",
+      "UNKNOWN_STATUS",
+      "READY",
+    ]);
+  });
+
+  // 내성은 상태값에만 준다 — 구조가 깨진 응답은 계속 즉시 실패해야 한다.
+  it("상태가 문자열이 아니면 파싱에 실패한다", () => {
+    const result = PartnerSalesResponseSchema.safeParse({
+      sales: [{ ...buildSale("COMPLETED"), status: 42 }],
+      totalElements: 1,
+      totalPages: 1,
+      page: 0,
+      size: 20,
+    });
 
     expect(result.success).toBe(false);
   });

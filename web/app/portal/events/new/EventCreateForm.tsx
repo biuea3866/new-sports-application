@@ -182,6 +182,8 @@ export default function EventCreateForm() {
             id="event-starts-at"
             value={fields.startsAt}
             onChange={(nextValue) => setField("startsAt", nextValue)}
+            aria-required
+            aria-invalid={errors.startsAt !== undefined}
             aria-describedby={errors.startsAt !== undefined ? "event-starts-at-error" : undefined}
           />
           {errors.startsAt !== undefined && (

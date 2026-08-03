@@ -157,3 +157,220 @@ describe("DateTimeField", () => {
     expect(handleChange).toHaveBeenLastCalledWith("");
   });
 });
+
+/**
+ * 접근성 속성 전달 — 네이티브 입력 교체 시 조용히 빠진 속성들.
+ *
+ * 회귀 방지: `EventCreateForm`(필수 + 인라인 `role="alert"` 오류)에서 `aria-required`·
+ * `aria-invalid` 가, `DatePickerDialog`·`slots` 에서 `aria-required` 가 사라져 보조기술이
+ * "필수인가 / 어느 필드가 틀렸는가"를 알 수 없게 됐다.
+ */
+describe("DateField 접근성 속성", () => {
+  it("필수 여부를 전달한다", () => {
+    render(<DateField value="" onChange={vi.fn()} aria-label="경기 시작 시각" aria-required />);
+
+    expect(screen.getByLabelText("경기 시작 시각")).toHaveAttribute("aria-required", "true");
+  });
+
+  it("호출부가 알린 오류 상태를 전달한다", () => {
+    render(<DateField value="" onChange={vi.fn()} aria-label="만료일" aria-invalid />);
+
+    expect(screen.getByLabelText("만료일")).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("오류가 없으면 오류 상태를 켜지 않는다", () => {
+    render(<DateField value="2026-07-28" onChange={vi.fn()} aria-label="만료일" />);
+
+    expect(screen.getByLabelText("만료일")).toHaveAttribute("aria-invalid", "false");
+  });
+
+  it("설명 요소를 연결할 수 있다", () => {
+    render(
+      <DateField value="" onChange={vi.fn()} aria-label="만료일" aria-describedby="hint-id" />
+    );
+
+    expect(screen.getByLabelText("만료일").getAttribute("aria-describedby")).toContain("hint-id");
+  });
+});
+
+/**
+ * 네이티브가 하던 검증의 대체.
+ *
+ * 회귀 방지 ①: blur 시 미완성 입력을 버려 사용자가 `2026-07-1` 까지 치고 포커스를 옮기면
+ * 아무 안내 없이 입력이 전부 사라졌다(무음 데이터 손실).
+ * 회귀 방지 ②: `min`/`max` 가 숨은 달력 입력에만 전달돼, 직접 입력으로는 범위 밖 날짜를
+ * 그대로 확정할 수 있었다(네이티브는 `:invalid` + 제출 차단이었다).
+ */
+describe("DateField 입력 검증", () => {
+  it("blur 해도 미완성 입력을 지우지 않는다", async () => {
+    const user = userEvent.setup();
+    render(<DateField value="" onChange={vi.fn()} aria-label="만료일" />);
+
+    const input = screen.getByLabelText("만료일");
+    await user.type(input, "2026071");
+    await user.tab();
+
+    expect(input).toHaveValue("2026-07-1");
+  });
+
+  it("blur 시 미완성 입력임을 알린다", async () => {
+    const user = userEvent.setup();
+    render(<DateField value="" onChange={vi.fn()} aria-label="만료일" />);
+
+    const input = screen.getByLabelText("만료일");
+    await user.type(input, "2026071");
+    await user.tab();
+
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+  });
+
+  it("입력 중에는 미완성 안내로 다그치지 않는다", async () => {
+    const user = userEvent.setup();
+    render(<DateField value="" onChange={vi.fn()} aria-label="만료일" />);
+
+    await user.type(screen.getByLabelText("만료일"), "2026071");
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("입력을 마치면 안내가 사라진다", async () => {
+    const user = userEvent.setup();
+    render(<DateField value="" onChange={vi.fn()} aria-label="만료일" />);
+
+    const input = screen.getByLabelText("만료일");
+    await user.type(input, "2026071");
+    await user.tab();
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+
+    await user.type(input, "8");
+    await user.tab();
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("min 이전 날짜는 값으로 확정하지 않고 범위를 알린다", async () => {
+    const user = userEvent.setup();
+    const handleChange = vi.fn();
+    render(
+      <DateField value="" onChange={handleChange} aria-label="종료일" min="2026-07-10" />
+    );
+
+    const input = screen.getByLabelText("종료일");
+    await user.type(input, "20260705");
+    await user.tab();
+
+    expect(handleChange).toHaveBeenLastCalledWith("");
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+  });
+
+  it("max 이후 날짜는 값으로 확정하지 않는다", async () => {
+    const user = userEvent.setup();
+    const handleChange = vi.fn();
+    render(<DateField value="" onChange={handleChange} aria-label="시작일" max="2026-07-10" />);
+
+    await user.type(screen.getByLabelText("시작일"), "20260715");
+
+    expect(handleChange).toHaveBeenLastCalledWith("");
+  });
+
+  it("범위 안 날짜는 값으로 확정한다", async () => {
+    const user = userEvent.setup();
+    const handleChange = vi.fn();
+    render(
+      <DateField
+        value=""
+        onChange={handleChange}
+        aria-label="조회일"
+        min="2026-07-01"
+        max="2026-07-31"
+      />
+    );
+
+    await user.type(screen.getByLabelText("조회일"), "20260715");
+
+    expect(handleChange).toHaveBeenLastCalledWith("2026-07-15");
+  });
+
+  it("경계값(min·max 당일)은 확정한다", async () => {
+    const user = userEvent.setup();
+    const handleChange = vi.fn();
+    render(
+      <DateField
+        value=""
+        onChange={handleChange}
+        aria-label="조회일"
+        min="2026-07-01"
+        max="2026-07-31"
+      />
+    );
+
+    const input = screen.getByLabelText("조회일");
+    await user.type(input, "20260701");
+    expect(handleChange).toHaveBeenLastCalledWith("2026-07-01");
+
+    await user.clear(input);
+    await user.type(input, "20260731");
+    expect(handleChange).toHaveBeenLastCalledWith("2026-07-31");
+  });
+
+  it("달력에 없는 날짜는 blur 후 안내한다", async () => {
+    const user = userEvent.setup();
+    render(<DateField value="" onChange={vi.fn()} aria-label="만료일" />);
+
+    const input = screen.getByLabelText("만료일");
+    await user.type(input, "20260231");
+    await user.tab();
+
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+  });
+});
+
+describe("DateTimeField 입력 검증", () => {
+  it("min 이전 일시는 확정하지 않는다", async () => {
+    const user = userEvent.setup();
+    const handleChange = vi.fn();
+    render(
+      <DateTimeField
+        value=""
+        onChange={handleChange}
+        aria-label="경기 시작 시각"
+        min="2026-08-13T19:00"
+      />
+    );
+
+    await user.type(screen.getByLabelText("경기 시작 시각"), "202608131830");
+
+    expect(handleChange).toHaveBeenLastCalledWith("");
+  });
+
+  it("범위 안 일시는 확정한다", async () => {
+    const user = userEvent.setup();
+    const handleChange = vi.fn();
+    render(
+      <DateTimeField
+        value=""
+        onChange={handleChange}
+        aria-label="경기 시작 시각"
+        min="2026-08-13T19:00"
+      />
+    );
+
+    await user.type(screen.getByLabelText("경기 시작 시각"), "202608131930");
+
+    expect(handleChange).toHaveBeenLastCalledWith("2026-08-13T19:30");
+  });
+
+  it("blur 해도 미완성 일시를 지우지 않는다", async () => {
+    const user = userEvent.setup();
+    render(<DateTimeField value="" onChange={vi.fn()} aria-label="경기 시작 시각" />);
+
+    const input = screen.getByLabelText("경기 시작 시각");
+    await user.type(input, "202608131");
+    await user.tab();
+
+    expect(input).toHaveValue("2026-08-13 1");
+  });
+});

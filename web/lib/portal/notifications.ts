@@ -4,6 +4,7 @@
  */
 
 import type { Notification, NotificationPage } from "./types";
+import { NotificationPageSchema } from "./schemas";
 
 export type { Notification, NotificationPage };
 
@@ -13,7 +14,14 @@ export interface ListNotificationsParams {
   size?: number;
 }
 
-/** 내 알림 목록 조회 */
+/**
+ * 내 알림 목록 조회.
+ *
+ * 응답을 **실제로 파싱한다**. 캐스팅만 하면 스키마가 런타임에 쓰이지 않아 계약 위반을 못 잡는다 —
+ * BE가 발송 원형에서 사용자 관점 응답(`MyNotificationResponse`)으로 바꿨을 때 전 필드가 조용히
+ * `undefined`가 되어 카드가 통째로 비었고(02-파트너포털/17 캡쳐), 타입·테스트는 전부 GREEN이었다.
+ * 형제 경로(`fetchPartnerSales`)와 같은 기준으로 파싱해 조용히 틀리는 대신 즉시 실패하게 한다.
+ */
 export async function fetchMyNotifications(
   params: ListNotificationsParams = {}
 ): Promise<NotificationPage> {
@@ -34,7 +42,7 @@ export async function fetchMyNotifications(
     } | null;
     throw new Error(body?.message ?? `알림 목록 조회 실패: ${res.status}`);
   }
-  return res.json() as Promise<NotificationPage>;
+  return NotificationPageSchema.parse(await res.json());
 }
 
 /**
