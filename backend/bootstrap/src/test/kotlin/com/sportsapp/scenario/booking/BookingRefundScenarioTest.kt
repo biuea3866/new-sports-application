@@ -10,6 +10,8 @@ import com.sportsapp.domain.booking.repository.SlotRepository
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.support.TransactionTemplate
 import java.math.BigDecimal
 import java.time.ZonedDateTime
 
@@ -18,6 +20,7 @@ class BookingRefundScenarioTest(
     @Autowired private val bookingDomainService: BookingDomainService,
     @Autowired private val refundBookingUseCase: RefundBookingUseCase,
     @Autowired private val jdbcTemplate: JdbcTemplate,
+    @Autowired private val transactionManager: PlatformTransactionManager,
 ) : BaseIntegrationTest() {
 
     init {
@@ -37,7 +40,15 @@ class BookingRefundScenarioTest(
                 )
             )
             val pending = bookingDomainService.createPendingBooking(userId = 1L, slotId = slot.id)
-            val confirmed = bookingDomainService.confirmBooking(pending.id, paymentId = 100L)
+            // confirmBooking()은 QueryDSL 벌크 UPDATE(BookingRepository.tryConfirm)를 호출해
+            // 활성 트랜잭션이 필요하다(BookingDomainService에는 @Transactional이 없다 —
+            // 트랜잭션 경계는 UseCase가 소유하는 컨벤션). 테스트에서 UseCase를 거치지 않고
+            // 직접 호출하므로 TransactionTemplate으로 명시적으로 트랜잭션을 열어준다.
+            val confirmed = requireNotNull(
+                TransactionTemplate(transactionManager).execute {
+                    bookingDomainService.confirmBooking(pending.id, paymentId = 100L)
+                }
+            )
 
             When("refundBooking을 실행하면") {
                 val command = RefundBookingCommand(
@@ -97,10 +108,20 @@ class BookingRefundScenarioTest(
                 )
             )
             val pending = bookingDomainService.createPendingBooking(userId = 1L, slotId = slot.id)
-            bookingDomainService.confirmBooking(pending.id, paymentId = 200L)
+            // confirmBooking()은 QueryDSL 벌크 UPDATE(BookingRepository.tryConfirm)를 호출해
+            // 활성 트랜잭션이 필요하다(BookingDomainService에는 @Transactional이 없다 —
+            // 트랜잭션 경계는 UseCase가 소유하는 컨벤션). 테스트에서 UseCase를 거치지 않고
+            // 직접 호출하므로 TransactionTemplate으로 명시적으로 트랜잭션을 열어준다.
+            TransactionTemplate(transactionManager).execute {
+                bookingDomainService.confirmBooking(pending.id, paymentId = 200L)
+            }
 
             When("동일 bookingId로 confirmBooking을 재호출하면") {
-                val result = bookingDomainService.confirmBooking(pending.id, paymentId = 300L)
+                val result = requireNotNull(
+                    TransactionTemplate(transactionManager).execute {
+                        bookingDomainService.confirmBooking(pending.id, paymentId = 300L)
+                    }
+                )
 
                 Then("DB 상태가 1회만 변경되고 paymentId는 최초 값을 유지한다") {
                     result.status shouldBe BookingStatus.CONFIRMED

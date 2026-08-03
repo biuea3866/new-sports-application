@@ -18,6 +18,8 @@ import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.support.TransactionTemplate
 import java.time.ZonedDateTime
 
 /** AUTH-04 — `X-User-Id` 헤더 대신 `Authorization: Bearer JWT`로 본인 식별한다. */
@@ -28,6 +30,7 @@ class BookingCancelApiTest(
     @Autowired private val jdbcTemplate: JdbcTemplate,
     @Autowired private val restTemplate: TestRestTemplate,
     @Autowired private val jwtIssuer: JwtIssuer,
+    @Autowired private val transactionManager: PlatformTransactionManager,
 ) : BaseIntegrationTest() {
 
     private fun headers(userId: Long): HttpHeaders = HttpHeaders().apply {
@@ -81,7 +84,13 @@ class BookingCancelApiTest(
                 )
             )
             val pending = bookingDomainService.createPendingBooking(userId = 1L, slotId = slot.id)
-            bookingDomainService.confirmBooking(pending.id, paymentId = 200L)
+            // confirmBooking()은 QueryDSL 벌크 UPDATE(BookingRepository.tryConfirm)를 호출해
+            // 활성 트랜잭션이 필요하다(BookingDomainService에는 @Transactional이 없다 —
+            // 트랜잭션 경계는 UseCase가 소유하는 컨벤션). 테스트에서 UseCase를 거치지 않고
+            // 직접 호출하므로 TransactionTemplate으로 명시적으로 트랜잭션을 열어준다.
+            TransactionTemplate(transactionManager).execute {
+                bookingDomainService.confirmBooking(pending.id, paymentId = 200L)
+            }
 
             When("POST /bookings/{id}/cancel 호출 시") {
                 val response = restTemplate.exchange(

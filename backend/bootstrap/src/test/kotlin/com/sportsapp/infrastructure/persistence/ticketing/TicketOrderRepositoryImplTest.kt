@@ -172,7 +172,14 @@ class TicketOrderRepositoryImplTest(
             ticketOrderRepositoryImpl.save(order)
 
             When("tryConfirm CAS를 호출하면") {
-                val transitioned = ticketOrderRepositoryImpl.tryConfirm(orderId = order.id, paymentId = 555L)
+                // tryConfirm은 QueryDSL 벌크 UPDATE라 활성 트랜잭션이 필요하다
+                // (TicketOrderRepositoryImpl에는 @Transactional이 없다 — 트랜잭션 경계는
+                // UseCase가 소유하는 컨벤션). TransactionTemplate으로 명시적으로 열어준다.
+                val transitioned = requireNotNull(
+                    TransactionTemplate(transactionManager).execute {
+                        ticketOrderRepositoryImpl.tryConfirm(orderId = order.id, paymentId = 555L)
+                    }
+                )
 
                 Then("[R-04] deletedAt IS NULL 조건 미충족으로 0행 반환한다") {
                     transitioned shouldBe false
@@ -180,7 +187,11 @@ class TicketOrderRepositoryImplTest(
             }
 
             When("tryExpire CAS를 호출하면") {
-                val transitioned = ticketOrderRepositoryImpl.tryExpire(order.id)
+                val transitioned = requireNotNull(
+                    TransactionTemplate(transactionManager).execute {
+                        ticketOrderRepositoryImpl.tryExpire(order.id)
+                    }
+                )
 
                 Then("[R-05] deletedAt IS NULL 조건 미충족으로 0행 반환한다") {
                     transitioned shouldBe false
