@@ -28,7 +28,7 @@ class InternalBookingOrderApiControllerTest : BehaviorSpec({
         .build()
 
     fun orderHistoryItem(bookingId: Long = 1L, status: String = "CONFIRMED") = InternalBookingOrderHistoryItemResponse(
-        bookingId = bookingId,
+        sourceId = bookingId,
         title = "8월 3일 10:00~11:00",
         status = status,
         paymentId = 100L,
@@ -48,7 +48,7 @@ class InternalBookingOrderApiControllerTest : BehaviorSpec({
             Then("200과 함께 그 사용자의 계약 필드로 정규화된 목록을 반환한다") {
                 result.andExpect(status().isOk)
                     .andExpect(jsonPath("$.length()").value(1))
-                    .andExpect(jsonPath("$[0].bookingId").value(1))
+                    .andExpect(jsonPath("$[0].sourceId").value(1))
                     .andExpect(jsonPath("$[0].status").value("CONFIRMED"))
                 verify { findBookingOrderHistoryUseCase.execute(1L) }
             }

@@ -31,9 +31,9 @@ class FindBookingOrderHistoryUseCaseTest : BehaviorSpec({
         When("execute(1L)를 호출하면") {
             val result = useCase.execute(1L)
 
-            Then("계약 필드(bookingId·title·status·paymentId·createdAt)만 담은 응답을 반환한다") {
+            Then("계약 필드(sourceId·title·status·paymentId·createdAt)만 담은 응답을 반환한다") {
                 result.size shouldBe 1
-                result.first().bookingId shouldBe 1L
+                result.first().sourceId shouldBe 1L
                 result.first().status shouldBe "CONFIRMED"
                 result.first().paymentId shouldBe 100L
             }
@@ -50,7 +50,7 @@ class FindBookingOrderHistoryUseCaseTest : BehaviorSpec({
             val result = useCase.execute(1L)
 
             Then("요청한 사용자(1L)의 예약만 조회하고 다른 사용자(2L)의 예약은 포함되지 않는다") {
-                result.map { it.bookingId } shouldBe listOf(1L)
+                result.map { it.sourceId } shouldBe listOf(1L)
                 verify(exactly = 1) { bookingDomainService.findOrderHistory(1L) }
                 verify(exactly = 0) { bookingDomainService.findOrderHistory(2L) }
             }
