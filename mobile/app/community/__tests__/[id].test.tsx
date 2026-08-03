@@ -9,6 +9,7 @@ import mockUseColorScheme from 'react-native/Libraries/Utilities/useColorScheme'
 
 import type { CommentPageResponse, PostDetailResponse } from '../../../api/types';
 import CommunityDetailScreen from '../[id]';
+import { darkTokens, lightTokens } from '../../../theme/tokens';
 
 jest.mock('../../../lib/usePosts', () => ({
   usePost: jest.fn(),
@@ -186,5 +187,25 @@ describe('커뮤니티 게시글 상세 화면', () => {
     render(<CommunityDetailScreen />);
 
     expect(screen.getByText('토요일 경기 후기')).toBeTruthy();
+  });
+
+  it('다크 모드에서 본문 영역 배경이 다크 토큰을 따른다', () => {
+    mockUseColorScheme.mockReturnValue('dark');
+
+    render(<CommunityDetailScreen />);
+
+    expect(screen.getByTestId('community-detail-screen-root')).toHaveStyle({
+      backgroundColor: darkTokens.background,
+    });
+  });
+
+  it('라이트 모드에서 본문 영역 배경이 라이트 토큰을 따른다', () => {
+    mockUseColorScheme.mockReturnValue('light');
+
+    render(<CommunityDetailScreen />);
+
+    expect(screen.getByTestId('community-detail-screen-root')).toHaveStyle({
+      backgroundColor: lightTokens.background,
+    });
   });
 });

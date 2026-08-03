@@ -7,7 +7,7 @@ import { render, screen } from '@testing-library/react-native';
 import mockUseColorScheme from 'react-native/Libraries/Utilities/useColorScheme';
 
 import { MessageBubble } from '../MessageBubble';
-import { lightTokens } from '../../../theme/tokens';
+import { darkTokens, lightTokens } from '../../../theme/tokens';
 import type { MessageResponse } from '../../../api/types';
 
 const baseMessage: MessageResponse = {
@@ -58,5 +58,33 @@ describe('MessageBubble', () => {
     render(<MessageBubble message={baseMessage} isMine={false} isRead />);
 
     expect(screen.queryByText('읽음')).toBeNull();
+  });
+
+  // 시각은 말풍선 위에 얹히므로 배경과 짝이 맞는 색을 써야 읽힌다.
+  // (내 말풍선은 accent 계열 배경이라 textTertiary를 쓰면 대비가 무너진다)
+  it('내 메시지 시각은 내 말풍선 텍스트 색을 사용한다', () => {
+    render(<MessageBubble message={baseMessage} isMine isRead={false} />);
+
+    expect(screen.getByTestId('message-sent-time')).toHaveStyle({
+      color: lightTokens.bubbleMineText,
+    });
+  });
+
+  it('상대 메시지 시각은 상대 말풍선 텍스트 색을 사용한다', () => {
+    render(<MessageBubble message={baseMessage} isMine={false} isRead={false} />);
+
+    expect(screen.getByTestId('message-sent-time')).toHaveStyle({
+      color: lightTokens.bubbleOtherText,
+    });
+  });
+
+  it('다크 모드에서도 내 메시지 시각이 내 말풍선 텍스트 색을 사용한다', () => {
+    mockUseColorScheme.mockReturnValue('dark');
+
+    render(<MessageBubble message={baseMessage} isMine isRead={false} />);
+
+    expect(screen.getByTestId('message-sent-time')).toHaveStyle({
+      color: darkTokens.bubbleMineText,
+    });
   });
 });

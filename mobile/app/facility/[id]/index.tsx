@@ -26,18 +26,13 @@ import { isFeatureEnabled } from '../../../lib/feature-flags';
 import { AirQualityCard, type AirQualityCardStatus } from '../../../components/AirQualityCard';
 import { ProgramCard } from '../../../components/facility/ProgramCard';
 import { EmptyState, ErrorView, LoadingView, ThemedText } from '../../../components/ui';
-import type { FacilityResponse, FacilityType } from '../../../api/types';
+import type { FacilityResponse } from '../../../api/types';
 import { useTheme } from '../../../theme/useTheme';
 import { createStyles } from '../../../theme/createStyles';
 import type { ThemeTokens } from '../../../theme/tokens';
 
-const TYPE_LABEL: Record<FacilityType, string> = {
-  INDOOR: '실내',
-  OUTDOOR: '실외',
-  MIXED: '복합',
-};
-
 const REGION_UNKNOWN_LABEL = '지역 미확인';
+const FACILITY_TYPE_UNKNOWN_LABEL = '정보 없음';
 // BE는 주소 파싱에 실패한 시설의 시도명을 "미지정"으로 보존한다
 // (FacilityRegion.UNSPECIFIED, backend/domain/facility/vo/FacilityRegion.kt).
 // 웹(web/app/portal/facilities/sido-display.ts#resolveSidoDisplayName)과 동일하게
@@ -53,6 +48,12 @@ function resolveSidoLabel(sidoName: FacilityResponse['sidoName'] | undefined): s
     return REGION_UNKNOWN_LABEL;
   }
   return sidoName;
+}
+
+/** 시설 종류는 BE가 사람이 읽는 문자열로 내려준다 — 비어 있을 때만 대체 문구를 쓴다. */
+function resolveFacilityTypeLabel(type: FacilityResponse['type'] | undefined): string {
+  const trimmed = (type ?? '').trim();
+  return trimmed.length > 0 ? trimmed : FACILITY_TYPE_UNKNOWN_LABEL;
 }
 
 function resolveCoordinate(value: number | null | undefined): number | null {
@@ -138,7 +139,7 @@ export default function FacilityDetailScreen() {
             </View>
             <View style={styles.row}>
               <Text style={styles.label}>타입</Text>
-              <Text style={styles.value}>{TYPE_LABEL[data.type]}</Text>
+              <Text style={styles.value}>{resolveFacilityTypeLabel(data.type)}</Text>
             </View>
             <View style={styles.row}>
               <Text style={styles.label}>주소</Text>

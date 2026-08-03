@@ -150,7 +150,8 @@ class RecruitmentQueryDomainServiceTest : BehaviorSpec({
         every { applicationRepository.findById(11L) } returns application
 
         val recruitment = openRecruitment(recruiterUserId = 5L)
-        every { recruitmentRepository.findById(1L) } returns recruitment
+        // 주문상세는 삭제된 모집도 조회해야 하므로 findByIdIncludingDeleted 를 쓴다.
+        every { recruitmentRepository.findByIdIncludingDeleted(1L) } returns recruitment
 
         When("getApplicationDetailBy(applicationId=11, requesterUserId=100)를 호출하면") {
             val result = service.getApplicationDetailBy(applicationId = 11L, requesterUserId = 100L)
@@ -195,7 +196,7 @@ class RecruitmentQueryDomainServiceTest : BehaviorSpec({
     Given("신청은 있으나 참조 모집이 존재하지 않는 상황") {
         val application = Application.create(recruitmentId = 404L, applicantUserId = 100L)
         every { applicationRepository.findById(11L) } returns application
-        every { recruitmentRepository.findById(404L) } returns null
+        every { recruitmentRepository.findByIdIncludingDeleted(404L) } returns null
 
         When("getApplicationDetailBy(applicationId=11, requesterUserId=100)를 호출하면") {
             Then("ResourceNotFoundException을 던진다") {

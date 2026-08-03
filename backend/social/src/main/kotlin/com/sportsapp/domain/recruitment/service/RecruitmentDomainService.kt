@@ -146,7 +146,9 @@ class RecruitmentDomainService(
         val application = applicationRepository.findById(applicationId)
             ?: throw ResourceNotFoundException("Application", applicationId)
         application.requireOwnedBy(applicantUserId)
-        val recruitment = recruitmentRepository.findById(application.recruitmentId)
+        // 이미 성립한 신청의 취소·환불은 모집 삭제 여부와 무관하게 성립해야 한다 —
+        // 삭제 필터가 걸린 findById를 쓰면 삭제된 모집의 신청자가 환불을 못 받는다.
+        val recruitment = recruitmentRepository.findByIdIncludingDeleted(application.recruitmentId)
             ?: throw ResourceNotFoundException("Recruitment", application.recruitmentId)
         application.cancelByApplicant(recruitment.applicationDeadline, refundAmountFor(recruitment))
         val saved = applicationRepository.save(application)
@@ -190,7 +192,8 @@ class RecruitmentDomainService(
         val application = applicationRepository.findById(applicationId)
             ?: throw ResourceNotFoundException("Application", applicationId)
         application.requireOwnedBy(requesterUserId)
-        val recruitment = recruitmentRepository.findById(application.recruitmentId)
+        // 주문상세도 신청 생명주기의 일부다 — 모집이 삭제돼도 내 주문은 조회돼야 한다.
+        val recruitment = recruitmentRepository.findByIdIncludingDeleted(application.recruitmentId)
             ?: throw ResourceNotFoundException("Recruitment", application.recruitmentId)
         return ApplicationDetail(
             applicationId = application.id,

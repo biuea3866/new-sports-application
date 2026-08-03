@@ -25,8 +25,31 @@ export interface CreateRecruitmentFormErrors {
   deadline?: string;
 }
 
+/** 사용자가 값을 한 번이라도 입력한 필드 집합. */
+export type TouchedRecruitmentFields = Partial<Record<keyof CreateRecruitmentFormErrors, boolean>>;
+
+/**
+ * 화면에 실제로 노출할 오류만 남긴다. 아직 건드리지 않은 필드의 오류는 숨긴다 —
+ * 초기 빈 폼에 붉은 오류가 떠 있으면 사용자가 무엇을 잘못했는지 오해한다.
+ */
+export function pickVisibleErrors(
+  errors: CreateRecruitmentFormErrors,
+  touched: TouchedRecruitmentFields
+): CreateRecruitmentFormErrors {
+  return {
+    capacity: touched.capacity === true ? errors.capacity : undefined,
+    feeAmount: touched.feeAmount === true ? errors.feeAmount : undefined,
+    deadline: touched.deadline === true ? errors.deadline : undefined,
+  };
+}
+
+/**
+ * 날짜·시각 입력 파싱. placeholder가 "2026-08-09 20:00" 예시를 보여주므로 공백 구분 입력도
+ * 받는다 — 공백 구분은 ES 명세 밖(엔진마다 동작이 갈린다)이라 ISO 형태로 정규화한 뒤 파싱한다.
+ */
 function parseDate(value: string): Date | null {
-  const parsed = new Date(value);
+  const normalized = value.trim().replace(' ', 'T');
+  const parsed = new Date(normalized);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 

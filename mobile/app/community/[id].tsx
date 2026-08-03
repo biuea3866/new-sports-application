@@ -96,80 +96,93 @@ export default function CommunityDetailScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView style={styles.scroll}>
-        <View style={styles.content}>
-          {post.type === 'NOTICE' && (
-            <View style={[styles.noticeBadge, { backgroundColor: tokens.accent }]}>
-              <ThemedText variant="onAccent" style={styles.noticeBadgeLabel}>
-                📌 공지
+      <ThemedView
+        testID="community-detail-screen-root"
+        style={styles.container}
+        background="background"
+      >
+        <ScrollView style={styles.scroll}>
+          <View style={styles.content}>
+            {post.type === 'NOTICE' && (
+              <View style={[styles.noticeBadge, { backgroundColor: tokens.accent }]}>
+                <ThemedText variant="onAccent" style={styles.noticeBadgeLabel}>
+                  📌 공지
+                </ThemedText>
+              </View>
+            )}
+            <ThemedText variant="primary" style={styles.title} accessibilityRole="header">
+              {post.title}
+            </ThemedText>
+            <View style={styles.meta}>
+              <ThemedText variant="secondary" accessibilityLabel={`작성자 ID ${post.userId}`}>
+                {formatAuthor(post.userId)}
               </ThemedText>
+              <ThemedText variant="secondary">{formatRelativeTime(post.createdAt)}</ThemedText>
             </View>
-          )}
-          <ThemedText variant="primary" style={styles.title} accessibilityRole="header">
-            {post.title}
-          </ThemedText>
-          <View style={styles.meta}>
-            <ThemedText variant="secondary" accessibilityLabel={`작성자 ID ${post.userId}`}>
-              {formatAuthor(post.userId)}
-            </ThemedText>
-            <ThemedText variant="secondary">{formatRelativeTime(post.createdAt)}</ThemedText>
-          </View>
-          <View style={[styles.divider, { backgroundColor: tokens.border }]} />
-          <ThemedText variant="primary" style={styles.body} accessibilityRole="text">
-            {post.content}
-          </ThemedText>
-
-          <View style={[styles.commentsSection, { borderTopColor: tokens.border }]}>
-            <ThemedText variant="primary" style={styles.commentsTitle}>
-              {`댓글 ${comments.length}`}
+            <View style={[styles.divider, { backgroundColor: tokens.border }]} />
+            <ThemedText variant="primary" style={styles.body} accessibilityRole="text">
+              {post.content}
             </ThemedText>
 
-            {commentsQuery.isLoading && <LoadingView />}
+            <View style={[styles.commentsSection, { borderTopColor: tokens.border }]}>
+              <ThemedText variant="primary" style={styles.commentsTitle}>
+                {`댓글 ${comments.length}`}
+              </ThemedText>
 
-            {!commentsQuery.isLoading && commentsQuery.isError && (
-              <ErrorView
-                message="댓글을 불러오지 못했어요"
-                onRetry={() => commentsQuery.refetch()}
-              />
-            )}
+              {commentsQuery.isLoading && <LoadingView />}
 
-            {!commentsQuery.isLoading && !commentsQuery.isError && comments.length === 0 && (
-              <EmptyState message={EMPTY_COMMENTS_MESSAGE} />
-            )}
+              {!commentsQuery.isLoading && commentsQuery.isError && (
+                <ErrorView
+                  message="댓글을 불러오지 못했어요"
+                  onRetry={() => commentsQuery.refetch()}
+                />
+              )}
 
-            {!commentsQuery.isLoading &&
-              !commentsQuery.isError &&
-              comments.map((comment) => (
-                <View key={comment.id} style={styles.commentItem}>
-                  <ThemedText variant="secondary" style={styles.commentMeta}>
-                    {`${formatAuthor(comment.userId)} · ${formatRelativeTime(comment.createdAt)}`}
-                  </ThemedText>
-                  <ThemedText variant="primary" style={styles.commentContent}>
-                    {comment.content}
-                  </ThemedText>
-                </View>
-              ))}
+              {!commentsQuery.isLoading && !commentsQuery.isError && comments.length === 0 && (
+                <EmptyState message={EMPTY_COMMENTS_MESSAGE} />
+              )}
+
+              {!commentsQuery.isLoading &&
+                !commentsQuery.isError &&
+                comments.map((comment) => (
+                  <View key={comment.id} style={styles.commentItem}>
+                    <ThemedText variant="secondary" style={styles.commentMeta}>
+                      {`${formatAuthor(comment.userId)} · ${formatRelativeTime(comment.createdAt)}`}
+                    </ThemedText>
+                    <ThemedText variant="primary" style={styles.commentContent}>
+                      {comment.content}
+                    </ThemedText>
+                  </View>
+                ))}
+            </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
 
-      <View style={[styles.commentInputRow, { borderTopColor: tokens.border }]}>
-        <TextInput
-          style={[styles.commentInput, { borderColor: tokens.border, color: tokens.textPrimary }]}
-          value={commentText}
-          onChangeText={setCommentText}
-          placeholder="댓글을 입력하세요"
-          placeholderTextColor={tokens.textTertiary}
-          accessibilityLabel="댓글 입력"
-        />
-        <View style={styles.commentSubmitButton}>
-          <Button
-            label="등록"
-            onPress={handleAddComment}
-            disabled={commentText.trim().length === 0 || addCommentMutation.isPending}
+        <View style={[styles.commentInputRow, { borderTopColor: tokens.border }]}>
+          <TextInput
+            style={[
+              styles.commentInput,
+              {
+                borderColor: tokens.border,
+                color: tokens.textPrimary,
+                backgroundColor: tokens.surfaceElevated,
+              },
+            ]}
+            value={commentText}
+            onChangeText={setCommentText}
+            placeholder="댓글을 입력하세요"
+            placeholderTextColor={tokens.textTertiary}
+            accessibilityLabel="댓글 입력"
           />
+          <View style={styles.commentSubmitButton}>
+            <Button
+              label="등록"
+              onPress={handleAddComment}
+              disabled={commentText.trim().length === 0 || addCommentMutation.isPending}
+            />
+          </View>
         </View>
-      </View>
+      </ThemedView>
     </KeyboardAvoidingView>
   );
 }

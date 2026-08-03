@@ -9,6 +9,7 @@
  * loading/error 판단은 방 목록(useRooms) 조회 결과만 기준으로 한다.
  */
 import { useMemo } from 'react';
+import { resolveRoomDisplayName } from './room-format';
 import { useUnreadCounts } from './useChat';
 import { useRooms } from './useRooms';
 import type { RoomResponse } from '../api/types';
@@ -30,12 +31,8 @@ export interface UseRoomListItemsResult {
   refetch: () => void;
 }
 
-function resolveDisplayName(room: RoomResponse): string {
-  if (room.name && room.name.trim().length > 0) {
-    return room.name;
-  }
-  return room.type === 'DIRECT' ? '1:1 채팅' : '그룹 채팅';
-}
+/** 아직 대화가 없는 방은 미리보기가 비어 행이 제목만 남는다 — 상태를 문구로 드러낸다. */
+const NO_MESSAGE_PREVIEW_TEXT = '아직 대화가 없어요';
 
 function formatTimeLabel(lastMessageAt: string | null | undefined): string | null {
   if (!lastMessageAt) {
@@ -61,8 +58,8 @@ export function mapRoomsToListItems(
 ): RoomListItemView[] {
   return rooms.map((room) => ({
     id: room.id,
-    displayName: resolveDisplayName(room),
-    previewText: room.lastMessagePreview ?? null,
+    displayName: resolveRoomDisplayName(room),
+    previewText: room.lastMessagePreview ?? NO_MESSAGE_PREVIEW_TEXT,
     timeLabel: formatTimeLabel(room.lastMessageAt),
     unreadCount: resolveUnreadCount(room.id, unreadCounts),
   }));

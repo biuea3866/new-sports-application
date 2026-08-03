@@ -150,7 +150,12 @@ export interface CreateBookingResult {
 }
 
 // --- Facility ---
-export type FacilityType = 'INDOOR' | 'OUTDOOR' | 'MIXED';
+/**
+ * 시설 종류. BE `domain/facility/entity/Facility.kt#type`은 enum이 아니라 자유 문자열이며
+ * 공공데이터 시설 종류(풋살장·수영장·테니스장 …)를 그대로 담는다 — 사람이 읽는 값이므로
+ * 별도 라벨 매핑 없이 표시한다. (INDOOR/OUTDOOR/MIXED로 가정하면 표시 값이 비어버린다.)
+ */
+export type FacilityType = string;
 
 /** BE `domain/facility/vo/TimeRange` — 브레이크타임 등 시각 구간. */
 export interface TimeRangeResponse {
@@ -169,7 +174,11 @@ export interface OperatingHoursResponse {
 }
 
 export interface FacilityResponse {
-  id: number;
+  /**
+   * BE `Facility`는 MongoDB 문서라 `_id`가 문자열이다(`fac-001`·`SEED-0001` …).
+   * 라우트 파라미터·`SlotResponse.facilityId`도 문자열이므로 계약을 문자열로 맞춘다.
+   */
+  id: string;
   name: string;
   gu: string;
   type: FacilityType;

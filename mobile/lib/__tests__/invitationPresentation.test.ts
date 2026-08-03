@@ -9,8 +9,9 @@ import {
 } from '../invitationPresentation';
 
 describe('formatSpeakPermissionLabel', () => {
-  it('canSpeak=true면 "발화 가능"을 반환한다', () => {
-    expect(formatSpeakPermissionLabel(true)).toBe('발화 가능');
+  // "발화"는 게스트 초대 맥락에 등장할 이유가 없는 용어다 — 사용자 언어로 표기한다.
+  it('canSpeak=true면 "대화 참여 가능"을 반환한다', () => {
+    expect(formatSpeakPermissionLabel(true)).toBe('대화 참여 가능');
   });
 
   it('canSpeak=false면 "읽기 전용"을 반환한다', () => {

@@ -51,6 +51,7 @@ class ApplicationApiControllerTest : BehaviorSpec({
             ApplicationResponse(
                 id = 11L,
                 recruitmentId = 1L,
+                applicantUserId = 71L,
                 status = ApplicationStatus.CONFIRMED,
                 paymentId = 99L,
                 appliedAt = ZonedDateTime.now(),
@@ -91,6 +92,7 @@ class ApplicationApiControllerTest : BehaviorSpec({
         } returns ApplicationResponse(
             id = 11L,
             recruitmentId = 1L,
+            applicantUserId = 71L,
             status = ApplicationStatus.CANCELLED,
             paymentId = 99L,
             appliedAt = ZonedDateTime.now(),

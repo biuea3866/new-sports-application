@@ -14,10 +14,13 @@ class RecruitmentRepositoryImpl(
         recruitmentJpaRepository.save(recruitment)
 
     override fun findById(id: Long): Recruitment? =
+        recruitmentJpaRepository.findByIdAndDeletedAtIsNull(id)
+
+    override fun findByIdIncludingDeleted(id: Long): Recruitment? =
         recruitmentJpaRepository.findByIdOrNull(id)
 
     override fun findForUpdateById(id: Long): Recruitment? =
-        recruitmentJpaRepository.findForUpdateById(id)
+        recruitmentJpaRepository.findForUpdateByIdAndDeletedAtIsNull(id)
 
     override fun findAll(communityId: Long?): List<Recruitment> =
         recruitmentJpaRepository.findAllBy(communityId)

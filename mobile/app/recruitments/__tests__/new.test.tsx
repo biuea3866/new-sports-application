@@ -73,6 +73,38 @@ describe('RecruitmentNewScreen', () => {
     jest.clearAllMocks();
   });
 
+  // 사용자가 아직 아무것도 입력하지 않은 초기 화면에 붉은 오류를 띄우면 안 된다.
+  it('초기 빈 폼에는 인라인 오류를 표시하지 않는다', () => {
+    render(<RecruitmentNewScreen />);
+
+    expect(screen.queryByText('정원은 1명 이상의 정수로 입력해주세요')).toBeNull();
+    expect(screen.queryByText('참가비는 0원 이상으로 입력해주세요')).toBeNull();
+    expect(screen.queryByText('신청마감은 활동일보다 이전이어야 해요')).toBeNull();
+  });
+
+  it('정원 입력을 건드린 뒤 값이 비면 그때 인라인 오류를 표시한다', () => {
+    render(<RecruitmentNewScreen />);
+    fireEvent.changeText(screen.getByLabelText('정원'), '3');
+    fireEvent.changeText(screen.getByLabelText('정원'), '');
+
+    expect(screen.getByText('정원은 1명 이상의 정수로 입력해주세요')).toBeTruthy();
+  });
+
+  it('참가비를 건드리기 전에는 참가비 오류를 표시하지 않는다', () => {
+    render(<RecruitmentNewScreen />);
+    fireEvent.changeText(screen.getByLabelText('정원'), '0');
+
+    expect(screen.getByText('정원은 1명 이상의 정수로 입력해주세요')).toBeTruthy();
+    expect(screen.queryByText('참가비는 0원 이상으로 입력해주세요')).toBeNull();
+  });
+
+  it('날짜 입력 placeholder는 예시 값을 보여준다', () => {
+    render(<RecruitmentNewScreen />);
+
+    expect(screen.getByLabelText('활동일시').props.placeholder).toBe('예: 2026-08-09 20:00');
+    expect(screen.getByLabelText('신청마감').props.placeholder).toBe('예: 2026-08-08 23:59');
+  });
+
   it('필수값을 입력하지 않으면 개설 CTA가 비활성이다', () => {
     render(<RecruitmentNewScreen />);
 

@@ -2,7 +2,17 @@
  * room.ts — 채팅방 API 함수
  */
 import { getBeClient } from './be-client';
-import type { ListMessagesResponse, MessageResponse, RoomResponse, SendMessageRequest } from './types';
+import type {
+  ListMessagesResponse,
+  MessageResponse,
+  RoomResponse,
+  SendMessageRequest,
+} from './types';
+
+export async function getRoom(roomId: number): Promise<RoomResponse> {
+  const res = await getBeClient().get<RoomResponse>(`/rooms/${roomId}`);
+  return res.data;
+}
 
 export async function listMyRooms(keyword?: string): Promise<RoomResponse[]> {
   const res = await getBeClient().get<RoomResponse[]>('/rooms/me', {
@@ -11,10 +21,7 @@ export async function listMyRooms(keyword?: string): Promise<RoomResponse[]> {
   return res.data;
 }
 
-export async function listMessages(
-  roomId: number,
-  cursor?: string
-): Promise<ListMessagesResponse> {
+export async function listMessages(roomId: number, cursor?: string): Promise<ListMessagesResponse> {
   const res = await getBeClient().get<ListMessagesResponse>(`/rooms/${roomId}/messages`, {
     params: cursor ? { cursor } : undefined,
   });

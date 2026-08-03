@@ -60,7 +60,7 @@ class RecruitmentCancelApplicationDomainServiceTest : BehaviorSpec({
         application.confirm(paymentId = 500L)
         val recruitment = recruitmentWithDeadline(ZonedDateTime.now().plusDays(5))
         every { applicationRepository.findById(1L) } returns application
-        every { recruitmentRepository.findById(1L) } returns recruitment
+        every { recruitmentRepository.findByIdIncludingDeleted(1L) } returns recruitment
         every { cancellationPolicy.feeRateFor(any()) } returns BigDecimal("0.05")
         every { applicationRepository.save(any()) } answers { firstArg() }
         val capturedEvents = slot<List<DomainEvent>>()
@@ -98,7 +98,7 @@ class RecruitmentCancelApplicationDomainServiceTest : BehaviorSpec({
         application.confirm(paymentId = 501L)
         val recruitment = recruitmentWithDeadline(ZonedDateTime.now().plusDays(2))
         every { applicationRepository.findById(2L) } returns application
-        every { recruitmentRepository.findById(2L) } returns recruitment
+        every { recruitmentRepository.findByIdIncludingDeleted(2L) } returns recruitment
         every { cancellationPolicy.feeRateFor(any()) } returns BigDecimal("0.10")
         every { applicationRepository.save(any()) } answers { firstArg() }
         val capturedEvents = slot<List<DomainEvent>>()
@@ -137,7 +137,7 @@ class RecruitmentCancelApplicationDomainServiceTest : BehaviorSpec({
         application.cancelByApplicant(recruitment.applicationDeadline, BigDecimal("9500.00"))
         application.pullDomainEvents()
         every { applicationRepository.findById(3L) } returns application
-        every { recruitmentRepository.findById(3L) } returns recruitment
+        every { recruitmentRepository.findByIdIncludingDeleted(3L) } returns recruitment
         every { cancellationPolicy.feeRateFor(any()) } returns BigDecimal("0.05")
         every { applicationRepository.save(any()) } answers { firstArg() }
         val capturedEvents = slot<List<DomainEvent>>()

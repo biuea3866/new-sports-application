@@ -11,6 +11,11 @@ import {
   Alert,
 } from 'react-native';
 import { useMyBookings, useCancelBooking } from '../../lib/useMyBookings';
+import {
+  BOOKING_STATUS_LABEL,
+  isBookingCancellable,
+  resolveBookingTitle,
+} from '../../lib/booking-format';
 import type { BookingResponse } from '../../api/types';
 import { useTheme } from '../../theme/useTheme';
 import { createStyles } from '../../theme/createStyles';
@@ -27,15 +32,16 @@ function BookingItem({
 }) {
   const { tokens } = useTheme();
   const styles = useStyles(tokens);
-  const canCancel = booking.status === 'PENDING' || booking.status === 'CONFIRMED';
+  const bookingTitle = resolveBookingTitle(booking);
+  const canCancel = isBookingCancellable(booking.status);
 
   return (
-    <View style={styles.card} accessibilityLabel={`예약 ${booking.id}`}>
-      <Text style={styles.bookingId} accessibilityRole="text">
-        예약 #{booking.id}
+    <View style={styles.card} accessibilityLabel={bookingTitle}>
+      <Text style={styles.bookingTitle} accessibilityRole="text">
+        {bookingTitle}
       </Text>
       <Text style={styles.bookingStatus} accessibilityRole="text">
-        상태: {booking.status}
+        상태: {BOOKING_STATUS_LABEL[booking.status]}
       </Text>
       <Text style={styles.bookingDate} accessibilityRole="text">
         예약일: {new Date(booking.createdAt).toLocaleDateString('ko-KR')}
@@ -47,7 +53,7 @@ function BookingItem({
           onPress={() => onCancel(booking.id)}
           disabled={isCancelling}
           accessibilityRole="button"
-          accessibilityLabel={`예약 ${booking.id} 취소`}
+          accessibilityLabel={`${bookingTitle} 예약 취소`}
           accessibilityState={{ disabled: isCancelling }}
         >
           <Text style={styles.cancelButtonText}>{isCancelling ? '취소 중...' : '예약 취소'}</Text>
@@ -152,7 +158,7 @@ const useStyles = createStyles((theme: ThemeTokens) =>
       padding: 16,
       marginBottom: 12,
     },
-    bookingId: {
+    bookingTitle: {
       fontSize: 15,
       fontWeight: '600',
       color: theme.textPrimary,

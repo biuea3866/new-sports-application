@@ -5,6 +5,7 @@
  */
 import {
   isCreateRecruitmentFormValid,
+  pickVisibleErrors,
   toCreateRecruitmentRequest,
   validateCreateRecruitmentForm,
   type CreateRecruitmentFormValues,
@@ -82,5 +83,59 @@ describe('toCreateRecruitmentRequest', () => {
   it('communityId가 지정되면 그대로 전달한다', () => {
     const request = toCreateRecruitmentRequest({ ...VALID_VALUES, communityId: 7 });
     expect(request.communityId).toBe(7);
+  });
+});
+
+describe('날짜 입력 형식', () => {
+  // placeholder가 "2026-08-09 20:00" 예시를 보여주므로 공백 구분 입력도 받아들여야 한다.
+  it('날짜와 시각을 공백으로 구분해 입력해도 유효한 값으로 인식한다', () => {
+    const values = {
+      ...VALID_VALUES,
+      activityAt: '2026-07-12 14:00',
+      applicationDeadline: '2026-07-10 23:00',
+    };
+
+    expect(isCreateRecruitmentFormValid(values)).toBe(true);
+    expect(toCreateRecruitmentRequest(values).activityAt).toBe(
+      new Date('2026-07-12T14:00').toISOString()
+    );
+  });
+
+  it('형식이 아예 다르면 유효하지 않은 값으로 본다', () => {
+    expect(isCreateRecruitmentFormValid({ ...VALID_VALUES, activityAt: '언젠가 오후' })).toBe(
+      false
+    );
+  });
+});
+
+describe('pickVisibleErrors', () => {
+  const allErrors = {
+    capacity: '정원은 1명 이상의 정수로 입력해주세요',
+    feeAmount: '참가비는 0원 이상으로 입력해주세요',
+    deadline: '신청마감은 활동일보다 이전이어야 해요',
+  };
+
+  it('아무 필드도 건드리지 않았으면 오류를 노출하지 않는다', () => {
+    expect(pickVisibleErrors(allErrors, {})).toEqual({
+      capacity: undefined,
+      feeAmount: undefined,
+      deadline: undefined,
+    });
+  });
+
+  it('건드린 필드의 오류만 노출한다', () => {
+    expect(pickVisibleErrors(allErrors, { capacity: true })).toEqual({
+      capacity: '정원은 1명 이상의 정수로 입력해주세요',
+      feeAmount: undefined,
+      deadline: undefined,
+    });
+  });
+
+  it('건드렸지만 오류가 없으면 노출할 것이 없다', () => {
+    expect(pickVisibleErrors({}, { capacity: true, feeAmount: true, deadline: true })).toEqual({
+      capacity: undefined,
+      feeAmount: undefined,
+      deadline: undefined,
+    });
   });
 });

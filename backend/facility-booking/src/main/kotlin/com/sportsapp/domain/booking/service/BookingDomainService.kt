@@ -168,6 +168,20 @@ class BookingDomainService(
         bookingRepository.findPageByUserId(userId, status, pageable)
 
     /**
+     * 목록 조회(GET /bookings/me)가 소비하는 booking + slot 조인 상세 페이지.
+     *
+     * 목록도 단건 상세와 동일하게 사람이 읽는 라벨(title)을 담아야 한다 — 라벨이 없으면
+     * 화면이 예약 PK(`예약 #2`)를 대신 노출하게 된다. Slot은 booking 컨텍스트 자기
+     * aggregate이라 조인해도 도메인 교차가 아니며, 페이지 단위로 한 번에 조회해 N+1을 피한다.
+     */
+    fun findMyBookingDetails(userId: Long, status: BookingStatus?, pageable: Pageable): Page<BookingDetail> {
+        val bookingPage = bookingRepository.findPageByUserId(userId, status, pageable)
+        val slotsById = slotRepository.findAllByIds(bookingPage.content.map { it.slotId })
+            .associateBy { it.id }
+        return bookingPage.map { booking -> BookingDetail.of(booking, slotsById[booking.slotId]) }
+    }
+
+    /**
      * order 통합 조회(BE-08)가 소비하는 사용자별 주문(라벨 title 포함) 조회.
      * orderType=BOOKING 매핑은 order 파사드가 담당한다.
      */

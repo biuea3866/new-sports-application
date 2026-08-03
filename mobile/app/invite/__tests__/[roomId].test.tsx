@@ -38,6 +38,7 @@ function buildInvitationResponse(overrides: Partial<InvitationResponse> = {}): I
   return {
     id: 1,
     roomId: 42,
+    roomName: '테스트 채팅방',
     inviterUserId: 7,
     inviteeUserId: 99,
     status: 'PENDING',

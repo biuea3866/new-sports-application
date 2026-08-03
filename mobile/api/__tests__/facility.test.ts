@@ -14,10 +14,10 @@ describe('Facility API', () => {
   afterEach(() => mock.reset());
 
   const mockFacility: FacilityResponse = {
-    id: 1,
+    id: 'fac-001',
     name: '강남 테니스장',
     gu: '강남구',
-    type: 'OUTDOOR',
+    type: '테니스장',
     address: '서울 강남구 테헤란로 100',
     parking: true,
     tel: '02-1234-5678',
@@ -71,8 +71,8 @@ describe('Facility API', () => {
 
       const res = await client.get<FacilityResponse>('/facilities/1');
 
-      expect(res.data.id).toBe(1);
-      expect(res.data.type).toBe('OUTDOOR');
+      expect(res.data.id).toBe('fac-001');
+      expect(res.data.type).toBe('테니스장');
       expect(res.data.parking).toBe(true);
     });
 

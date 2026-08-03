@@ -33,6 +33,7 @@ import RoomsListScreen from '../index';
 const PENDING_INVITATION: InvitationResponse = {
   id: 1,
   roomId: 7,
+  roomName: '테스트 채팅방',
   inviterUserId: 10,
   inviteeUserId: 20,
   status: 'PENDING',
