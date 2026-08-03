@@ -2,10 +2,16 @@
 
 /**
  * SlotRow — 캘린더 셀 안의 슬롯 1건 (design-fe-web.md W-SL 와이어프레임).
- * 상태 배지(OPEN/CLOSED) + close/open 액션 + 기존 편집/삭제 액션을 표시한다.
+ * 상태 배지 + close/open 액션 + 기존 편집/삭제 액션을 표시한다.
+ *
+ * 배지 문구는 액션 버튼(`마감`/`오픈`)과 겹치지 않게 상태형(`예약 가능`/`마감됨`)으로 쓴다 —
+ * 같은 단어면 "지금 상태"인지 "누르면 할 일"인지 화면에서 구분되지 않는다.
  */
 import { Badge } from "@/components/ui/badge";
 import type { SlotResponse } from "@/lib/portal/slots";
+
+const OPEN_STATUS_LABEL = "예약 가능";
+const CLOSED_STATUS_LABEL = "마감됨";
 
 export interface SlotRowProps {
   slot: SlotResponse;
@@ -41,9 +47,9 @@ export function SlotRow({ slot, onEdit, onDelete, onClose, onOpen, closing, open
             ? "border-transparent bg-success text-success-foreground"
             : "border-transparent bg-warning text-warning-foreground"
         }
-        aria-label={`슬롯 상태 ${isOpen ? "OPEN" : "CLOSED"}`}
+        aria-label={`슬롯 상태 ${isOpen ? OPEN_STATUS_LABEL : CLOSED_STATUS_LABEL}`}
       >
-        {isOpen ? "OPEN" : "CLOSED"}
+        {isOpen ? OPEN_STATUS_LABEL : CLOSED_STATUS_LABEL}
       </Badge>
 
       {isOpen ? (

@@ -152,25 +152,25 @@ export default function AuditLogsPage(): JSX.Element {
                     scope="col"
                     className="px-4 py-3 text-left font-medium text-muted-foreground"
                   >
-                    Tool Name
+                    도구 이름
                   </th>
                   <th
                     scope="col"
                     className="px-4 py-3 text-left font-medium text-muted-foreground"
                   >
-                    Status Code
+                    응답 코드
                   </th>
                   <th
                     scope="col"
                     className="px-4 py-3 text-left font-medium text-muted-foreground"
                   >
-                    Latency (ms)
+                    응답 시간(ms)
                   </th>
                   <th
                     scope="col"
                     className="px-4 py-3 text-left font-medium text-muted-foreground"
                   >
-                    Called At
+                    호출 시각
                   </th>
                 </tr>
               </thead>

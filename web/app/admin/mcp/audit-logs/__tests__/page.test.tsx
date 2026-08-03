@@ -174,15 +174,28 @@ describe("AuditLogsPage", () => {
     expect(lastCall?.from).toBe("2026-05-01T00:00:00.000Z");
   });
 
-  it("[U-10] 감사 로그 테이블 헤더에 Tool Name, Status Code, Latency, Called At 컬럼이 있다", async () => {
+  // 한국어 콘솔인데 표 헤더 4개만 영문으로 남아 있던 결함(03-관리자콘솔/07 캡쳐).
+  it("[U-10] 감사 로그 테이블 헤더를 한글로 보여준다", async () => {
     mockFetchAuditLogs.mockResolvedValue(EMPTY_RESPONSE);
     render(<AuditLogsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Tool Name")).toBeInTheDocument();
+      expect(screen.getByRole("columnheader", { name: "도구 이름" })).toBeInTheDocument();
     });
-    expect(screen.getByText("Status Code")).toBeInTheDocument();
-    expect(screen.getByText("Latency (ms)")).toBeInTheDocument();
-    expect(screen.getByText("Called At")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "응답 코드" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "응답 시간(ms)" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "호출 시각" })).toBeInTheDocument();
+  });
+
+  it("[U-10] 영문 표 헤더가 남아 있지 않다", async () => {
+    mockFetchAuditLogs.mockResolvedValue(EMPTY_RESPONSE);
+    render(<AuditLogsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("columnheader", { name: "도구 이름" })).toBeInTheDocument();
+    });
+    for (const englishHeader of ["Tool Name", "Status Code", "Latency (ms)", "Called At"]) {
+      expect(screen.queryByText(englishHeader)).not.toBeInTheDocument();
+    }
   });
 });

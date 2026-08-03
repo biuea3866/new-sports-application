@@ -98,11 +98,11 @@ describe("슬롯 open/close", () => {
     vi.unstubAllGlobals();
   });
 
-  it("OPEN 슬롯에는 상태 배지와 마감 버튼이 노출된다", async () => {
+  it("예약 가능한 슬롯에는 상태 배지와 마감 버튼이 노출된다", async () => {
     render(<SlotsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("OPEN")).toBeInTheDocument();
+      expect(screen.getByText("예약 가능")).toBeInTheDocument();
     });
     expect(screen.getByRole("button", { name: /마감/ })).toBeInTheDocument();
   });
@@ -111,7 +111,7 @@ describe("슬롯 open/close", () => {
     render(<SlotsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("OPEN")).toBeInTheDocument();
+      expect(screen.getByText("예약 가능")).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole("button", { name: /마감/ }));
@@ -121,11 +121,11 @@ describe("슬롯 open/close", () => {
     });
   });
 
-  it("확인 다이얼로그에서 마감을 확정하면 상태가 CLOSED로 전환된다", async () => {
+  it("확인 다이얼로그에서 마감을 확정하면 상태가 마감됨으로 전환된다", async () => {
     render(<SlotsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("OPEN")).toBeInTheDocument();
+      expect(screen.getByText("예약 가능")).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole("button", { name: /마감/ }));
@@ -137,7 +137,7 @@ describe("슬롯 open/close", () => {
     fireEvent.click(screen.getByRole("button", { name: "마감" }));
 
     await waitFor(() => {
-      expect(screen.getByText("CLOSED")).toBeInTheDocument();
+      expect(screen.getByText("마감됨")).toBeInTheDocument();
     });
     expect(screen.getByRole("button", { name: /오픈/ })).toBeInTheDocument();
   });
@@ -147,7 +147,7 @@ describe("슬롯 open/close", () => {
     render(<SlotsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("OPEN")).toBeInTheDocument();
+      expect(screen.getByText("예약 가능")).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole("button", { name: /마감/ }));
