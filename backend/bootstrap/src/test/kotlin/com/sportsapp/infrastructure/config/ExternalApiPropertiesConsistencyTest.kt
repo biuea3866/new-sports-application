@@ -35,11 +35,19 @@ class ExternalApiPropertiesConsistencyTest : BehaviorSpec({
     // 직접 로드해 검증 대상으로 삼는다.
     val mainApplicationYmlPath = File("src/main/resources/application.yml").absolutePath
 
+    // 호스트 쉘이 다른 프로젝트(mock-servers/kakao-local, mock-servers/solapi 등)용으로
+    // KAKAO_REST_API_KEY·DATA_GO_KR_SERVICE_KEY를 실제 값으로 export해 두면, 이 OS 환경변수가
+    // Spring Environment의 systemEnvironment PropertySource로 유입되어 application.yml의
+    // `${VAR:default}` 플레이스홀더가 기대하는 기본값을 조용히 덮어쓴다 — 테스트가 호스트 쉘
+    // 상태에 의존하게 되는 결함이다. systemProperties(더 높은 우선순위)로 동일 키를 명시
+    // 선점해 실제 env를 가리고, 개별 시나리오가 필요하면 *properties로 다시 덮어쓴다(더 뒤에
+    // 적용되어 우선한다).
     fun contextRunner(vararg properties: String) =
         ApplicationContextRunner()
             .withInitializer(ConfigDataApplicationContextInitializer())
             .withUserConfiguration(ExternalApiPropertiesTestConfig::class.java)
             .withPropertyValues("spring.config.location=file:$mainApplicationYmlPath")
+            .withSystemProperties("KAKAO_REST_API_KEY=", "DATA_GO_KR_SERVICE_KEY=mock-service-key")
             .withPropertyValues(*properties)
 
     Given("Properties 를 기본 생성자로 직접 생성하는 경우") {
