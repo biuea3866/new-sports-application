@@ -231,4 +231,55 @@ describe('LimitedDropPurchaseScreen', () => {
 
     expect(screen.getByLabelText('구매 확정')).toBeTruthy();
   });
+
+  // ── 무엇을 얼마에 사는지 ──────────────────────────────────────────────────
+  // 회귀 방지: 이 화면에 수량 스테퍼와 `구매 확정`만 있고 상품명·가격·헤더가 전부 없어,
+  // 직전 화면(14-한정판-드롭)에서 본 정보를 기억에 의존한 채 결제하게 됐다
+  // (01-모바일앱/15 캡쳐 — "금액을 모른 채 구매하는 화면").
+
+  it('무엇을 사는지 알 수 있게 화면 제목을 보여준다', () => {
+    mockUsePurchaseLimitedDropReturn(jest.fn(), {});
+
+    render(<LimitedDropPurchaseScreen />);
+
+    expect(screen.getByLabelText('구매 확인')).toBeTruthy();
+  });
+
+  it('상품명을 보여준다', () => {
+    mockUsePurchaseLimitedDropReturn(jest.fn(), {});
+
+    render(<LimitedDropPurchaseScreen />);
+
+    expect(screen.getByText('한정판 러닝화')).toBeTruthy();
+  });
+
+  it('상품 단가를 보여준다', () => {
+    mockUsePurchaseLimitedDropReturn(jest.fn(), {});
+
+    render(<LimitedDropPurchaseScreen />);
+
+    expect(screen.getByText('89,000원')).toBeTruthy();
+  });
+
+  it('수량을 바꾸면 결제 예정 금액이 함께 바뀐다', () => {
+    mockUsePurchaseLimitedDropReturn(jest.fn(), {});
+
+    render(<LimitedDropPurchaseScreen />);
+    expect(screen.getByLabelText('결제 예정 금액 89,000원')).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText('수량 증가'));
+
+    expect(screen.getByLabelText('결제 예정 금액 178,000원')).toBeTruthy();
+  });
+
+  it('상품명이 비어 있어도 제목 자리가 비지 않는다', () => {
+    mockUseLimitedDropReturn({
+      data: { ...baseDrop, productName: '  ' },
+    } as Partial<ReturnType<typeof useLimitedDrop>>);
+    mockUsePurchaseLimitedDropReturn(jest.fn(), {});
+
+    render(<LimitedDropPurchaseScreen />);
+
+    expect(screen.getByText('한정판 상품')).toBeTruthy();
+  });
 });
