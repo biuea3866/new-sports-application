@@ -1,6 +1,7 @@
 package com.sportsapp.application.featureflag.dto
 
 import com.sportsapp.domain.featureflag.entity.FeatureFlagAuditLog
+import com.sportsapp.domain.user.dto.UserDisplayNames
 import org.springframework.data.domain.Page
 
 /**
@@ -15,8 +16,17 @@ data class ListFeatureFlagAuditLogsResponse(
     val pageSize: Int,
 ) {
     companion object {
-        fun of(page: Page<FeatureFlagAuditLog>): ListFeatureFlagAuditLogsResponse = ListFeatureFlagAuditLogsResponse(
-            content = page.content.map { FeatureFlagAuditLogResponse.of(it) },
+        /**
+         * [actorDisplayNames]는 호출부(UseCase)가 `actorUserId` 전체를 한 번에 조회해 채운
+         * 결과다(N+1 방지) — 이 매퍼는 조회하지 않고 매핑만 한다.
+         */
+        fun of(
+            page: Page<FeatureFlagAuditLog>,
+            actorDisplayNames: UserDisplayNames,
+        ): ListFeatureFlagAuditLogsResponse = ListFeatureFlagAuditLogsResponse(
+            content = page.content.map {
+                FeatureFlagAuditLogResponse.of(it, actorDisplayNames.of(it.actorUserId))
+            },
             totalElements = page.totalElements,
             totalPages = page.totalPages,
             pageNumber = page.number,

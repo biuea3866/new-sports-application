@@ -1,11 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import type {
-  FeatureFlagStrategy,
-  FeatureFlagType,
-  StrategyType,
-} from "@/lib/admin/feature-flags/schemas";
+import type { FeatureFlagStrategy, StrategyType } from "@/lib/admin/feature-flags/schemas";
 import { GlobalToggleField } from "./GlobalToggleField";
 import { PercentageRolloutField } from "./PercentageRolloutField";
 import { AttributeMatchField } from "./AttributeMatchField";
@@ -15,7 +11,8 @@ import { createDefaultStrategyFor, isStrategyValid, strategyTypeOptionsFor } fro
 interface StrategyFormProps {
   value: FeatureFlagStrategy;
   onChange: (next: FeatureFlagStrategy) => void;
-  flagType: FeatureFlagType;
+  /** 응답의 flag.type은 계약 밖 값도 통과하므로(원문 폴백) string으로 받는다. */
+  flagType: string;
   disabled?: boolean;
   onValidityChange?: (valid: boolean) => void;
 }

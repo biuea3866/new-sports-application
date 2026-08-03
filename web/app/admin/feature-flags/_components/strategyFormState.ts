@@ -5,7 +5,6 @@
  */
 import type {
   FeatureFlagStrategy,
-  FeatureFlagType,
   FeatureFlagVariant,
   StrategyType,
 } from "@/lib/admin/feature-flags/schemas";
@@ -20,8 +19,12 @@ const STRATEGY_TYPE_OPTIONS_FOR_OTHERS: StrategyType[] = [
   "ATTRIBUTE_MATCH",
 ];
 
-/** flagType에 따른 전략 유형 선택지 게이팅 — EXPERIMENT는 VARIANT_BUCKETING만 노출한다. */
-export function strategyTypeOptionsFor(flagType: FeatureFlagType): StrategyType[] {
+/**
+ * flagType에 따른 전략 유형 선택지 게이팅 — EXPERIMENT는 VARIANT_BUCKETING만 노출한다.
+ * flagType은 응답 스키마가 계약 밖 값도 통과시키므로(원문 폴백) string으로 받는다 — 이 함수는
+ * "EXPERIMENT"인지 여부만 비교하므로 계약 밖 값이 와도 안전하게 나머지 3종 취급으로 떨어진다.
+ */
+export function strategyTypeOptionsFor(flagType: string): StrategyType[] {
   return flagType === "EXPERIMENT" ? STRATEGY_TYPE_OPTIONS_FOR_EXPERIMENT : STRATEGY_TYPE_OPTIONS_FOR_OTHERS;
 }
 

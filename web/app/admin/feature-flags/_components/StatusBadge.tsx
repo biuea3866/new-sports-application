@@ -1,28 +1,25 @@
 /**
  * 플래그 상태(ACTIVE/ARCHIVED) 배지 — 순수 프레젠테이션.
  * 색은 FE-02 시맨틱 토큰만 사용한다(no-hardcoded-color). S1·S3 공유.
+ * 라벨은 featureFlagStatus.ts(단일 출처)를 통해 한글로 렌더한다 — 계약 밖 값은 원문 폴백.
  * 근거 티켓: FE-05.
  */
 import { cn } from "@/lib/utils";
-import type { FeatureFlagStatus } from "@/lib/admin/feature-flags/schemas";
+import { featureFlagStatusLabel } from "@/lib/admin/feature-flags/featureFlagStatus";
 
 interface StatusBadgeProps {
-  status: FeatureFlagStatus;
+  status: string;
 }
 
-function assertNever(value: never): never {
-  throw new Error(`처리되지 않은 status 타입입니다: ${JSON.stringify(value)}`);
-}
+const KNOWN_STATUS_CLASS_NAMES: Record<string, string> = {
+  ACTIVE: "bg-success/15 text-success",
+  ARCHIVED: "bg-muted text-muted-foreground",
+};
 
-function statusClassName(status: FeatureFlagStatus): string {
-  switch (status) {
-    case "ACTIVE":
-      return "bg-success/15 text-success";
-    case "ARCHIVED":
-      return "bg-muted text-muted-foreground";
-    default:
-      return assertNever(status);
-  }
+const UNKNOWN_STATUS_CLASS_NAME = "bg-muted text-muted-foreground";
+
+function statusClassName(status: string): string {
+  return KNOWN_STATUS_CLASS_NAMES[status] ?? UNKNOWN_STATUS_CLASS_NAME;
 }
 
 export function StatusBadge({ status }: StatusBadgeProps) {
@@ -33,7 +30,7 @@ export function StatusBadge({ status }: StatusBadgeProps) {
         statusClassName(status)
       )}
     >
-      {status}
+      {featureFlagStatusLabel(status)}
     </span>
   );
 }

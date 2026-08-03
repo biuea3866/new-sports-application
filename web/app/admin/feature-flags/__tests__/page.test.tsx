@@ -136,10 +136,10 @@ describe("FeatureFlagsPage", () => {
 
     const table = screen.getByRole("table");
     expect(within(table).getByText("demo.feature.hello")).toBeInTheDocument();
-    expect(within(table).getByText("ACTIVE")).toBeInTheDocument();
+    expect(within(table).getByText("활성")).toBeInTheDocument();
     expect(within(table).getByText("전역 ON")).toBeInTheDocument();
     expect(within(table).getByText("old.experiment")).toBeInTheDocument();
-    expect(within(table).getByText("ARCHIVED")).toBeInTheDocument();
+    expect(within(table).getByText("아카이브됨")).toBeInTheDocument();
   });
 
   it("status 필터를 ARCHIVED로 바꾸면 해당 필터로 재조회한다", async () => {
