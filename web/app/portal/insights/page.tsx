@@ -6,6 +6,7 @@
  */
 import React, { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { formatKrw } from "./format-krw";
 import {
   type OperationKpiResponse,
   type FetchKpiParams,
@@ -35,7 +36,7 @@ interface KpiCardProps {
 
 function KpiCard({ label, value }: KpiCardProps) {
   return (
-    <div className="rounded-lg border bg-card p-4 shadow-sm">
+    <div className="rounded-lg border bg-card p-4 shadow-sm" aria-label={`${label} 지표`}>
       <p className="text-sm text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-bold">{value}</p>
     </div>
@@ -206,11 +207,18 @@ export default function InsightsPage(): JSX.Element {
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
               <KpiCard
                 label="일 매출 합계"
-                value={`${data.goods.dailyRevenueTotal.toLocaleString("ko-KR")}원`}
+                value={formatKrw(data.goods.dailyRevenueTotal)}
               />
+              {/*
+                BE 필드명은 inventoryTurnoverRate지만 실제 계산은 `기간매출 ÷ 활성상품수`라
+                회전율(횟수)이 아니라 상품당 평균 매출액(원)이다(GoodsDomainService#aggregateGoodsKpi).
+                옆 칸 "일 매출 합계"(`기간매출 ÷ 기간일수`)와 값이 같아 보일 수 있는데, 분자가 같고
+                분모가 우연히 일치할 때(활성상품수 == 기간일수)뿐이다 — 같은 소스가 아니다.
+                진짜 회전율(판매수량 ÷ 평균재고)은 집계 쿼리가 없어 별도 과제로 남아 있다.
+              */}
               <KpiCard
-                label="재고 회전율"
-                value={data.goods.inventoryTurnoverRate.toFixed(2)}
+                label="상품당 평균 매출"
+                value={formatKrw(data.goods.inventoryTurnoverRate)}
               />
               <KpiCard
                 label="품절 SKU"
