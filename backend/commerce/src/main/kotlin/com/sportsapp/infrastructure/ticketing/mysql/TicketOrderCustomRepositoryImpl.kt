@@ -25,6 +25,17 @@ class TicketOrderCustomRepositoryImpl : TicketOrderCustomRepository {
     private val queryFactory: JPAQueryFactory
         get() = JPAQueryFactory(entityManager)
 
+    override fun findOrderIdsByEventOwnerUserId(ownerUserId: Long): List<Long> =
+        queryFactory.select(ticketOrder.id)
+                    .from(ticketOrder)
+                    .join(event).on(event.id.eq(ticketOrder.lockedEventId))
+                    .where(
+                        event.ownerId.eq(ownerUserId),
+                        event.deletedAt.isNull,
+                        ticketOrder.deletedAt.isNull,
+                    )
+                    .fetch()
+
     override fun aggregateTicketSales(
         ownerUserId: Long,
         eventId: Long?,

@@ -64,6 +64,17 @@ class BookingJpaRepositoryImpl : BookingQueryDslRepository {
         return PageImpl(content, pageable, total)
     }
 
+    override fun findIdsByOwnerUserId(ownerUserId: Long): List<Long> =
+        queryFactory.select(booking.id)
+                    .from(booking)
+                    .join(slot).on(slot.id.eq(booking.slotId))
+                    .where(
+                        slot.ownerId.eq(ownerUserId),
+                        slot.deletedAt.isNull,
+                        booking.deletedAt.isNull,
+                    )
+                    .fetch()
+
     /**
      * 파트너 스코프 예약 조회 — 예약이 걸린 슬롯의 소유자로 판정한다.
      *

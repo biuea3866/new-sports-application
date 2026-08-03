@@ -295,6 +295,34 @@ export const PaymentSummarySchema = z.object({
 
 export const PaymentSummaryPageSchema = PageSchema(PaymentSummarySchema);
 
+/**
+ * 파트너 매출 한 건 — 결제 정보 + **판매자 귀속 금액**.
+ *
+ * `amount`는 결제 총액, `sellerAmount`는 그중 이 판매자 몫이다. 굿즈 주문에는 여러 판매자의
+ * 상품이 섞일 수 있어 결제 총액을 그대로 매출로 보면 남의 매출까지 내 것으로 읽힌다.
+ * BE 응답은 Spring Page(content)가 아니라 sales[] 형태라 PageSchema를 쓰지 않는다.
+ */
+export const PartnerSaleSchema = z.object({
+  paymentId: z.number().int().positive(),
+  orderType: OrderTypeSchema,
+  orderId: z.number().int().positive(),
+  amount: z.number(),
+  sellerAmount: z.number(),
+  method: z.string(),
+  provider: absentAsNull(z.string()),
+  status: PaymentStatusSchema,
+  paidAt: absentAsNull(z.string()),
+  pgTransactionId: absentAsNull(z.string()),
+});
+
+export const PartnerSalesResponseSchema = z.object({
+  sales: z.array(PartnerSaleSchema),
+  totalElements: z.number().int().nonnegative(),
+  totalPages: z.number().int().nonnegative(),
+  page: z.number().int().nonnegative(),
+  size: z.number().int().positive(),
+});
+
 // ─── Facility Schedule (운영시간 / 휴무일) ─────────────────────────────────────
 // BE 계약: FacilityScheduleApiController. 시간은 "HH:mm" 또는 "HH:mm:ss"(LocalTime.toString()),
 // 날짜는 "yyyy-MM-dd"(LocalDate.toString()) 문자열이다.

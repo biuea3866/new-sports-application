@@ -9,9 +9,9 @@ import { Button } from "@/components/ui/button";
 import {
   type ListPaymentsParams,
   type PaymentStatus,
-  type PaymentSummary,
-  type PaymentSummaryPage,
-  fetchMyPayments,
+  type PartnerSale,
+  type PartnerSalesResponse,
+  fetchPartnerSales,
 } from "@/lib/portal/payments";
 
 const STATUS_LABELS: Record<PaymentStatus, string> = {
@@ -35,7 +35,7 @@ export default function PaymentsPage() {
   const [paidAtFrom, setPaidAtFrom] = useState("");
   const [paidAtTo, setPaidAtTo] = useState("");
   const [page, setPage] = useState(0);
-  const [payments, setPayments] = useState<PaymentSummary[]>([]);
+  const [payments, setPayments] = useState<PartnerSale[]>([]);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -49,12 +49,12 @@ export default function PaymentsPage() {
       if (statusFilter !== "") params.status = statusFilter;
       if (paidAtFrom !== "") params.paidAtFrom = `${paidAtFrom}T00:00:00Z`;
       if (paidAtTo !== "") params.paidAtTo = `${paidAtTo}T23:59:59Z`;
-      const data: PaymentSummaryPage = await fetchMyPayments(params);
-      setPayments(data.content);
+      const data: PartnerSalesResponse = await fetchPartnerSales(params);
+      setPayments(data.sales);
       setTotalPages(data.totalPages);
       setTotalElements(data.totalElements);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "결제 목록을 불러오지 못했습니다.");
+      setError(err instanceof Error ? err.message : "매출 내역을 불러오지 못했습니다.");
     } finally {
       setLoading(false);
     }
@@ -79,7 +79,10 @@ export default function PaymentsPage() {
     setPage(0);
   }
 
-  const pageTotal = payments.reduce((sum, p) => sum + p.amount, 0);
+  // 결제 총액과 내 매출을 각각 합산한다 — 혼합 굿즈 주문에서는 두 값이 다르고,
+  // 파트너가 실제로 번 금액은 내 매출 쪽이다.
+  const pagePaymentTotal = payments.reduce((sum, sale) => sum + sale.amount, 0);
+  const pageSellerTotal = payments.reduce((sum, sale) => sum + sale.sellerAmount, 0);
 
   return (
     <main className="min-h-screen p-6 space-y-6">
@@ -178,6 +181,9 @@ export default function PaymentsPage() {
                   <th scope="col" className="px-4 py-3 text-right font-medium text-muted-foreground">
                     금액
                   </th>
+                  <th scope="col" className="px-4 py-3 text-right font-medium text-muted-foreground">
+                    내 매출
+                  </th>
                   <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                     결제 수단
                   </th>
@@ -198,17 +204,20 @@ export default function PaymentsPage() {
               <tbody className="divide-y divide-border">
                 {payments.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
+                    <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
                       결제 내역이 없습니다.
                     </td>
                   </tr>
                 ) : (
                   payments.map((payment) => (
-                    <tr key={payment.id} className="hover:bg-muted/50">
-                      <td className="px-4 py-3 text-foreground">{payment.id}</td>
+                    <tr key={payment.paymentId} className="hover:bg-muted/50">
+                      <td className="px-4 py-3 text-foreground">{payment.paymentId}</td>
                       <td className="px-4 py-3">{payment.orderType}</td>
                       <td className="px-4 py-3 text-right tabular-nums">
                         {payment.amount.toLocaleString("ko-KR")}원
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums font-medium">
+                        {payment.sellerAmount.toLocaleString("ko-KR")}원
                       </td>
                       <td className="px-4 py-3">{payment.method}</td>
                       <td className="px-4 py-3 text-muted-foreground">
@@ -239,8 +248,11 @@ export default function PaymentsPage() {
                     <td colSpan={2} className="px-4 py-3 text-muted-foreground">
                       이 페이지 합계
                     </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                      {pagePaymentTotal.toLocaleString("ko-KR")}원
+                    </td>
                     <td className="px-4 py-3 text-right tabular-nums">
-                      {pageTotal.toLocaleString("ko-KR")}원
+                      {pageSellerTotal.toLocaleString("ko-KR")}원
                     </td>
                     <td colSpan={5} />
                   </tr>

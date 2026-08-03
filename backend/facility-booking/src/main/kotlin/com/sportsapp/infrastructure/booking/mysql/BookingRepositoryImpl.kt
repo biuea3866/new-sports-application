@@ -42,6 +42,9 @@ class BookingRepositoryImpl(
     ): Page<Booking> =
         bookingJpaRepository.findPageByUserId(userId, status, pageable)
 
+    override fun findIdsByOwnerUserId(ownerUserId: Long): List<Long> =
+        bookingJpaRepository.findIdsByOwnerUserId(ownerUserId)
+
     override fun findPageByOwnerUserId(
         ownerUserId: Long,
         status: BookingStatus?,

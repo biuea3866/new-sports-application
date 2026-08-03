@@ -167,6 +167,10 @@ class BookingDomainService(
     fun findMyBookings(userId: Long, status: BookingStatus?, pageable: Pageable): Page<Booking> =
         bookingRepository.findPageByUserId(userId, status, pageable)
 
+    /** 소유 시설 슬롯에 걸린 예약 id 전체 — 포털 매출 내역이 결제 조회 키로 쓴다. */
+    fun findBookingIdsForFacilityOwner(ownerUserId: Long): List<Long> =
+        bookingRepository.findIdsByOwnerUserId(ownerUserId)
+
     /**
      * 목록 조회(GET /bookings/me)가 소비하는 booking + slot 조인 상세 페이지.
      *

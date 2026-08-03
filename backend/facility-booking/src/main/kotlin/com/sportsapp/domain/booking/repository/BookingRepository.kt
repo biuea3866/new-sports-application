@@ -24,6 +24,9 @@ interface BookingRepository {
      * 예약이 걸린 슬롯의 소유자(`slots.owner_id`)로 판정해 **내 시설에 들어온 남의 예약**을
      * 반환한다. 소유권을 슬롯으로 판정하므로 facility 컨텍스트를 참조하지 않는다.
      */
+    /** 소유 시설 슬롯에 걸린 예약 id 전체 — 포털 매출 내역이 결제 조회 키로 쓴다. */
+    fun findIdsByOwnerUserId(ownerUserId: Long): List<Long>
+
     fun findPageByOwnerUserId(
         ownerUserId: Long,
         status: BookingStatus?,

@@ -21,6 +21,8 @@ interface BookingQueryDslRepository {
         pageable: Pageable,
     ): Page<Booking>
 
+    fun findIdsByOwnerUserId(ownerUserId: Long): List<Long>
+
     fun findPageByOwnerUserId(
         ownerUserId: Long,
         status: BookingStatus?,

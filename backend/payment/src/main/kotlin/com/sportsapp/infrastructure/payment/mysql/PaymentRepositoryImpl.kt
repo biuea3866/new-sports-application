@@ -1,5 +1,6 @@
 package com.sportsapp.infrastructure.payment.mysql
 
+import com.sportsapp.domain.common.order.OrderRef
 import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.payment.dto.PaymentLivenessQueryResult
 import com.sportsapp.domain.payment.repository.PaymentCustomRepository
@@ -33,6 +34,20 @@ class PaymentRepositoryImpl(
 
     override fun findPaymentLiveness(orderType: OrderType, orderIds: List<Long>): PaymentLivenessQueryResult =
         paymentCustomRepository.findPaymentLiveness(orderType, orderIds)
+
+    override fun findByOrderRefs(
+        orderRefs: List<OrderRef>,
+        status: PaymentStatus?,
+        paidAtFrom: ZonedDateTime?,
+        paidAtTo: ZonedDateTime?,
+        pageable: Pageable,
+    ): Page<Payment> = paymentCustomRepository.findByOrderRefs(
+        orderRefs = orderRefs,
+        status = status,
+        paidAtFrom = paidAtFrom,
+        paidAtTo = paidAtTo,
+        pageable = pageable,
+    )
 
     override fun findByUserIdAndConditions(
         userId: Long,

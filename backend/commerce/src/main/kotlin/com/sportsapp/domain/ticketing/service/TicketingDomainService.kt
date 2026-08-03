@@ -375,6 +375,10 @@ class TicketingDomainService(
     fun sumSoldSeatsByOwnerId(ownerId: Long): Long =
         seatCustomRepository.sumSoldSeatsByOwnerId(ownerId)
 
+    /** 주최자가 연 경기에 걸린 티켓 주문 id — 포털 매출 내역이 결제 조회 키로 쓴다. */
+    fun findTicketOrderIdsForEventOwner(ownerUserId: Long): List<Long> =
+        ticketOrderCustomRepository.findOrderIdsByEventOwnerUserId(ownerUserId)
+
     fun aggregateTicketSales(
         ownerUserId: Long,
         eventId: Long?,
