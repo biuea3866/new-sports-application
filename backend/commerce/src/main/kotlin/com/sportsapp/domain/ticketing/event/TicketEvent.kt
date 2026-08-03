@@ -58,7 +58,7 @@ sealed class TicketEvent(
         ticketOrderId: Long,
         recipientUserId: Long,
         val eventTitle: String,
-        eventOwnerUserId: Long? = null,
+        eventOwnerUserId: Long?,
         eventId: String = UUID.randomUUID().toString(),
         occurredAt: ZonedDateTime = ZonedDateTime.now(ZoneOffset.UTC),
     ) : TicketEvent(ticketOrderId, recipientUserId, eventOwnerUserId, eventId, occurredAt) {

@@ -60,7 +60,7 @@ sealed class BookingEvent(
         bookingId: Long,
         paymentId: Long,
         recipientUserId: Long,
-        facilityOwnerUserId: Long? = null,
+        facilityOwnerUserId: Long?,
         eventId: String = UUID.randomUUID().toString(),
         occurredAt: ZonedDateTime = ZonedDateTime.now(ZoneOffset.UTC),
     ) : BookingEvent(bookingId, paymentId, recipientUserId, facilityOwnerUserId, eventId, occurredAt) {

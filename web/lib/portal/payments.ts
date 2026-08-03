@@ -9,6 +9,7 @@ import type {
   PartnerSaleSchema,
   PartnerSalesResponseSchema,
 } from "./schemas";
+import { PartnerSalesResponseSchema as PartnerSalesResponseParser } from "./schemas";
 
 export type PaymentStatus = "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED";
 export type PaymentMethod =
@@ -77,5 +78,6 @@ export async function fetchPartnerSales(
     const body = (await res.json().catch(() => null)) as { message?: string } | null;
     throw new Error(body?.message ?? `매출 내역 조회 실패: ${res.status}`);
   }
-  return res.json() as Promise<PartnerSalesResponse>;
+  // 캐스팅만 하면 스키마가 런타임에 쓰이지 않아 계약 위반을 못 잡는다 — 실제로 파싱한다.
+  return PartnerSalesResponseParser.parse(await res.json());
 }

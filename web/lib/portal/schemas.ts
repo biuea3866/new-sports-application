@@ -298,15 +298,15 @@ export const PaymentSummaryPageSchema = PageSchema(PaymentSummarySchema);
 /**
  * 파트너 매출 한 건 — 결제 정보 + **판매자 귀속 금액**.
  *
- * `amount`는 결제 총액, `sellerAmount`는 그중 이 판매자 몫이다. 굿즈 주문에는 여러 판매자의
- * 상품이 섞일 수 있어 결제 총액을 그대로 매출로 보면 남의 매출까지 내 것으로 읽힌다.
+ * 결제 총액은 싣지 않는다 — 굿즈 주문에는 여러 판매자 상품이 섞일 수 있어 `(총액 - 내 매출)`로
+ * 다른 판매자들의 매출이 역산되기 때문이다. `pgTransactionId`도 같은 이유로 단일 판매자 주문
+ * (예약·티켓)에만 실린다.
  * BE 응답은 Spring Page(content)가 아니라 sales[] 형태라 PageSchema를 쓰지 않는다.
  */
 export const PartnerSaleSchema = z.object({
   paymentId: z.number().int().positive(),
   orderType: OrderTypeSchema,
   orderId: z.number().int().positive(),
-  amount: z.number(),
   sellerAmount: z.number(),
   method: z.string(),
   provider: absentAsNull(z.string()),

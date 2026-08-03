@@ -1,151 +1,159 @@
 {
-  "event.payment.payment.v1" : {
-    "CONFIRMED" : {
-      "paymentId" : {
-        "type" : "INTEGER",
-        "nullable" : false
+  "event.payment.payment.v1": {
+    "CONFIRMED": {
+      "paymentId": {
+        "type": "INTEGER",
+        "nullable": false
       },
-      "orderType" : {
-        "type" : "STRING",
-        "nullable" : false
+      "orderType": {
+        "type": "STRING",
+        "nullable": false
       },
-      "orderId" : {
-        "type" : "INTEGER",
-        "nullable" : false
+      "orderId": {
+        "type": "INTEGER",
+        "nullable": false
       },
-      "recipientUserId" : {
-        "type" : "INTEGER",
-        "nullable" : false
+      "recipientUserId": {
+        "type": "INTEGER",
+        "nullable": false
       },
-      "amount" : {
-        "type" : "INTEGER",
-        "nullable" : false
+      "amount": {
+        "type": "INTEGER",
+        "nullable": false
       },
-      "eventId" : {
-        "type" : "STRING",
-        "nullable" : false
+      "eventId": {
+        "type": "STRING",
+        "nullable": false
       },
-      "occurredAt" : {
-        "type" : "STRING",
-        "nullable" : false
+      "occurredAt": {
+        "type": "STRING",
+        "nullable": false
       },
-      "aggregateId" : {
-        "type" : "INTEGER",
-        "nullable" : false
+      "aggregateId": {
+        "type": "INTEGER",
+        "nullable": false
       },
-      "topic" : {
-        "type" : "STRING",
-        "nullable" : true
+      "topic": {
+        "type": "STRING",
+        "nullable": true
       },
-      "eventType" : {
-        "type" : "STRING",
-        "nullable" : false
+      "eventType": {
+        "type": "STRING",
+        "nullable": false
       }
     },
-    "CANCELLED" : {
-      "paymentId" : {
-        "type" : "INTEGER",
-        "nullable" : false
+    "CANCELLED": {
+      "paymentId": {
+        "type": "INTEGER",
+        "nullable": false
       },
-      "orderType" : {
-        "type" : "STRING",
-        "nullable" : false
+      "orderType": {
+        "type": "STRING",
+        "nullable": false
       },
-      "orderId" : {
-        "type" : "INTEGER",
-        "nullable" : false
+      "orderId": {
+        "type": "INTEGER",
+        "nullable": false
       },
-      "eventId" : {
-        "type" : "STRING",
-        "nullable" : false
+      "eventId": {
+        "type": "STRING",
+        "nullable": false
       },
-      "occurredAt" : {
-        "type" : "STRING",
-        "nullable" : false
+      "occurredAt": {
+        "type": "STRING",
+        "nullable": false
       },
-      "aggregateId" : {
-        "type" : "INTEGER",
-        "nullable" : false
+      "aggregateId": {
+        "type": "INTEGER",
+        "nullable": false
       },
-      "topic" : {
-        "type" : "STRING",
-        "nullable" : true
+      "topic": {
+        "type": "STRING",
+        "nullable": true
       },
-      "eventType" : {
-        "type" : "STRING",
-        "nullable" : false
+      "eventType": {
+        "type": "STRING",
+        "nullable": false
       }
     }
   },
-  "event.booking.booking.v1" : {
-    "CONFIRMED" : {
-      "bookingId" : {
-        "type" : "INTEGER",
-        "nullable" : false
+  "event.booking.booking.v1": {
+    "CONFIRMED": {
+      "bookingId": {
+        "type": "INTEGER",
+        "nullable": false
       },
-      "paymentId" : {
-        "type" : "INTEGER",
-        "nullable" : false
+      "paymentId": {
+        "type": "INTEGER",
+        "nullable": false
       },
-      "recipientUserId" : {
-        "type" : "INTEGER",
-        "nullable" : false
+      "recipientUserId": {
+        "type": "INTEGER",
+        "nullable": false
       },
-      "eventId" : {
-        "type" : "STRING",
-        "nullable" : false
+      "facilityOwnerUserId": {
+        "type": "INTEGER",
+        "nullable": true
       },
-      "occurredAt" : {
-        "type" : "STRING",
-        "nullable" : false
+      "eventId": {
+        "type": "STRING",
+        "nullable": false
       },
-      "aggregateId" : {
-        "type" : "INTEGER",
-        "nullable" : false
+      "occurredAt": {
+        "type": "STRING",
+        "nullable": false
       },
-      "topic" : {
-        "type" : "STRING",
-        "nullable" : true
+      "aggregateId": {
+        "type": "INTEGER",
+        "nullable": false
       },
-      "eventType" : {
-        "type" : "STRING",
-        "nullable" : false
+      "topic": {
+        "type": "STRING",
+        "nullable": true
+      },
+      "eventType": {
+        "type": "STRING",
+        "nullable": false
       }
     }
   },
-  "event.ticketing.ticket.v1" : {
-    "ISSUED" : {
-      "ticketOrderId" : {
-        "type" : "INTEGER",
-        "nullable" : false
+  "event.ticketing.ticket.v1": {
+    "ISSUED": {
+      "ticketOrderId": {
+        "type": "INTEGER",
+        "nullable": false
       },
-      "recipientUserId" : {
-        "type" : "INTEGER",
-        "nullable" : false
+      "recipientUserId": {
+        "type": "INTEGER",
+        "nullable": false
       },
-      "eventTitle" : {
-        "type" : "STRING",
-        "nullable" : false
+      "eventTitle": {
+        "type": "STRING",
+        "nullable": false
       },
-      "eventId" : {
-        "type" : "STRING",
-        "nullable" : false
+      "eventOwnerUserId": {
+        "type": "INTEGER",
+        "nullable": true
       },
-      "occurredAt" : {
-        "type" : "STRING",
-        "nullable" : false
+      "eventId": {
+        "type": "STRING",
+        "nullable": false
       },
-      "aggregateId" : {
-        "type" : "INTEGER",
-        "nullable" : false
+      "occurredAt": {
+        "type": "STRING",
+        "nullable": false
       },
-      "topic" : {
-        "type" : "STRING",
-        "nullable" : true
+      "aggregateId": {
+        "type": "INTEGER",
+        "nullable": false
       },
-      "eventType" : {
-        "type" : "STRING",
-        "nullable" : false
+      "topic": {
+        "type": "STRING",
+        "nullable": true
+      },
+      "eventType": {
+        "type": "STRING",
+        "nullable": false
       }
     }
   }

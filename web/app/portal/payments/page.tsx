@@ -79,9 +79,8 @@ export default function PaymentsPage() {
     setPage(0);
   }
 
-  // 결제 총액과 내 매출을 각각 합산한다 — 혼합 굿즈 주문에서는 두 값이 다르고,
-  // 파트너가 실제로 번 금액은 내 매출 쪽이다.
-  const pagePaymentTotal = payments.reduce((sum, sale) => sum + sale.amount, 0);
+  // 파트너가 실제로 번 금액만 합산한다 — 결제 총액은 혼합 주문에서 남의 몫을 포함해
+  // 응답에 싣지 않는다.
   const pageSellerTotal = payments.reduce((sum, sale) => sum + sale.sellerAmount, 0);
 
   return (
@@ -179,9 +178,6 @@ export default function PaymentsPage() {
                     주문 유형
                   </th>
                   <th scope="col" className="px-4 py-3 text-right font-medium text-muted-foreground">
-                    금액
-                  </th>
-                  <th scope="col" className="px-4 py-3 text-right font-medium text-muted-foreground">
                     내 매출
                   </th>
                   <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
@@ -204,7 +200,7 @@ export default function PaymentsPage() {
               <tbody className="divide-y divide-border">
                 {payments.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
+                    <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                       결제 내역이 없습니다.
                     </td>
                   </tr>
@@ -213,9 +209,6 @@ export default function PaymentsPage() {
                     <tr key={payment.paymentId} className="hover:bg-muted/50">
                       <td className="px-4 py-3 text-foreground">{payment.paymentId}</td>
                       <td className="px-4 py-3">{payment.orderType}</td>
-                      <td className="px-4 py-3 text-right tabular-nums">
-                        {payment.amount.toLocaleString("ko-KR")}원
-                      </td>
                       <td className="px-4 py-3 text-right tabular-nums font-medium">
                         {payment.sellerAmount.toLocaleString("ko-KR")}원
                       </td>
@@ -247,9 +240,6 @@ export default function PaymentsPage() {
                   <tr className="bg-muted/50 font-medium">
                     <td colSpan={2} className="px-4 py-3 text-muted-foreground">
                       이 페이지 합계
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                      {pagePaymentTotal.toLocaleString("ko-KR")}원
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">
                       {pageSellerTotal.toLocaleString("ko-KR")}원

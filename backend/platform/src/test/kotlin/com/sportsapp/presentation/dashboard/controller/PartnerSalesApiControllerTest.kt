@@ -38,7 +38,6 @@ class PartnerSalesApiControllerTest : BehaviorSpec({
         paymentId = 16L,
         orderType = OrderType.BOOKING,
         orderId = 1L,
-        amount = BigDecimal("25000.00"),
         sellerAmount = BigDecimal("25000.00"),
         method = "CREDIT_CARD",
         provider = "TOSS",
@@ -68,9 +67,9 @@ class PartnerSalesApiControllerTest : BehaviorSpec({
                         .andExpect(jsonPath("$.sales[0].paymentId").value(16))
             }
 
-            Then("결제 총액과 내 매출이 함께 실린다") {
-                response.andExpect(jsonPath("$.sales[0].amount").value(25000.00))
-                        .andExpect(jsonPath("$.sales[0].sellerAmount").value(25000.00))
+            Then("내 매출만 실리고 결제 총액은 노출되지 않는다") {
+                response.andExpect(jsonPath("$.sales[0].sellerAmount").value(25000.00))
+                        .andExpect(jsonPath("$.sales[0].amount").doesNotExist())
             }
 
             Then("인증된 파트너 id가 판매자 스코프로 전달된다") {

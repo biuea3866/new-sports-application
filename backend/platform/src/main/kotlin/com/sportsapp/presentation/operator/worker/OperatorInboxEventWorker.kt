@@ -19,6 +19,10 @@ import org.springframework.stereotype.Component
  *
  * 각 토픽은 여러 컨텍스트가 팬아웃 구독하므로 운영 인박스 고유 groupId 로 그룹을 분리한다.
  * Kafka 는 at-least-once 이므로 멱등은 하류 UseCase 가 eventId 로 보장한다.
+ *
+ * 개인 알림과 달리 **"자기 예약" 가드를 두지 않는다** — 알림은 같은 사건을 두 벌 받는 소음을
+ * 피하려고 구매자==소유주면 건너뛰지만, 운영 인박스는 조치 대상 피드라 자기 시설을 자기가
+ * 예약했더라도 그 예약은 여전히 처리해야 할 일이다.
  */
 @Component
 class OperatorInboxEventWorker(

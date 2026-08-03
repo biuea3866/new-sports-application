@@ -72,7 +72,7 @@ class NotificationEventWorkerTest : BehaviorSpec({
     Given("BookingEvent.Confirmed 를 수신하면") {
         val captured = mutableListOf<EnqueueNotificationCommand>()
         val worker = buildWorker(captured)
-        val event = BookingEvent.Confirmed(bookingId = 20L, paymentId = 55L, recipientUserId = 901L)
+        val event = BookingEvent.Confirmed(bookingId = 20L, paymentId = 55L, recipientUserId = 901L, facilityOwnerUserId = null)
 
         When("consumeBooking 을 호출하면") {
             worker.consumeBooking(event)
@@ -92,7 +92,7 @@ class NotificationEventWorkerTest : BehaviorSpec({
     Given("TicketEvent.Issued 를 수신하면") {
         val captured = mutableListOf<EnqueueNotificationCommand>()
         val worker = buildWorker(captured)
-        val event = TicketEvent.Issued(ticketOrderId = 30L, recipientUserId = 902L, eventTitle = "월드컵 결승")
+        val event = TicketEvent.Issued(ticketOrderId = 30L, recipientUserId = 902L, eventTitle = "월드컵 결승", eventOwnerUserId = null)
 
         When("consumeTicket 을 호출하면") {
             worker.consumeTicket(event)

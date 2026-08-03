@@ -81,7 +81,16 @@ class Booking(
         this.status = BookingStatus.CONFIRMED
         this.paymentId = paymentId
         registerEvent(
-            BookingEvent.Confirmed(bookingId = id, paymentId = paymentId, recipientUserId = userId)
+            BookingEvent.Confirmed(
+                bookingId = id,
+                paymentId = paymentId,
+                recipientUserId = userId,
+                // Entity는 순수해서(Repository 미주입) 슬롯 소유주를 알 수 없다. 소유주를 채우는
+                // 운영 경로는 CAS 확정(BookingDomainService#confirmBooking)이며, 이 메서드는
+                // 현재 운영 호출부가 없다. 값을 넘겨받으면 시간·소유주 조회 책임이 Entity로
+                // 새어 들어오므로 명시적으로 비운다.
+                facilityOwnerUserId = null,
+            )
         )
     }
 

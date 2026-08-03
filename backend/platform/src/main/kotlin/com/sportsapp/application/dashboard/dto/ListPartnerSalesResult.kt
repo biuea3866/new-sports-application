@@ -8,17 +8,20 @@ import java.math.BigDecimal
 import java.time.ZonedDateTime
 
 /**
- * 파트너 매출 한 건 — 결제 정보 + **판매자 귀속 금액**.
+ * 파트너 매출 한 건 — **판매자 몫만** 싣는다.
  *
- * [amount]는 결제 총액이고 [sellerAmount]는 그중 이 판매자 몫이다. 굿즈 주문에는 여러
- * 판매자의 상품이 섞일 수 있어 결제 총액을 그대로 매출로 계상하면 남의 매출까지 내 것이 된다.
- * 예약·티켓은 판매자가 단일이라 두 값이 같다.
+ * 결제 총액은 응답에 담지 않는다. 굿즈 주문에는 여러 판매자의 상품이 섞일 수 있어
+ * `(결제 총액 - 내 매출)`로 **다른 판매자들의 매출 합계가 역산**되기 때문이다. 예약·티켓은
+ * 판매자가 단일이라 결제 총액이 곧 [sellerAmount]와 같아, 총액을 따로 실어도 얻는 정보가 없다.
+ *
+ * [pgTransactionId]도 같은 이유로 **단일 판매자 주문(예약·티켓)에만** 싣는다 — 그 결제는
+ * 온전히 이 판매자의 거래라 정산 대조에 쓸 수 있지만, 혼합 가능한 굿즈 주문의 PG 거래
+ * 식별자는 남의 몫이 섞인 결제를 가리킨다.
  */
 data class PartnerSaleResult(
     val paymentId: Long,
     val orderType: OrderType,
     val orderId: Long,
-    val amount: BigDecimal,
     val sellerAmount: BigDecimal,
     val method: String,
     val provider: String?,
@@ -31,13 +34,13 @@ data class PartnerSaleResult(
             paymentId = payment.id,
             orderType = payment.orderType,
             orderId = payment.orderId,
-            amount = payment.amount,
             sellerAmount = sellerAmount,
             method = payment.method.name,
             provider = payment.provider,
             status = payment.status,
             paidAt = payment.paidAt,
-            pgTransactionId = payment.pgTransactionId,
+            // 혼합 가능한 주문 유형(굿즈)은 결제가 온전히 이 판매자 것이 아니다.
+            pgTransactionId = payment.pgTransactionId.takeIf { payment.orderType.isSingleSellerOrder() },
         )
     }
 }

@@ -102,9 +102,12 @@ class ListPartnerSalesUseCaseTest : BehaviorSpec({
 
             // 예약·티켓은 판매자가 단일이라 결제 총액이 곧 내 매출이다.
             Then("단일 판매자 주문은 결제 총액이 그대로 내 매출이 된다") {
-                val bookingSale = result.sales.first { it.paymentId == 16L }
-                bookingSale.amount shouldBe BigDecimal("25000.00")
-                bookingSale.sellerAmount shouldBe BigDecimal("25000.00")
+                result.sales.first { it.paymentId == 16L }.sellerAmount shouldBe BigDecimal("25000.00")
+            }
+
+            // 단일 판매자 주문의 결제는 온전히 내 거래라 정산 대조에 쓸 수 있다.
+            Then("단일 판매자 주문에는 PG 거래 식별자가 실린다") {
+                result.sales.first { it.paymentId == 16L }.pgTransactionId shouldBe "tid-16"
             }
 
             Then("굿즈는 내 상품 항목 합계가 내 매출로 실린다") {
@@ -127,11 +130,19 @@ class ListPartnerSalesUseCaseTest : BehaviorSpec({
         When("매출 내역을 조회하면") {
             val result = useCase.execute(command)
 
-            // 결제 총액을 그대로 매출로 계상하면 남의 매출까지 내 것이 된다.
-            Then("결제 총액과 내 매출이 구분돼 실린다") {
-                val sale = result.sales.first()
-                sale.amount shouldBe BigDecimal("100000.00")
-                sale.sellerAmount shouldBe BigDecimal("30000.00")
+            Then("내 몫만 매출로 실린다") {
+                result.sales.first().sellerAmount shouldBe BigDecimal("30000.00")
+            }
+
+            // 결제 총액을 함께 실으면 (총액 - 내 매출)로 다른 판매자들의 매출 합계가 역산된다.
+            Then("결제 총액이 노출되지 않아 타 판매자 몫을 역산할 수 없다") {
+                val exposedAmounts = result.sales.map { it.sellerAmount }
+                exposedAmounts shouldBe listOf(BigDecimal("30000.00"))
+            }
+
+            // PG 거래 식별자는 주문 전체(다른 판매자 몫 포함)를 가리킨다.
+            Then("혼합 가능한 굿즈 주문에는 PG 거래 식별자를 싣지 않는다") {
+                result.sales.first().pgTransactionId shouldBe null
             }
         }
     }

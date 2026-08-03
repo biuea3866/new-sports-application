@@ -9,15 +9,19 @@
 -- MySQL의 UNIQUE 인덱스는 NULL을 중복으로 보지 않으므로, event_id가 NULL인 행은
 -- 제약에 걸리지 않는다.
 --
+-- 멱등 범위를 (recipient_user_id, event_id) 복합으로 잡는다 — event_id 단독이면 한 수신자가
+-- 받는 순간 같은 이벤트를 받아야 할 나머지 수신자가 영영 적재되지 않는다.
+--
+-- 락 영향: 컬럼 추가·인덱스 추가 모두 ALGORITHM=INPLACE, LOCK=NONE — 온라인 DDL이라
+-- 쓰기 블로킹이 없다. 두 변경을 한 ALTER로 묶어 테이블을 한 번만 훑는다.
+--
 -- 롤백: ALTER TABLE operator_inbox_notifications
---         DROP INDEX uk_operator_inbox_recipient_event, DROP COLUMN event_id;
+--         DROP INDEX uk_operator_inbox_recipient_event,
+--         DROP COLUMN event_id,
+--         ALGORITHM = INPLACE, LOCK = NONE;
 
 ALTER TABLE operator_inbox_notifications
     ADD COLUMN event_id VARCHAR(100) NULL COMMENT '이벤트 멱등 키 — 같은 이벤트 중복 수신 시 재적재를 막는다',
-    ALGORITHM = INPLACE, LOCK = NONE;
-
--- 수신자별로 같은 이벤트가 한 번만 적재되게 한다. 한 이벤트가 여러 수신자에게 갈 수 있으므로
--- event_id 단독이 아니라 (recipient_user_id, event_id) 복합으로 잡는다.
-CREATE UNIQUE INDEX uk_operator_inbox_recipient_event
-    ON operator_inbox_notifications (recipient_user_id, event_id)
-    ALGORITHM = INPLACE, LOCK = NONE;
+    ADD UNIQUE INDEX uk_operator_inbox_recipient_event (recipient_user_id, event_id),
+    ALGORITHM = INPLACE,
+    LOCK = NONE;

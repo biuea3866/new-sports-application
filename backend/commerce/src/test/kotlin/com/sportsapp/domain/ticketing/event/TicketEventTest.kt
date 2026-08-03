@@ -16,7 +16,12 @@ class TicketEventTest : BehaviorSpec({
         .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
 
     Given("TicketEvent.Issued 인스턴스") {
-        val event = TicketEvent.Issued(ticketOrderId = 5L, recipientUserId = 700L, eventTitle = "월드컵 결승")
+        val event = TicketEvent.Issued(
+            ticketOrderId = 5L,
+            recipientUserId = 700L,
+            eventTitle = "월드컵 결승",
+            eventOwnerUserId = 69L,
+        )
 
         When("topic 과 필드를 확인하면") {
             Then("서브 도메인 단일 토픽과 판별자/수신자/이벤트 제목을 노출한다") {
@@ -26,12 +31,18 @@ class TicketEventTest : BehaviorSpec({
                 event.recipientUserId shouldBe 700L
                 event.eventTitle shouldBe "월드컵 결승"
                 event.eventType shouldBe "ISSUED"
+                event.eventOwnerUserId shouldBe 69L
             }
         }
     }
 
     Given("TicketEvent.Issued 를 JSON 으로 직렬화한 뒤 sealed 베이스로 역직렬화하면") {
-        val original = TicketEvent.Issued(ticketOrderId = 9L, recipientUserId = 701L, eventTitle = "정규 리그")
+        val original = TicketEvent.Issued(
+            ticketOrderId = 9L,
+            recipientUserId = 701L,
+            eventTitle = "정규 리그",
+            eventOwnerUserId = 69L,
+        )
         val json = kafkaObjectMapper.writeValueAsString(original)
 
         When("eventType 판별자로 하위 타입을 결정하면") {

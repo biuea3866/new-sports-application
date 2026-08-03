@@ -28,9 +28,15 @@ const PALETTE_SCALE_CLASS = new RegExp(
   "g"
 );
 
-/** `bg-white`·`text-black` 처럼 모드와 무관하게 고정되는 절대색 유틸리티. */
+/**
+ * `bg-white`·`text-black` 처럼 모드와 무관하게 고정되는 **불투명** 절대색 유틸리티.
+ *
+ * 예외: `bg-black/50` 같은 **반투명 검정은 스크림(모달 오버레이) 전용**으로 허용한다.
+ * 스크림은 모드에 따라 뒤집히면 안 되는 색이다 — 토큰으로 바꾸면 다크에서 흰 막이 씌워져
+ * 다이얼로그가 스크림보다 어두워진다. 불투명 절대색만 계속 막는다(`/숫자`가 없는 경우).
+ */
 const ABSOLUTE_COLOR_CLASS =
-  /\b(?:bg|text|border|ring|divide|fill|stroke)-(?:white|black)\b/g;
+  /\b(?:bg|text|border|ring|divide|fill|stroke)-(?:white|black)\b(?!\/\d)/g;
 
 /** `#fff`·`rgb(...)`·`hsl(...)` 리터럴 — 토큰을 우회한 직접 색 지정. */
 const RAW_COLOR_LITERAL = /#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(/g;
@@ -58,6 +64,35 @@ function findViolations(pattern: RegExp): string[] {
       });
   });
 }
+
+describe("모달 스크림", () => {
+  /*
+   * 스크림(모달 뒤를 덮는 막)은 **모드에 따라 뒤집히면 안 되는 색**이다. 시맨틱 토큰을 쓰면
+   * 다크에서 --foreground가 거의 흰색이라 화면 전체가 흰 막으로 덮이고, 그 위의 bg-background
+   * 다이얼로그가 스크림보다 어두워진다. 레포의 다른 오버레이(dialog.tsx·admin 모달)도 전부
+   * 반투명 검정을 유지하므로 포털만 다르면 일관성도 깨진다.
+   */
+  const overlayFiles = [
+    "facilities/[id]/page.tsx",
+    "products/[id]/page.tsx",
+  ];
+
+  it("스크림에 모드 반전되는 시맨틱 토큰을 쓰지 않는다", () => {
+    const violations = overlayFiles.flatMap((relativePath) => {
+      const source = readFileSync(path.join(PORTAL_ROOT, relativePath), "utf8");
+      return source.includes("bg-foreground/") ? [relativePath] : [];
+    });
+    expect(violations).toEqual([]);
+  });
+
+  it("스크림은 반투명 검정을 유지한다", () => {
+    const missing = overlayFiles.flatMap((relativePath) => {
+      const source = readFileSync(path.join(PORTAL_ROOT, relativePath), "utf8");
+      return /bg-black\/\d{1,3}\b/.test(source) ? [] : [relativePath];
+    });
+    expect(missing).toEqual([]);
+  });
+});
 
 describe("네이티브 폼 컨트롤 테마", () => {
   /*

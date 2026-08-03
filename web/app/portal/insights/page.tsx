@@ -36,7 +36,7 @@ interface KpiCardProps {
 
 function KpiCard({ label, value }: KpiCardProps) {
   return (
-    <div className="rounded-lg border bg-card p-4 shadow-sm" aria-label={`${label} 지표`}>
+    <div className="rounded-lg border bg-card p-4 shadow-sm" role="group" aria-label={`${label} 지표`}>
       <p className="text-sm text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-bold">{value}</p>
     </div>

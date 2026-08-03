@@ -49,7 +49,7 @@ function RestoreStockDialog({ onConfirm, onClose, isSubmitting }: RestoreStockDi
       role="dialog"
       aria-modal="true"
       aria-label="재고 보충"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/60"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
     >
       <div className="w-full max-w-sm rounded-lg bg-background p-6 shadow-lg">
         <h2 className="mb-4 text-lg font-semibold">재고 보충</h2>

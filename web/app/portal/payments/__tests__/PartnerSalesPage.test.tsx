@@ -19,7 +19,7 @@ vi.mock("@/lib/portal/payments", async (importOriginal) => {
 import PaymentsPage from "../page";
 
 function buildSalesResponse(
-  overrides: Partial<{ amount: number; sellerAmount: number; orderType: string }> = {}
+  overrides: Partial<{ sellerAmount: number; orderType: string; pgTransactionId: string | null }> = {}
 ) {
   return {
     sales: [
@@ -27,7 +27,6 @@ function buildSalesResponse(
         paymentId: 15,
         orderType: "GOODS",
         orderId: 2,
-        amount: 158000,
         sellerAmount: 158000,
         method: "CREDIT_CARD",
         provider: "TOSS",
@@ -60,17 +59,16 @@ describe("파트너 매출·결제 내역", () => {
     expect(screen.queryByText("결제 내역이 없습니다.")).not.toBeInTheDocument();
   });
 
-  it("결제 총액과 내 매출을 구분해 표시한다", async () => {
+  it("내 매출만 표시하고 결제 총액은 노출하지 않는다", async () => {
     // 결제 총액 100,000 중 내 몫은 30,000뿐인 혼합 굿즈 주문.
-    mockFetchPartnerSales.mockResolvedValue(
-      buildSalesResponse({ amount: 100000, sellerAmount: 30000 })
-    );
+    // 총액을 함께 보여주면 (총액 - 내 매출)로 타 판매자 매출이 역산된다.
+    mockFetchPartnerSales.mockResolvedValue(buildSalesResponse({ sellerAmount: 30000 }));
 
     render(<PaymentsPage />);
 
     const row = await screen.findByRole("row", { name: /15/ });
-    expect(within(row).getByText("100,000원")).toBeInTheDocument();
     expect(within(row).getByText("30,000원")).toBeInTheDocument();
+    expect(within(row).queryByText("100,000원")).not.toBeInTheDocument();
   });
 
   it("내 매출 컬럼 헤더가 있다", async () => {
@@ -81,6 +79,7 @@ describe("파트너 매출·결제 내역", () => {
     await waitFor(() => {
       expect(screen.getByRole("columnheader", { name: "내 매출" })).toBeInTheDocument();
     });
+    expect(screen.queryByRole("columnheader", { name: "금액" })).not.toBeInTheDocument();
   });
 
   it("판매 건이 없으면 빈 상태 문구를 보여준다", async () => {
