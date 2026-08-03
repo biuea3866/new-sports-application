@@ -140,8 +140,17 @@ class BookingDomainService(
             throw InvalidBookingStateException(current.status, BookingStatus.CONFIRMED)
         }
         if (transitioned) {
+            // 시설 소유주는 슬롯이 안다 — 알림 컨텍스트가 booking을 역참조하지 않도록 여기서 담는다.
+            // 슬롯을 못 찾아도(예외적) 구매자 확정 알림은 막지 않는다.
             domainEventPublisher.publishAll(
-                listOf(BookingEvent.Confirmed(bookingId = bookingId, paymentId = paymentId, recipientUserId = current.userId)),
+                listOf(
+                    BookingEvent.Confirmed(
+                        bookingId = bookingId,
+                        paymentId = paymentId,
+                        recipientUserId = current.userId,
+                        facilityOwnerUserId = slotRepository.findById(current.slotId)?.ownerId,
+                    )
+                ),
             )
         }
         return current

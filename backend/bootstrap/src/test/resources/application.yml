@@ -123,6 +123,12 @@ notification:
     payment-completed:
       title: "결제 완료"
       body: "{amount}원 결제가 완료되었습니다."
+    booking-received-owner:
+      title: "신규 예약 접수"
+      body: "내 시설에 예약이 접수됐습니다."
+    ticket-sold-owner:
+      title: "티켓 판매"
+      body: "{eventTitle} 티켓이 발권됐습니다."
     welcome:
       title: "가입 완료"
       body: "{userName}님, 스포츠 앱에 오신 것을 환영합니다."

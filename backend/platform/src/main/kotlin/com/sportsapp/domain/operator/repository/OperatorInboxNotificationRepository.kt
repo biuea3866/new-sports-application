@@ -17,4 +17,7 @@ interface OperatorInboxNotificationRepository {
         pageable: Pageable,
     ): Page<OperatorInboxNotification>
     fun countUnreadByRecipientUserId(recipientUserId: Long): Long
+
+    /** 이벤트 멱등 판정 — 멱등 범위는 (수신자, 이벤트)다. 이벤트 단독이면 한 수신자가 받는 순간 나머지가 못 받는다. */
+    fun existsByRecipientUserIdAndEventId(recipientUserId: Long, eventId: String): Boolean
 }

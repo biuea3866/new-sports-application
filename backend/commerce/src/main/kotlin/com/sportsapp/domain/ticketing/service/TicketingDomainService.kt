@@ -232,6 +232,8 @@ class TicketingDomainService(
                     ticketOrderId = current.id,
                     recipientUserId = current.userId,
                     eventTitle = event.title,
+                    // 주최자는 경기가 안다 — 알림 컨텍스트가 ticketing을 역참조하지 않도록 여기서 담는다.
+                    eventOwnerUserId = event.ownerId,
                 )
             )
         }

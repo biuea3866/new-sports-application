@@ -16,6 +16,7 @@ import io.mockk.slot
 import io.mockk.verify
 import java.math.BigDecimal
 import com.sportsapp.domain.booking.entity.Booking
+import com.sportsapp.domain.booking.entity.Slot
 import com.sportsapp.domain.booking.entity.BookingStatus
 import com.sportsapp.domain.booking.service.BookingDomainService
 import com.sportsapp.domain.booking.repository.BookingOrderQueryRepository
@@ -54,6 +55,10 @@ class BookingConfirmDomainServiceTest : BehaviorSpec({
         confirmedBooking.pullDomainEvents()
         every { bookingRepository.tryConfirm(1L, 999L) } returns true
         every { bookingRepository.findById(1L) } returns confirmedBooking
+        // 확정 이벤트에 시설 소유주를 담기 위해 슬롯을 조회한다(알림 컨텍스트의 booking 역참조 회피).
+        every { slotRepository.findById(10L) } returns mockk<Slot>(relaxed = true) {
+            every { ownerId } returns 69L
+        }
 
         val capturedEvents = slot<List<DomainEvent>>()
         every { eventPublisher.publishAll(capture(capturedEvents)) } answers { Unit }
@@ -68,6 +73,7 @@ class BookingConfirmDomainServiceTest : BehaviorSpec({
                 val confirmedEvent = events[0].shouldBeInstanceOf<BookingEvent.Confirmed>()
                 confirmedEvent.paymentId shouldBe 999L
                 confirmedEvent.recipientUserId shouldBe 1L
+                confirmedEvent.facilityOwnerUserId shouldBe 69L
             }
         }
     }

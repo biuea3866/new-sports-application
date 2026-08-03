@@ -36,6 +36,12 @@ sealed class BookingEvent(
     val bookingId: Long,
     val paymentId: Long,
     val recipientUserId: Long,
+    /**
+     * 예약이 걸린 슬롯의 시설 소유주. 알림 컨텍스트는 예약이 어느 시설 것인지 모르므로,
+     * 소유주를 아는 booking이 payload에 담아 발행한다(역참조 대신 이벤트 계약 확장).
+     * 슬롯을 찾지 못한 예외적 경우 null이며, 그때도 구매자 알림은 정상 발행된다.
+     */
+    val facilityOwnerUserId: Long?,
     eventId: String,
     occurredAt: ZonedDateTime,
 ) : AbstractDomainEvent(
@@ -48,15 +54,16 @@ sealed class BookingEvent(
 
     /**
      * 예약이 확정되었다는 과거형 사실. 알림 컨텍스트가 별도 조회 없이 확정 알림을 만들 수 있도록
-     * 수신자([recipientUserId])를 payload 에 함께 담는다.
+     * 수신자([recipientUserId])와 시설 소유주([facilityOwnerUserId])를 payload 에 함께 담는다.
      */
     class Confirmed(
         bookingId: Long,
         paymentId: Long,
         recipientUserId: Long,
+        facilityOwnerUserId: Long? = null,
         eventId: String = UUID.randomUUID().toString(),
         occurredAt: ZonedDateTime = ZonedDateTime.now(ZoneOffset.UTC),
-    ) : BookingEvent(bookingId, paymentId, recipientUserId, eventId, occurredAt) {
+    ) : BookingEvent(bookingId, paymentId, recipientUserId, facilityOwnerUserId, eventId, occurredAt) {
         override val eventType: String = TYPE_CONFIRMED
     }
 
