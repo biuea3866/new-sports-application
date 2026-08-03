@@ -35,6 +35,9 @@ class FacilityRepositoryImpl(
     override fun findById(id: String): Facility? =
         facilityMongoRepository.findByIdOrNull(id)?.takeIf { !it.isDeleted }
 
+    override fun findAllByIds(ids: List<String>): List<Facility> =
+        facilityMongoRepository.findAllById(ids).filterNot { it.isDeleted }
+
     override fun findByCode(code: String): Facility? =
         facilityMongoRepository.findByCodeAndDeletedAtIsNull(code)
 

@@ -44,6 +44,8 @@ class CatalogCompositionServiceTest : BehaviorSpec({
         price: BigDecimal?,
         sellerType: SellerType?,
         createdAt: ZonedDateTime,
+        locationName: String? = null,
+        scheduledAt: ZonedDateTime? = null,
     ) = CatalogItem(
         itemType = itemType,
         sourceId = sourceId,
@@ -53,6 +55,8 @@ class CatalogCompositionServiceTest : BehaviorSpec({
         status = "ACTIVE",
         detailPath = "/items/$sourceId",
         createdAt = createdAt,
+        locationName = locationName,
+        scheduledAt = scheduledAt,
     )
 
     fun buildService(

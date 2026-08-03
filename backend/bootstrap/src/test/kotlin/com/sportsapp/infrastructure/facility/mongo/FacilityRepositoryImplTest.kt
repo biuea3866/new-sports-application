@@ -4,6 +4,7 @@ import com.sportsapp.BaseMongoIntegrationTest
 import com.sportsapp.domain.facility.entity.Facility
 import com.sportsapp.domain.facility.vo.FacilityAttributes
 import com.sportsapp.domain.facility.repository.FacilityRepository
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -112,6 +113,43 @@ class FacilityRepositoryImplTest(
                     found?.meta?.get("lane") shouldBe "8"
                     found?.meta?.get("open_time") shouldBe "06:00"
                     found?.meta?.get("close_time") shouldBe "22:00"
+                }
+            }
+        }
+
+        Given("여러 facilityId로 배치 조회가 필요한 상태 (catalog PROGRAM 시설명 조회, BE-07)") {
+            mongoTemplate.remove(Query(), Facility::class.java)
+            val first = facilityRepository.save(Facility.create(buildAttributes("BATCH-001", "강남구", "체육관")))
+            val second = facilityRepository.save(Facility.create(buildAttributes("BATCH-002", "서초구", "수영장")))
+            val deleted = facilityRepository.save(Facility.create(buildAttributes("BATCH-003", "마포구", "풋살장")))
+                .also { it.softDelete(null) }
+            facilityRepository.save(deleted)
+
+            When("두 시설 id로 findAllByIds를 호출하면") {
+                val firstId = requireNotNull(first.id)
+                val secondId = requireNotNull(second.id)
+                val result = facilityRepository.findAllByIds(listOf(firstId, secondId))
+
+                Then("[R-06] 두 시설이 모두 반환된다") {
+                    result shouldHaveSize 2
+                    result.map { it.id } shouldContainExactlyInAnyOrder listOf(firstId, secondId)
+                }
+            }
+
+            When("삭제된 시설 id를 포함해 findAllByIds를 호출하면") {
+                val deletedId = requireNotNull(deleted.id)
+                val result = facilityRepository.findAllByIds(listOf(requireNotNull(first.id), deletedId))
+
+                Then("[R-07] soft-delete 된 시설은 결과에서 제외된다") {
+                    result.map { it.id } shouldBe listOf(first.id)
+                }
+            }
+
+            When("존재하지 않는 id를 포함해 findAllByIds를 호출하면") {
+                val result = facilityRepository.findAllByIds(listOf(requireNotNull(first.id), "NOT-EXIST"))
+
+                Then("[R-08] 존재하는 시설만 반환되고 예외를 던지지 않는다") {
+                    result shouldHaveSize 1
                 }
             }
         }

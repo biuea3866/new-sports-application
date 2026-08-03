@@ -17,6 +17,10 @@ export interface CatalogItem {
   status: string; // 원본 status enum name
   detailPath: string; // 예: "/products/123"
   createdAt: string; // ISO-8601
+  // 같은 제목의 서로 다른 항목(예: 시설 4곳의 동일명 프로그램)을 구분하는 부가 표시 정보.
+  // 유형마다 의미 있는 값이 없으면 null — 내부 식별자(sourceId 등)로 대체하지 않는다.
+  locationName: string | null; // PROGRAM은 시설명, TICKET은 경기장명. 그 외 null
+  scheduledAt: string | null; // ISO-8601. TICKET은 경기 시작 일시, RECRUITMENT는 모임 활동 일시. 그 외 null
 }
 
 export interface CatalogSearchResponse {

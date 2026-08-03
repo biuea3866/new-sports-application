@@ -3,7 +3,11 @@
  * 근거: `20260708-상품주문-공유상위컨텍스트-design-fe-app.md` "텍스트 와이어프레임 ①"
  * (price=null → "가격 상세 확인", 그 외 KRW toLocaleString + "원").
  */
-import { CATALOG_ITEM_TYPE_LABEL, formatCatalogPrice } from '../catalog-format';
+import {
+  CATALOG_ITEM_TYPE_LABEL,
+  formatCatalogDistinguisher,
+  formatCatalogPrice,
+} from '../catalog-format';
 
 describe('formatCatalogPrice', () => {
   it('price가 있으면 천 단위 구분자와 함께 원 단위로 표기한다', () => {
@@ -21,6 +25,32 @@ describe('formatCatalogPrice', () => {
   // 서버가 price 필드 자체를 생략해 보내면 undefined가 들어온다 — 화면이 죽지 않아야 한다.
   it('price 필드가 없으면(undefined) 가격 상세 확인을 반환한다', () => {
     expect(formatCatalogPrice(undefined)).toBe('가격 상세 확인');
+  });
+});
+
+describe('formatCatalogDistinguisher', () => {
+  // 회귀 방지: 통합 카탈로그(11-통합-카탈로그)에서 시설 4곳이 같은 이름의 프로그램을 등록해
+  // "주말 정기 레슨" 카드가 3회 반복돼 보이는 결함 — locationName·scheduledAt으로 구분한다.
+  it('locationName만 있으면 그대로 반환한다(PROGRAM: 시설명)', () => {
+    expect(formatCatalogDistinguisher('루틴 피트니스 강남점', null)).toBe('루틴 피트니스 강남점');
+  });
+
+  it('scheduledAt만 있으면 절대 일시로 포맷해 반환한다(RECRUITMENT: 모임 활동 일시)', () => {
+    expect(formatCatalogDistinguisher(null, '2026-08-10T19:00:00+09:00')).toBe('8월 10일 19:00');
+  });
+
+  it('locationName·scheduledAt이 모두 있으면 가운데점으로 이어붙인다(TICKET: 경기장·시작 일시)', () => {
+    expect(formatCatalogDistinguisher('잠실종합운동장', '2026-08-10T19:00:00+09:00')).toBe(
+      '잠실종합운동장 · 8월 10일 19:00'
+    );
+  });
+
+  it('둘 다 없으면 null을 반환해 화면이 줄을 생략하게 한다(PRODUCT·LIMITED_DROP)', () => {
+    expect(formatCatalogDistinguisher(null, null)).toBeNull();
+  });
+
+  it('locationName·scheduledAt이 undefined여도(서버 필드 생략) 죽지 않고 null을 반환한다', () => {
+    expect(formatCatalogDistinguisher(undefined, undefined)).toBeNull();
   });
 });
 

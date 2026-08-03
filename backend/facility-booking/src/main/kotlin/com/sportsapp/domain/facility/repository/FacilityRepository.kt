@@ -10,6 +10,8 @@ interface FacilityRepository {
     fun save(facility: Facility): Facility
     fun saveAll(facilities: List<Facility>): List<Facility>
     fun findById(id: String): Facility?
+    // catalog 통합검색(BE-07)이 PROGRAM 항목의 시설명을 배치 조회하기 위한 다건 조회 — N+1 방지.
+    fun findAllByIds(ids: List<String>): List<Facility>
     fun findByCode(code: String): Facility?
     fun findAllByGu(gu: String): List<Facility>
     fun findAllByGuAndType(gu: String, type: String): List<Facility>

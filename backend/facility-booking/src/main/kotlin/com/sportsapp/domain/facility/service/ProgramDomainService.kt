@@ -62,4 +62,17 @@ class ProgramDomainService(
 
     fun searchForCatalog(keyword: String?, pageable: Pageable): Page<Program> =
         programCustomRepository.searchForCatalog(keyword, pageable)
+
+    /**
+     * catalog 통합검색(BE-07)이 PROGRAM 항목에 시설명을 채우기 위한 배치 조회 — N개 프로그램의
+     * facilityId를 한 번에 모아 조회한다(N+1 방지, [GoodsDomainService.enrichWithLimitedDropId]와
+     * 동일 패턴). 삭제된 시설은 [FacilityRepository.findAllByIds] 결과에서 제외되므로, 그 facilityId는
+     * 반환 맵에 없다 — 호출부가 `map[facilityId]`로 조회해 null(구분 정보 없음)로 처리한다.
+     */
+    fun findFacilityNamesBy(facilityIds: List<String>): Map<String, String> {
+        if (facilityIds.isEmpty()) return emptyMap()
+        return facilityRepository.findAllByIds(facilityIds.distinct())
+            .mapNotNull { facility -> facility.id?.let { it to facility.name } }
+            .toMap()
+    }
 }
