@@ -52,11 +52,28 @@ class McpObjectMapperConfig {
 
     /**
      * 앱 전역 ObjectMapper — HTTP 요청/응답 직렬화가 이 빈을 쓴다.
-     * Boot 가 구성한 빌더를 그대로 써서 자동설정과 동일한 동작을 유지한다(null 포함).
+     *
+     * Boot 가 구성한 빌더를 기반으로 하되, **이전에 전역이던 MCP 매퍼가 명시하던 정책 중
+     * Boot 기본값과 다른 것을 그대로 보존**한다. 이 변경의 목적은 "null 키 유지" 하나이고,
+     * 나머지 요청/응답 계약은 바뀌면 안 된다.
+     *
+     * 보존 대상 (실측으로 차이를 확인한 것):
+     * - `ACCEPT_EMPTY_STRING_AS_NULL_OBJECT` — Boot 기본은 비활성이라, 켜 두지 않으면
+     *   요청 본문의 `""` 가 객체/enum/날짜 자리에서 null 로 흡수되지 않고
+     *   `InvalidFormatException` → **400** 이 된다(테스트로 재현 확인).
+     * - `FAIL_ON_EMPTY_BEANS` — 직렬화할 property 가 없는 객체가 응답에 섞였을 때
+     *   `{}` 대신 500 이 나지 않도록 이전 동작을 유지한다.
+     *
+     * 아래 두 가지는 Boot 기본값이 이전 설정과 같아 별도 지정하지 않는다(테스트로 고정):
+     * `FAIL_ON_UNKNOWN_PROPERTIES` 비활성, `WRITE_DATES_AS_TIMESTAMPS` 비활성(ISO-8601).
      */
     @Bean
     @Primary
-    fun applicationObjectMapper(builder: Jackson2ObjectMapperBuilder): ObjectMapper = builder.build()
+    fun applicationObjectMapper(builder: Jackson2ObjectMapperBuilder): ObjectMapper =
+        builder
+            .featuresToEnable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT)
+            .featuresToDisable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
+            .build()
 
     /**
      * MCP 서버 전용 ObjectMapper. `@Primary` 를 붙이지 않는다 — 붙이면 NON_NULL 정책이
