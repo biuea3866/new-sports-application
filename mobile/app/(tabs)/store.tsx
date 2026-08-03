@@ -13,6 +13,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 
 import { useProducts, type ProductWithStock } from '../../api/goods';
+import { eventStatusLabel } from '../../lib/catalog-labels';
 import { useEvents } from '../../lib/useEvents';
 import { ROUTES } from '../../lib/navigation';
 import type { EventResponse, EventStatus } from '../../api/types';
@@ -130,15 +131,6 @@ const TICKET_FILTER_CHIPS: TicketFilterChip[] = [
   { label: '종료', value: 'CLOSED' },
 ];
 
-function ticketStatusLabel(status: EventStatus): string {
-  const map: Record<EventStatus, string> = {
-    SCHEDULED: '예정',
-    OPEN: '오픈',
-    CLOSED: '종료',
-  };
-  return map[status];
-}
-
 function formatEventDate(iso: string): string {
   const date = new Date(iso);
   return date.toLocaleDateString('ko-KR', {
@@ -177,7 +169,7 @@ function EventCard({ event }: EventCardProps) {
         </ThemedText>
         <View style={[styles.eventStatusBadge, { backgroundColor: badgeBackground }]}>
           <ThemedText variant="onAccent" style={styles.eventStatusBadgeText}>
-            {ticketStatusLabel(event.status)}
+            {eventStatusLabel(event.status)}
           </ThemedText>
         </View>
       </View>
