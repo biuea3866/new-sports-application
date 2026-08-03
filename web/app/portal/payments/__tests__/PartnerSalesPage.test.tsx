@@ -107,4 +107,73 @@ describe("파트너 매출·결제 내역", () => {
       expect(screen.getByRole("alert")).toHaveTextContent("매출 내역을 불러오지 못했습니다.");
     });
   });
+
+  // ── 결제 상태 표기 ────────────────────────────────────────────────────────
+  // 회귀 방지: FE enum이 BE보다 좁아 READY 결제에서 파싱이 전량 실패했고, 실패 원문(Zod issue
+  // 배열)이 화면에 그대로 찍혔다(02-파트너포털/14 캡쳐).
+
+  it("BE 결제 상태 6종을 모두 한글 라벨로 보여준다", async () => {
+    const statuses = ["PENDING", "READY", "COMPLETED", "CANCELLED", "FAILED", "REFUNDED"];
+    mockFetchPartnerSales.mockResolvedValue({
+      sales: statuses.map((status, index) => ({
+        paymentId: 100 + index,
+        orderType: "BOOKING",
+        orderId: index,
+        sellerAmount: 1000,
+        method: "CREDIT_CARD",
+        provider: "TOSS",
+        status,
+        paidAt: "2026-07-20T12:00:00+09:00",
+        pgTransactionId: null,
+      })),
+      totalElements: statuses.length,
+      totalPages: 1,
+      page: 0,
+      size: 20,
+    });
+
+    render(<PaymentsPage />);
+
+    // 필터 드롭다운에도 같은 라벨이 있으므로 표 영역으로 좁혀 확인한다.
+    const table = await screen.findByRole("table");
+    for (const label of ["결제 대기", "승인 대기", "완료", "취소", "실패", "환불"]) {
+      expect(within(table).getByText(label)).toBeInTheDocument();
+    }
+    // 영문 원문이 상태 셀에 남아 있으면 안 된다.
+    for (const status of statuses) {
+      expect(within(table).queryByText(status)).not.toBeInTheDocument();
+    }
+  });
+
+  it("상태 필터 선택지도 한글로 보여준다", async () => {
+    mockFetchPartnerSales.mockResolvedValue(buildSalesResponse());
+
+    render(<PaymentsPage />);
+
+    const filter = await screen.findByLabelText("결제 상태 필터");
+    expect(within(filter).getByRole("option", { name: "승인 대기" })).toBeInTheDocument();
+    expect(within(filter).getByRole("option", { name: "취소" })).toBeInTheDocument();
+  });
+
+  it("응답이 스키마와 어긋나도 Zod 원문을 화면에 노출하지 않는다", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const schemaFailure = new Error(
+      JSON.stringify([
+        {
+          code: "invalid_value",
+          values: ["PENDING", "COMPLETED"],
+          path: ["sales", 0, "status"],
+          message: 'Invalid option: expected one of "PENDING"|"COMPLETED"',
+        },
+      ])
+    );
+    mockFetchPartnerSales.mockRejectedValue(schemaFailure);
+
+    render(<PaymentsPage />);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).not.toHaveTextContent("invalid_value");
+    expect(alert).not.toHaveTextContent('"path"');
+    expect(alert).toHaveTextContent("응답");
+  });
 });

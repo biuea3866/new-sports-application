@@ -4,6 +4,8 @@
  */
 import { z } from "zod";
 
+import { PAYMENT_STATUS_VALUES } from "./paymentStatus";
+
 // ─── 공통 ───────────────────────────────────────────────────────────────────
 
 /**
@@ -269,7 +271,9 @@ export const CancelBookingInputSchema = z.object({
 
 // ─── Payment ─────────────────────────────────────────────────────────────────
 
-export const PaymentStatusSchema = z.enum(["PENDING", "COMPLETED", "FAILED", "REFUNDED"]);
+// 값 목록은 BE PaymentStatus enum을 그대로 옮긴 `paymentStatus.ts`가 단일 출처다.
+// 여기서 다시 나열하면 BE에 값이 추가될 때 한쪽만 갱신돼 응답이 전량 파싱 실패한다.
+export const PaymentStatusSchema = z.enum(PAYMENT_STATUS_VALUES);
 export const PaymentMethodSchema = z.enum([
   "CREDIT_CARD",
   "BANK_TRANSFER",

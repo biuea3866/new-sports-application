@@ -21,6 +21,8 @@ import {
   fetchMyBookings,
   cancelBooking,
 } from "@/lib/portal/bookings";
+// 결제 상태 라벨은 매출 화면과 같은 매핑을 공유한다 — 화면마다 한글/영문이 갈리면 안 된다.
+import { paymentStatusLabel } from "@/lib/portal/paymentStatus";
 
 const STATUS_LABELS: Record<BookingStatus, string> = {
   PENDING: "대기",
@@ -238,7 +240,7 @@ export default function BookingsPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
-                        {booking.paymentStatus ?? "-"}
+                        {paymentStatusLabel(booking.paymentStatus)}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
                         {new Date(booking.createdAt).toLocaleString("ko-KR")}
@@ -357,7 +359,7 @@ export default function BookingsPage() {
                 {detailModal.booking.paymentStatus !== null && (
                   <div className="flex gap-2">
                     <dt className="w-28 font-medium text-muted-foreground">결제 상태</dt>
-                    <dd>{detailModal.booking.paymentStatus}</dd>
+                    <dd>{paymentStatusLabel(detailModal.booking.paymentStatus)}</dd>
                   </div>
                 )}
                 <div className="flex gap-2">
