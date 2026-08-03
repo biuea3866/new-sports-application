@@ -126,7 +126,7 @@ describe('TabsLayout', () => {
     );
   });
 
-  it('탭 활성색·비활성색이 하드코딩이 아닌 accent·textTertiary 토큰으로 렌더된다 (라이트)', () => {
+  it('탭 활성색·비활성색이 하드코딩이 아닌 accent·textSecondary 토큰으로 렌더된다 (라이트)', () => {
     useThemeMock.mockReturnValue({ scheme: 'light', tokens: lightTokens });
 
     const tree = TabsLayout() as ElementWithChildren;
@@ -134,8 +134,10 @@ describe('TabsLayout', () => {
     const screenOptions = (tabsElement.props as { screenOptions: Record<string, unknown> })
       .screenOptions;
 
+    // textTertiary는 탭바 배경(surfaceElevated) 위에서 AA 본문 대비(4.5:1) 미달(라이트 3.04:1·
+    // 다크 3.25:1)이라 textSecondary로 상향했다 — 아래 "탭바 대비(WCAG)" describe 참조.
     expect(screenOptions.tabBarActiveTintColor).toBe(lightTokens.accent);
-    expect(screenOptions.tabBarInactiveTintColor).toBe(lightTokens.textTertiary);
+    expect(screenOptions.tabBarInactiveTintColor).toBe(lightTokens.textSecondary);
     expect(screenOptions.tabBarActiveTintColor).not.toBe('#007AFF');
     expect(screenOptions.tabBarInactiveTintColor).not.toBe('#8E8E93');
   });
@@ -210,6 +212,79 @@ describe('TabsLayout', () => {
       // 다크 토큰 값은 모두 저휘도 hex이므로, 흰색(#ffffff 계열)로의 회귀를 문자열 비교로 강제한다.
       expect(backgroundColor.toLowerCase()).not.toBe('#ffffff');
       expect(backgroundColor.toLowerCase()).not.toBe('#fff');
+    });
+  });
+
+  /**
+   * 탭바 대비(WCAG) — 배경(surfaceElevated) 토큰을 바꿀 때마다 그 위 활성·비활성 라벨의
+   * 판독 가능성이 회귀하지 않도록 대비 자체를 계산해 강제한다.
+   *
+   * 배경: tabBarStyle에 surfaceElevated를 도입하면서(순백 회귀 수정) 배경이 어두워져,
+   * 그대로였던 textTertiary(비활성)가 다크에서 4.62:1(구 순백 배경) → 3.25:1로 악화됐다.
+   * 색만 바꾸면 재발하므로 여기서 대비 수치 자체를 단언한다 (web/__tests__/themeContrast.test.ts 방식 참고).
+   */
+  describe('탭바 대비(WCAG) — surfaceElevated 배경 위 활성·비활성 라벨', () => {
+    const TEXT_MINIMUM = 4.5;
+    const UI_COMPONENT_MINIMUM = 3;
+
+    function hexToRgb(hex: string): readonly [number, number, number] {
+      const normalized = hex.replace('#', '');
+      return [
+        parseInt(normalized.slice(0, 2), 16),
+        parseInt(normalized.slice(2, 4), 16),
+        parseInt(normalized.slice(4, 6), 16),
+      ];
+    }
+
+    function relativeLuminance(hex: string): number {
+      const [r, g, b] = hexToRgb(hex).map((channel) => {
+        const c = channel / 255;
+        return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+      });
+      return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+    }
+
+    function contrastRatio(foreground: string, background: string): number {
+      const first = relativeLuminance(foreground);
+      const second = relativeLuminance(background);
+      const [lighter, darker] = first > second ? [first, second] : [second, first];
+      return (lighter + 0.05) / (darker + 0.05);
+    }
+
+    it('다크 모드: 탭바 배경 ↔ 비활성 라벨(textSecondary) 대비가 AA 본문 기준(4.5:1)을 만족한다', () => {
+      const ratio = contrastRatio(darkTokens.textSecondary, darkTokens.surfaceElevated);
+
+      expect(ratio).toBeGreaterThanOrEqual(TEXT_MINIMUM);
+    });
+
+    it('다크 모드: 탭바 배경 ↔ 활성 라벨(accent) 대비가 AA 본문 기준(4.5:1)을 만족한다', () => {
+      const ratio = contrastRatio(darkTokens.accent, darkTokens.surfaceElevated);
+
+      expect(ratio).toBeGreaterThanOrEqual(TEXT_MINIMUM);
+    });
+
+    it('라이트 모드: 탭바 배경 ↔ 비활성 라벨(textSecondary) 대비가 AA 본문 기준(4.5:1)을 만족한다', () => {
+      const ratio = contrastRatio(lightTokens.textSecondary, lightTokens.surfaceElevated);
+
+      expect(ratio).toBeGreaterThanOrEqual(TEXT_MINIMUM);
+    });
+
+    it(
+      '라이트 모드: 탭바 배경 ↔ 활성 라벨(accent) 대비는 UI 컴포넌트 기준(3:1)을 만족한다 ' +
+        '(accent 토큰 자체가 라이트에서 AA 본문 기준 미달인 사전 결함 — 이번 티켓 범위 밖, 별도 티켓 대상)',
+      () => {
+        const ratio = contrastRatio(lightTokens.accent, lightTokens.surfaceElevated);
+
+        expect(ratio).toBeGreaterThanOrEqual(UI_COMPONENT_MINIMUM);
+      }
+    );
+
+    it('과거 회귀(textTertiary를 배경에 썼을 때 다크 3.25:1)로 되돌아가지 않는다', () => {
+      const regressedRatio = contrastRatio(darkTokens.textTertiary, darkTokens.surfaceElevated);
+
+      // textTertiary 자체는 여전히 AA 미달 조합이다 — 탭바 비활성 라벨로 다시 쓰이면
+      // 이 값이 통과선(4.5) 밑이라는 사실로 회귀를 감지할 수 있음을 고정해 둔다.
+      expect(regressedRatio).toBeLessThan(TEXT_MINIMUM);
     });
   });
 });
