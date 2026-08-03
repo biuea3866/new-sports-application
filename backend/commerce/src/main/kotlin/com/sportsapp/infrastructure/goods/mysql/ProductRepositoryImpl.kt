@@ -21,6 +21,9 @@ class ProductRepositoryImpl(
     override fun findByIdAndDeletedAtIsNull(id: Long): Product? =
         productJpaRepository.findByIdAndDeletedAtIsNull(id)
 
+    override fun findAllByIdsAndDeletedAtIsNull(ids: List<Long>): List<Product> =
+        if (ids.isEmpty()) emptyList() else productJpaRepository.findAllByIdInAndDeletedAtIsNull(ids)
+
     override fun findByCategoryAndStatus(category: ProductCategory, status: ProductStatus): List<Product> =
         productJpaRepository.findAllByCategoryAndStatus(category, status)
 

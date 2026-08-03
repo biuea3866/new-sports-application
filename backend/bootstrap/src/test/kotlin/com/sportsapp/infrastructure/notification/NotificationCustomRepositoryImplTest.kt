@@ -73,7 +73,7 @@ class NotificationCustomRepositoryImplTest(
             }
 
             When("[R-01] countUnreadByUserId 를 호출하면") {
-                val count = notificationRepository.countUnreadByUserId(userId)
+                val count = notificationRepository.countUnreadByUserId(userId, NotificationChannel.IN_APP)
 
                 Then("[R-01] read_at IS NULL 조건으로 3건이 반환된다") {
                     count shouldBe 3L
@@ -145,7 +145,7 @@ class NotificationCustomRepositoryImplTest(
                 notificationJpaRepository.saveAndFlush(found)
 
                 Then("read_at 이 채워지고 countUnread 가 0 을 반환한다") {
-                    val count = notificationRepository.countUnreadByUserId(userId)
+                    val count = notificationRepository.countUnreadByUserId(userId, NotificationChannel.IN_APP)
                     count shouldBe 0L
                     val updatedReadAt = notificationJpaRepository.findById(saved.id).get().readAt
                     requireNotNull(updatedReadAt).shouldBeGreaterThanOrEqual(
@@ -176,6 +176,19 @@ class NotificationCustomRepositoryImplTest(
                 Then("PUSH 발송분이 제외돼 1건만 반환된다") {
                     result.totalElements shouldBe 1L
                     result.content.single().channel shouldBe NotificationChannel.IN_APP
+                }
+
+                // 배지가 채널을 안 거르면 2가 되어 목록(1)과 어긋난다.
+                Then("미읽음 배지도 같은 채널 기준이라 목록 건수와 일치한다") {
+                    val badge = notificationRepository
+                        .countUnreadByUserId(userId, NotificationChannel.IN_APP)
+                    badge shouldBe result.totalElements
+                }
+
+                Then("채널을 지정하지 않으면 PUSH 까지 전 채널이 조회된다(MCP 발송 진단)") {
+                    val allChannels = notificationCustomRepository
+                        .findByUserIdPaged(userId, null, false, pageable)
+                    allChannels.totalElements shouldBe 2L
                 }
             }
         }

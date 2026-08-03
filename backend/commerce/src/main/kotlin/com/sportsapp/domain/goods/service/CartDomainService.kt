@@ -38,11 +38,17 @@ class CartDomainService(
     }
 
     /**
-     * 상품이 삭제·미조회여도 장바구니 전체가 실패하지 않도록 기본 문구로 방어한다.
+     * 상품을 한 번에 배치 조회해 결합한다 — 항목 수만큼 SELECT 하지 않는다(N+1 방지).
+     * 소프트 삭제된 상품은 조회에서 빠지므로, 그 항목은 기본 문구로 방어해 장바구니 전체가
+     * 실패하지 않게 한다.
      */
-    private fun toLineItems(items: List<CartItem>): List<CartLineItem> =
-        items.map { item ->
-            val product = productRepository.findById(item.productId)
+    private fun toLineItems(items: List<CartItem>): List<CartLineItem> {
+        if (items.isEmpty()) return emptyList()
+        val productsById = productRepository
+            .findAllByIdsAndDeletedAtIsNull(items.map { it.productId })
+            .associateBy { it.id }
+        return items.map { item ->
+            val product = productsById[item.productId]
             CartLineItem(
                 id = item.id,
                 productId = item.productId,
@@ -52,6 +58,7 @@ class CartDomainService(
                 quantity = item.quantity,
             )
         }
+    }
 
     fun addItem(userId: Long, productId: Long, quantity: Int): Pair<Cart, List<CartLineItem>> {
         val product = productRepository.findById(productId)

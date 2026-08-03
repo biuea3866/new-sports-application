@@ -114,14 +114,21 @@ class NotificationDomainService(
     }
 
     /**
-     * 알림함(인앱) 목록. 같은 사건이 IN_APP·PUSH 두 행으로 적재되므로 IN_APP 만 조회한다 —
-     * 채널을 안 거르면 알림함에 같은 알림이 두 번 노출된다(캡쳐 36-알림함 16행 = 8건 × 2채널).
+     * 사용자 알림 목록. 채널은 **호출자가 결정한다** — 알림함은 IN_APP(같은 사건이 IN_APP·PUSH
+     * 두 행으로 적재돼 중복 노출되므로), MCP 발송 진단 도구는 null(전 채널).
+     * 도메인이 채널을 하드코딩하면 재사용 지점이 전부 끌려간다.
      */
-    fun listMyNotifications(userId: Long, onlyUnread: Boolean, page: Int, size: Int): Page<Notification> {
+    fun listMyNotifications(
+        userId: Long,
+        channel: NotificationChannel?,
+        onlyUnread: Boolean,
+        page: Int,
+        size: Int,
+    ): Page<Notification> {
         val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
         return notificationCustomRepository.findByUserIdPaged(
             userId = userId,
-            channel = NotificationChannel.IN_APP,
+            channel = channel,
             onlyUnread = onlyUnread,
             pageable = pageable,
         )
@@ -133,11 +140,12 @@ class NotificationDomainService(
      */
     fun listMyNotificationViews(
         userId: Long,
+        channel: NotificationChannel?,
         onlyUnread: Boolean,
         page: Int,
         size: Int,
     ): Page<NotificationView> =
-        listMyNotifications(userId, onlyUnread, page, size).map { toView(it) }
+        listMyNotifications(userId, channel, onlyUnread, page, size).map { toView(it) }
 
     private fun toView(notification: Notification): NotificationView {
         val rendered = resolveRendered(notification)
@@ -196,8 +204,11 @@ class NotificationDomainService(
         return send(userId, channel, templateId, enrichedPayload)
     }
 
-    fun countUnread(userId: Long): Long =
-        notificationRepository.countUnreadByUserId(userId)
+    /**
+     * 미읽음 배지. 목록과 **같은 채널 기준**으로 세야 배지와 목록 건수가 어긋나지 않는다.
+     */
+    fun countUnread(userId: Long, channel: NotificationChannel?): Long =
+        notificationRepository.countUnreadByUserId(userId, channel)
 
     companion object {
         /** 설정에 없는 템플릿으로 적재된 알림의 기본 제목. */

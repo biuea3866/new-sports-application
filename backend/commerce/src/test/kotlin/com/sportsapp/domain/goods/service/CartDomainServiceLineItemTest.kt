@@ -13,6 +13,7 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import java.math.BigDecimal
 
 /**
@@ -51,10 +52,10 @@ class CartDomainServiceLineItemTest : BehaviorSpec({
             CartItem(cartId = cart.id, productId = 121L, quantity = 1),
             CartItem(cartId = cart.id, productId = 122L, quantity = 2),
         )
-        every { productRepository.findById(121L) } returns
-            productMock(121L, "실내 클라이밍 초크백", BigDecimal("29000"))
-        every { productRepository.findById(122L) } returns
-            productMock(122L, "카본 배드민턴 라켓", BigDecimal("119000"))
+        every { productRepository.findAllByIdsAndDeletedAtIsNull(listOf(121L, 122L)) } returns listOf(
+            productMock(121L, "실내 클라이밍 초크백", BigDecimal("29000")),
+            productMock(122L, "카본 배드민턴 라켓", BigDecimal("119000")),
+        )
 
         When("장바구니를 조회하면") {
             val (_, lineItems) = service.getCartWithLineItems(3L)
@@ -72,10 +73,16 @@ class CartDomainServiceLineItemTest : BehaviorSpec({
             Then("productId 는 그대로 유지된다") {
                 lineItems.map { it.productId } shouldBe listOf(121L, 122L)
             }
+
+            Then("항목 수와 무관하게 상품을 한 번만 배치 조회한다(N+1 방지)") {
+                verify(exactly = 1) {
+                    productRepository.findAllByIdsAndDeletedAtIsNull(listOf(121L, 122L))
+                }
+            }
         }
     }
 
-    Given("상품이 삭제돼 조회되지 않는 항목이 담긴 장바구니가 있는 상황") {
+    Given("소프트 삭제된 상품이 담긴 장바구니가 있는 상황") {
         val cartRepository = mockk<CartRepository>()
         val cartItemRepository = mockk<CartItemRepository>()
         val productRepository = mockk<ProductRepository>()
@@ -92,7 +99,8 @@ class CartDomainServiceLineItemTest : BehaviorSpec({
         every { cartItemRepository.findByCartId(cart.id) } returns listOf(
             CartItem(cartId = cart.id, productId = 999L, quantity = 1),
         )
-        every { productRepository.findById(999L) } returns null
+        // 소프트 삭제된 상품은 배치 조회 결과에서 빠진다 → 기본 문구 분기가 실제로 도달한다.
+        every { productRepository.findAllByIdsAndDeletedAtIsNull(listOf(999L)) } returns emptyList()
 
         When("장바구니를 조회하면") {
             val (_, lineItems) = service.getCartWithLineItems(4L)
@@ -123,8 +131,9 @@ class CartDomainServiceLineItemTest : BehaviorSpec({
         When("장바구니를 조회하면") {
             val (_, lineItems) = service.getCartWithLineItems(5L)
 
-            Then("빈 목록을 돌려주고 상품을 조회하지 않는다") {
+            Then("빈 목록을 돌려주고 상품 조회를 아예 하지 않는다") {
                 lineItems shouldBe emptyList()
+                verify(exactly = 0) { productRepository.findAllByIdsAndDeletedAtIsNull(any()) }
             }
         }
     }

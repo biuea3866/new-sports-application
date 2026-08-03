@@ -78,29 +78,32 @@ class TemplateRendererImplTest : BehaviorSpec({
         When("변수를 전달하지 않고 render 를 호출하면") {
             val result = renderer.render("booking-confirmed", emptyMap())
 
-            Then("본문 앞에 공백이 남지 않는다") {
-                result.body shouldBe "예약이 확정되었습니다."
+            // 렌더러는 템플릿 원문을 그대로 치환한다 — 공백 정리는 표시 계층
+            // (Notification#payloadText 의 trim)이 담당한다. 여기서 전역 정규화를 하면
+            // email 등 여러 줄 본문의 들여쓰기까지 뭉개진다.
+            Then("치환 결과를 가공 없이 돌려준다") {
+                result.body shouldBe " 예약이 확정되었습니다."
             }
         }
     }
 
-    Given("[U-06] 문장 중간 placeholder 가 비어 렌더되는 템플릿") {
-        val spacedRenderer = TemplateRendererImpl(
+    Given("[U-06] 여러 줄 들여쓰기가 있는 email 본문 템플릿") {
+        val multilineRenderer = TemplateRendererImpl(
             NotificationTemplateProperties(
                 templates = mapOf(
-                    "spaced" to NotificationTemplateProperties.TemplateDefinition(
-                        title = "제목",
-                        body = "예약 {facilityName} 확정",
+                    "email-notice" to NotificationTemplateProperties.TemplateDefinition(
+                        title = "안내",
+                        body = "안녕하세요 {userName}님,\n    들여쓴 안내문입니다.",
                     ),
                 )
             )
         )
 
-        When("변수를 전달하지 않고 render 를 호출하면") {
-            val result = spacedRenderer.render("spaced", emptyMap())
+        When("render 를 호출하면") {
+            val result = multilineRenderer.render("email-notice", mapOf("userName" to "홍길동"))
 
-            Then("이중 공백이 하나로 접힌다") {
-                result.body shouldBe "예약 확정"
+            Then("여러 줄 본문의 들여쓰기가 보존된다") {
+                result.body shouldBe "안녕하세요 홍길동님,\n    들여쓴 안내문입니다."
             }
         }
     }

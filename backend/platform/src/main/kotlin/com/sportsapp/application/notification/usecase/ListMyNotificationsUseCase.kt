@@ -14,6 +14,7 @@ class ListMyNotificationsUseCase(
     fun execute(command: ListMyNotificationsCommand): NotificationPageResult {
         val page = notificationDomainService.listMyNotificationViews(
             userId = command.userId,
+            channel = command.channel,
             onlyUnread = command.onlyUnread,
             page = command.page,
             size = command.size,

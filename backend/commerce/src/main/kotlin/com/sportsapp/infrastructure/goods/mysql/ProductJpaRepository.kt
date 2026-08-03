@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface ProductJpaRepository : JpaRepository<Product, Long> {
     fun findByIdAndDeletedAtIsNull(id: Long): Product?
+    fun findAllByIdInAndDeletedAtIsNull(ids: List<Long>): List<Product>
     fun findAllByCategoryAndStatus(category: ProductCategory, status: ProductStatus): List<Product>
     fun findAllByOwnerIdAndDeletedAtIsNull(ownerId: Long): List<Product>
     fun countByOwnerIdAndStatusAndDeletedAtIsNull(ownerId: Long, status: ProductStatus): Long

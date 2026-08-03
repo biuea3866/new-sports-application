@@ -1,6 +1,7 @@
 package com.sportsapp.infrastructure.notification.mysql
 import com.sportsapp.domain.notification.entity.Notification
 import com.sportsapp.domain.notification.repository.NotificationRepository
+import com.sportsapp.domain.notification.vo.NotificationChannel
 import com.sportsapp.domain.notification.entity.NotificationStatus
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
@@ -25,6 +26,11 @@ class NotificationRepositoryImpl(
     override fun saveAll(notifications: List<Notification>): List<Notification> =
         notificationJpaRepository.saveAll(notifications)
 
-    override fun countUnreadByUserId(userId: Long): Long =
-        notificationJpaRepository.countByUserIdAndReadAtIsNullAndDeletedAtIsNull(userId)
+    override fun countUnreadByUserId(userId: Long, channel: NotificationChannel?): Long =
+        if (channel == null) {
+            notificationJpaRepository.countByUserIdAndReadAtIsNullAndDeletedAtIsNull(userId)
+        } else {
+            notificationJpaRepository
+                .countByUserIdAndChannelAndReadAtIsNullAndDeletedAtIsNull(userId, channel)
+        }
 }

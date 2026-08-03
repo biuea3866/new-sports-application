@@ -24,13 +24,9 @@ class TemplateRendererImpl(
         )
     }
 
-    /**
-     * 치환 후 공백을 정규화한다 — 값이 없는 placeholder 가 빈 문자열로 치환되면
-     * "{facilityName} 예약이 확정되었습니다." 가 " 예약이…" 처럼 앞 공백·이중 공백을 남긴다.
-     */
     private fun substitute(templateId: String, template: String, payload: Map<String, Any>): String {
         val placeholderPattern = Regex("""\{(\w+)\}""")
-        val substituted = placeholderPattern.replace(template) { match ->
+        return placeholderPattern.replace(template) { match ->
             val key = match.groupValues[1]
             val value = payload[key]
             if (value == null) {
@@ -40,6 +36,5 @@ class TemplateRendererImpl(
                 value.toString()
             }
         }
-        return substituted.replace(Regex("""[ \t]{2,}"""), " ").trim()
     }
 }

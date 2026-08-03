@@ -69,7 +69,7 @@ class NotificationDomainServiceListViewTest : BehaviorSpec({
 
         When("알림함 목록을 조회하면") {
             val views = serviceWith(customRepository, templateRenderer)
-                .listMyNotificationViews(userId = 7L, onlyUnread = false, page = 0, size = 20)
+                .listMyNotificationViews(userId = 7L, channel = NotificationChannel.IN_APP, onlyUnread = false, page = 0, size = 20)
 
             Then("저장된 제목·본문이 그대로 노출된다") {
                 views.content.single().title shouldBe "결제 완료"
@@ -102,7 +102,7 @@ class NotificationDomainServiceListViewTest : BehaviorSpec({
 
         When("알림함 목록을 조회하면") {
             val views = serviceWith(customRepository, templateRenderer)
-                .listMyNotificationViews(userId = 7L, onlyUnread = false, page = 0, size = 20)
+                .listMyNotificationViews(userId = 7L, channel = NotificationChannel.IN_APP, onlyUnread = false, page = 0, size = 20)
 
             Then("템플릿을 렌더해 제목·본문을 채운다") {
                 views.content.single().title shouldBe "예약 확정"
@@ -131,7 +131,7 @@ class NotificationDomainServiceListViewTest : BehaviorSpec({
 
         When("알림함 목록을 조회하면") {
             val views = serviceWith(customRepository, templateRenderer)
-                .listMyNotificationViews(userId = 7L, onlyUnread = false, page = 0, size = 20)
+                .listMyNotificationViews(userId = 7L, channel = NotificationChannel.IN_APP, onlyUnread = false, page = 0, size = 20)
 
             Then("목록 전체가 실패하지 않고 기본 제목으로 방어된다") {
                 views.content.single().title shouldBe NotificationDomainService.FALLBACK_TITLE
@@ -158,7 +158,7 @@ class NotificationDomainServiceListViewTest : BehaviorSpec({
 
         When("알림함 목록을 조회하면") {
             val views = serviceWith(customRepository, templateRenderer)
-                .listMyNotificationViews(userId = 7L, onlyUnread = true, page = 0, size = 20)
+                .listMyNotificationViews(userId = 7L, channel = NotificationChannel.IN_APP, onlyUnread = true, page = 0, size = 20)
 
             Then("읽음으로 표시되고 분류는 시스템이다") {
                 views.content.single().isRead shouldBe true
@@ -181,7 +181,7 @@ class NotificationDomainServiceListViewTest : BehaviorSpec({
 
         When("알림함 목록을 조회하면") {
             val views = serviceWith(customRepository, templateRenderer)
-                .listMyNotificationViews(userId = 7L, onlyUnread = false, page = 0, size = 20)
+                .listMyNotificationViews(userId = 7L, channel = NotificationChannel.IN_APP, onlyUnread = false, page = 0, size = 20)
 
             Then("PUSH 발송분이 중복 노출되지 않도록 IN_APP 채널만 조회한다") {
                 views.content.size shouldBe 1
@@ -206,10 +206,80 @@ class NotificationDomainServiceListViewTest : BehaviorSpec({
 
         When("알림함 목록을 조회하면") {
             val views = serviceWith(customRepository, templateRenderer)
-                .listMyNotificationViews(userId = 7L, onlyUnread = false, page = 0, size = 20)
+                .listMyNotificationViews(userId = 7L, channel = NotificationChannel.IN_APP, onlyUnread = false, page = 0, size = 20)
 
             Then("저장된 본문의 앞뒤 공백을 제거해 노출한다") {
                 views.content.single().content shouldBe "예약이 확정되었습니다."
+            }
+        }
+    }
+
+    Given("IN_APP·PUSH 쌍으로 적재된 안읽은 알림 8쌍(총 16행)이 있는 상황") {
+        val customRepository = mockk<NotificationCustomRepository>()
+        val templateRenderer = mockk<TemplateRenderer>()
+        val notificationRepository = mockk<NotificationRepository>()
+        val inAppRows = (1..8).map {
+            queuedSpy(Notification.queue(
+                userId = 7L,
+                channel = NotificationChannel.IN_APP,
+                templateId = "payment-completed",
+                payload = NotificationPayload(mapOf("_title" to "결제 완료", "_body" to "본문")),
+            ))
+        }
+        every { customRepository.findByUserIdPaged(7L, NotificationChannel.IN_APP, false, any()) } returns
+            PageImpl(inAppRows, PageRequest.of(0, 20), 8)
+        // 배지도 목록과 같은 채널 기준으로 세야 한다 — 채널을 안 거르면 16이 된다.
+        every { notificationRepository.countUnreadByUserId(7L, NotificationChannel.IN_APP) } returns 8L
+        val service = NotificationDomainService(
+            notificationRepository = notificationRepository,
+            notificationCustomRepository = customRepository,
+            channelGateways = emptyList(),
+            templateRenderer = templateRenderer,
+            domainEventPublisher = mockk<DomainEventPublisher>(),
+        )
+
+        When("알림함 목록과 미읽음 배지를 함께 조회하면") {
+            val views = service.listMyNotificationViews(
+                userId = 7L,
+                channel = NotificationChannel.IN_APP,
+                onlyUnread = false,
+                page = 0,
+                size = 20,
+            )
+            val badge = service.countUnread(7L, NotificationChannel.IN_APP)
+
+            Then("목록 건수와 배지 수가 일치한다") {
+                views.content.size shouldBe 8
+                badge shouldBe 8L
+            }
+
+            Then("배지도 IN_APP 채널로만 집계한다") {
+                verify(exactly = 1) {
+                    notificationRepository.countUnreadByUserId(7L, NotificationChannel.IN_APP)
+                }
+            }
+        }
+    }
+
+    Given("MCP 발송 진단 도구가 전 채널 이력을 요청하는 상황") {
+        val customRepository = mockk<NotificationCustomRepository>()
+        val templateRenderer = mockk<TemplateRenderer>()
+        val pushRow = queuedSpy(Notification.queue(
+            userId = 7L,
+            channel = NotificationChannel.PUSH,
+            templateId = "payment-completed",
+            payload = NotificationPayload(mapOf("_title" to "결제 완료", "_body" to "본문")),
+        ))
+        // channel = null 이면 채널 조건 없이 전 채널을 조회한다.
+        every { customRepository.findByUserIdPaged(7L, null, false, any()) } returns
+            PageImpl(listOf(pushRow), PageRequest.of(0, 20), 1)
+
+        When("채널을 지정하지 않고 조회하면") {
+            val views = serviceWith(customRepository, templateRenderer)
+                .listMyNotificationViews(userId = 7L, channel = null, onlyUnread = false, page = 0, size = 20)
+
+            Then("PUSH 발송 행도 보여 발송 진단이 가능하다") {
+                views.content.single().channel shouldBe NotificationChannel.PUSH
             }
         }
     }

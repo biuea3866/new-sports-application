@@ -16,14 +16,14 @@ class NotificationCustomRepositoryImpl(
 
     override fun findByUserIdPaged(
         userId: Long,
-        channel: NotificationChannel,
+        channel: NotificationChannel?,
         onlyUnread: Boolean,
         pageable: Pageable,
     ): Page<Notification> {
         val notification = QNotification.notification
         val baseCondition = notification.userId.eq(userId)
             .and(notification.deletedAt.isNull)
-            .and(notification.channel.eq(channel))
+            .and(channel?.let { notification.channel.eq(it) })
         val condition = if (onlyUnread) baseCondition.and(notification.readAt.isNull) else baseCondition
 
         val content = queryFactory.selectFrom(notification)
