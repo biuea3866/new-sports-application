@@ -175,7 +175,7 @@ function ClubsSection() {
             data={communities}
             keyExtractor={(item) => String(item.id)}
             renderItem={({ item }) => <ClubCard community={item} />}
-            contentContainerStyle={styles.list}
+            contentContainerStyle={styles.clubsList}
           />
         )}
       </View>
@@ -243,6 +243,10 @@ export default function CommunityTabScreen() {
   );
 }
 
+/** 떠 있는 `+ 개설` 버튼의 기하 — 목록이 비워 둬야 할 아래 여백 계산에 함께 쓴다. */
+const FLOATING_CTA_BOTTOM = 32;
+const FLOATING_CTA_HEIGHT = 48;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -289,6 +293,15 @@ const styles = StyleSheet.create({
   list: {
     padding: 16,
   },
+  /**
+   * 동아리 목록만 아래를 더 비운다 — 목록이 화면을 채우면 끝까지 스크롤했을 때 마지막 카드가
+   * 떠 있는 `+ 개설` 버튼(bottom 32 + 높이 약 48) 밑으로 들어가 가려진다.
+   * 버튼이 차지하는 높이에 여백을 더한 만큼을 확보한다.
+   */
+  clubsList: {
+    padding: 16,
+    paddingBottom: FLOATING_CTA_BOTTOM + FLOATING_CTA_HEIGHT + 16,
+  },
   // 동아리 섹션
   searchInput: {
     marginHorizontal: 16,
@@ -326,7 +339,7 @@ const styles = StyleSheet.create({
   floatingCta: {
     position: 'absolute',
     right: 20,
-    bottom: 32,
+    bottom: FLOATING_CTA_BOTTOM,
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderRadius: 24,

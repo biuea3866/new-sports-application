@@ -141,14 +141,24 @@ describe('마이 화면 — 내 정보 표시', () => {
   });
 
   // 앱을 새로고침하면 메모리에만 있던 accessToken이 사라진다 — 그때도 내 정보는 보여야 한다.
-  it('토큰이 메모리에 없어도 서버 프로필로 이메일과 사용자 ID를 표시한다', () => {
+  it('토큰이 메모리에 없어도 서버 프로필로 이메일을 표시한다', () => {
     mockAuthState({ accessToken: null });
     useMyProfileMock.mockReturnValue({ data: profile, isLoading: false, isError: false });
 
     render(<MeScreen />);
 
     expect(screen.getByText('demo.user@sportsapp.dev')).toBeTruthy();
-    expect(screen.getByText('68')).toBeTruthy();
+  });
+
+  // 내부 식별자는 사용자에게 의미가 없다 — 닉네임 도입 이후 남아 있던 마지막 노출 지점
+  // (01-모바일앱/37 캡쳐의 `사용자 ID 1`).
+  it('내부 식별자인 사용자 ID를 노출하지 않는다', () => {
+    useMyProfileMock.mockReturnValue({ data: profile, isLoading: false, isError: false });
+
+    render(<MeScreen />);
+
+    expect(screen.queryByText('사용자 ID')).toBeNull();
+    expect(screen.queryByText('68')).toBeNull();
   });
 
   it('프로필을 불러오는 중에는 안내 문구를 표시한다', () => {
@@ -157,7 +167,7 @@ describe('마이 화면 — 내 정보 표시', () => {
 
     render(<MeScreen />);
 
-    // 이메일·사용자 ID 두 필드가 같은 상태 문구를 보여준다.
+    // 이메일 필드가 로딩 상태 문구를 보여준다.
     expect(screen.getAllByText('불러오는 중...').length).toBeGreaterThan(0);
   });
 
@@ -282,8 +292,8 @@ describe('마이 화면 — 닉네임', () => {
     render(<MeScreen />);
 
     expect(screen.queryByText('닉네임을 설정해 주세요')).toBeNull();
-    // 닉네임·이메일·사용자 ID 3필드가 같은 로딩 표기를 쓴다 (형제 필드와 4상태 일치)
-    expect(screen.getAllByText('불러오는 중...')).toHaveLength(3);
+    // 닉네임·이메일 2필드가 같은 로딩 표기를 쓴다 (형제 필드와 4상태 일치)
+    expect(screen.getAllByText('불러오는 중...')).toHaveLength(2);
     expect(screen.getByLabelText('닉네임 수정').props.accessibilityState.disabled).toBe(true);
   });
 
@@ -293,8 +303,8 @@ describe('마이 화면 — 닉네임', () => {
     render(<MeScreen />);
 
     expect(screen.queryByText('닉네임을 설정해 주세요')).toBeNull();
-    // 닉네임·이메일·사용자 ID 3필드가 같은 실패 표기를 쓴다 (형제 필드와 4상태 일치)
-    expect(screen.getAllByText('정보를 불러오지 못했어요')).toHaveLength(3);
+    // 닉네임·이메일 2필드가 같은 실패 표기를 쓴다 (형제 필드와 4상태 일치)
+    expect(screen.getAllByText('정보를 불러오지 못했어요')).toHaveLength(2);
     expect(screen.getByLabelText('닉네임 수정').props.accessibilityState.disabled).toBe(true);
   });
 
