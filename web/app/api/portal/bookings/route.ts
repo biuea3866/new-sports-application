@@ -1,8 +1,12 @@
 /**
  * BFF Route Handler — /api/portal/bookings
- * GET : 내 예약 목록 조회 → BE GET /bookings/me forward
+ * GET : 파트너 소유 시설의 예약 목록 조회 → BE GET /api/facility-owner/bookings forward
  *
  * 쿼리 파라미터: status, page, size
+ *
+ * 예약자 스코프(`/bookings/me`)가 아니다 — 포털 "예약 관리"는 **내 시설에 들어온 남의 예약**을
+ * 봐야 한다. 예약자 스코프를 호출하면 파트너 본인 예약만 잡혀 소유 시설에 예약이 실재해도
+ * 0건으로 보인다. 조회 대상 소유자는 BE가 인증 주체로 결정하므로 여기서 넘기지 않는다.
  */
 import { NextRequest, NextResponse } from "next/server";
 
@@ -68,6 +72,8 @@ async function forwardBe(path: string, init: { method: string; body?: string }):
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const { searchParams } = request.nextUrl;
   const qs = searchParams.toString();
-  const bePath = qs ? `/bookings/me?${qs}` : "/bookings/me";
+  const bePath = qs
+    ? `/api/facility-owner/bookings?${qs}`
+    : "/api/facility-owner/bookings";
   return forwardBe(bePath, { method: "GET" });
 }

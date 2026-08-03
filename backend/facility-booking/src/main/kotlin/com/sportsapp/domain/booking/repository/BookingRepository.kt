@@ -17,6 +17,19 @@ interface BookingRepository {
         from: ZonedDateTime?,
         to: ZonedDateTime?,
     ): List<Booking>
+    /**
+     * 시설 소유자(파트너) 스코프 예약 조회 — 포털 "예약 관리"가 소비한다.
+     *
+     * [findPageByUserId]는 **예약자** 기준이라 파트너가 본인 예약만 보게 된다. 이 메서드는
+     * 예약이 걸린 슬롯의 소유자(`slots.owner_id`)로 판정해 **내 시설에 들어온 남의 예약**을
+     * 반환한다. 소유권을 슬롯으로 판정하므로 facility 컨텍스트를 참조하지 않는다.
+     */
+    fun findPageByOwnerUserId(
+        ownerUserId: Long,
+        status: BookingStatus?,
+        pageable: Pageable,
+    ): Page<Booking>
+
     fun findPageByUserId(
         userId: Long,
         status: BookingStatus?,

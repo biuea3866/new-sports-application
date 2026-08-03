@@ -182,6 +182,14 @@ class BookingDomainService(
     }
 
     /**
+     * 시설 소유자(파트너) 스코프 예약 조회 — 포털 "예약 관리"가 소비한다.
+     *
+     * [findMyBookings]는 **예약자** 기준이라 파트너가 본인 예약만 보게 된다(소유 시설에 예약이
+     * 실재해도 0건). 이 메서드는 슬롯 소유자로 판정해 내 시설에 들어온 남의 예약을 반환한다.
+     */
+    fun findBookingsForFacilityOwner(ownerUserId: Long, status: BookingStatus?, pageable: Pageable): Page<Booking> =
+        bookingRepository.findPageByOwnerUserId(ownerUserId, status, pageable)
+    /**
      * order 통합 조회(BE-08)가 소비하는 사용자별 주문(라벨 title 포함) 조회.
      * orderType=BOOKING 매핑은 order 파사드가 담당한다.
      */
@@ -220,13 +228,26 @@ class BookingDomainService(
     }
 
 
+    /**
+     * 예약 단건 조회 — **예약자 본인** 또는 **그 슬롯을 소유한 시설 파트너**만 열람할 수 있다.
+     *
+     * 포털 "예약 관리"가 파트너 스코프 목록을 보여주므로, 목록의 행에서 상세로 들어갈 수 있어야
+     * 기능이 성립한다(예약자만 허용하면 자기 시설 예약을 보고도 상세에서 막힌다).
+     * 소유권은 슬롯(`slots.owner_id`)으로 판정한다 — 슬롯은 booking 컨텍스트 자기
+     * 애그리게이트라 facility 컨텍스트를 참조하지 않는다.
+     *
+     * 슬롯을 찾을 수 없으면 소유권을 확인할 방법이 없으므로 열어주지 않는다.
+     */
     fun getBooking(requesterId: Long, bookingId: Long): Booking {
         val booking = bookingRepository.findById(bookingId)
             ?: throw ResourceNotFoundException("Booking", bookingId)
         if (booking.userId == requesterId) return booking
-        // TODO(AUTH-05): Facility.ownerId 조회로 FACILITY_OWNER 권한 분기 추가
+        if (isSlotOwnedBy(booking.slotId, requesterId)) return booking
         throw UnauthorizedBookingAccessException(bookingId)
     }
+
+    private fun isSlotOwnedBy(slotId: Long, requesterId: Long): Boolean =
+        slotRepository.findById(slotId)?.ownerId == requesterId
 
     /**
      * 단건 조회(GET /bookings/{id})가 소비하는 booking + slot 조인 상세.
