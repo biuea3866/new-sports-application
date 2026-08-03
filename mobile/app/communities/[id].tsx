@@ -37,6 +37,7 @@ import {
   ThemedView,
 } from '../../components/ui';
 import { ScreenHeader } from '../../components/common/ScreenHeader';
+import { resolveDisplayName } from '../../lib/displayName';
 import { isFeatureEnabled } from '../../lib/feature-flags';
 import { isForbiddenError } from '../../lib/http-error';
 import {
@@ -121,7 +122,7 @@ export default function CommunityDetailScreen() {
   }
 
   function handleKick(member: CommunityMemberResponse) {
-    Alert.alert('멤버 강퇴', `사용자 #${member.userId}님을 강퇴할까요?`, [
+    Alert.alert('멤버 강퇴', `${resolveDisplayName(member.displayName)}님을 강퇴할까요?`, [
       { text: '취소', style: 'cancel' },
       {
         text: '강퇴',
@@ -141,7 +142,7 @@ export default function CommunityDetailScreen() {
   }
 
   function handleTransfer(member: CommunityMemberResponse) {
-    Alert.alert('방장 위임', `사용자 #${member.userId}님에게 방장을 위임할까요?`, [
+    Alert.alert('방장 위임', `${resolveDisplayName(member.displayName)}님에게 방장을 위임할까요?`, [
       { text: '취소', style: 'cancel' },
       {
         text: '위임',

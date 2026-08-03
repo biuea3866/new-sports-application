@@ -14,6 +14,7 @@ function member(overrides: Partial<CommunityMemberResponse> = {}): CommunityMemb
     id: 1,
     communityId: 1,
     userId: 100,
+    displayName: '김철수',
     role: 'MEMBER',
     status: 'ACTIVE',
     joinedAt: '2026-07-01T00:00:00Z',
@@ -42,7 +43,7 @@ describe('CommunityMemberList', () => {
   it('멤버 수를 제목에 표시한다', () => {
     render(
       <CommunityMemberList
-        members={[member({ id: 1, userId: 1, role: 'HOST' }), member({ id: 2, userId: 2 })]}
+        members={[member({ id: 1, userId: 1, role: 'HOST', displayName: '이민수' }), member({ id: 2, userId: 2, displayName: '박영희' })]}
         canManage={false}
         onKick={jest.fn()}
         onTransfer={jest.fn()}
@@ -58,8 +59,8 @@ describe('CommunityMemberList', () => {
     render(
       <CommunityMemberList
         members={[
-          member({ id: 1, userId: 1, role: 'HOST' }),
-          member({ id: 2, userId: 2, role: 'MEMBER' }),
+          member({ id: 1, userId: 1, role: 'HOST', displayName: '이민수' }),
+          member({ id: 2, userId: 2, role: 'MEMBER', displayName: '박영희' }),
         ]}
         canManage={true}
         onKick={onKick}
@@ -67,10 +68,10 @@ describe('CommunityMemberList', () => {
       />
     );
 
-    fireEvent.press(screen.getByLabelText('사용자 #2 강퇴'));
+    fireEvent.press(screen.getByLabelText('박영희 강퇴'));
     expect(onKick).toHaveBeenCalledWith(expect.objectContaining({ userId: 2 }));
 
-    fireEvent.press(screen.getByLabelText('사용자 #2 방장 위임'));
+    fireEvent.press(screen.getByLabelText('박영희 방장 위임'));
     expect(onTransfer).toHaveBeenCalledWith(expect.objectContaining({ userId: 2 }));
   });
 
@@ -78,8 +79,8 @@ describe('CommunityMemberList', () => {
     render(
       <CommunityMemberList
         members={[
-          member({ id: 1, userId: 1, role: 'HOST' }),
-          member({ id: 2, userId: 2, role: 'MEMBER' }),
+          member({ id: 1, userId: 1, role: 'HOST', displayName: '이민수' }),
+          member({ id: 2, userId: 2, role: 'MEMBER', displayName: '박영희' }),
         ]}
         canManage={false}
         onKick={jest.fn()}
@@ -87,29 +88,29 @@ describe('CommunityMemberList', () => {
       />
     );
 
-    expect(screen.queryByLabelText('사용자 #2 강퇴')).toBeNull();
-    expect(screen.queryByLabelText('사용자 #2 방장 위임')).toBeNull();
+    expect(screen.queryByLabelText('박영희 강퇴')).toBeNull();
+    expect(screen.queryByLabelText('박영희 방장 위임')).toBeNull();
   });
 
   it('방장 자신의 행에는 강퇴·위임 버튼이 노출되지 않는다', () => {
     render(
       <CommunityMemberList
-        members={[member({ id: 1, userId: 1, role: 'HOST' })]}
+        members={[member({ id: 1, userId: 1, role: 'HOST', displayName: '이민수' })]}
         canManage={true}
         onKick={jest.fn()}
         onTransfer={jest.fn()}
       />
     );
 
-    expect(screen.queryByLabelText('사용자 #1 강퇴')).toBeNull();
+    expect(screen.queryByLabelText('이민수 강퇴')).toBeNull();
   });
 
   it('각 멤버의 역할 배지를 표시한다', () => {
     render(
       <CommunityMemberList
         members={[
-          member({ id: 1, userId: 1, role: 'HOST' }),
-          member({ id: 2, userId: 2, role: 'MEMBER' }),
+          member({ id: 1, userId: 1, role: 'HOST', displayName: '이민수' }),
+          member({ id: 2, userId: 2, role: 'MEMBER', displayName: '박영희' }),
         ]}
         canManage={false}
         onKick={jest.fn()}
@@ -125,7 +126,7 @@ describe('CommunityMemberList', () => {
     mockUseColorScheme.mockReturnValue('dark');
     render(
       <CommunityMemberList
-        members={[member({ id: 1, userId: 1, role: 'HOST' })]}
+        members={[member({ id: 1, userId: 1, role: 'HOST', displayName: '이민수' })]}
         canManage={true}
         onKick={jest.fn()}
         onTransfer={jest.fn()}

@@ -53,6 +53,21 @@ export interface ApplicationResponse {
 }
 
 /**
+ * `application/recruitment/dto/RecruitmentApplicantResponse` — 개설자 관점 신청자 목록 항목.
+ * 본인 관점(`ApplicationResponse`)과 달리 "누가 신청했는가"가 핵심이라 신청자 식별자와
+ * 표시 이름을 함께 싣는다.
+ */
+export interface RecruitmentApplicantResponse {
+  id: number;
+  recruitmentId: number;
+  applicantUserId: number;
+  /** 신청자 표시 이름(닉네임). 구 응답 하위 호환을 위해 optional. */
+  applicantDisplayName?: string;
+  status: ApplicationStatus;
+  appliedAt: string;
+}
+
+/**
  * `GET /applications/{id}` 응답 — 신청 상세(단건). 주문상세(Option A+) 화면 전용 계약.
  * BE `application/recruitment/dto/ApplicationDetailResponse.kt`를 그대로 반영한다(origin/main
  * 머지 완료). 필드명은 `id`가 아니라 `applicationId`로 명명된 별도 계약이다
@@ -118,8 +133,10 @@ export async function createRecruitment(
 }
 
 /** `GET /recruitments/{id}/applications` — 개설자 전용(신청자 목록). */
-export async function listApplications(recruitmentId: number): Promise<ApplicationResponse[]> {
-  const res = await getBeClient().get<ApplicationResponse[]>(
+export async function listApplications(
+  recruitmentId: number
+): Promise<RecruitmentApplicantResponse[]> {
+  const res = await getBeClient().get<RecruitmentApplicantResponse[]>(
     `/recruitments/${recruitmentId}/applications`
   );
   return res.data;

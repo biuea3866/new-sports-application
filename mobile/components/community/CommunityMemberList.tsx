@@ -6,6 +6,7 @@
 import { Pressable, View, StyleSheet } from 'react-native';
 
 import type { CommunityMemberResponse } from '../../api/community-types';
+import { resolveDisplayName } from '../../lib/displayName';
 import { useTheme } from '../../theme/useTheme';
 import { EmptyState, ListItem, ThemedText } from '../ui';
 
@@ -58,7 +59,7 @@ function MemberActions({ member, onKick, onTransfer }: MemberActionsProps) {
         style={styles.actionButton}
         onPress={() => onKick(member)}
         accessibilityRole="button"
-        accessibilityLabel={`사용자 #${member.userId} 강퇴`}
+        accessibilityLabel={`${resolveDisplayName(member.displayName)} 강퇴`}
       >
         <ThemedText variant="danger" style={styles.actionText}>
           강퇴
@@ -68,7 +69,7 @@ function MemberActions({ member, onKick, onTransfer }: MemberActionsProps) {
         style={styles.actionButton}
         onPress={() => onTransfer(member)}
         accessibilityRole="button"
-        accessibilityLabel={`사용자 #${member.userId} 방장 위임`}
+        accessibilityLabel={`${resolveDisplayName(member.displayName)} 방장 위임`}
       >
         <ThemedText variant="accent" style={styles.actionText}>
           위임
@@ -99,7 +100,7 @@ export function CommunityMemberList({
           return (
             <ListItem
               key={memberItem.id}
-              title={`사용자 #${memberItem.userId}`}
+              title={resolveDisplayName(memberItem.displayName)}
               leading={<RoleBadge role={memberItem.role} />}
               trailing={
                 showActions ? (

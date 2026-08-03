@@ -114,8 +114,11 @@ export default function CommunityDetailScreen() {
               {post.title}
             </ThemedText>
             <View style={styles.meta}>
-              <ThemedText variant="secondary" accessibilityLabel={`작성자 ID ${post.userId}`}>
-                {formatAuthor(post.userId)}
+              <ThemedText
+                variant="secondary"
+                accessibilityLabel={`작성자 ${formatAuthor(post.authorDisplayName)}`}
+              >
+                {formatAuthor(post.authorDisplayName)}
               </ThemedText>
               <ThemedText variant="secondary">{formatRelativeTime(post.createdAt)}</ThemedText>
             </View>
@@ -147,7 +150,7 @@ export default function CommunityDetailScreen() {
                 comments.map((comment) => (
                   <View key={comment.id} style={styles.commentItem}>
                     <ThemedText variant="secondary" style={styles.commentMeta}>
-                      {`${formatAuthor(comment.userId)} · ${formatRelativeTime(comment.createdAt)}`}
+                      {`${formatAuthor(comment.authorDisplayName)} · ${formatRelativeTime(comment.createdAt)}`}
                     </ThemedText>
                     <ThemedText variant="primary" style={styles.commentContent}>
                       {comment.content}

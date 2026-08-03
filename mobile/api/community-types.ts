@@ -69,6 +69,8 @@ export interface CommunityResponse {
   sportCategory: SportCategory;
   /** 방장 userId */
   hostUserId: number;
+  /** 방장 표시 이름(닉네임). 구 응답 하위 호환을 위해 optional. */
+  hostDisplayName?: string;
   /** 활성 멤버 수(조회 시 집계) */
   memberCount: number;
   /** 연결된 전용 그룹 방 id. 자동 생성 전/실패 시 null */
@@ -86,6 +88,8 @@ export interface CommunityMemberResponse {
   id: number;
   communityId: number;
   userId: number;
+  /** 멤버 표시 이름(닉네임). 구 응답 하위 호환을 위해 optional. */
+  displayName?: string;
   role: MemberRole;
   status: MembershipStatus;
   /** ACTIVE 전이 시각. PENDING_APPROVAL은 null */

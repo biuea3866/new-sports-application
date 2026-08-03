@@ -18,7 +18,7 @@ export interface PostCardProps {
 export function PostCard({ post, onPress }: PostCardProps) {
   const { tokens } = useTheme();
   const isNotice = post.type === 'NOTICE';
-  const metaLine = `${formatAuthor(post.userId)} · ${formatRelativeTime(post.createdAt)}`;
+  const metaLine = `${formatAuthor(post.authorDisplayName)} · ${formatRelativeTime(post.createdAt)}`;
 
   return (
     <Card

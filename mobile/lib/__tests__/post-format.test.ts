@@ -29,7 +29,11 @@ describe('formatRelativeTime', () => {
 });
 
 describe('formatAuthor', () => {
-  it('사용자 ID를 작성자 라벨로 변환한다', () => {
-    expect(formatAuthor(42)).toBe('사용자 42');
+  it('표시 이름을 작성자 라벨로 그대로 쓴다', () => {
+    expect(formatAuthor('김철수')).toBe('김철수');
+  });
+
+  it('표시 이름이 없으면 사용자 ID 대신 중립 기본값을 쓴다', () => {
+    expect(formatAuthor(undefined)).toBe('닉네임 미설정');
   });
 });

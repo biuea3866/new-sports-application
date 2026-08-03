@@ -11,9 +11,10 @@
  * 방 이름은 `InvitationResponse.roomName`(BE가 함께 내려준다)을 쓰고, 이름이 없는 방은
  * 방 종류 기본 이름(`lib/room-format`)으로 대체한다 — 방 PK(`방 #53`)를 노출하지 않는다.
  *
- * 초대자는 여전히 `초대자 #{inviterUserId}`로 표기한다 — 시스템 전체에 사용자 표시 이름
- * 필드가 없다(`User` 엔티티는 email/passwordHash/status만 보유). 표시 이름 도입은 users
- * 스키마 + 컨텍스트 간 조회 경로가 필요한 별도 과제다(open item).
+ * 초대자 이름은 `InvitationResponse.inviterDisplayName`(BE 가 user 컨텍스트에서 조합)을 쓰고,
+ * 닉네임 미설정 계정은 `resolveDisplayName` 이 중립 기본값으로 대체한다 — 사용자 PK
+ * (`초대자 #71`)도 노출하지 않는다. 와이어프레임의 "주말 축구 모임 · 초대자: 김철수" 표기가
+ * 이로써 방 이름·초대자 이름 양쪽 모두 충족된다(이전 open item 해소).
  */
 import { useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
@@ -25,6 +26,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorView } from '../../components/ui/ErrorView';
 import { LoadingView } from '../../components/ui/LoadingView';
 import { ThemedText } from '../../components/ui/ThemedText';
+import { resolveDisplayName } from '../../lib/displayName';
 import { useTheme } from '../../theme/useTheme';
 import {
   useAcceptInvitation,
@@ -86,7 +88,7 @@ function InvitationCard({ invitation, onRemove }: InvitationCardProps) {
         {`${formatSpeakPermissionLabel(invitation.canSpeak)} · ${formatExpiryDDay(invitation.expiresAt)}`}
       </ThemedText>
       <ThemedText variant="secondary" style={styles.inviterLine}>
-        {`초대자 #${invitation.inviterUserId}`}
+        {`초대자 ${resolveDisplayName(invitation.inviterDisplayName)}`}
       </ThemedText>
       {errorMessage ? (
         <ThemedText

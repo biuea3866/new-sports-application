@@ -5,6 +5,8 @@
  * A-P1/A-P2("홍길동 · 2일 전"). 화면 컴포넌트는 렌더링에만 집중하도록 상대시각 계산을
  * 이 유틸로 분리한다.
  */
+import { resolveDisplayName } from './displayName';
+
 const MS_PER_MINUTE = 1000 * 60;
 const MS_PER_HOUR = MS_PER_MINUTE * 60;
 const MS_PER_DAY = MS_PER_HOUR * 24;
@@ -35,7 +37,10 @@ export function formatRelativeTime(iso: string, now: Date = new Date()): string 
   ).padStart(2, '0')}`;
 }
 
-/** 작성자 표시 라벨. 프로필 닉네임 API가 없어 사용자 ID 기반으로 표기한다(기존 화면과 동일). */
-export function formatAuthor(userId: number): string {
-  return `사용자 ${userId}`;
+/**
+ * 작성자 표시 라벨. BE 가 내려준 표시 이름(닉네임)을 쓰고, 없으면 중립 기본값으로 폴백한다.
+ * 사용자 ID 는 화면에 노출하지 않는다.
+ */
+export function formatAuthor(authorDisplayName: string | null | undefined): string {
+  return resolveDisplayName(authorDisplayName);
 }
