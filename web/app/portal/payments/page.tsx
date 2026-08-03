@@ -18,6 +18,8 @@ import {
   paymentStatusBadgeClass,
   paymentStatusLabel,
 } from "@/lib/portal/paymentStatus";
+import { orderTypeLabel } from "@/lib/portal/orderType";
+import { paymentMethodLabel } from "@/lib/portal/paymentMethod";
 import { toUserMessage } from "@/lib/portal/toUserMessage";
 import { DateField } from "@/components/ui/date-field";
 
@@ -174,9 +176,6 @@ export default function PaymentsPage() {
                     결제 수단
                   </th>
                   <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
-                    PG사
-                  </th>
-                  <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                     상태
                   </th>
                   <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
@@ -190,7 +189,7 @@ export default function PaymentsPage() {
               <tbody className="divide-y divide-border">
                 {payments.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
+                    <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                       결제 내역이 없습니다.
                     </td>
                   </tr>
@@ -198,14 +197,11 @@ export default function PaymentsPage() {
                   payments.map((payment) => (
                     <tr key={payment.paymentId} className="hover:bg-muted/50">
                       <td className="px-4 py-3 text-foreground">{payment.paymentId}</td>
-                      <td className="px-4 py-3">{payment.orderType}</td>
+                      <td className="px-4 py-3">{orderTypeLabel(payment.orderType)}</td>
                       <td className="px-4 py-3 text-right tabular-nums font-medium">
                         {payment.sellerAmount.toLocaleString("ko-KR")}원
                       </td>
-                      <td className="px-4 py-3">{payment.method}</td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {payment.provider ?? "-"}
-                      </td>
+                      <td className="px-4 py-3">{paymentMethodLabel(payment.method)}</td>
                       <td className="px-4 py-3">
                         <span
                           className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${paymentStatusBadgeClass(payment.status)}`}
@@ -234,7 +230,7 @@ export default function PaymentsPage() {
                     <td className="px-4 py-3 text-right tabular-nums">
                       {pageSellerTotal.toLocaleString("ko-KR")}원
                     </td>
-                    <td colSpan={5} />
+                    <td colSpan={4} />
                   </tr>
                 </tfoot>
               )}
