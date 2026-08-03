@@ -168,4 +168,48 @@ describe('TabsLayout', () => {
 
     expect(facilitiesScreen.props.options?.title).toBe('시설');
   });
+
+  describe('탭바 배경·테두리 (다크 모드 순백 회귀 가드)', () => {
+    function getTabBarStyle(tree: ElementWithChildren): Record<string, unknown> {
+      const tabsElement = findTabsElement(tree);
+      const screenOptions = (tabsElement.props as { screenOptions: Record<string, unknown> })
+        .screenOptions;
+      return screenOptions.tabBarStyle as Record<string, unknown>;
+    }
+
+    it('라이트 모드에서 탭바 배경·테두리가 surfaceElevated·border 토큰이다', () => {
+      useThemeMock.mockReturnValue({ scheme: 'light', tokens: lightTokens });
+
+      const tree = TabsLayout() as ElementWithChildren;
+      const tabBarStyle = getTabBarStyle(tree);
+
+      expect(tabBarStyle.backgroundColor).toBe(lightTokens.surfaceElevated);
+      expect(tabBarStyle.borderTopColor).toBe(lightTokens.border);
+    });
+
+    it('다크 모드에서 탭바 배경이 다크 surfaceElevated 토큰이다 (라이트 전용 흰색 회귀 가드)', () => {
+      useThemeMock.mockReturnValue({ scheme: 'dark', tokens: darkTokens });
+
+      const tree = TabsLayout() as ElementWithChildren;
+      const tabBarStyle = getTabBarStyle(tree);
+
+      expect(tabBarStyle.backgroundColor).toBe(darkTokens.surfaceElevated);
+      expect(tabBarStyle.backgroundColor).not.toBe('#ffffff');
+      expect(tabBarStyle.backgroundColor).not.toBe('#FFFFFF');
+      expect(tabBarStyle.borderTopColor).toBe(darkTokens.border);
+      expect(tabBarStyle.borderTopColor).not.toBe('#d8d8d8');
+    });
+
+    it('다크 모드 탭바 배경은 다크 페이지 배경(background)보다 밝지 않다', () => {
+      useThemeMock.mockReturnValue({ scheme: 'dark', tokens: darkTokens });
+
+      const tree = TabsLayout() as ElementWithChildren;
+      const tabBarStyle = getTabBarStyle(tree);
+      const backgroundColor = tabBarStyle.backgroundColor as string;
+
+      // 다크 토큰 값은 모두 저휘도 hex이므로, 흰색(#ffffff 계열)로의 회귀를 문자열 비교로 강제한다.
+      expect(backgroundColor.toLowerCase()).not.toBe('#ffffff');
+      expect(backgroundColor.toLowerCase()).not.toBe('#fff');
+    });
+  });
 });

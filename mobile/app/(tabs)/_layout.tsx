@@ -13,6 +13,10 @@
  *   (라이트/다크 모두 대응).
  * - 아이콘은 `@expo/vector-icons`의 Ionicons — 웹 번들(react-native-web)에서도
  *   폰트 아이콘으로 렌더된다.
+ *
+ * - 탭바 배경판·상단 헤어라인은 RN 기본값(순백, 밝은 회색 헤어라인)이 그대로 남아있으면
+ *   다크 모드에서 페이지 배경보다 밝은 흰 띠로 보인다 — `tabBarStyle`에 시맨틱
+ *   토큰(surfaceElevated·border)을 명시해 라이트/다크 모두 배경과 일관되게 한다.
  */
 import type { ComponentProps } from 'react';
 import { Tabs } from 'expo-router';
@@ -61,6 +65,10 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: tokens.accent,
         tabBarInactiveTintColor: tokens.textTertiary,
+        tabBarStyle: {
+          backgroundColor: tokens.surfaceElevated,
+          borderTopColor: tokens.border,
+        },
       }}
     >
       <Tabs.Screen

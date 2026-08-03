@@ -32,3 +32,18 @@ export function resolveBookingTitle(booking: { id: number; title: string | null 
 export function isBookingCancellable(status: BookingStatus): boolean {
   return status === 'PENDING' || status === 'CONFIRMED';
 }
+
+/**
+ * 예약 생성 시각을 카드 본문의 "예약일: " 라벨에 쓰는 날짜 문자열로 변환한다.
+ *
+ * `toLocaleDateString('ko-KR')` 기본값은 월·일을 0패딩하지 않아(`2026. 8. 3.`) 같은 카드의
+ * 제목(BE `BookingTitleLabel`이 `yyyy. MM. dd.`로 0패딩해 내려주는 슬롯 날짜, 예: `2026. 08. 03.`)과
+ * 자릿수가 어긋난다 — `year/month/day` 옵션을 명시해 같은 자릿수로 맞춘다.
+ */
+export function formatBookingCreatedDate(createdAt: string): string {
+  return new Date(createdAt).toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+}

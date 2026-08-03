@@ -1,7 +1,11 @@
 /**
  * booking-format — 예약 목록(MO-05) 표시 유틸의 순수 로직 검증.
  */
-import { BOOKING_STATUS_LABEL, resolveBookingTitle } from '../booking-format';
+import {
+  BOOKING_STATUS_LABEL,
+  formatBookingCreatedDate,
+  resolveBookingTitle,
+} from '../booking-format';
 
 describe('resolveBookingTitle', () => {
   it('BE가 내려준 시설·회차 제목을 그대로 사용한다', () => {
@@ -34,5 +38,21 @@ describe('BOOKING_STATUS_LABEL', () => {
     Object.entries(BOOKING_STATUS_LABEL).forEach(([status, label]) => {
       expect(label).not.toBe(status);
     });
+  });
+});
+
+describe('formatBookingCreatedDate', () => {
+  it('월·일이 한 자리인 날짜도 0패딩된 두 자리로 표시한다', () => {
+    expect(formatBookingCreatedDate('2026-01-05T02:00:00Z')).toBe('2026. 01. 05.');
+  });
+
+  it('월·일이 두 자리인 날짜도 동일한 자릿수로 표시한다', () => {
+    expect(formatBookingCreatedDate('2026-12-25T02:00:00Z')).toBe('2026. 12. 25.');
+  });
+
+  it('BE `BookingTitleLabel`(yyyy. MM. dd.)과 같은 자릿수 형식을 만든다', () => {
+    const formatted = formatBookingCreatedDate('2026-01-05T02:00:00Z');
+
+    expect(formatted).toMatch(/^\d{4}\. \d{2}\. \d{2}\.$/);
   });
 });
