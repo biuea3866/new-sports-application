@@ -6,7 +6,7 @@
  */
 import React, { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { formatKrw } from "./format-krw";
+import { formatKrw } from "@/lib/portal/formatKrw";
 import {
   type OperationKpiResponse,
   type FetchKpiParams,
@@ -204,7 +204,7 @@ export default function InsightsPage(): JSX.Element {
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
               {/*
                 BE 필드명은 dailyRevenueTotal이지만 실제 계산은 `기간매출 ÷ 기간일수`라
-                합계가 아니라 일 평균 매출액(원)이다(GoodsDomainService#aggregateGoodsKpi:461).
+                합계가 아니라 일 평균 매출액(원)이다(GoodsDomainService#aggregateGoodsKpi).
                 "합계"라는 라벨이 실제 계산과 달라 옆 칸(상품당 평균 매출)과 값이 같아 보이는
                 결함이 있었다 — 두 칸 모두 "평균"이므로 무엇의 평균인지(일별 vs 상품당)로 구분한다.
               */}

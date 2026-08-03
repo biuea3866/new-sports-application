@@ -563,8 +563,20 @@ describe("[U-04] PaymentSummarySchema 검증", () => {
     expect(PaymentSummarySchema.safeParse(invalid).success).toBe(false);
   });
 
-  it("orderType이 유효하지 않으면 파싱에 실패한다", () => {
-    const invalid = { ...validPayment, orderType: "SUBSCRIPTION" };
+  // 회귀 방지(p1-2): OrderTypeSchema를 BOOKING/TICKETING/GOODS 3종으로 좁혀 두면 계약 밖
+  // orderType 1건에 목록 응답 전체가 throw한다 — status와 동일한 사고(02-파트너포털/14)다.
+  // BE `common/.../order/OrderType.kt`는 4종(RECRUITMENT 포함)이고 향후에도 늘 수 있어
+  // status와 같은 방침(union(enum, string))으로 원문을 통과시킨다.
+  it("모르는 orderType은 원문으로 통과시킨다", () => {
+    const unknownOrderType = { ...validPayment, orderType: "SUBSCRIPTION" };
+    const result = PaymentSummarySchema.safeParse(unknownOrderType);
+
+    expect(result.success).toBe(true);
+    expect(result.data?.orderType).toBe("SUBSCRIPTION");
+  });
+
+  it("orderType이 문자열이 아니면 파싱에 실패한다", () => {
+    const invalid = { ...validPayment, orderType: 42 };
     expect(PaymentSummarySchema.safeParse(invalid).success).toBe(false);
   });
 

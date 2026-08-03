@@ -9,7 +9,10 @@
  * 오인시켰다. `provider`는 `method`의 함수일 뿐이고 심지어 다대일(CREDIT_CARD·MOBILE_PAY 모두
  * "card")이라 `method`보다 정보가 적다 — 결제 수단이 한글화된 뒤에는 열 자체가 불필요하다.
  * 회귀 방지 3: 이 화면은 직전에 계약 밖 enum 값으로 응답 파싱이 전량 실패한 이력이 있다 —
- * 라벨 매핑은 모르는 값이 와도 원문 그대로 떨어뜨려 화면을 죽이지 않아야 한다.
+ * 라벨 매핑은 모르는 값이 와도 원문 그대로 떨어뜨려 화면을 죽이지 않아야 한다. 단 이 파일은
+ * `fetchPartnerSales`를 모킹해 Zod 파싱 자체는 우회한다 — "파싱이 안 죽는다"의 실제 보증은
+ * `lib/portal/__tests__/orderType.test.ts`(`PartnerSalesResponseSchema.safeParse` 직접 호출)가
+ * 담당하고, 여기서는 라벨 매핑 함수가 화면에서 실제로 쓰이는지만 확인한다.
  */
 import { render, screen, waitFor, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -95,15 +98,25 @@ describe("매출 표 — 주문 유형·결제 수단 라벨", () => {
     expect(within(table).queryByText("KAKAO")).not.toBeInTheDocument();
   });
 
+  it("주문 유형 RECRUITMENT도 한글로 보여준다 (BE 4종 중 아직 실사용 안 하는 값)", async () => {
+    mockFetchPartnerSales.mockResolvedValue(buildSalesResponse({ orderType: "RECRUITMENT" }));
+
+    render(<PaymentsPage />);
+
+    const table = await screen.findByRole("table");
+    expect(within(table).getByText("모집")).toBeInTheDocument();
+    expect(within(table).queryByText("RECRUITMENT")).not.toBeInTheDocument();
+  });
+
   it("모르는 주문 유형·결제 수단이 와도 원문을 노출하며 화면이 죽지 않는다", async () => {
     mockFetchPartnerSales.mockResolvedValue(
-      buildSalesResponse({ orderType: "RECRUITMENT", method: "NEW_PAY" })
+      buildSalesResponse({ orderType: "SUBSCRIPTION", method: "NEW_PAY" })
     );
 
     render(<PaymentsPage />);
 
     const table = await screen.findByRole("table");
-    expect(within(table).getByText("RECRUITMENT")).toBeInTheDocument();
+    expect(within(table).getByText("SUBSCRIPTION")).toBeInTheDocument();
     expect(within(table).getByText("NEW_PAY")).toBeInTheDocument();
   });
 
@@ -117,5 +130,67 @@ describe("매출 표 — 주문 유형·결제 수단 라벨", () => {
     });
     expect(screen.queryByRole("columnheader", { name: "PG사" })).not.toBeInTheDocument();
     expect(screen.queryByText("card")).not.toBeInTheDocument();
+  });
+});
+
+// ── 금액 소수점(p3-1) ────────────────────────────────────────────────────────
+// 회귀 방지: `sellerAmount`(BigDecimal, unitPrice × quantity 합)가 `toLocaleString("ko-KR")`
+// 기본값(소수 최대 3자리)으로 찍혀 "내 매출"·"이 페이지 합계" 두 곳에 소수가 노출됐다.
+// `formatKrw`로 통일해 원 단위는 항상 정수로 표시한다.
+describe("매출 표 — 금액 소수점", () => {
+  beforeEach(() => {
+    mockFetchPartnerSales.mockReset();
+  });
+
+  it("내 매출에 소수가 있어도 정수로 반올림해 표시한다", async () => {
+    mockFetchPartnerSales.mockResolvedValue({
+      sales: [
+        {
+          paymentId: 20,
+          orderType: "GOODS",
+          orderId: 3,
+          sellerAmount: 158000.5,
+          method: "CREDIT_CARD",
+          provider: "card",
+          status: "COMPLETED",
+          paidAt: null,
+          pgTransactionId: null,
+        },
+      ],
+      totalElements: 1,
+      totalPages: 1,
+      page: 0,
+      size: 20,
+    });
+
+    render(<PaymentsPage />);
+
+    const row = await screen.findByRole("row", { name: /20/ });
+    expect(within(row).getByText("158,001원")).toBeInTheDocument();
+    expect(within(row).queryByText(/158,000\.5/)).not.toBeInTheDocument();
+  });
+
+  it("이 페이지 합계는 각 행의 반올림 표시값을 더한 값과 일치한다", async () => {
+    // 100.5원·200.5원 → 표시는 각 101원·201원(반올림). 원시값을 먼저 더해 301을 반올림하면
+    // 표시 합(302원)과 어긋난다 — 행별로 먼저 반올림한 뒤 더해야 한다.
+    mockFetchPartnerSales.mockResolvedValue({
+      sales: [
+        { paymentId: 1, orderType: "GOODS", orderId: 1, sellerAmount: 100.5, method: "CREDIT_CARD", provider: "card", status: "COMPLETED", paidAt: null, pgTransactionId: null },
+        { paymentId: 2, orderType: "GOODS", orderId: 2, sellerAmount: 200.5, method: "CREDIT_CARD", provider: "card", status: "COMPLETED", paidAt: null, pgTransactionId: null },
+      ],
+      totalElements: 2,
+      totalPages: 1,
+      page: 0,
+      size: 20,
+    });
+
+    render(<PaymentsPage />);
+
+    const table = await screen.findByRole("table");
+    expect(within(table).getByText("101원")).toBeInTheDocument();
+    expect(within(table).getByText("201원")).toBeInTheDocument();
+
+    const totalRow = await screen.findByText("이 페이지 합계");
+    expect(within(totalRow.closest("tr") as HTMLElement).getByText("302원")).toBeInTheDocument();
   });
 });
