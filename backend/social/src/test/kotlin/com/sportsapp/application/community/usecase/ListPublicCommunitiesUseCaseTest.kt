@@ -1,11 +1,12 @@
 package com.sportsapp.application.community.usecase
 
+import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.community.entity.Community
 import com.sportsapp.domain.community.service.CommunityDomainService
 import com.sportsapp.domain.community.vo.CommunityVisibility
-import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.message.service.RoomContextQueryService
 import com.sportsapp.domain.message.vo.RoomContextType
+import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.mockk.every
@@ -14,9 +15,10 @@ import java.time.ZonedDateTime
 
 class ListPublicCommunitiesUseCaseTest : BehaviorSpec({
 
+    val userDomainService = mockk<UserDomainService>(relaxed = true)
     val communityDomainService = mockk<CommunityDomainService>()
     val roomContextQueryService = mockk<RoomContextQueryService>()
-    val useCase = ListPublicCommunitiesUseCase(communityDomainService, roomContextQueryService)
+    val useCase = ListPublicCommunitiesUseCase(communityDomainService, roomContextQueryService, userDomainService)
 
     Given("키워드 '축구'로 공개 커뮤니티를 검색하면") {
         val community = mockk<Community>(relaxed = true) {

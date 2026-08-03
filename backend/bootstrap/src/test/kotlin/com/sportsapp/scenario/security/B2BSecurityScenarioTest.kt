@@ -2,8 +2,8 @@ package com.sportsapp.scenario.security
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.presentation.user.dto.response.LoginResponse
 import com.sportsapp.domain.user.service.UserDomainService
+import com.sportsapp.presentation.user.dto.response.LoginResponse
 import io.kotest.matchers.shouldBe
 import org.apache.hc.client5.http.impl.classic.HttpClients
 import org.springframework.beans.factory.annotation.Autowired
@@ -80,7 +80,7 @@ class B2BSecurityScenarioTest(
 
         Given("USER Role만 가진 인증 사용자") {
             val userPassword = "B2bUserTest1"
-            userDomainService.register("b2b-user-test@example.com", userPassword)
+            userDomainService.register("b2b-user-test@example.com", userPassword, "테스트회원")
 
             When("[S-04] 인증된 USER가 ADMIN 전용 /admin/** API를 호출하면") {
                 val accessToken = login("b2b-user-test@example.com", userPassword)
@@ -100,7 +100,7 @@ class B2BSecurityScenarioTest(
 
         Given("ADMIN Role 없이 JWT 인증된 사용자") {
             val userPassword = "B2bUserTest2"
-            userDomainService.register("b2b-preauth-test@example.com", userPassword)
+            userDomainService.register("b2b-preauth-test@example.com", userPassword, "테스트회원")
 
             When("[S-03] JWT 유효 사용자가 @PreAuthorize(hasRole ADMIN) 엔드포인트를 호출하면") {
                 val accessToken = login("b2b-preauth-test@example.com", userPassword)

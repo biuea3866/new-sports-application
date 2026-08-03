@@ -3,6 +3,7 @@ package com.sportsapp.application.community.usecase
 import com.sportsapp.domain.community.entity.CommunityMember
 import com.sportsapp.domain.community.exception.NotCommunityMemberException
 import com.sportsapp.domain.community.service.CommunityDomainService
+import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldHaveSize
@@ -11,8 +12,9 @@ import io.mockk.mockk
 
 class ListCommunityMembersUseCaseTest : BehaviorSpec({
 
+    val userDomainService = mockk<UserDomainService>(relaxed = true)
     val communityDomainService = mockk<CommunityDomainService>()
-    val useCase = ListCommunityMembersUseCase(communityDomainService)
+    val useCase = ListCommunityMembersUseCase(communityDomainService, userDomainService)
 
     Given("ACTIVE 멤버가 목록을 조회하는 경우") {
         val member = CommunityMember.join(communityId = 1L, userId = 2L, isPublic = true)

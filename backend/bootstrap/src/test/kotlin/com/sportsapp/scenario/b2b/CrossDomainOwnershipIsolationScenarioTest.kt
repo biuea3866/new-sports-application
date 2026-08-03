@@ -2,20 +2,20 @@ package com.sportsapp.scenario.b2b
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.presentation.user.dto.response.LoginResponse
 import com.sportsapp.domain.facility.entity.Facility
-import com.sportsapp.domain.facility.vo.FacilityAttributes
 import com.sportsapp.domain.facility.repository.FacilityRepository
+import com.sportsapp.domain.facility.vo.FacilityAttributes
 import com.sportsapp.domain.goods.entity.Product
-import com.sportsapp.domain.goods.vo.ProductCategory
 import com.sportsapp.domain.goods.entity.ProductStatus
 import com.sportsapp.domain.goods.entity.Stock
+import com.sportsapp.domain.goods.vo.ProductCategory
 import com.sportsapp.domain.ticketing.entity.Event
 import com.sportsapp.domain.ticketing.entity.EventStatus
 import com.sportsapp.domain.user.service.UserDomainService
 import com.sportsapp.infrastructure.goods.mysql.ProductJpaRepository
 import com.sportsapp.infrastructure.goods.mysql.StockJpaRepository
 import com.sportsapp.infrastructure.ticketing.mysql.EventJpaRepository
+import com.sportsapp.presentation.user.dto.response.LoginResponse
 import io.kotest.matchers.shouldBe
 import org.apache.hc.client5.http.impl.classic.HttpClients
 import org.springframework.beans.factory.annotation.Autowired
@@ -82,17 +82,17 @@ class CrossDomainOwnershipIsolationScenarioTest(
     init {
         Given("[S-01] Owner A와 Owner B가 각자 리소스를 등록한 상황에서") {
             val adminPassword = "AdminOwner1!"
-            val admin = userDomainService.register("isolation-admin@example.com", adminPassword)
+            val admin = userDomainService.register("isolation-admin@example.com", adminPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = admin.id, roleName = "ADMIN")
 
             val ownerAPassword = "OwnerA1!"
-            val ownerA = userDomainService.register("isolation-owner-a@example.com", ownerAPassword)
+            val ownerA = userDomainService.register("isolation-owner-a@example.com", ownerAPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = ownerA.id, roleName = "FACILITY_OWNER")
             userDomainService.assignRole(adminId = admin.id, userId = ownerA.id, roleName = "EVENT_HOST")
             userDomainService.assignRole(adminId = admin.id, userId = ownerA.id, roleName = "GOODS_SELLER")
 
             val ownerBPassword = "OwnerB1!"
-            val ownerB = userDomainService.register("isolation-owner-b@example.com", ownerBPassword)
+            val ownerB = userDomainService.register("isolation-owner-b@example.com", ownerBPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = ownerB.id, roleName = "FACILITY_OWNER")
             userDomainService.assignRole(adminId = admin.id, userId = ownerB.id, roleName = "EVENT_HOST")
             userDomainService.assignRole(adminId = admin.id, userId = ownerB.id, roleName = "GOODS_SELLER")

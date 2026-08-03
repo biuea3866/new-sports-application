@@ -5,6 +5,8 @@ import com.sportsapp.domain.community.entity.Community
 import com.sportsapp.domain.community.service.CommunityDomainService
 import com.sportsapp.domain.message.service.RoomContextQueryService
 import com.sportsapp.domain.message.vo.RoomContextType
+import com.sportsapp.domain.user.dto.UserDisplayNames
+import com.sportsapp.domain.user.service.UserDomainService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -12,14 +14,18 @@ import org.springframework.transaction.annotation.Transactional
 class ListPublicCommunitiesUseCase(
     private val communityDomainService: CommunityDomainService,
     private val roomContextQueryService: RoomContextQueryService,
+    private val userDomainService: UserDomainService,
 ) {
     @Transactional(readOnly = true)
-    fun execute(keyword: String?): List<CommunityResponse> =
-        communityDomainService.findPublicCommunities(keyword).map(::toCommunityResponse)
+    fun execute(keyword: String?): List<CommunityResponse> {
+        val communities = communityDomainService.findPublicCommunities(keyword)
+        val hostNames = userDomainService.findDisplayNamesBy(communities.map { it.currentHostUserId })
+        return communities.map { toCommunityResponse(it, hostNames) }
+    }
 
-    private fun toCommunityResponse(community: Community): CommunityResponse {
+    private fun toCommunityResponse(community: Community, hostNames: UserDisplayNames): CommunityResponse {
         val memberCount = communityDomainService.countActiveMembers(community.id)
         val roomId = roomContextQueryService.findRoomByContext(RoomContextType.COMMUNITY, community.id)?.id
-        return CommunityResponse.of(community, memberCount, roomId)
+        return CommunityResponse.of(community, memberCount, roomId, hostNames.of(community.currentHostUserId))
     }
 }

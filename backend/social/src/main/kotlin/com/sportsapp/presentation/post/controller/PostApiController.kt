@@ -1,16 +1,16 @@
 package com.sportsapp.presentation.post.controller
 
+import com.sportsapp.application.post.dto.PostCriteria
+import com.sportsapp.application.post.dto.PostDetailResponse
+import com.sportsapp.application.post.dto.PostResponse
 import com.sportsapp.application.post.usecase.CreateCommunityPostUseCase
 import com.sportsapp.application.post.usecase.CreatePostUseCase
 import com.sportsapp.application.post.usecase.GetPostUseCase
 import com.sportsapp.application.post.usecase.SearchPostsUseCase
-import com.sportsapp.application.post.dto.PostCriteria
+import com.sportsapp.domain.common.security.UserPrincipal
 import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.post.vo.PostType
-import com.sportsapp.domain.common.security.UserPrincipal
 import com.sportsapp.presentation.post.dto.request.CreatePostRequest
-import com.sportsapp.presentation.post.dto.response.PostDetailResponse
-import com.sportsapp.presentation.post.dto.response.PostResponse
 import jakarta.validation.Valid
 import org.springframework.data.domain.Page
 import org.springframework.http.ResponseEntity
@@ -41,7 +41,7 @@ class PostApiController(
         } else {
             createPostUseCase.execute(request.toCommand(principal.id))
         }
-        return ResponseEntity.status(201).body(PostResponse.of(post))
+        return ResponseEntity.status(201).body(post)
     }
 
     @GetMapping
@@ -63,7 +63,7 @@ class PostApiController(
             page = page,
             size = size,
         )
-        return ResponseEntity.ok(searchPostsUseCase.execute(criteria).map { PostResponse.of(it) })
+        return ResponseEntity.ok(searchPostsUseCase.execute(criteria))
     }
 
     @GetMapping("/{id}")
@@ -71,7 +71,6 @@ class PostApiController(
         @PathVariable id: Long,
         @AuthenticationPrincipal principal: UserPrincipal?,
     ): ResponseEntity<PostDetailResponse> {
-        val (post, comments) = getPostUseCase.execute(postId = id, requesterId = principal?.id)
-        return ResponseEntity.ok(PostDetailResponse.of(post, comments))
+        return ResponseEntity.ok(getPostUseCase.execute(postId = id, requesterId = principal?.id))
     }
 }

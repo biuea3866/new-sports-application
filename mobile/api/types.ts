@@ -19,11 +19,14 @@ export interface LoginRequest {
 export interface RegisterRequest {
   email: string;
   password: string;
+  /** 표시 이름(닉네임). 한글·영문·숫자·밑줄 2~20자. 중복 허용. */
+  nickname: string;
 }
 
 export interface RegisterUserResponse {
   id: number;
   email: string;
+  nickname: string | null;
 }
 
 // --- User ---
@@ -32,6 +35,10 @@ export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'BANNED';
 export interface MyProfileResponse {
   id: number;
   email: string;
+  /** 미설정이면 null — 마이페이지가 "닉네임을 설정해 주세요" 유도 UI 를 띄우는 근거. */
+  nickname?: string | null;
+  /** 타인에게 보이는 이름. 닉네임 미설정 계정은 BE 가 중립 기본값을 채운다. */
+  displayName?: string;
   status: UserStatus;
   createdAt: string; // ISO 8601
 }
@@ -341,6 +348,11 @@ export type PostType = 'FREE' | 'NOTICE' | 'QUESTION' | 'REVIEW';
 export interface PostResponse {
   id: number;
   userId: number;
+  /**
+   * 작성자 표시 이름(닉네임). 구 응답과의 하위 호환을 위해 optional 이며, 화면은
+   * `resolveDisplayName` 으로 폴백한다. 사용자 ID 를 화면에 노출하지 않는다.
+   */
+  authorDisplayName?: string;
   title: string;
   type: PostType;
   createdAt: string; // ISO 8601
@@ -358,6 +370,8 @@ export interface CommentResponse {
   id: number;
   postId: number;
   userId: number;
+  /** 댓글 작성자 표시 이름(닉네임). optional 근거는 PostResponse 와 동일. */
+  authorDisplayName?: string;
   content: string;
   createdAt: string; // ISO 8601
 }
@@ -374,6 +388,8 @@ export interface CommentPageResponse {
 export interface PostDetailResponse {
   id: number;
   userId: number;
+  /** 작성자 표시 이름(닉네임). optional 근거는 PostResponse 와 동일. */
+  authorDisplayName?: string;
   title: string;
   content: string;
   type: PostType;

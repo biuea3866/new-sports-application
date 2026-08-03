@@ -94,7 +94,7 @@ class VirtualQueueEndToEndScenarioTest(
         // ---- 공통 헬퍼 ------------------------------------------------------------------
 
         fun loginAsAdmin(email: String): String {
-            val user = userDomainService.register(email, "Password1!")
+            val user = userDomainService.register(email, "Password1!", "테스트회원")
             userDomainService.assignRole(adminId = user.id, userId = user.id, roleName = "ADMIN")
             val loginBody = objectMapper.writeValueAsString(mapOf("email" to email, "password" to "Password1!"))
             val result = mockMvc.perform(

@@ -2,8 +2,8 @@ package com.sportsapp.scenario.dashboard
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.presentation.user.dto.response.LoginResponse
 import com.sportsapp.domain.user.service.UserDomainService
+import com.sportsapp.presentation.user.dto.response.LoginResponse
 import io.kotest.matchers.shouldBe
 import org.apache.hc.client5.http.impl.classic.HttpClients
 import org.springframework.beans.factory.annotation.Autowired
@@ -63,11 +63,11 @@ class OperationKpiScenarioTest(
     init {
         Given("[S-01] FACILITY_OWNER 역할을 가진 운영자가 유효한 기간으로 KPI를 조회할 때") {
             val adminPassword = "KpiAdmin1!"
-            val admin = userDomainService.register("kpi-scenario-admin@example.com", adminPassword)
+            val admin = userDomainService.register("kpi-scenario-admin@example.com", adminPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = admin.id, roleName = "ADMIN")
 
             val ownerPassword = "KpiOwner1!"
-            val owner = userDomainService.register("kpi-scenario-owner@example.com", ownerPassword)
+            val owner = userDomainService.register("kpi-scenario-owner@example.com", ownerPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = owner.id, roleName = "FACILITY_OWNER")
             userDomainService.assignRole(adminId = admin.id, userId = owner.id, roleName = "GOODS_SELLER")
             userDomainService.assignRole(adminId = admin.id, userId = owner.id, roleName = "EVENT_HOST")
@@ -104,11 +104,11 @@ class OperationKpiScenarioTest(
 
         Given("[S-03] 인증된 운영자가 from > to 인 잘못된 기간으로 조회할 때") {
             val adminPassword = "KpiAdmin2!"
-            val admin2 = userDomainService.register("kpi-scenario-admin2@example.com", adminPassword)
+            val admin2 = userDomainService.register("kpi-scenario-admin2@example.com", adminPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin2.id, userId = admin2.id, roleName = "ADMIN")
 
             val ownerPassword = "KpiOwner2!"
-            val owner2 = userDomainService.register("kpi-scenario-owner2@example.com", ownerPassword)
+            val owner2 = userDomainService.register("kpi-scenario-owner2@example.com", ownerPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin2.id, userId = owner2.id, roleName = "FACILITY_OWNER")
 
             val accessToken = login("kpi-scenario-owner2@example.com", ownerPassword)
@@ -126,11 +126,11 @@ class OperationKpiScenarioTest(
 
         Given("[S-04] 인증된 운영자가 365일 초과 기간으로 조회할 때") {
             val adminPassword = "KpiAdmin3!"
-            val admin3 = userDomainService.register("kpi-scenario-admin3@example.com", adminPassword)
+            val admin3 = userDomainService.register("kpi-scenario-admin3@example.com", adminPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin3.id, userId = admin3.id, roleName = "ADMIN")
 
             val ownerPassword = "KpiOwner3!"
-            val owner3 = userDomainService.register("kpi-scenario-owner3@example.com", ownerPassword)
+            val owner3 = userDomainService.register("kpi-scenario-owner3@example.com", ownerPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin3.id, userId = owner3.id, roleName = "FACILITY_OWNER")
 
             val accessToken = login("kpi-scenario-owner3@example.com", ownerPassword)

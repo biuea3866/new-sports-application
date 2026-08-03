@@ -11,6 +11,7 @@ import { PostCard } from '../PostCard';
 const BASE_POST: PostResponse = {
   id: 1,
   userId: 42,
+  authorDisplayName: '김철수',
   title: '토요일 경기 후기',
   type: 'FREE',
   createdAt: new Date().toISOString(),
@@ -23,11 +24,20 @@ describe('PostCard', () => {
     mockUseColorScheme.mockReturnValue('light');
   });
 
-  it('제목과 작성자·상대시간 메타를 렌더한다', () => {
+  it('제목과 작성자 이름·상대시간 메타를 렌더한다', () => {
     render(<PostCard post={BASE_POST} onPress={jest.fn()} />);
 
     expect(screen.getByText('토요일 경기 후기')).toBeTruthy();
-    expect(screen.getByText(/사용자 42/)).toBeTruthy();
+    expect(screen.getByText(/김철수/)).toBeTruthy();
+  });
+
+  it('작성자 이름이 없어도 사용자 ID 를 노출하지 않는다', () => {
+    render(
+      <PostCard post={{ ...BASE_POST, authorDisplayName: undefined }} onPress={jest.fn()} />
+    );
+
+    expect(screen.getByText(/닉네임 미설정/)).toBeTruthy();
+    expect(screen.queryByText(/사용자 42/)).toBeNull();
   });
 
   it('NOTICE 타입이면 공지 배지가 상단에 표시된다', () => {

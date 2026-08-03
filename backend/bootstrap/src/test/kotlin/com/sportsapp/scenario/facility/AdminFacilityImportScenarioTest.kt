@@ -2,12 +2,12 @@ package com.sportsapp.scenario.facility
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.presentation.user.dto.response.LoginResponse
 import com.sportsapp.domain.facility.entity.Facility
 import com.sportsapp.domain.facility.repository.FacilityRepository
 import com.sportsapp.domain.user.service.UserDomainService
 import com.sportsapp.presentation.facility.dto.request.ImportLegacyFacilitiesRequest
 import com.sportsapp.presentation.facility.dto.request.LegacyRowRequest
+import com.sportsapp.presentation.user.dto.response.LoginResponse
 import io.kotest.matchers.shouldBe
 import org.apache.hc.client5.http.impl.classic.HttpClients
 import org.springframework.beans.factory.annotation.Autowired
@@ -77,7 +77,7 @@ class AdminFacilityImportScenarioTest(
         Given("ADMIN 계정이 등록된 상태에서 5건의 레거시 행을 apply 모드로 전송하면") {
             mongoTemplate.remove(Query(), Facility::class.java)
             val adminPassword = "AdminImport123"
-            val admin = userDomainService.register("admin-import-test@example.com", adminPassword)
+            val admin = userDomainService.register("admin-import-test@example.com", adminPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = admin.id, roleName = "ADMIN")
             val adminToken = login("admin-import-test@example.com", adminPassword)
 
@@ -109,7 +109,7 @@ class AdminFacilityImportScenarioTest(
         Given("ADMIN 계정이 등록된 상태에서 3건을 dryRun=true로 전송하면") {
             mongoTemplate.remove(Query(), Facility::class.java)
             val adminPassword = "AdminDryRun456"
-            val admin = userDomainService.register("admin-dryrun-test@example.com", adminPassword)
+            val admin = userDomainService.register("admin-dryrun-test@example.com", adminPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = admin.id, roleName = "ADMIN")
             val adminToken = login("admin-dryrun-test@example.com", adminPassword)
 
@@ -140,7 +140,7 @@ class AdminFacilityImportScenarioTest(
         Given("ADMIN 계정이 등록된 상태에서 동일한 레거시 데이터를 두 번 임포트하면") {
             mongoTemplate.remove(Query(), Facility::class.java)
             val adminPassword = "AdminIdempotent789"
-            val admin = userDomainService.register("admin-idempotent-test@example.com", adminPassword)
+            val admin = userDomainService.register("admin-idempotent-test@example.com", adminPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = admin.id, roleName = "ADMIN")
             val adminToken = login("admin-idempotent-test@example.com", adminPassword)
 
@@ -173,7 +173,7 @@ class AdminFacilityImportScenarioTest(
 
         Given("USER 권한만 가진 일반 사용자가 import를 시도하면") {
             val userPassword = "UserOnly999"
-            userDomainService.register("user-no-admin-test@example.com", userPassword)
+            userDomainService.register("user-no-admin-test@example.com", userPassword, "테스트회원")
             val userToken = login("user-no-admin-test@example.com", userPassword)
 
             val request = ImportLegacyFacilitiesRequest(
@@ -202,7 +202,7 @@ class AdminFacilityImportScenarioTest(
         Given("ADMIN 계정이 등록된 상태에서 중복 legacyId를 포함한 rows를 전송하면") {
             mongoTemplate.remove(Query(), Facility::class.java)
             val adminPassword = "AdminDedup321"
-            val admin = userDomainService.register("admin-dedup-test@example.com", adminPassword)
+            val admin = userDomainService.register("admin-dedup-test@example.com", adminPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = admin.id, roleName = "ADMIN")
             val adminToken = login("admin-dedup-test@example.com", adminPassword)
 

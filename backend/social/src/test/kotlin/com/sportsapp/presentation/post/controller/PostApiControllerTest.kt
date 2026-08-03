@@ -2,6 +2,8 @@ package com.sportsapp.presentation.post.controller
 
 import com.sportsapp.application.post.dto.CreateCommunityPostCommand
 import com.sportsapp.application.post.dto.CreatePostCommand
+import com.sportsapp.application.post.dto.PostDetailResponse
+import com.sportsapp.application.post.dto.PostResponse
 import com.sportsapp.application.post.usecase.CreateCommunityPostUseCase
 import com.sportsapp.application.post.usecase.CreatePostUseCase
 import com.sportsapp.application.post.usecase.GetPostUseCase
@@ -11,6 +13,7 @@ import com.sportsapp.domain.community.exception.NotCommunityMemberException
 import com.sportsapp.domain.post.entity.Post
 import com.sportsapp.domain.post.vo.CommunityPostContext
 import com.sportsapp.domain.post.vo.PostType
+import com.sportsapp.domain.user.dto.UserDisplayNames
 import sportsapp.testkit.presentation.exception.GlobalExceptionHandler
 import sportsapp.testkit.presentation.support.fixedPrincipalResolver
 import io.kotest.core.spec.style.BehaviorSpec
@@ -57,7 +60,7 @@ class PostApiControllerTest : BehaviorSpec({
     Given("communityId 없이 게시글 작성을 요청하면") {
         val createPostUseCase = mockk<CreatePostUseCase>()
         val post = Post.create(userId = TEST_USER_ID, title = "제목", content = "내용").also { initAuditFields(it) }
-        every { createPostUseCase.execute(any()) } returns post
+        every { createPostUseCase.execute(any()) } returns PostResponse.of(post, "김철수")
         val mockMvc = buildMockMvc(createPostUseCase = createPostUseCase)
 
         When("POST /posts 요청 시") {
@@ -86,7 +89,7 @@ class PostApiControllerTest : BehaviorSpec({
                 communityIsPublic = true,
             ),
         ).also { initAuditFields(it) }
-        every { createCommunityPostUseCase.execute(any()) } returns post
+        every { createCommunityPostUseCase.execute(any()) } returns PostResponse.of(post, "김철수")
         val mockMvc = buildMockMvc(createCommunityPostUseCase = createCommunityPostUseCase)
 
         When("POST /posts 요청 시") {
@@ -119,7 +122,7 @@ class PostApiControllerTest : BehaviorSpec({
     Given("인증 없이 게시글 상세를 조회하면") {
         val getPostUseCase = mockk<GetPostUseCase>()
         val post = Post.create(userId = TEST_USER_ID, title = "제목", content = "내용").also { initAuditFields(it) }
-        every { getPostUseCase.execute(postId = 1L, requesterId = null) } returns Pair(post, emptyList())
+        every { getPostUseCase.execute(postId = 1L, requesterId = null) } returns PostDetailResponse.of(post, emptyList(), UserDisplayNames.from(emptyList()))
         val mockMvc = buildMockMvc(getPostUseCase = getPostUseCase, userId = null)
 
         When("GET /posts/1 요청 시") {

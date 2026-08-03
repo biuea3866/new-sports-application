@@ -25,6 +25,7 @@ import {
 } from '../api/recruitment';
 import type {
   ApplicationResponse,
+  RecruitmentApplicantResponse,
   ApplyRecruitmentRequest,
   ApplyRecruitmentResult,
   CreateRecruitmentRequest,
@@ -77,7 +78,7 @@ export function useCreateRecruitment() {
 
 /** `GET /recruitments/{id}/applications` — 개설자 전용 신청자 목록. */
 export function useApplications(recruitmentId: number) {
-  return useQuery<ApplicationResponse[], Error>({
+  return useQuery<RecruitmentApplicantResponse[], Error>({
     queryKey: applicationsQueryKey(recruitmentId),
     queryFn: () => listApplications(recruitmentId),
     enabled: recruitmentId > 0,

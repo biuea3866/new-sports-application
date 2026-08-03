@@ -1,7 +1,7 @@
 package com.sportsapp.scenario
 
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.presentation.user.dto.response.RegisterUserResponse
+import com.sportsapp.application.user.dto.RegisterUserResponse
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
@@ -16,7 +16,7 @@ class UserRegisterScenarioTest(
         Given("신규 가입 요청") {
             When("POST /users/register 를 호출하면") {
                 Then("[S-01] 201 Created + Location 헤더가 반환되고 password_hash 는 노출되지 않는다") {
-                    val requestBody = mapOf("email" to "scenario@example.com", "password" to "password1234")
+                    val requestBody = mapOf("email" to "scenario@example.com", "password" to "password1234", "nickname" to "시나리오회원")
                     val response = restTemplate.postForEntity("/users/register", requestBody, RegisterUserResponse::class.java)
 
                     response.statusCode shouldBe HttpStatus.CREATED
@@ -24,6 +24,7 @@ class UserRegisterScenarioTest(
                     val body = response.body
                     body.shouldNotBeNull()
                     body.email shouldBe "scenario@example.com"
+                    body.nickname shouldBe "시나리오회원"
                 }
             }
         }
@@ -31,7 +32,7 @@ class UserRegisterScenarioTest(
         Given("이미 가입된 이메일로 재가입 시도") {
             restTemplate.postForEntity(
                 "/users/register",
-                mapOf("email" to "dup-scenario@example.com", "password" to "password1234"),
+                mapOf("email" to "dup-scenario@example.com", "password" to "password1234", "nickname" to "중복회원"),
                 RegisterUserResponse::class.java,
             )
 
@@ -39,7 +40,7 @@ class UserRegisterScenarioTest(
                 Then("[S-02] 409 ProblemDetail 응답이 반환된다") {
                     val response = restTemplate.postForEntity(
                         "/users/register",
-                        mapOf("email" to "dup-scenario@example.com", "password" to "password1234"),
+                        mapOf("email" to "dup-scenario@example.com", "password" to "password1234", "nickname" to "중복회원"),
                         String::class.java,
                     )
                     response.statusCode shouldBe HttpStatus.CONFLICT
@@ -52,7 +53,7 @@ class UserRegisterScenarioTest(
                 Then("[S-03] 400 응답이 반환된다") {
                     val response = restTemplate.postForEntity(
                         "/users/register",
-                        mapOf("email" to "not-an-email", "password" to "password1234"),
+                        mapOf("email" to "not-an-email", "password" to "password1234", "nickname" to "잘못된회원"),
                         String::class.java,
                     )
                     response.statusCode shouldBe HttpStatus.BAD_REQUEST

@@ -13,9 +13,9 @@ import com.sportsapp.domain.user.service.UserDomainService
 import com.sportsapp.infrastructure.config.FeatureFlagRedisPubSubConfig
 import com.sportsapp.infrastructure.featureflag.local.LocalFeatureFlagStore
 import com.sportsapp.infrastructure.featureflag.metrics.FeatureFlagCacheMetrics
-import com.sportsapp.presentation.featureflag.dto.CreateFeatureFlagRequest
 import com.sportsapp.infrastructure.featureflag.redis.FeatureFlagChangeSubscriber
 import com.sportsapp.infrastructure.featureflag.redis.RedisFeatureFlagCacheStore
+import com.sportsapp.presentation.featureflag.dto.CreateFeatureFlagRequest
 import io.kotest.assertions.nondeterministic.eventually
 import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.shouldBe
@@ -69,7 +69,7 @@ class FeatureFlagMultiInstancePropagationScenarioTest(
     }
 
     private fun loginAsAdmin(email: String): String {
-        val user = userDomainService.register(email, "Password1!")
+        val user = userDomainService.register(email, "Password1!", "테스트회원")
         userDomainService.assignRole(adminId = user.id, userId = user.id, roleName = "ADMIN")
         val headers = HttpHeaders().apply { contentType = MediaType.APPLICATION_JSON }
         val loginBody = objectMapper.writeValueAsString(mapOf("email" to email, "password" to "Password1!"))

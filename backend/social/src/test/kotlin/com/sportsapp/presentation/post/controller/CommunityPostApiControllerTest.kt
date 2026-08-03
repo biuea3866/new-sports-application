@@ -1,5 +1,6 @@
 package com.sportsapp.presentation.post.controller
 
+import com.sportsapp.application.post.dto.PostResponse
 import com.sportsapp.application.post.usecase.ListCommunityPostsUseCase
 import com.sportsapp.domain.community.exception.NotCommunityMemberException
 import com.sportsapp.domain.post.entity.Post
@@ -29,7 +30,7 @@ class CommunityPostApiControllerTest : BehaviorSpec({
         val listCommunityPostsUseCase = mockk<ListCommunityPostsUseCase>()
         every {
             listCommunityPostsUseCase.execute(communityId = 10L, requesterId = null, sportCategory = null, page = 0, size = 20)
-        } returns PageImpl(emptyList<Post>(), PageRequest.of(0, 20), 0)
+        } returns PageImpl(emptyList<PostResponse>(), PageRequest.of(0, 20), 0)
         val mockMvc = buildMockMvc(listCommunityPostsUseCase)
 
         When("GET /communities/10/posts 요청 시") {

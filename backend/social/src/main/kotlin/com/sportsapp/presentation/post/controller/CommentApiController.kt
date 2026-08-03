@@ -1,14 +1,14 @@
 package com.sportsapp.presentation.post.controller
 
+import com.sportsapp.application.post.dto.AddCommentCommand
+import com.sportsapp.application.post.dto.CommentPageResponse
+import com.sportsapp.application.post.dto.CommentResponse
+import com.sportsapp.application.post.dto.DeleteCommentCommand
 import com.sportsapp.application.post.usecase.AddCommentUseCase
 import com.sportsapp.application.post.usecase.DeleteCommentUseCase
 import com.sportsapp.application.post.usecase.ListCommentsUseCase
-import com.sportsapp.application.post.dto.AddCommentCommand
-import com.sportsapp.application.post.dto.DeleteCommentCommand
 import com.sportsapp.domain.common.security.UserPrincipal
 import com.sportsapp.presentation.post.dto.request.AddCommentRequest
-import com.sportsapp.presentation.post.dto.response.CommentPageResponse
-import com.sportsapp.presentation.post.dto.response.CommentResponse
 import jakarta.validation.Valid
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -38,8 +38,7 @@ class CommentApiController(
             userId = principal.id,
             content = request.content,
         )
-        val comment = addCommentUseCase.execute(command)
-        return ResponseEntity.status(201).body(CommentResponse.of(comment))
+        return ResponseEntity.status(201).body(addCommentUseCase.execute(command))
     }
 
     @DeleteMapping("/comments/{id}")

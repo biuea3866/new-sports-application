@@ -1,10 +1,10 @@
 package com.sportsapp.application.post.usecase
 
 import com.sportsapp.application.common.GuestRequester
+import com.sportsapp.application.post.dto.PostDetailResponse
 import com.sportsapp.domain.community.service.CommunityDomainService
-import com.sportsapp.domain.post.entity.Comment
-import com.sportsapp.domain.post.entity.Post
 import com.sportsapp.domain.post.service.PostDomainService
+import com.sportsapp.domain.user.service.UserDomainService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -18,11 +18,13 @@ import org.springframework.transaction.annotation.Transactional
 class GetPostUseCase(
     private val postDomainService: PostDomainService,
     private val communityDomainService: CommunityDomainService,
+    private val userDomainService: UserDomainService,
 ) {
     @Transactional(readOnly = true)
-    fun execute(postId: Long, requesterId: Long? = null): Pair<Post, List<Comment>> {
+    fun execute(postId: Long, requesterId: Long? = null): PostDetailResponse {
         val (post, comments) = postDomainService.getDetail(postId)
         post.currentCommunityId?.let { communityDomainService.getCommunity(it, requesterId ?: GuestRequester.ID) }
-        return post to comments
+        val authorNames = userDomainService.findDisplayNamesBy(listOf(post.userId) + comments.map { it.userId })
+        return PostDetailResponse.of(post, comments, authorNames)
     }
 }

@@ -3,6 +3,7 @@ package com.sportsapp.presentation.recruitment.controller
 import com.sportsapp.application.recruitment.dto.ApplicationResponse
 import com.sportsapp.application.recruitment.dto.ApplyRecruitmentResult
 import com.sportsapp.application.recruitment.dto.CancelRecruitmentCommand
+import com.sportsapp.application.recruitment.dto.RecruitmentApplicantResponse
 import com.sportsapp.application.recruitment.dto.RecruitmentResponse
 import com.sportsapp.application.recruitment.usecase.ApplyRecruitmentUseCase
 import com.sportsapp.application.recruitment.usecase.CancelRecruitmentUseCase
@@ -192,12 +193,12 @@ class RecruitmentApiControllerTest : BehaviorSpec({
     Given("개설자의 신청자 목록 조회") {
         val listApplicationsUseCase = mockk<ListApplicationsUseCase>()
         every { listApplicationsUseCase.execute(1L, TEST_USER_ID) } returns listOf(
-            ApplicationResponse(
+            RecruitmentApplicantResponse(
                 id = 11L,
                 recruitmentId = 1L,
                 applicantUserId = 71L,
+                applicantDisplayName = "김철수",
                 status = ApplicationStatus.CONFIRMED,
-                paymentId = 99L,
                 appliedAt = ZonedDateTime.now(),
             ),
         )

@@ -47,13 +47,13 @@ class McpUsageAnalyticsScenarioTest(
         dateTime.withZoneSameInstant(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT)
 
     private fun loginAndGetToken(email: String, password: String): String {
-        val user = userDomainService.register(email, password)
+        val user = userDomainService.register(email, password, "테스트회원")
         userDomainService.assignRole(adminId = user.id, userId = user.id, roleName = "ADMIN")
         return doLogin(email, password)
     }
 
     private fun loginAsUserAndGetToken(email: String, password: String): String {
-        userDomainService.register(email, password)
+        userDomainService.register(email, password, "테스트회원")
         return doLogin(email, password)
     }
 

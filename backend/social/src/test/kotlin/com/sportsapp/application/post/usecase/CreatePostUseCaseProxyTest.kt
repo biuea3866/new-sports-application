@@ -1,6 +1,7 @@
 package com.sportsapp.application.post.usecase
 
 import com.sportsapp.domain.post.service.PostDomainService
+import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.mockk
@@ -49,8 +50,12 @@ class CreatePostUseCaseProxyTest : DescribeSpec({
         fun postDomainService(): PostDomainService = mockk(relaxed = true)
 
         @Bean
+        fun userDomainService(): UserDomainService = mockk(relaxed = true)
+
+        @Bean
         fun createPostUseCase(
             postDomainService: PostDomainService,
-        ): CreatePostUseCase = CreatePostUseCase(postDomainService)
+            userDomainService: UserDomainService,
+        ): CreatePostUseCase = CreatePostUseCase(postDomainService, userDomainService)
     }
 }

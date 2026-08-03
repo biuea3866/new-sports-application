@@ -1,5 +1,6 @@
-package com.sportsapp.presentation.post.dto.response
+package com.sportsapp.application.post
 
+import com.sportsapp.application.post.dto.PostResponse
 import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.post.entity.Post
 import com.sportsapp.domain.post.vo.CommunityPostContext
@@ -23,7 +24,7 @@ class PostResponseTest : BehaviorSpec({
         val post = Post.create(userId = 1L, title = "제목", content = "내용").also { initAuditFields(it) }
 
         When("변환하면") {
-            val response = PostResponse.of(post)
+            val response = PostResponse.of(post, "김철수")
 
             Then("communityId·sportCategory 가 null 로 매핑된다") {
                 response.communityId shouldBe null
@@ -47,7 +48,7 @@ class PostResponseTest : BehaviorSpec({
         ).also { initAuditFields(it) }
 
         When("변환하면") {
-            val response = PostResponse.of(post)
+            val response = PostResponse.of(post, "김철수")
 
             Then("communityId·sportCategory 가 게시글 값 그대로 매핑된다") {
                 response.communityId shouldBe 10L

@@ -40,15 +40,14 @@ class InvitationApiController(
         @PathVariable roomId: Long,
         @RequestBody request: InviteGuestRequest,
     ): ResponseEntity<InvitationResponse> {
-        val result = inviteGuestUseCase.execute(request.toCommand(roomId, principal.id))
-        val status = if (result.reused) HttpStatus.OK else HttpStatus.CREATED
-        return ResponseEntity.status(status).body(InvitationResponse.of(result.invitation, result.reused))
+        val invitation = inviteGuestUseCase.execute(request.toCommand(roomId, principal.id))
+        val status = if (invitation.reused) HttpStatus.OK else HttpStatus.CREATED
+        return ResponseEntity.status(status).body(invitation)
     }
 
     @GetMapping("/invitations/me")
     fun listMyInvitations(@AuthenticationPrincipal principal: UserPrincipal): ResponseEntity<List<InvitationResponse>> {
-        val invitations = listMyInvitationsUseCase.execute(principal.id).map { InvitationResponse.of(it) }
-        return ResponseEntity.ok(invitations)
+        return ResponseEntity.ok(listMyInvitationsUseCase.execute(principal.id))
     }
 
     @PostMapping("/invitations/{id}/accept")
@@ -56,8 +55,7 @@ class InvitationApiController(
         @AuthenticationPrincipal principal: UserPrincipal,
         @PathVariable id: Long,
     ): ResponseEntity<InvitationResponse> {
-        val invitation = acceptInvitationUseCase.execute(invitationId = id, userId = principal.id)
-        return ResponseEntity.ok(InvitationResponse.of(invitation))
+        return ResponseEntity.ok(acceptInvitationUseCase.execute(invitationId = id, userId = principal.id))
     }
 
     @PostMapping("/invitations/{id}/reject")
@@ -65,7 +63,6 @@ class InvitationApiController(
         @AuthenticationPrincipal principal: UserPrincipal,
         @PathVariable id: Long,
     ): ResponseEntity<InvitationResponse> {
-        val invitation = rejectInvitationUseCase.execute(invitationId = id, userId = principal.id)
-        return ResponseEntity.ok(InvitationResponse.of(invitation))
+        return ResponseEntity.ok(rejectInvitationUseCase.execute(invitationId = id, userId = principal.id))
     }
 }

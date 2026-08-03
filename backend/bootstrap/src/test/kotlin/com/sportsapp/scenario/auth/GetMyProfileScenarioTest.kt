@@ -2,9 +2,9 @@ package com.sportsapp.scenario.auth
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.presentation.user.dto.response.GetMyProfileResponse
-import com.sportsapp.domain.user.service.UserDomainService
+import com.sportsapp.application.user.dto.GetMyProfileResponse
 import com.sportsapp.domain.user.entity.UserStatus
+import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.apache.hc.client5.http.impl.classic.HttpClients
@@ -51,7 +51,7 @@ class GetMyProfileScenarioTest(
 
     init {
         Given("[S-01] 인증된 사용자가 GET /users/me 를 호출할 때") {
-            userDomainService.register("me-scenario@example.com", "ValidPass123")
+            userDomainService.register("me-scenario@example.com", "ValidPass123", "테스트회원")
             val accessToken = loginAndGetToken("me-scenario@example.com", "ValidPass123")
 
             When("Authorization: Bearer 헤더와 함께 GET /users/me 를 호출하면") {

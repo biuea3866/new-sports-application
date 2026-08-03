@@ -43,7 +43,7 @@ class InvitationApiControllerTest(
     private fun baseUrl() = "http://localhost:$port"
 
     private fun registerAndLogin(email: String, password: String = "Pass1234!"): Pair<Long, String> {
-        userDomainService.register(email, password)
+        userDomainService.register(email, password, "테스트회원")
         val userId = requireNotNull(
             jdbcTemplate.queryForObject("SELECT id FROM users WHERE email = ?", Long::class.java, email),
         )

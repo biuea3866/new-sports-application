@@ -46,17 +46,23 @@ describe('auth API', () => {
   });
 
   describe('U-02: register', () => {
-    it('유효한 정보로 register 호출 시 id와 email을 반환한다', async () => {
-      const mockResponse: RegisterUserResponse = { id: 1, email: 'new@example.com' };
+    it('유효한 정보로 register 호출 시 id·email·닉네임을 반환한다', async () => {
+      const mockResponse: RegisterUserResponse = {
+        id: 1,
+        email: 'new@example.com',
+        nickname: '김철수',
+      };
       mock.onPost('/users/register').reply(201, mockResponse);
 
       const res = await client.post<RegisterUserResponse>('/users/register', {
         email: 'new@example.com',
         password: 'password123',
+        nickname: '김철수',
       });
 
       expect(res.data.id).toBe(1);
       expect(res.data.email).toBe('new@example.com');
+      expect(res.data.nickname).toBe('김철수');
     });
 
     it('중복 이메일로 register 호출 시 4xx 에러가 발생한다', async () => {

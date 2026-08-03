@@ -5,12 +5,15 @@
  * 내 주문 내역 진입점은 `orders.unified.enabled` 플래그로 게이팅한다(BE 파사드 API 준비 전
  * 숨김, `20260708-상품주문-공유상위컨텍스트-design-fe-app.md` "Release Scenario").
  */
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { useState } from 'react';
+import { View, Text, Pressable, StyleSheet, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../lib/auth';
 import { ListItem } from '../../components/ui';
 import { isFeatureEnabled } from '../../lib/feature-flags';
-import { useMyProfile } from '../../lib/useMyProfile';
+import { hasProblemCode } from '../../lib/http-error';
+import { INVALID_NICKNAME_CODE, NICKNAME_RULE_MESSAGE } from '../../lib/nickname';
+import { useChangeMyNickname, useMyProfile } from '../../lib/useMyProfile';
 import { ROUTES } from '../../lib/navigation';
 import { formatUserRoleLabels } from '../../lib/user-role-format';
 import { useTheme } from '../../theme/useTheme';
@@ -39,6 +42,9 @@ function decodeJwt(token: string | null): JwtPayload | null {
 }
 
 const LOADING_LABEL = '불러오는 중...';
+const NICKNAME_UNSET_LABEL = '닉네임을 설정해 주세요';
+const NICKNAME_REQUIRED_MESSAGE = '닉네임을 입력해 주세요';
+const NICKNAME_FAILED_MESSAGE = '닉네임을 변경하지 못했어요';
 const LOAD_FAILED_LABEL = '정보를 불러오지 못했어요';
 
 /**
@@ -68,6 +74,47 @@ export default function MeScreen() {
 
   const payload = decodeJwt(accessToken);
   const { data: profile, isLoading, isError } = useMyProfile();
+  const changeNickname = useChangeMyNickname();
+
+  const [isEditingNickname, setIsEditingNickname] = useState(false);
+  const [nicknameDraft, setNicknameDraft] = useState('');
+  const [nicknameError, setNicknameError] = useState<string | null>(null);
+
+  // 형제 필드(이메일·사용자 ID)와 같은 4상태 규칙을 따른다 — 로딩·조회 실패를 "미설정" 으로
+  // 오인시키지 않기 위해서다. 서버 응답이 왔을 때만 미설정 안내를 띄운다.
+  const isProfileLoaded = profile !== undefined;
+  const nicknameText = resolveProfileField(
+    isProfileLoaded ? (profile.nickname ?? NICKNAME_UNSET_LABEL) : undefined,
+    undefined,
+    isLoading,
+    isError
+  );
+
+  function startEditingNickname() {
+    setNicknameDraft(profile?.nickname ?? '');
+    setNicknameError(null);
+    setIsEditingNickname(true);
+  }
+
+  function saveNickname() {
+    const trimmed = nicknameDraft.trim();
+    if (trimmed.length === 0) {
+      setNicknameError(NICKNAME_REQUIRED_MESSAGE);
+      return;
+    }
+    changeNickname.mutate(trimmed, {
+      onSuccess: () => {
+        setIsEditingNickname(false);
+        setNicknameError(null);
+      },
+      onError: (error: unknown) =>
+        setNicknameError(
+          hasProblemCode(error, 400, INVALID_NICKNAME_CODE)
+            ? NICKNAME_RULE_MESSAGE
+            : NICKNAME_FAILED_MESSAGE
+        ),
+    });
+  }
 
   const emailText = resolveProfileField(profile?.email, payload?.email, isLoading, isError);
   const userIdText = resolveProfileField(
@@ -87,7 +134,58 @@ export default function MeScreen() {
       <Text style={styles.title}>마이페이지</Text>
 
       <View style={styles.card}>
-        <Text style={styles.label}>이메일</Text>
+        <Text style={styles.label}>닉네임</Text>
+        {isEditingNickname ? (
+          <View>
+            <TextInput
+              style={styles.nicknameInput}
+              value={nicknameDraft}
+              onChangeText={setNicknameDraft}
+              placeholder="닉네임 (2~20자)"
+              placeholderTextColor={tokens.textTertiary}
+              autoCapitalize="none"
+              accessibilityLabel="닉네임 입력"
+            />
+            <View style={styles.nicknameActions}>
+              <Pressable
+                onPress={saveNickname}
+                accessibilityRole="button"
+                accessibilityLabel="닉네임 저장"
+                disabled={changeNickname.isPending}
+              >
+                <Text style={styles.nicknameAction}>저장</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setIsEditingNickname(false)}
+                accessibilityRole="button"
+                accessibilityLabel="닉네임 수정 취소"
+              >
+                <Text style={styles.nicknameActionMuted}>취소</Text>
+              </Pressable>
+            </View>
+            {nicknameError !== null && (
+              <Text style={styles.nicknameError} accessibilityRole="alert">
+                {nicknameError}
+              </Text>
+            )}
+          </View>
+        ) : (
+          <View style={styles.nicknameRow}>
+            <Text style={styles.value}>{nicknameText}</Text>
+            <Pressable
+              onPress={startEditingNickname}
+              disabled={!isProfileLoaded}
+              accessibilityRole="button"
+              accessibilityLabel="닉네임 수정"
+            >
+              <Text style={isProfileLoaded ? styles.nicknameAction : styles.nicknameActionMuted}>
+                수정
+              </Text>
+            </Pressable>
+          </View>
+        )}
+
+        <Text style={[styles.label, styles.mt]}>이메일</Text>
         <Text style={styles.value}>{emailText}</Text>
 
         <Text style={[styles.label, styles.mt]}>사용자 ID</Text>
@@ -128,6 +226,20 @@ const useStyles = createStyles((theme: ThemeTokens) =>
       marginBottom: 24,
     },
     label: { fontSize: 12, color: theme.textMuted },
+    nicknameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    nicknameActions: { flexDirection: 'row', gap: 16, marginTop: 8 },
+    nicknameAction: { fontSize: 14, color: theme.accent, fontWeight: '600' },
+    nicknameActionMuted: { fontSize: 14, color: theme.textMuted },
+    nicknameError: { fontSize: 12, color: theme.danger, marginTop: 6 },
+    nicknameInput: {
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      marginTop: 4,
+      color: theme.textPrimary,
+    },
     value: { fontSize: 16, color: theme.textPrimary, marginTop: 2 },
     mt: { marginTop: 14 },
     logoutButton: {

@@ -2,11 +2,11 @@ package com.sportsapp.presentation.featureflag.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseJpaIntegrationTest
+import com.sportsapp.domain.common.security.UserPrincipal
 import com.sportsapp.domain.featureflag.entity.FeatureFlagType
 import com.sportsapp.domain.featureflag.strategy.EvaluationStrategy
 import com.sportsapp.domain.user.entity.User
 import com.sportsapp.domain.user.service.UserDomainService
-import com.sportsapp.domain.common.security.UserPrincipal
 import com.sportsapp.presentation.featureflag.dto.CreateFeatureFlagRequest
 import com.sportsapp.presentation.featureflag.dto.UpdateFeatureFlagRequest
 import org.springframework.beans.factory.annotation.Autowired
@@ -29,7 +29,7 @@ class FeatureFlagAdminApiControllerTest(
     @Autowired private val objectMapper: ObjectMapper,
 ) : BaseJpaIntegrationTest() {
 
-    private fun registerUser(email: String): User = userDomainService.register(email, "Password1!")
+    private fun registerUser(email: String): User = userDomainService.register(email, "Password1!", "테스트회원")
 
     private fun adminAuth(user: User) =
         SecurityMockMvcRequestPostProcessors.authentication(

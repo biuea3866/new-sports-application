@@ -1,10 +1,12 @@
 package com.sportsapp.application.post.usecase
 
 import com.sportsapp.application.post.dto.CreateCommunityPostCommand
+import com.sportsapp.application.post.dto.PostResponse
+import com.sportsapp.domain.community.entity.Community
 import com.sportsapp.domain.community.service.CommunityDomainService
-import com.sportsapp.domain.post.entity.Post
 import com.sportsapp.domain.post.service.PostDomainService
 import com.sportsapp.domain.post.vo.CommunityPostContext
+import com.sportsapp.domain.user.service.UserDomainService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -16,22 +18,30 @@ import org.springframework.transaction.annotation.Transactional
 class CreateCommunityPostUseCase(
     private val postDomainService: PostDomainService,
     private val communityDomainService: CommunityDomainService,
+    private val userDomainService: UserDomainService,
 ) {
     @Transactional
-    fun execute(command: CreateCommunityPostCommand): Post {
+    fun execute(command: CreateCommunityPostCommand): PostResponse {
         communityDomainService.requireActiveMember(command.communityId, command.userId)
         val community = communityDomainService.getCommunity(command.communityId, command.userId)
-        return postDomainService.createCommunityPost(
+        val post = postDomainService.createCommunityPost(
             userId = command.userId,
             title = command.title,
             content = command.content,
             type = command.type,
-            context = CommunityPostContext(
-                communityId = command.communityId,
-                sportCategory = community.sportCategory,
-                authorIsHost = community.isHostedBy(command.userId),
-                communityIsPublic = community.isPublic(),
-            ),
+            context = contextOf(command, community),
         )
+        return PostResponse.of(post, authorDisplayNameOf(command.userId))
     }
+
+    private fun contextOf(command: CreateCommunityPostCommand, community: Community): CommunityPostContext =
+        CommunityPostContext(
+            communityId = command.communityId,
+            sportCategory = community.sportCategory,
+            authorIsHost = community.isHostedBy(command.userId),
+            communityIsPublic = community.isPublic(),
+        )
+
+    private fun authorDisplayNameOf(userId: Long): String =
+        userDomainService.findDisplayNamesBy(listOf(userId)).of(userId)
 }

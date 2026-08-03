@@ -55,6 +55,7 @@ function buildInvitation(overrides: Partial<InvitationResponse> = {}): Invitatio
     roomId: 10,
     roomName: '강남 새벽 러닝크루',
     inviterUserId: 7,
+    inviterDisplayName: '김철수',
     inviteeUserId: 99,
     status: 'PENDING',
     canSpeak: true,
@@ -112,6 +113,25 @@ describe('MyInvitationsScreen', () => {
 
     expect(screen.queryByText(/발화/)).toBeNull();
     expect(screen.getByText(/대화 참여 가능/)).toBeTruthy();
+  });
+
+  it('초대자 이름을 표시한다', () => {
+    mockMyInvitations({ data: [buildInvitation({ id: 1, roomId: 55 })] });
+
+    render(<MyInvitationsScreen />);
+
+    expect(screen.getByText('초대자 김철수')).toBeTruthy();
+  });
+
+  it('초대자 닉네임이 없어도 내부 식별자를 노출하지 않는다', () => {
+    mockMyInvitations({
+      data: [buildInvitation({ id: 1, roomId: 55, inviterDisplayName: undefined })],
+    });
+
+    render(<MyInvitationsScreen />);
+
+    expect(screen.getByText('초대자 닉네임 미설정')).toBeTruthy();
+    expect(screen.queryByText(/초대자 #7/)).toBeNull();
   });
 
   it('수신함이 비면 빈 상태 문구가 렌더된다', () => {

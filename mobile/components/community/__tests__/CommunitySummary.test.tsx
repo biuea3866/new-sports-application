@@ -16,6 +16,7 @@ const baseCommunity: CommunityResponse = {
   visibility: 'PUBLIC',
   sportCategory: 'SOCCER',
   hostUserId: 10,
+  hostDisplayName: '박영희',
   memberCount: 32,
   roomId: 99,
   createdAt: '2026-07-01T00:00:00Z',
@@ -101,6 +102,21 @@ describe('CommunitySummary', () => {
     expect(screen.getByLabelText('채팅 입장').props.accessibilityState.disabled).toBe(true);
   });
 
+  it('방장 닉네임이 없어도 내부 식별자를 노출하지 않는다', () => {
+    render(
+      <CommunitySummary
+        community={{ ...baseCommunity, hostDisplayName: undefined }}
+        viewer={{ kind: 'non-member' }}
+        onJoin={jest.fn()}
+        onEnterChat={jest.fn()}
+        isJoinPending={false}
+      />
+    );
+
+    expect(screen.getByText('방장 닉네임 미설정')).toBeTruthy();
+    expect(screen.queryByText(/방장 #10/)).toBeNull();
+  });
+
   it('종목·공개여부·멤버수·방장을 요약으로 표시한다', () => {
     render(
       <CommunitySummary
@@ -113,7 +129,7 @@ describe('CommunitySummary', () => {
     );
 
     expect(screen.getByText('축구 · 공개 · 멤버 32명')).toBeTruthy();
-    expect(screen.getByText('방장 #10')).toBeTruthy();
+    expect(screen.getByText('방장 박영희')).toBeTruthy();
     expect(screen.getByText(baseCommunity.description as string)).toBeTruthy();
   });
 

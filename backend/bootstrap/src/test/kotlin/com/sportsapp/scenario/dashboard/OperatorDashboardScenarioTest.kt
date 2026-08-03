@@ -2,17 +2,17 @@ package com.sportsapp.scenario.dashboard
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.presentation.user.dto.response.LoginResponse
 import com.sportsapp.domain.goods.entity.Product
-import com.sportsapp.domain.goods.vo.ProductCategory
 import com.sportsapp.domain.goods.entity.ProductStatus
 import com.sportsapp.domain.goods.entity.Stock
+import com.sportsapp.domain.goods.vo.ProductCategory
 import com.sportsapp.domain.ticketing.entity.Event
 import com.sportsapp.domain.ticketing.entity.EventStatus
 import com.sportsapp.domain.user.service.UserDomainService
 import com.sportsapp.infrastructure.goods.mysql.ProductJpaRepository
 import com.sportsapp.infrastructure.goods.mysql.StockJpaRepository
 import com.sportsapp.infrastructure.ticketing.mysql.EventJpaRepository
+import com.sportsapp.presentation.user.dto.response.LoginResponse
 import io.kotest.matchers.shouldBe
 import org.apache.hc.client5.http.impl.classic.HttpClients
 import org.springframework.beans.factory.annotation.Autowired
@@ -79,7 +79,7 @@ class OperatorDashboardScenarioTest(
     init {
         Given("[S-03] b2b:dashboard:read 권한이 없는 USER Role 사용자") {
             val password = "DashUser123"
-            userDomainService.register("dashboard-no-role@example.com", password)
+            userDomainService.register("dashboard-no-role@example.com", password, "테스트회원")
 
             When("[S-03] GET /api/operator/dashboard/summary 호출 시") {
                 val accessToken = login("dashboard-no-role@example.com", password)
@@ -93,8 +93,8 @@ class OperatorDashboardScenarioTest(
 
         Given("[S-04] GOODS_SELLER + EVENT_HOST 다중 Role 사용자, 상품 및 이벤트 데이터 존재") {
             val password = "MultiRole456"
-            val user = userDomainService.register("dashboard-multi-role@example.com", password)
-            val adminUser = userDomainService.register("dashboard-admin-multi@example.com", "Admin789!")
+            val user = userDomainService.register("dashboard-multi-role@example.com", password, "테스트회원")
+            val adminUser = userDomainService.register("dashboard-admin-multi@example.com", "Admin789!", "테스트회원")
             userDomainService.assignRole(
                 adminId = adminUser.id,
                 userId = adminUser.id,
@@ -156,8 +156,8 @@ class OperatorDashboardScenarioTest(
 
         Given("[S-01] GOODS_SELLER Role 사용자, 캐시 히트 검증") {
             val password = "CacheTest789"
-            val user = userDomainService.register("dashboard-cache@example.com", password)
-            val adminForCache = userDomainService.register("dashboard-cache-admin@example.com", "CacheAdmin1!")
+            val user = userDomainService.register("dashboard-cache@example.com", password, "테스트회원")
+            val adminForCache = userDomainService.register("dashboard-cache-admin@example.com", "CacheAdmin1!", "테스트회원")
             userDomainService.assignRole(
                 adminId = adminForCache.id,
                 userId = adminForCache.id,

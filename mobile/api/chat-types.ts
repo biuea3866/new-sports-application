@@ -89,6 +89,8 @@ export interface InvitationResponse {
   /** 방 이름. 1:1 방처럼 이름이 없는 방은 null이며, 이때 표시명은 방 종류로 결정한다. */
   roomName: string | null;
   inviterUserId: number;
+  /** 초대자 표시 이름(닉네임). 구 응답 하위 호환을 위해 optional. */
+  inviterDisplayName?: string;
   inviteeUserId: number;
   status: InvitationStatus;
   canSpeak: boolean;

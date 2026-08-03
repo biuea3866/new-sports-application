@@ -1,6 +1,5 @@
-package com.sportsapp.presentation.post.dto.response
+package com.sportsapp.application.post.dto
 
-import com.sportsapp.domain.post.entity.Comment
 import org.springframework.data.domain.Page
 
 data class CommentPageResponse(
@@ -11,8 +10,8 @@ data class CommentPageResponse(
     val size: Int,
 ) {
     companion object {
-        fun of(page: Page<Comment>): CommentPageResponse = CommentPageResponse(
-            content = page.content.map { CommentResponse.of(it) },
+        fun of(page: Page<CommentResponse>): CommentPageResponse = CommentPageResponse(
+            content = page.content,
             totalElements = page.totalElements,
             totalPages = page.totalPages,
             page = page.number,

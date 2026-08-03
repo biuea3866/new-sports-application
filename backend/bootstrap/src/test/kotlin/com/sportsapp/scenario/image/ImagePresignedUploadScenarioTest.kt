@@ -2,8 +2,8 @@ package com.sportsapp.scenario.image
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.presentation.user.dto.response.LoginResponse
 import com.sportsapp.domain.user.service.UserDomainService
+import com.sportsapp.presentation.user.dto.response.LoginResponse
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotBeEmpty
 import org.apache.hc.client5.http.impl.classic.HttpClients
@@ -54,7 +54,7 @@ class ImagePresignedUploadScenarioTest(
 
     init {
         Given("등록된 사용자가 인증 토큰을 보유한 상태에서") {
-            userDomainService.register("image-test@example.com", "ValidPass123!")
+            userDomainService.register("image-test@example.com", "ValidPass123!", "테스트회원")
             val accessToken = loginAndGetToken("image-test@example.com", "ValidPass123!")
 
             val authHeaders = HttpHeaders().apply {

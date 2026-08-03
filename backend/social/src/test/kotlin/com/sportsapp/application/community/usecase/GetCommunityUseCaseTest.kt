@@ -1,13 +1,14 @@
 package com.sportsapp.application.community.usecase
 
+import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.community.entity.Community
 import com.sportsapp.domain.community.service.CommunityDomainService
 import com.sportsapp.domain.community.vo.CommunityVisibility
-import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.message.entity.Room
 import com.sportsapp.domain.message.service.RoomContextQueryService
 import com.sportsapp.domain.message.vo.RoomContextType
 import com.sportsapp.domain.message.vo.RoomType
+import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -16,9 +17,10 @@ import java.time.ZonedDateTime
 
 class GetCommunityUseCaseTest : BehaviorSpec({
 
+    val userDomainService = mockk<UserDomainService>(relaxed = true)
     val communityDomainService = mockk<CommunityDomainService>()
     val roomContextQueryService = mockk<RoomContextQueryService>()
-    val useCase = GetCommunityUseCase(communityDomainService, roomContextQueryService)
+    val useCase = GetCommunityUseCase(communityDomainService, roomContextQueryService, userDomainService)
 
     fun mockCommunity(communityId: Long) = mockk<Community>(relaxed = true) {
         every { id } returns communityId

@@ -20,3 +20,34 @@ export function isNotFoundError(error: Error | null | undefined): boolean {
 export function isUnauthorizedError(error: Error | null | undefined): boolean {
   return axios.isAxiosError(error) && error.response?.status === 401;
 }
+
+/**
+ * BE 에러 응답 본문 — Spring ProblemDetail.
+ *
+ * `ProblemDetailBuilder.build` 가 `setProperty("code", ...)` 로 담고,
+ * `spring.mvc.problemdetails.enabled` 미설정이라 unwrap 되지 않아 실제 직렬화는
+ * `properties.code` 다 (BE 통합 테스트가 `$.properties.code` 로 검증). 구 응답의
+ * 최상위 `code` 형태도 방어적으로 폴백한다.
+ */
+interface ProblemDetailBody {
+  properties?: { code?: string };
+  code?: string;
+  detail?: string;
+}
+
+/**
+ * axios 에러에서 BE 에러 코드를 꺼낸다. 화면마다 응답 모양을 추측하지 않도록 판별 지점을
+ * 여기 하나로 둔다 — 없는 필드(`errorCode` 등)를 읽어 안내 분기가 죽는 사고를 막기 위한 것이다.
+ */
+export function extractProblemCode(error: unknown): string | undefined {
+  if (!axios.isAxiosError(error)) return undefined;
+  const body = error.response?.data as ProblemDetailBody | undefined;
+  return body?.properties?.code ?? body?.code;
+}
+
+/** 응답 status 와 BE 에러 코드가 모두 일치하는지 판별한다. */
+export function hasProblemCode(error: unknown, status: number, code: string): boolean {
+  return axios.isAxiosError(error) && error.response?.status === status
+    ? extractProblemCode(error) === code
+    : false;
+}

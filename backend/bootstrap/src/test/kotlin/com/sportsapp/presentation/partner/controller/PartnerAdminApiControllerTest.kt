@@ -4,9 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseJpaIntegrationTest
 import com.sportsapp.application.partner.dto.CreatePartnerResponse
 import com.sportsapp.application.partner.dto.ReissueApiKeyResponse
+import com.sportsapp.domain.common.security.UserPrincipal
 import com.sportsapp.domain.user.entity.User
 import com.sportsapp.domain.user.service.UserDomainService
-import com.sportsapp.domain.common.security.UserPrincipal
 import org.hamcrest.Matchers.not
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -29,7 +29,7 @@ class PartnerAdminApiControllerTest(
     @Autowired private val objectMapper: ObjectMapper,
 ) : BaseJpaIntegrationTest() {
 
-    private fun registerUser(email: String): User = userDomainService.register(email, "Password1!")
+    private fun registerUser(email: String): User = userDomainService.register(email, "Password1!", "테스트회원")
 
     private fun adminAuth(user: User) =
         SecurityMockMvcRequestPostProcessors.authentication(

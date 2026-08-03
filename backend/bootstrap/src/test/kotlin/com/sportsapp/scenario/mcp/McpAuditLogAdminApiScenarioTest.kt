@@ -46,7 +46,7 @@ class McpAuditLogAdminApiScenarioTest(
         dateTime.withZoneSameInstant(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT)
 
     private fun loginAndGetToken(email: String, password: String): String {
-        val user = userDomainService.register(email, password)
+        val user = userDomainService.register(email, password, "테스트회원")
         userDomainService.assignRole(adminId = user.id, userId = user.id, roleName = "ADMIN")
         val headers = HttpHeaders().apply { set("Content-Type", "application/json") }
         val body = objectMapper.writeValueAsString(mapOf("email" to email, "password" to password))

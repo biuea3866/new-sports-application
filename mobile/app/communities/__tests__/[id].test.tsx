@@ -114,6 +114,8 @@ const routerBackMock = router.back as jest.MockedFunction<typeof router.back>;
 const MY_USER_ID = 1;
 const HOST_USER_ID = 10;
 const OTHER_MEMBER_USER_ID = 2;
+const OTHER_MEMBER_DISPLAY_NAME = '박영희';
+const HOST_DISPLAY_NAME = '이민수';
 
 const baseCommunity: CommunityResponse = {
   id: 5,
@@ -122,6 +124,7 @@ const baseCommunity: CommunityResponse = {
   visibility: 'PUBLIC',
   sportCategory: 'SOCCER',
   hostUserId: HOST_USER_ID,
+  hostDisplayName: HOST_DISPLAY_NAME,
   memberCount: 2,
   roomId: 77,
   createdAt: '2026-07-01T00:00:00Z',
@@ -139,6 +142,7 @@ function member(overrides: Partial<CommunityMemberResponse> = {}): CommunityMemb
     id: 1,
     communityId: baseCommunity.id,
     userId: OTHER_MEMBER_USER_ID,
+    displayName: OTHER_MEMBER_DISPLAY_NAME,
     role: 'MEMBER',
     status: 'ACTIVE',
     joinedAt: '2026-07-01T00:00:00Z',
@@ -263,7 +267,7 @@ describe('CommunityDetailScreen', () => {
   it('방장에게는 다른 멤버별 강퇴·위임 버튼이 노출된다', () => {
     mockMembers({
       data: [
-        member({ id: 1, userId: MY_USER_ID, role: 'HOST' }),
+        member({ id: 1, userId: MY_USER_ID, role: 'HOST', displayName: '나' }),
         member({ id: 2, userId: OTHER_MEMBER_USER_ID, role: 'MEMBER' }),
       ],
     });
@@ -271,14 +275,14 @@ describe('CommunityDetailScreen', () => {
     renderScreen();
     fireEvent.press(screen.getByLabelText('멤버'));
 
-    expect(screen.getByLabelText(`사용자 #${OTHER_MEMBER_USER_ID} 강퇴`)).toBeTruthy();
-    expect(screen.getByLabelText(`사용자 #${OTHER_MEMBER_USER_ID} 방장 위임`)).toBeTruthy();
+    expect(screen.getByLabelText(`${OTHER_MEMBER_DISPLAY_NAME} 강퇴`)).toBeTruthy();
+    expect(screen.getByLabelText(`${OTHER_MEMBER_DISPLAY_NAME} 방장 위임`)).toBeTruthy();
   });
 
   it('일반 멤버에게는 강퇴·위임 버튼이 노출되지 않는다', () => {
     mockMembers({
       data: [
-        member({ id: 1, userId: HOST_USER_ID, role: 'HOST' }),
+        member({ id: 1, userId: HOST_USER_ID, role: 'HOST', displayName: HOST_DISPLAY_NAME }),
         member({ id: 2, userId: MY_USER_ID, role: 'MEMBER' }),
       ],
     });
@@ -286,7 +290,7 @@ describe('CommunityDetailScreen', () => {
     renderScreen();
     fireEvent.press(screen.getByLabelText('멤버'));
 
-    expect(screen.queryByLabelText(`사용자 #${HOST_USER_ID} 강퇴`)).toBeNull();
+    expect(screen.queryByLabelText(`${HOST_DISPLAY_NAME} 강퇴`)).toBeNull();
   });
 
   it('비공개 커뮤니티 가입 시 "승인 대기 중" 상태가 표시된다', () => {
@@ -357,7 +361,7 @@ describe('CommunityDetailScreen', () => {
   it('강퇴 확인 후 성공 시 방목록 캐시가 무효화된다(자동 퇴장)', () => {
     mockMembers({
       data: [
-        member({ id: 1, userId: MY_USER_ID, role: 'HOST' }),
+        member({ id: 1, userId: MY_USER_ID, role: 'HOST', displayName: '나' }),
         member({ id: 2, userId: OTHER_MEMBER_USER_ID, role: 'MEMBER' }),
       ],
     });
@@ -375,7 +379,7 @@ describe('CommunityDetailScreen', () => {
 
     const { invalidateSpy } = renderScreen();
     fireEvent.press(screen.getByLabelText('멤버'));
-    fireEvent.press(screen.getByLabelText(`사용자 #${OTHER_MEMBER_USER_ID} 강퇴`));
+    fireEvent.press(screen.getByLabelText(`${OTHER_MEMBER_DISPLAY_NAME} 강퇴`));
 
     expect(alertSpy).toHaveBeenCalled();
     expect(kickMutate).toHaveBeenCalledWith({ userId: OTHER_MEMBER_USER_ID }, expect.anything());
@@ -385,7 +389,7 @@ describe('CommunityDetailScreen', () => {
   it('위임 확인 다이얼로그를 확정하면 방장 위임 mutation을 호출한다', () => {
     mockMembers({
       data: [
-        member({ id: 1, userId: MY_USER_ID, role: 'HOST' }),
+        member({ id: 1, userId: MY_USER_ID, role: 'HOST', displayName: '나' }),
         member({ id: 2, userId: OTHER_MEMBER_USER_ID, role: 'MEMBER' }),
       ],
     });
@@ -400,7 +404,7 @@ describe('CommunityDetailScreen', () => {
 
     renderScreen();
     fireEvent.press(screen.getByLabelText('멤버'));
-    fireEvent.press(screen.getByLabelText(`사용자 #${OTHER_MEMBER_USER_ID} 방장 위임`));
+    fireEvent.press(screen.getByLabelText(`${OTHER_MEMBER_DISPLAY_NAME} 방장 위임`));
 
     expect(transferMutate).toHaveBeenCalledWith({ newHostUserId: OTHER_MEMBER_USER_ID });
   });
@@ -515,7 +519,7 @@ describe('CommunityDetailScreen', () => {
   });
 
   it('활동 탭을 선택하면 방장만 canLink=true로 활동 섹션이 렌더된다', () => {
-    mockMembers({ data: [member({ id: 1, userId: MY_USER_ID, role: 'HOST' })] });
+    mockMembers({ data: [member({ id: 1, userId: MY_USER_ID, role: 'HOST', displayName: '나' })] });
 
     renderScreen();
     fireEvent.press(screen.getByLabelText('활동'));
@@ -526,7 +530,7 @@ describe('CommunityDetailScreen', () => {
   });
 
   it('활동 섹션의 연결하기 콜백을 탭하면 예약 연결 화면으로 이동한다', () => {
-    mockMembers({ data: [member({ id: 1, userId: MY_USER_ID, role: 'HOST' })] });
+    mockMembers({ data: [member({ id: 1, userId: MY_USER_ID, role: 'HOST', displayName: '나' })] });
 
     renderScreen();
     fireEvent.press(screen.getByLabelText('활동'));

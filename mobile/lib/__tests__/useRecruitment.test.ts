@@ -31,6 +31,7 @@ import {
 } from '../useRecruitment';
 import type {
   ApplicationResponse,
+  RecruitmentApplicantResponse,
   ApplyRecruitmentResult,
   RecruitmentResponse,
 } from '../../api/recruitment';
@@ -187,13 +188,13 @@ describe('useApplications', () => {
   afterEach(() => jest.clearAllMocks());
 
   it('개설자 뷰의 신청자 목록을 반환한다', async () => {
-    const applications: ApplicationResponse[] = [
+    const applications: RecruitmentApplicantResponse[] = [
       {
         id: 100,
         recruitmentId: 1,
         applicantUserId: 71,
+        applicantDisplayName: '김철수',
         status: 'CONFIRMED',
-        paymentId: 200,
         appliedAt: '2026-07-08T00:00:00Z',
       },
     ];

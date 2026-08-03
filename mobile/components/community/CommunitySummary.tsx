@@ -6,6 +6,7 @@
 import { View, StyleSheet } from 'react-native';
 
 import type { CommunityResponse } from '../../api/community-types';
+import { resolveDisplayName } from '../../lib/displayName';
 import { Button, Card, ThemedText } from '../ui';
 import type { ViewerMembership } from './communityRole';
 
@@ -62,7 +63,7 @@ export function CommunitySummary({
         {metaLine}
       </ThemedText>
       <ThemedText variant="secondary" style={styles.meta}>
-        {`방장 #${community.hostUserId}`}
+        {`방장 ${resolveDisplayName(community.hostDisplayName)}`}
       </ThemedText>
       {community.description !== null && community.description.length > 0 ? (
         <ThemedText variant="secondary" style={styles.description}>

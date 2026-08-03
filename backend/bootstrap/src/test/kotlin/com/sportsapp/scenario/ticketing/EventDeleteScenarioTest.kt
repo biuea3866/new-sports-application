@@ -2,7 +2,6 @@ package com.sportsapp.scenario.ticketing
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sportsapp.BaseIntegrationTest
-import com.sportsapp.presentation.user.dto.response.LoginResponse
 import com.sportsapp.domain.ticketing.entity.Event
 import com.sportsapp.domain.ticketing.entity.EventStatus
 import com.sportsapp.domain.ticketing.entity.Ticket
@@ -10,6 +9,7 @@ import com.sportsapp.domain.ticketing.entity.TicketStatus
 import com.sportsapp.domain.user.service.UserDomainService
 import com.sportsapp.infrastructure.ticketing.mysql.EventJpaRepository
 import com.sportsapp.infrastructure.ticketing.mysql.TicketJpaRepository
+import com.sportsapp.presentation.user.dto.response.LoginResponse
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.apache.hc.client5.http.impl.classic.HttpClients
@@ -86,7 +86,7 @@ class EventDeleteScenarioTest(
 
         Given("[S-06] host가 미오픈 경기를 삭제하면 deletedAt이 채워지고 목록 조회에서 제외된다") {
             val hostEmail = "delete-host-s06@example.com"
-            val host = userDomainService.register(hostEmail, hostPassword)
+            val host = userDomainService.register(hostEmail, hostPassword, "테스트회원")
             userDomainService.assignRole(adminId = host.id, userId = host.id, roleName = "EVENT_HOST")
             val token = login(hostEmail, hostPassword)
 
@@ -128,7 +128,7 @@ class EventDeleteScenarioTest(
 
         Given("[S-07] 티켓이 발행된 경기를 삭제하면 4xx가 반환된다") {
             val hostEmail = "delete-host-s07@example.com"
-            val host = userDomainService.register(hostEmail, hostPassword)
+            val host = userDomainService.register(hostEmail, hostPassword, "테스트회원")
             userDomainService.assignRole(adminId = host.id, userId = host.id, roleName = "EVENT_HOST")
             val token = login(hostEmail, hostPassword)
 
@@ -170,8 +170,8 @@ class EventDeleteScenarioTest(
         Given("[S-08] 본인이 아닌 사용자가 경기 삭제 요청 시 404가 반환된다") {
             val ownerEmail = "delete-owner-s08@example.com"
             val otherEmail = "delete-other-s08@example.com"
-            val owner = userDomainService.register(ownerEmail, hostPassword)
-            val other = userDomainService.register(otherEmail, anotherPassword)
+            val owner = userDomainService.register(ownerEmail, hostPassword, "테스트회원")
+            val other = userDomainService.register(otherEmail, anotherPassword, "테스트회원")
             userDomainService.assignRole(adminId = owner.id, userId = owner.id, roleName = "EVENT_HOST")
             userDomainService.assignRole(adminId = other.id, userId = other.id, roleName = "EVENT_HOST")
             val otherToken = login(otherEmail, anotherPassword)
@@ -194,7 +194,7 @@ class EventDeleteScenarioTest(
 
         Given("[S-09] 인증 없이 삭제 요청 시 401이 반환된다") {
             val hostEmail = "delete-noauth-s09@example.com"
-            val host = userDomainService.register(hostEmail, hostPassword)
+            val host = userDomainService.register(hostEmail, hostPassword, "테스트회원")
             userDomainService.assignRole(adminId = host.id, userId = host.id, roleName = "EVENT_HOST")
 
             val event = createScheduledEvent(host.id)

@@ -1,10 +1,11 @@
 package com.sportsapp.application.community.usecase
 
 import com.sportsapp.application.community.dto.CreateCommunityCommand
+import com.sportsapp.domain.common.vo.SportCategory
 import com.sportsapp.domain.community.entity.Community
 import com.sportsapp.domain.community.service.CommunityDomainService
 import com.sportsapp.domain.community.vo.CommunityVisibility
-import com.sportsapp.domain.common.vo.SportCategory
+import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -14,8 +15,9 @@ import java.time.ZonedDateTime
 
 class CreateCommunityUseCaseTest : BehaviorSpec({
 
+    val userDomainService = mockk<UserDomainService>(relaxed = true)
     val communityDomainService = mockk<CommunityDomainService>()
-    val useCase = CreateCommunityUseCase(communityDomainService)
+    val useCase = CreateCommunityUseCase(communityDomainService, userDomainService)
 
     Given("커뮤니티 개설 커맨드") {
         // 실제 저장을 거치지 않은 mock — JpaAuditingBase.createdAt(lateinit)은 실 persist 시점에만

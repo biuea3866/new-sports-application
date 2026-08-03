@@ -1,9 +1,10 @@
 package com.sportsapp.application.post
 
+import com.sportsapp.application.post.dto.CommentResponse
 import com.sportsapp.domain.post.entity.Comment
 import com.sportsapp.domain.post.entity.Post
 import com.sportsapp.domain.post.vo.PostType
-import com.sportsapp.presentation.post.dto.response.CommentResponse
+
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import java.time.ZonedDateTime
@@ -26,7 +27,7 @@ class CommentResponseTest : BehaviorSpec({
             .also { initAuditFields(it) }
 
         When("CommentResponse.of 로 DTO 를 생성하면") {
-            val response = CommentResponse.of(comment)
+            val response = CommentResponse.of(comment, "김철수")
 
             Then("JPA lazy 프록시 접근 없이 postId 스칼라 값을 읽어 DTO 에 올바르게 매핑한다") {
                 response.postId shouldBe post.id

@@ -13,6 +13,7 @@ import com.sportsapp.domain.post.entity.Post
 import com.sportsapp.domain.post.service.PostDomainService
 import com.sportsapp.domain.post.vo.CommunityPostContext
 import com.sportsapp.domain.post.vo.PostType
+import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -23,10 +24,12 @@ import java.time.ZonedDateTime
 
 class GetPostUseCaseTest : BehaviorSpec({
 
+    val userDomainService = mockk<UserDomainService>(relaxed = true)
+
     fun newUseCase(): Triple<PostDomainService, CommunityDomainService, GetPostUseCase> {
         val postDomainService = mockk<PostDomainService>()
         val communityDomainService = mockk<CommunityDomainService>()
-        return Triple(postDomainService, communityDomainService, GetPostUseCase(postDomainService, communityDomainService))
+        return Triple(postDomainService, communityDomainService, GetPostUseCase(postDomainService, communityDomainService, userDomainService))
     }
 
     fun initAuditFields(entity: Any) {
@@ -64,8 +67,8 @@ class GetPostUseCaseTest : BehaviorSpec({
         When("execute를 호출하면") {
             val result = getPostUseCase.execute(1L)
 
-            Then("댓글 3건이 포함된 Pair가 반환되고 community 인가는 호출되지 않는다") {
-                result.second.size shouldBe 3
+            Then("댓글 3건이 포함된 상세 응답이 반환되고 community 인가는 호출되지 않는다") {
+                result.comments.size shouldBe 3
                 verify(exactly = 0) { communityDomainService.getCommunity(any(), any()) }
             }
         }
@@ -99,7 +102,7 @@ class GetPostUseCaseTest : BehaviorSpec({
             val result = getPostUseCase.execute(postId = 1L, requesterId = 2L)
 
             Then("정상 통과한다") {
-                result.first.currentCommunityId shouldBe 10L
+                result.communityId shouldBe 10L
             }
         }
     }

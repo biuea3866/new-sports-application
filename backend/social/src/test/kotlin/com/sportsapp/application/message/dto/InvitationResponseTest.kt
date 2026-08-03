@@ -11,8 +11,9 @@ import io.mockk.mockk
 import java.time.ZonedDateTime
 
 /**
- * 초대 수신함(S7)은 "어느 방에 초대받았는가"를 보여줘야 하는데, 응답에 방 이름이 없어
- * 방 PK(`방 #53`)를 그대로 노출하고 있었다. 방 이름이 응답에 실리는지 검증한다.
+ * 초대 수신함(S7)은 "어느 방에, 누구에게 초대받았는가"를 보여줘야 하는데, 응답에 방 이름과
+ * 초대자 표시 이름이 없어 방 PK(`방 #53`)·사용자 PK(`초대자 #71`)를 그대로 노출하고 있었다.
+ * 둘 다 응답에 실리는지 검증한다.
  */
 class InvitationResponseTest : BehaviorSpec({
 
@@ -38,10 +39,14 @@ class InvitationResponseTest : BehaviorSpec({
         val invitation = invitationWith("강남 새벽 러닝크루")
 
         When("응답으로 변환하면") {
-            val response = InvitationResponse.of(invitation)
+            val response = InvitationResponse.of(invitation, "김철수")
 
             Then("방 이름이 포함된다") {
                 response.roomName shouldBe "강남 새벽 러닝크루"
+            }
+
+            Then("초대자 표시 이름이 포함된다") {
+                response.inviterDisplayName shouldBe "김철수"
             }
 
             Then("기존 필드도 그대로 유지된다") {
@@ -56,7 +61,7 @@ class InvitationResponseTest : BehaviorSpec({
         val invitation = invitationWith(null)
 
         When("응답으로 변환하면") {
-            val response = InvitationResponse.of(invitation)
+            val response = InvitationResponse.of(invitation, "김철수")
 
             Then("방 이름은 null로 내려가고 클라이언트가 기본 이름을 결정한다") {
                 response.roomName shouldBe null

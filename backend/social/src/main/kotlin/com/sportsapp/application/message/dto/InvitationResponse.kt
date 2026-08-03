@@ -16,6 +16,8 @@ data class InvitationResponse(
      */
     val roomName: String?,
     val inviterUserId: Long,
+    /** 초대자 표시 이름. user 컨텍스트 소유 값이라 application 레이어가 조회해 채운다. */
+    val inviterDisplayName: String,
     val inviteeUserId: Long,
     val status: InvitationStatus,
     val canSpeak: Boolean,
@@ -24,11 +26,16 @@ data class InvitationResponse(
     val reused: Boolean,
 ) {
     companion object {
-        fun of(invitation: RoomInvitation, reused: Boolean = false): InvitationResponse = InvitationResponse(
+        fun of(
+            invitation: RoomInvitation,
+            inviterDisplayName: String,
+            reused: Boolean = false,
+        ): InvitationResponse = InvitationResponse(
             id = invitation.id,
             roomId = invitation.room.id,
             roomName = invitation.room.name,
             inviterUserId = invitation.inviterUserId,
+            inviterDisplayName = inviterDisplayName,
             inviteeUserId = invitation.inviteeUserId,
             status = invitation.currentStatus,
             canSpeak = invitation.canSpeak,

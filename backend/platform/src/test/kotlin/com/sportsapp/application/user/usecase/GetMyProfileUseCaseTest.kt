@@ -21,6 +21,8 @@ class GetMyProfileUseCaseTest : BehaviorSpec({
             every { id } returns userId
             every { email } returns "test@example.com"
             every { status } returns UserStatus.ACTIVE
+            every { nickname } returns "김철수"
+            every { displayName } returns "김철수"
             every { createdAt } returns java.time.ZonedDateTime.parse("2024-01-01T00:00:00Z")
         }
         every { userDomainService.findById(userId) } returns user
@@ -32,6 +34,8 @@ class GetMyProfileUseCaseTest : BehaviorSpec({
                 result.id shouldBe userId
                 result.email shouldBe "test@example.com"
                 result.status shouldBe UserStatus.ACTIVE
+                result.nickname shouldBe "김철수"
+                result.displayName shouldBe "김철수"
             }
 
             Then("[U-01] UserDomainService만 호출하고 Repository를 직접 참조하지 않는다") {

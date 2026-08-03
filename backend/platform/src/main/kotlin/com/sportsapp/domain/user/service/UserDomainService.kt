@@ -2,6 +2,7 @@ package com.sportsapp.domain.user.service
 
 import com.sportsapp.domain.common.UserRoleName
 import com.sportsapp.domain.common.exceptions.ResourceNotFoundException
+import com.sportsapp.domain.user.dto.UserDisplayNames
 import com.sportsapp.domain.user.dto.UserWithRoles
 import com.sportsapp.domain.user.entity.Role
 import com.sportsapp.domain.user.entity.User
@@ -28,9 +29,9 @@ class UserDomainService(
     private val userRoleRepository: UserRoleRepository,
     private val passwordEncoder: PasswordEncoder,
 ) {
-    fun register(email: String, rawPassword: String): User {
+    fun register(email: String, rawPassword: String, nickname: String): User {
         if (userRepository.findByEmail(email) != null) throw DuplicateEmailException(email)
-        val user = User.create(email, passwordEncoder.encode(rawPassword))
+        val user = User.create(email, passwordEncoder.encode(rawPassword), nickname)
         val savedUser = userRepository.save(user)
         val defaultRole = roleRepository.findByName(UserRoleName.USER)
             ?: throw ResourceNotFoundException("Role", UserRoleName.USER)
@@ -51,6 +52,26 @@ class UserDomainService(
 
     fun findByEmail(email: String): User =
         userRepository.findByEmail(email) ?: throw ResourceNotFoundException("User", email)
+
+    /** 마이페이지 닉네임 수정. 검증은 [User.changeNickname] 이 갖는다. */
+    fun changeNickname(userId: Long, nickname: String): User {
+        val user = getUser(userId)
+        user.changeNickname(nickname)
+        return userRepository.save(user)
+    }
+
+    /**
+     * 표시 이름 일괄 조회 — 다른 컨텍스트(social·recruitment)의 application 레이어가 목록 화면의
+     * 작성자·방장·초대자·신청자 이름을 얻는 진입점이다. 사용자별 단건 조회(N+1)를 막기 위해
+     * id 목록을 한 번에 받는다.
+     */
+    fun findDisplayNamesBy(userIds: Collection<Long>): UserDisplayNames =
+        if (userIds.isEmpty()) UserDisplayNames.from(emptyList())
+        else UserDisplayNames.from(userRepository.findAllBy(userIds.distinct()))
+
+    /** 단건 표시 이름. 사용자가 없으면 null 을 반환한다 ([findById] 와의 차이). */
+    fun findDisplayNameBy(userId: Long): String? =
+        userRepository.findById(userId)?.displayName
 
     fun findByIdWithRoles(userId: Long): UserWithRoles =
         userCustomRepository.findByIdWithRoles(userId) ?: throw ResourceNotFoundException("User", userId)

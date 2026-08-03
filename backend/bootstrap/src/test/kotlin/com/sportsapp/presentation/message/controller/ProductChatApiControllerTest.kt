@@ -34,7 +34,7 @@ class ProductChatApiControllerTest(
 ) : BaseJpaIntegrationTest() {
 
     private fun registerUser(email: String, password: String = "Password1!"): Long =
-        userDomainService.register(email, password).id
+        userDomainService.register(email, password, "테스트회원").id
 
     private fun login(email: String, password: String = "Password1!"): String {
         val body = mockMvc.perform(

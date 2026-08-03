@@ -1,9 +1,9 @@
 package com.sportsapp.application.user.usecase
 
-import com.sportsapp.domain.user.entity.User
-import com.sportsapp.domain.user.service.UserDomainService
 import com.sportsapp.application.user.dto.RegisterUserCommand
+import com.sportsapp.domain.user.entity.User
 import com.sportsapp.domain.user.entity.UserStatus
+import com.sportsapp.domain.user.service.UserDomainService
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -16,21 +16,18 @@ class RegisterUserUseCaseTest : BehaviorSpec({
     val registerUserUseCase = RegisterUserUseCase(userDomainService)
 
     Given("정상 가입 요청") {
-        val command = RegisterUserCommand(email = "new@example.com", rawPassword = "password1234")
-        val savedUser = User(
-            email = "new@example.com",
-            passwordHash = "\$2a\$10\$hashed",
-            status = UserStatus.ACTIVE,
-        )
+        val command = RegisterUserCommand(email = "new@example.com", rawPassword = "password1234", nickname = "새회원")
+        val savedUser = User.create("new@example.com", "\$2a\$10\$hashed", "새회원")
 
-        every { userDomainService.register(command.email, command.rawPassword) } returns savedUser
+        every { userDomainService.register(command.email, command.rawPassword, command.nickname) } returns savedUser
 
         When("execute 를 호출하면") {
             val response = registerUserUseCase.execute(command)
 
             Then("[U-01] DomainService 만 호출하고 응답을 반환한다") {
                 response.email shouldBe "new@example.com"
-                verify(exactly = 1) { userDomainService.register(command.email, command.rawPassword) }
+                response.nickname shouldBe "새회원"
+                verify(exactly = 1) { userDomainService.register(command.email, command.rawPassword, command.nickname) }
             }
         }
     }
