@@ -1,5 +1,8 @@
 package com.sportsapp.application.catalog.dto
 
+import com.sportsapp.domain.catalog.dto.CatalogItem
+import com.sportsapp.domain.catalog.dto.CatalogItemType
+
 /**
  * catalog 통합검색 응답 (BE-07). [failedDomains]는 300ms 타임아웃/조회 실패로 결과에서
  * 제외된 판매 대상 유형을 담는다(FR-11) — 비어 있으면 전체가 정상 조회됐다는 뜻이다.

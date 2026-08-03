@@ -16,6 +16,10 @@ import java.io.File
  * edge 인증 필터는 platform 신원 검증이 필요하지만, 그 의존을 만들면 2단계에서 edge 를 독립
  * 서비스로 떼어낼 수 없다 — `PlatformMcpIdentityVerificationGateway`(edge 소유 계약) + 조립자
  * 어댑터로 방향을 뒤집어 둔 상태를 이 테스트가 지킨다.
+ *
+ * [S2-01] 같은 이유로 **edge 의 main 소스가 commerce·facility-booking·social 을 의존하지 않는다**도
+ * 고정한다. catalog·order 파사드의 fan-out 읽기(C6·C7)는 `CatalogSearchGateway`·
+ * `OrderHistoryGateway`(edge 소유 계약) + 조립자 로컬 어댑터로 역전했다.
  */
 class ModuleDependencyGraphTest : DescribeSpec({
 
@@ -48,7 +52,7 @@ class ModuleDependencyGraphTest : DescribeSpec({
             "facility-booking" to setOf("common", "payment"),
             "platform" to setOf("common", "payment", "commerce", "facility-booking"),
             "social" to setOf("common", "payment", "commerce", "facility-booking", "platform"),
-            "edge" to setOf("common", "commerce", "facility-booking", "social"),
+            "edge" to setOf("common"),
             "bootstrap" to setOf(
                 "common", "payment", "commerce", "facility-booking", "platform", "social", "edge",
             ),
@@ -78,6 +82,29 @@ class ModuleDependencyGraphTest : DescribeSpec({
             offenders shouldBe emptyList()
         }
     }
+
+    describe("edge 의 commerce·facility-booking·social 비의존 (S2-01 파사드 의존 역전)") {
+        it("edge main 소스는 commerce·facility-booking·social 모듈을 의존하지 않는다") {
+            val mainDeps = mainProjectDependencies("edge")
+            mainDeps shouldNotContain "commerce"
+            mainDeps shouldNotContain "facility-booking"
+            mainDeps shouldNotContain "social"
+        }
+
+        it("edge main 소스에 commerce·facility-booking·social 소유 패키지 import 가 없다") {
+            val edgeMain = File(requireNotNull(backendRoot), "edge/src/main/kotlin")
+            val offenders = edgeMain.walkTopDown()
+                .filter { it.isFile && it.extension == "kt" }
+                .flatMap { file ->
+                    file.readLines()
+                        .filter { line -> FACADE_FANOUT_OWNED_IMPORTS.any { line.startsWith("import $it") } }
+                        .map { line -> "${file.relativeTo(edgeMain)}: $line" }
+                }
+                .toList()
+
+            offenders shouldBe emptyList()
+        }
+    }
 }) {
     private companion object {
         val PROJECT_DEPENDENCY = """project\(":([A-Za-z0-9\-]+)"\)""".toRegex()
@@ -93,6 +120,26 @@ class ModuleDependencyGraphTest : DescribeSpec({
             "com.sportsapp.domain.notification",
             "com.sportsapp.application.mcp",
             "com.sportsapp.application.partner",
+        )
+
+        /**
+         * [S2-01] catalog·order 파사드가 이전에 직접 참조하던 commerce(goods·ticketing)·
+         * facility-booking(facility·booking)·social(recruitment) 소유 도메인/애플리케이션 패키지.
+         * edge main 이 이들을 import 하면 컴파일은 되지 않지만(Gradle 의존이 없으므로) 의존을
+         * 되살리려는 변경을 조기에 잡는 이중 안전망이다. 테스트 소스(virtualqueue 라우팅 픽스처)는
+         * `edgeMain`(main만 스캔) 밖이라 영향받지 않는다.
+         */
+        val FACADE_FANOUT_OWNED_IMPORTS = listOf(
+            "com.sportsapp.domain.goods",
+            "com.sportsapp.domain.ticketing",
+            "com.sportsapp.domain.facility",
+            "com.sportsapp.domain.booking",
+            "com.sportsapp.domain.recruitment",
+            "com.sportsapp.application.goods",
+            "com.sportsapp.application.ticketing",
+            "com.sportsapp.application.facility",
+            "com.sportsapp.application.booking",
+            "com.sportsapp.application.recruitment",
         )
     }
 }

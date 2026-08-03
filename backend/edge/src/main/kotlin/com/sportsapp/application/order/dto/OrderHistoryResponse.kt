@@ -1,6 +1,7 @@
 package com.sportsapp.application.order.dto
 
 import com.sportsapp.domain.common.order.OrderType
+import com.sportsapp.domain.order.dto.OrderHistoryItem
 
 /**
  * 통합 주문내역(BE-08) 응답 — [failedDomains]는 부분 실패(FR-11) 시 타임아웃/예외로

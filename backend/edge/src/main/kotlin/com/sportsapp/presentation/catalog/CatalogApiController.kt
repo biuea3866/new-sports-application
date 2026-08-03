@@ -1,10 +1,10 @@
 package com.sportsapp.presentation.catalog
 
 import com.sportsapp.application.catalog.SearchCatalogUseCase
-import com.sportsapp.application.catalog.dto.CatalogItemType
 import com.sportsapp.application.catalog.dto.CatalogSearchCriteria
 import com.sportsapp.application.catalog.dto.CatalogSearchResponse
-import com.sportsapp.domain.goods.vo.SellerType
+import com.sportsapp.domain.catalog.dto.CatalogItemType
+import com.sportsapp.domain.catalog.vo.SellerType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
