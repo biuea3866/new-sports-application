@@ -47,10 +47,31 @@ describe("AuditLogTable", () => {
     expect(screen.getAllByText("전역 ON").length).toBeGreaterThan(0);
   });
 
-  it("before가 null인 행은 (없음) → 이후 요약으로 표시된다", () => {
+  it("before가 null인 행은 '이전 값 없음' → 이후 요약으로 표시된다", () => {
     render(<AuditLogTable logs={[CREATED_LOG]} />);
 
-    expect(screen.getByText("(없음)")).toBeInTheDocument();
+    expect(screen.getByText("이전 값 없음")).toBeInTheDocument();
     expect(screen.getByText("전역 OFF")).toBeInTheDocument();
+  });
+
+  // BE NON_NULL 직렬화로 CREATED 로그는 `before` 키 자체가 생략돼 도착한다.
+  it("before 키가 생략된 행도 '이전 값 없음' → 이후 요약으로 렌더된다", () => {
+    const logWithoutBefore = {
+      changeType: "CREATED",
+      actorUserId: 12,
+      after: CREATED_LOG.after,
+      occurredAt: "2026-07-03T09:50:00Z",
+    } as FeatureFlagAuditLogResponse;
+
+    render(<AuditLogTable logs={[logWithoutBefore]} />);
+
+    expect(screen.getByText("이전 값 없음")).toBeInTheDocument();
+    expect(screen.getByText("전역 OFF")).toBeInTheDocument();
+  });
+
+  it("시각 열에 Invalid Date를 노출하지 않는다", () => {
+    render(<AuditLogTable logs={[ARCHIVED_LOG, CREATED_LOG]} />);
+
+    expect(screen.queryByText("Invalid Date")).not.toBeInTheDocument();
   });
 });

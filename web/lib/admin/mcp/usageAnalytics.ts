@@ -30,7 +30,7 @@ export interface TokenUsageStat {
   callCount: number;
   errorCount: number;
   errorRatePercent: number;
-  lastCalledAt: string | null;
+  lastCalledAt?: string | null;
 }
 
 export interface UsageAnalyticsResponse {

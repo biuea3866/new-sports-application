@@ -1,7 +1,9 @@
 import { ReactNode } from "react";
+import { getSessionInfo } from "@/lib/server/auth";
 import { AdminSidebar } from "./_components/AdminSidebar";
 import { AdminTopbar } from "./_components/AdminTopbar";
 import { AuthGuard } from "./_components/AuthGuard";
+import { resolveAdminSession } from "./_components/adminSession";
 
 type AdminLayoutProps = {
   children: ReactNode;
@@ -10,13 +12,13 @@ type AdminLayoutProps = {
 /**
  * 어드민 전용 layout — Sidebar + Topbar + AuthGuard.
  *
- * MVP Phase 1: 인증 판정은 placeholder (true). 실제 BFF 세션 조회는 후속 PR에서
- * Server Component fetcher로 통합. 미인증 시 AuthGuard 가 /login 으로 리다이렉트.
+ * 인증 상태는 `access_token` 쿠키 세션에서 유도한다(`lib/server/auth#getSessionInfo`).
+ * 이전에는 `isAuthenticated = true` / `operatorName = undefined`를 하드코딩해,
+ * 로그인 여부와 무관하게 상단바가 항상 `미인증`을 표시했다.
+ * 미인증 시 AuthGuard 가 /login 으로 리다이렉트한다.
  */
 export default function AdminLayout({ children }: AdminLayoutProps): JSX.Element {
-  // TODO(MCP-FE-01b): BFF 세션 조회로 isAuthenticated · operatorName 결정
-  const isAuthenticated = true;
-  const operatorName: string | undefined = undefined;
+  const { isAuthenticated, operatorName } = resolveAdminSession(getSessionInfo());
 
   return (
     <AuthGuard isAuthenticated={isAuthenticated}>

@@ -38,6 +38,9 @@
     --aq-verybad-foreground: 0 75% 45%;
     --aq-unknown: 210 16% 93%;
     --aq-unknown-foreground: 215 16% 47%;
+    /* 차트 시리즈 색 — recharts stroke/fill 에 hsl(var(--chart-N)) 로 주입한다. */
+    --chart-1: 217 91% 60%;
+    --chart-2: 258 90% 66%;
   }
 
   .dark {
@@ -55,8 +58,13 @@
     --muted-foreground: 215 20.2% 65.1%;
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    /* 다크 카드(bg-card) 위 text-destructive 대비를 2.00:1 → 5.56:1 로 올린다.
+       기존 값(0 62.8% 30.6%)은 어두운 배경 위 오류 텍스트가 사실상 판독 불가였다. */
+    --destructive: 0 72% 62%;
+    /* 배경을 밝혔으므로 전경도 뒤집는다. 흰색(210 40% 98%)을 유지하면 불투명 조합이 3.43:1 로
+       떨어져 폐기 버튼(text-xs)·badge·toast 가 AA 미달이 된다.
+       값은 다크 --background 와 동일 — 새 리터럴을 만들지 않고 5.56:1 을 확보한다. */
+    --destructive-foreground: 222.2 84% 4.9%;
     --success: 142 64% 42%;
     --success-foreground: 0 0% 100%;
     --warning: 38 84% 46%;
@@ -74,6 +82,9 @@
     --aq-verybad-foreground: 0 85% 78%;
     --aq-unknown: 217 20% 22%;
     --aq-unknown-foreground: 215 20% 65%;
+    /* 다크 모드에서는 어두운 카드 위 대비를 위해 채도·명도를 올린다. */
+    --chart-1: 213 94% 68%;
+    --chart-2: 255 92% 76%;
   }
 }
 

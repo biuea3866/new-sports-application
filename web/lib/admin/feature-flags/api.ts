@@ -102,7 +102,8 @@ export async function updateFeatureFlag(
   return FeatureFlagResponseSchema.parse(await res.json());
 }
 
-const FeatureFlagStatusChangeResponseSchema = z.object({
+// export 해서 nullability 불변식 가드(lib/admin/__tests__/responseSchemaNullability)가 자동 수집하도록 한다.
+export const FeatureFlagStatusChangeResponseSchema = z.object({
   key: z.string(),
   status: FeatureFlagStatusSchema,
 });

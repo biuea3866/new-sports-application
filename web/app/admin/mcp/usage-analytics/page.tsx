@@ -14,11 +14,25 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Button } from "@/components/ui/button";
+import { formatDateTime } from "@/lib/admin/datetime";
 import {
   type UsageAnalyticsResponse,
   type FetchUsageAnalyticsParams,
   fetchUsageAnalytics,
 } from "@/lib/admin/mcp/usageAnalytics";
+
+/** 차트 축·툴팁도 시맨틱 토큰을 사용한다 — recharts 기본 회색은 다크 카드 위에서 판독 불가. */
+const AXIS_TICK = { fontSize: 12, fill: "hsl(var(--muted-foreground))" } as const;
+const AXIS_TICK_SMALL = { fontSize: 11, fill: "hsl(var(--muted-foreground))" } as const;
+const TOOLTIP_STYLE = {
+  contentStyle: {
+    backgroundColor: "hsl(var(--popover))",
+    borderColor: "hsl(var(--border))",
+    color: "hsl(var(--popover-foreground))",
+  },
+  labelStyle: { color: "hsl(var(--popover-foreground))" },
+  itemStyle: { color: "hsl(var(--popover-foreground))" },
+} as const;
 
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
@@ -122,14 +136,14 @@ export default function UsageAnalyticsPage(): JSX.Element {
 
       {/* 오류 */}
       {error !== null && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       )}
 
       {/* 로딩 */}
       {loading && (
-        <p aria-busy="true" className="text-sm text-gray-500">
+        <p aria-busy="true" className="text-sm text-muted-foreground">
           데이터를 불러오는 중...
         </p>
       )}
@@ -140,21 +154,21 @@ export default function UsageAnalyticsPage(): JSX.Element {
           <section aria-label="에러율 요약">
             <h2 className="mb-3 text-lg font-semibold">에러율 요약</h2>
             <div className="grid grid-cols-3 gap-4">
-              <div className="rounded-lg border bg-white p-4 shadow-sm">
-                <p className="text-sm text-gray-500">총 호출</p>
+              <div className="rounded-lg border bg-card p-4 shadow-sm">
+                <p className="text-sm text-muted-foreground">총 호출</p>
                 <p className="mt-1 text-2xl font-bold">
                   {data.errorRateStat.totalCount.toLocaleString("ko-KR")}
                 </p>
               </div>
-              <div className="rounded-lg border bg-white p-4 shadow-sm">
-                <p className="text-sm text-gray-500">에러 수</p>
-                <p className="mt-1 text-2xl font-bold text-red-600">
+              <div className="rounded-lg border bg-card p-4 shadow-sm">
+                <p className="text-sm text-muted-foreground">에러 수</p>
+                <p className="mt-1 text-2xl font-bold text-destructive">
                   {data.errorRateStat.errorCount.toLocaleString("ko-KR")}
                 </p>
               </div>
-              <div className="rounded-lg border bg-white p-4 shadow-sm">
-                <p className="text-sm text-gray-500">에러율</p>
-                <p className="mt-1 text-2xl font-bold text-orange-600">
+              <div className="rounded-lg border bg-card p-4 shadow-sm">
+                <p className="text-sm text-muted-foreground">에러율</p>
+                <p className="mt-1 text-2xl font-bold text-warning">
                   {data.errorRateStat.errorRatePercent.toFixed(2)}%
                 </p>
               </div>
@@ -165,21 +179,21 @@ export default function UsageAnalyticsPage(): JSX.Element {
           <section aria-label="일별 호출 추이">
             <h2 className="mb-3 text-lg font-semibold">일별 호출 추이</h2>
             {dailyAggregated.length === 0 ? (
-              <p className="text-sm text-gray-400">데이터가 없습니다.</p>
+              <p className="text-sm text-muted-foreground">데이터가 없습니다.</p>
             ) : (
-              <div className="rounded-lg border bg-white p-4 shadow-sm">
+              <div className="rounded-lg border bg-card p-4 shadow-sm">
                 <ResponsiveContainer width="100%" height={260}>
                   <LineChart data={dailyAggregated}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} />
-                    <Tooltip />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="date" tick={AXIS_TICK} />
+                    <YAxis tick={AXIS_TICK} />
+                    <Tooltip {...TOOLTIP_STYLE} />
                     <Legend />
                     <Line
                       type="monotone"
                       dataKey="callCount"
                       name="호출 수"
-                      stroke="#3b82f6"
+                      stroke="hsl(var(--chart-1))"
                       strokeWidth={2}
                       dot={false}
                     />
@@ -193,21 +207,21 @@ export default function UsageAnalyticsPage(): JSX.Element {
           <section aria-label="Tool별 호출 현황">
             <h2 className="mb-3 text-lg font-semibold">Tool별 호출 TOP</h2>
             {data.toolCallStats.length === 0 ? (
-              <p className="text-sm text-gray-400">데이터가 없습니다.</p>
+              <p className="text-sm text-muted-foreground">데이터가 없습니다.</p>
             ) : (
-              <div className="rounded-lg border bg-white p-4 shadow-sm">
+              <div className="rounded-lg border bg-card p-4 shadow-sm">
                 <ResponsiveContainer width="100%" height={260}>
                   <BarChart data={data.toolCallStats} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" tick={{ fontSize: 12 }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" tick={AXIS_TICK} />
                     <YAxis
                       type="category"
                       dataKey="toolName"
-                      tick={{ fontSize: 11 }}
+                      tick={AXIS_TICK_SMALL}
                       width={140}
                     />
-                    <Tooltip />
-                    <Bar dataKey="callCount" name="호출 수" fill="#3b82f6" />
+                    <Tooltip {...TOOLTIP_STYLE} />
+                    <Bar dataKey="callCount" name="호출 수" fill="hsl(var(--chart-1))" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -218,21 +232,21 @@ export default function UsageAnalyticsPage(): JSX.Element {
           <section aria-label="Tool별 P95 응답 시간">
             <h2 className="mb-3 text-lg font-semibold">Tool별 P95 응답 시간 (ms)</h2>
             {data.toolLatencyStats.length === 0 ? (
-              <p className="text-sm text-gray-400">데이터가 없습니다.</p>
+              <p className="text-sm text-muted-foreground">데이터가 없습니다.</p>
             ) : (
-              <div className="rounded-lg border bg-white p-4 shadow-sm">
+              <div className="rounded-lg border bg-card p-4 shadow-sm">
                 <ResponsiveContainer width="100%" height={260}>
                   <BarChart data={data.toolLatencyStats} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" tick={{ fontSize: 12 }} unit="ms" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" tick={AXIS_TICK} unit="ms" />
                     <YAxis
                       type="category"
                       dataKey="toolName"
-                      tick={{ fontSize: 11 }}
+                      tick={AXIS_TICK_SMALL}
                       width={140}
                     />
-                    <Tooltip formatter={(value) => [`${String(value ?? 0)}ms`, "P95"]} />
-                    <Bar dataKey="p95LatencyMs" name="P95 (ms)" fill="#8b5cf6" />
+                    <Tooltip {...TOOLTIP_STYLE} formatter={(value) => [`${String(value ?? 0)}ms`, "P95"]} />
+                    <Bar dataKey="p95LatencyMs" name="P95 (ms)" fill="hsl(var(--chart-2))" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -244,47 +258,45 @@ export default function UsageAnalyticsPage(): JSX.Element {
             <h2 className="mb-3 text-lg font-semibold">토큰별 사용 현황</h2>
             <div className="overflow-x-auto rounded-md border">
               <table className="min-w-full text-sm">
-                <thead className="bg-gray-50">
+                <thead className="bg-muted/50">
                   <tr>
-                    <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                    <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                       Token ID
                     </th>
-                    <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                    <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                       호출 수
                     </th>
-                    <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                    <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                       에러 수
                     </th>
-                    <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                    <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                       에러율
                     </th>
-                    <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                    <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                       마지막 호출
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-border">
                   {data.tokenUsageStats.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                      <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                         데이터가 없습니다.
                       </td>
                     </tr>
                   ) : (
                     data.tokenUsageStats.map((stat) => (
-                      <tr key={stat.tokenId} className="hover:bg-gray-50">
+                      <tr key={stat.tokenId} className="hover:bg-muted/50">
                         <td className="px-4 py-3 font-mono text-xs">{stat.tokenId}</td>
                         <td className="px-4 py-3">{stat.callCount.toLocaleString("ko-KR")}</td>
-                        <td className="px-4 py-3 text-red-600">
+                        <td className="px-4 py-3 text-destructive">
                           {stat.errorCount.toLocaleString("ko-KR")}
                         </td>
-                        <td className="px-4 py-3 text-orange-600">
+                        <td className="px-4 py-3 text-warning">
                           {stat.errorRatePercent.toFixed(2)}%
                         </td>
-                        <td className="px-4 py-3 text-gray-600">
-                          {stat.lastCalledAt !== null
-                            ? new Date(stat.lastCalledAt).toLocaleString("ko-KR")
-                            : "-"}
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {formatDateTime(stat.lastCalledAt)}
                         </td>
                       </tr>
                     ))

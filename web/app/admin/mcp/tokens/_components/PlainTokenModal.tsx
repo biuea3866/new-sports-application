@@ -30,17 +30,17 @@ export function PlainTokenModal({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/50" />
         <Dialog.Content
-          className="fixed left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-white p-6 shadow-lg"
+          className="fixed left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-card p-6 shadow-lg"
           aria-describedby="plain-token-desc"
         >
-          <Dialog.Title className="text-lg font-semibold text-gray-900">
+          <Dialog.Title className="text-lg font-semibold text-foreground">
             토큰 발급 완료 — {tokenName}
           </Dialog.Title>
-          <p id="plain-token-desc" className="mt-2 text-sm text-amber-700 bg-amber-50 rounded p-2">
+          <p id="plain-token-desc" className="mt-2 rounded bg-warning/15 p-2 text-sm text-warning">
             이 화면을 닫으면 토큰을 다시 확인할 수 없습니다. 지금 바로 복사해 두세요.
           </p>
           <div className="mt-4">
-            <label htmlFor="plain-token-value" className="block text-xs font-medium text-gray-500">
+            <label htmlFor="plain-token-value" className="block text-xs font-medium text-muted-foreground">
               발급된 토큰
             </label>
             <textarea
@@ -48,7 +48,7 @@ export function PlainTokenModal({
               readOnly
               value={plainToken}
               rows={3}
-              className="mt-1 w-full rounded border border-gray-300 bg-gray-50 p-2 font-mono text-xs text-gray-900 focus:outline-none"
+              className="mt-1 w-full rounded border border-input bg-muted/50 p-2 font-mono text-xs text-foreground focus:outline-none"
               aria-label="발급된 MCP 토큰 (읽기 전용)"
             />
           </div>
@@ -56,7 +56,7 @@ export function PlainTokenModal({
             <button
               type="button"
               onClick={handleCopy}
-              className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="rounded bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring"
               aria-label="토큰 클립보드에 복사"
             >
               복사
@@ -64,7 +64,7 @@ export function PlainTokenModal({
             <Dialog.Close asChild>
               <button
                 type="button"
-                className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                className="rounded border border-input px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-ring"
                 aria-label="토큰 모달 닫기"
               >
                 닫기

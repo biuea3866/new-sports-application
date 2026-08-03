@@ -65,29 +65,29 @@ export default function McpTokensPage(): JSX.Element {
   return (
     <div className="space-y-8">
       <header>
-        <h1 className="text-2xl font-semibold text-gray-900">MCP 토큰 관리</h1>
-        <p className="mt-1 text-sm text-gray-600">
+        <h1 className="text-2xl font-semibold text-foreground">MCP 토큰 관리</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           운영자 본인의 MCP 토큰을 발급·조회·폐기합니다.
         </p>
       </header>
 
-      <section aria-labelledby="issue-section-title" className="rounded-lg border border-gray-200 bg-white p-6">
-        <h2 id="issue-section-title" className="mb-4 text-base font-semibold text-gray-900">
+      <section aria-labelledby="issue-section-title" className="rounded-lg border border-border bg-card p-6">
+        <h2 id="issue-section-title" className="mb-4 text-base font-semibold text-foreground">
           새 토큰 발급
         </h2>
         <TokenIssueForm onIssued={handleIssued} />
       </section>
 
-      <section aria-labelledby="list-section-title" className="rounded-lg border border-gray-200 bg-white p-6">
-        <h2 id="list-section-title" className="mb-4 text-base font-semibold text-gray-900">
+      <section aria-labelledby="list-section-title" className="rounded-lg border border-border bg-card p-6">
+        <h2 id="list-section-title" className="mb-4 text-base font-semibold text-foreground">
           발급된 토큰 목록
         </h2>
-        {isLoadingTokens && <p className="text-sm text-gray-500">로딩 중...</p>}
+        {isLoadingTokens && <p className="text-sm text-muted-foreground">로딩 중...</p>}
         {!isLoadingTokens && loadError !== null && (
-          <p role="alert" className="text-sm text-red-600">{loadError}</p>
+          <p role="alert" className="text-sm text-destructive">{loadError}</p>
         )}
         {revokeError !== null && (
-          <p role="alert" className="text-sm text-red-600">{revokeError}</p>
+          <p role="alert" className="text-sm text-destructive">{revokeError}</p>
         )}
         {!isLoadingTokens && loadError === null && (
           <TokenList

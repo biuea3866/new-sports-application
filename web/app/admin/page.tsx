@@ -28,8 +28,8 @@ export default function AdminHome(): JSX.Element {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold text-gray-900">어드민 홈</h1>
-        <p className="mt-1 text-sm text-gray-600">
+        <h1 className="text-2xl font-semibold text-foreground">어드민 홈</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           B2B MCP Server MVP — 토큰 관리·감사 로그·사용 가이드를 한 곳에서 운영하세요.
         </p>
       </header>
@@ -41,10 +41,10 @@ export default function AdminHome(): JSX.Element {
           <Link
             key={card.href}
             href={card.href}
-            className="rounded-lg border border-gray-200 p-4 hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="rounded-lg border border-border bg-card p-4 hover:border-primary focus:outline-none focus:ring-2 focus:ring-ring"
           >
-            <h2 className="text-base font-semibold text-gray-900">{card.title}</h2>
-            <p className="mt-1 text-sm text-gray-600">{card.body}</p>
+            <h2 className="text-base font-semibold text-card-foreground">{card.title}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{card.body}</p>
           </Link>
         ))}
       </section>

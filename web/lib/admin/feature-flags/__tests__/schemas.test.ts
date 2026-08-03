@@ -137,6 +137,23 @@ describe("FeatureFlagResponseSchema", () => {
       expect(result.data.description).toBeNull();
     }
   });
+
+  // BE `FeatureFlagResponse.description: String?` + NON_NULL 직렬화 조합이면
+  // 설명 없는 플래그는 description 키가 생략돼 도착한다.
+  // 현재 DB엔 NULL description이 0건이라 아직 드러나지 않았을 뿐, 하나만 생겨도 목록·상세가 파손된다.
+  it("description 키가 생략된 응답도 파싱에 성공한다", () => {
+    const data = {
+      id: baseFlag.id,
+      key: baseFlag.key,
+      type: baseFlag.type,
+      status: baseFlag.status,
+      createdAt: baseFlag.createdAt,
+      updatedAt: baseFlag.updatedAt,
+      strategy: { strategyType: "GLOBAL_TOGGLE", enabled: true },
+    };
+
+    expect(FeatureFlagResponseSchema.safeParse(data).success).toBe(true);
+  });
 });
 
 describe("FeatureFlagSnapshotSchema", () => {
@@ -153,6 +170,17 @@ describe("FeatureFlagSnapshotSchema", () => {
     if (result.success) {
       expect(result.data.description).toBeNull();
     }
+  });
+
+  it("description 키가 생략된 스냅샷도 파싱에 성공한다", () => {
+    const data = {
+      key: "demo.feature.hello",
+      type: "RELEASE",
+      status: "ACTIVE",
+      strategy: { strategyType: "GLOBAL_TOGGLE", enabled: true },
+    };
+
+    expect(FeatureFlagSnapshotSchema.safeParse(data).success).toBe(true);
   });
 });
 
@@ -179,6 +207,48 @@ describe("FeatureFlagAuditLogPageSchema", () => {
       pageNumber: 0,
       pageSize: 20,
     };
+    expect(FeatureFlagAuditLogPageSchema.safeParse(data).success).toBe(false);
+  });
+
+  // ─── 실제 BE 계약 회귀 ─────────────────────────────────────────────────────
+  // BE `McpObjectMapperConfig`(@Primary)는 JsonInclude.NON_NULL 이므로
+  // `before: FeatureFlagSnapshot?` 가 null인 CREATED 로그는 응답에서 `before` 키가 **생략**된다.
+  // 기존 픽스처는 `before: null` 이라 이 계약을 재현하지 못해 운영 장애를 놓쳤다.
+
+  it("CREATED 로그처럼 before 키가 생략된 응답도 파싱을 통과한다", () => {
+    const createdLogWithoutBefore = {
+      changeType: "CREATED",
+      actorUserId: 1,
+      after: auditLog.after,
+      occurredAt: "2026-07-01T00:00:00.000Z",
+    };
+    const data = {
+      content: [createdLogWithoutBefore],
+      totalElements: 1,
+      totalPages: 1,
+      pageNumber: 0,
+      pageSize: 20,
+    };
+
+    const result = FeatureFlagAuditLogPageSchema.safeParse(data);
+
+    expect(result.success).toBe(true);
+  });
+
+  it("before 키가 생략돼도 after는 여전히 필수다", () => {
+    const logWithoutAfter = {
+      changeType: "CREATED",
+      actorUserId: 1,
+      occurredAt: "2026-07-01T00:00:00.000Z",
+    };
+    const data = {
+      content: [logWithoutAfter],
+      totalElements: 1,
+      totalPages: 1,
+      pageNumber: 0,
+      pageSize: 20,
+    };
+
     expect(FeatureFlagAuditLogPageSchema.safeParse(data).success).toBe(false);
   });
 });

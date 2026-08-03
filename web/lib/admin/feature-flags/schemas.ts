@@ -93,12 +93,16 @@ export const UpdateFeatureFlagInputSchema = z.object({
 export type UpdateFeatureFlagInput = z.infer<typeof UpdateFeatureFlagInputSchema>;
 
 // ─── 응답 스키마 ─────────────────────────────────────────────────────────────
+//
+// BE nullable 필드는 `.nullish()`로 받는다 (null·undefined 모두 허용).
+// BE가 전역 매퍼를 NON_NULL로 두는 동안에는 null 필드의 키가 응답에서 생략되고,
+// 매퍼가 기본 동작(null 포함)으로 복원되면 `null`이 온다. 양쪽 다 견뎌야 한다.
 
 export const FeatureFlagSnapshotSchema = z.object({
   key: z.string(),
   type: FeatureFlagTypeSchema,
   status: FeatureFlagStatusSchema,
-  description: z.string().nullable(),
+  description: z.string().nullish(),
   strategy: FeatureFlagStrategySchema,
 });
 export type FeatureFlagSnapshot = z.infer<typeof FeatureFlagSnapshotSchema>;
@@ -108,7 +112,7 @@ export const FeatureFlagResponseSchema = z.object({
   key: z.string(),
   type: FeatureFlagTypeSchema,
   status: FeatureFlagStatusSchema,
-  description: z.string().nullable(),
+  description: z.string().nullish(),
   strategy: FeatureFlagStrategySchema,
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -118,7 +122,10 @@ export type FeatureFlagResponse = z.infer<typeof FeatureFlagResponseSchema>;
 export const FeatureFlagAuditLogResponseSchema = z.object({
   changeType: ChangeTypeSchema,
   actorUserId: z.number(),
-  before: FeatureFlagSnapshotSchema.nullable(),
+  // BE `FeatureFlagAuditLogResponse.before`는 `FeatureFlagSnapshot?`이고,
+  // 직렬화는 NON_NULL(`McpObjectMapperConfig`)이라 CREATED 로그는 `before` 키 자체가 생략된다.
+  // `.nullable()`은 null만 허용해 undefined를 거부하므로 화면 전체가 검증 실패했다 → `.nullish()`.
+  before: FeatureFlagSnapshotSchema.nullish(),
   after: FeatureFlagSnapshotSchema,
   occurredAt: z.string(),
 });

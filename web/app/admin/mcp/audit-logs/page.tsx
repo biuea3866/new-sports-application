@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { formatDateTime } from "@/lib/admin/datetime";
 import {
   type McpAuditLogResponse,
   type FetchAuditLogsParams,
@@ -128,14 +129,14 @@ export default function AuditLogsPage(): JSX.Element {
 
       {/* 오류 */}
       {error !== null && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       )}
 
       {/* 로딩 */}
       {loading && (
-        <p aria-busy="true" className="text-sm text-gray-500">
+        <p aria-busy="true" className="text-sm text-muted-foreground">
           감사 로그를 불러오는 중...
         </p>
       )}
@@ -143,52 +144,52 @@ export default function AuditLogsPage(): JSX.Element {
       {/* 로그 테이블 */}
       {!loading && (
         <section aria-label="감사 로그 목록">
-          <p className="mb-2 text-sm text-gray-500">
+          <p className="mb-2 text-sm text-muted-foreground">
             총 {totalElements}건
           </p>
           <div className="overflow-x-auto rounded-md border">
             <table className="min-w-full text-sm">
-              <thead className="bg-gray-50">
+              <thead className="bg-muted/50">
                 <tr>
                   <th
                     scope="col"
-                    className="px-4 py-3 text-left font-medium text-gray-600"
+                    className="px-4 py-3 text-left font-medium text-muted-foreground"
                   >
                     Tool Name
                   </th>
                   <th
                     scope="col"
-                    className="px-4 py-3 text-left font-medium text-gray-600"
+                    className="px-4 py-3 text-left font-medium text-muted-foreground"
                   >
                     Status Code
                   </th>
                   <th
                     scope="col"
-                    className="px-4 py-3 text-left font-medium text-gray-600"
+                    className="px-4 py-3 text-left font-medium text-muted-foreground"
                   >
                     Latency (ms)
                   </th>
                   <th
                     scope="col"
-                    className="px-4 py-3 text-left font-medium text-gray-600"
+                    className="px-4 py-3 text-left font-medium text-muted-foreground"
                   >
                     Called At
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-border">
                 {logs.length === 0 ? (
                   <tr>
                     <td
                       colSpan={4}
-                      className="px-4 py-8 text-center text-gray-400"
+                      className="px-4 py-8 text-center text-muted-foreground"
                     >
                       조회된 로그가 없습니다.
                     </td>
                   </tr>
                 ) : (
                   logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-gray-50">
+                    <tr key={log.id} className="hover:bg-muted/50">
                       <td className="px-4 py-3 font-mono text-xs">
                         {log.toolName}
                       </td>
@@ -196,18 +197,18 @@ export default function AuditLogsPage(): JSX.Element {
                         <span
                           className={
                             log.statusCode >= 200 && log.statusCode < 300
-                              ? "inline-block rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800"
-                              : "inline-block rounded-full px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700"
+                              ? "inline-block rounded-full px-2 py-0.5 text-xs font-medium bg-success/15 text-success"
+                              : "inline-block rounded-full px-2 py-0.5 text-xs font-medium bg-destructive/15 text-destructive"
                           }
                         >
                           {log.statusCode}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-600">
+                      <td className="px-4 py-3 text-muted-foreground">
                         {log.latencyMs.toLocaleString("ko-KR")}
                       </td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {new Date(log.calledAt).toLocaleString("ko-KR")}
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {formatDateTime(log.calledAt)}
                       </td>
                     </tr>
                   ))

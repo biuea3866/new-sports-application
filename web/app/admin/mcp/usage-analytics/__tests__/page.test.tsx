@@ -17,6 +17,10 @@ vi.stubGlobal(
   }
 );
 
+// 차트 4종을 jsdom에서 렌더하는 무거운 파일이라 기본 5초 타임아웃에 걸쳐 있다.
+// 병렬 워커 경합 시 거짓 실패가 나므로 이 파일만 타임아웃을 넉넉히 잡는다.
+vi.setConfig({ testTimeout: 30_000 });
+
 function makeAnalyticsResponse(
   overrides?: Partial<UsageAnalyticsResponse>
 ): Response {
@@ -114,5 +118,30 @@ describe("UsageAnalyticsPage", () => {
     await waitFor(() => {
       expect(mockFetch.mock.calls.length).toBeGreaterThan(callCountBefore);
     });
+  });
+
+  // BE NON_NULL 직렬화로 미사용 토큰은 `lastCalledAt` 키가 생략된다.
+  // `!== null` 검사만으로는 undefined를 걸러내지 못해 `Invalid Date`가 표시된다.
+  it("마지막 호출 이력이 없는 토큰에 Invalid Date를 표시하지 않는다", async () => {
+    mockFetch.mockResolvedValue(
+      makeAnalyticsResponse({
+        tokenUsageStats: [
+          {
+            tokenId: 9,
+            callCount: 0,
+            errorCount: 0,
+            errorRatePercent: 0,
+          },
+        ],
+      })
+    );
+    const { default: UsageAnalyticsPage } = await import("../page");
+    render(<UsageAnalyticsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("총 호출")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText("Invalid Date")).not.toBeInTheDocument();
   });
 });

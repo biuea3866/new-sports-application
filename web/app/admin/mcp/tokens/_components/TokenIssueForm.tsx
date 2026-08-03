@@ -78,8 +78,8 @@ export function TokenIssueForm({ onIssued }: TokenIssueFormProps): JSX.Element {
   return (
     <form onSubmit={(e) => void handleSubmit(e)} aria-label="MCP 토큰 발급 폼" className="space-y-4">
       <div>
-        <label htmlFor="token-name" className="block text-sm font-medium text-gray-700">
-          토큰 이름 <span aria-hidden="true" className="text-red-500">*</span>
+        <label htmlFor="token-name" className="block text-sm font-medium text-foreground">
+          토큰 이름 <span aria-hidden="true" className="text-destructive">*</span>
         </label>
         <input
           id="token-name"
@@ -88,14 +88,14 @@ export function TokenIssueForm({ onIssued }: TokenIssueFormProps): JSX.Element {
           onChange={(e) => setName(e.target.value)}
           placeholder="예: n8n 자동화 토큰"
           required
-          className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="mt-1 w-full rounded border border-input bg-background px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
           aria-required="true"
         />
       </div>
 
       <fieldset>
-        <legend className="text-sm font-medium text-gray-700">
-          Scope <span aria-hidden="true" className="text-red-500">*</span>
+        <legend className="text-sm font-medium text-foreground">
+          Scope <span aria-hidden="true" className="text-destructive">*</span>
         </legend>
         <div className="mt-2 grid grid-cols-2 gap-2">
           {AVAILABLE_SCOPES.map((scope) => (
@@ -105,30 +105,30 @@ export function TokenIssueForm({ onIssued }: TokenIssueFormProps): JSX.Element {
                 checked={selectedScopes.has(scope)}
                 onChange={() => toggleScope(scope)}
                 aria-label={`scope ${scope} 선택`}
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="h-4 w-4 rounded border-input text-primary focus:ring-ring"
               />
-              <span className="font-mono text-xs text-gray-700">{scope}</span>
+              <span className="font-mono text-xs text-foreground">{scope}</span>
             </label>
           ))}
         </div>
       </fieldset>
 
       <div>
-        <label htmlFor="token-expires-at" className="block text-sm font-medium text-gray-700">
-          만료일 <span className="text-xs text-gray-500">(선택 — 미입력 시 무기한)</span>
+        <label htmlFor="token-expires-at" className="block text-sm font-medium text-foreground">
+          만료일 <span className="text-xs text-muted-foreground">(선택 — 미입력 시 무기한)</span>
         </label>
         <input
           id="token-expires-at"
           type="date"
           value={expiresAt}
           onChange={(e) => setExpiresAt(e.target.value)}
-          className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="mt-1 w-full rounded border border-input bg-background px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
           aria-label="토큰 만료일 (선택)"
         />
       </div>
 
       <fieldset>
-        <legend className="text-sm font-medium text-gray-700">추가 권한</legend>
+        <legend className="text-sm font-medium text-foreground">추가 권한</legend>
         <div className="mt-2 space-y-2">
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <input
@@ -137,10 +137,10 @@ export function TokenIssueForm({ onIssued }: TokenIssueFormProps): JSX.Element {
               checked={includePii}
               onChange={(e) => setIncludePii(e.target.checked)}
               aria-label="PII 조회 권한 포함"
-              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="h-4 w-4 rounded border-input text-primary focus:ring-ring"
             />
             <span>PII 조회 포함</span>
-            <span className="text-xs text-gray-500">(read:pii)</span>
+            <span className="text-xs text-muted-foreground">(read:pii)</span>
           </label>
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <input
@@ -149,16 +149,16 @@ export function TokenIssueForm({ onIssued }: TokenIssueFormProps): JSX.Element {
               checked={nonInteractive}
               onChange={(e) => setNonInteractive(e.target.checked)}
               aria-label="비대화형 자동화 권한 포함"
-              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="h-4 w-4 rounded border-input text-primary focus:ring-ring"
             />
             <span>비대화형 자동화</span>
-            <span className="text-xs text-gray-500">(write:booking:any)</span>
+            <span className="text-xs text-muted-foreground">(write:booking:any)</span>
           </label>
         </div>
       </fieldset>
 
       {errorMessage !== null && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {errorMessage}
         </p>
       )}
@@ -166,7 +166,7 @@ export function TokenIssueForm({ onIssued }: TokenIssueFormProps): JSX.Element {
       <button
         type="submit"
         disabled={isLoading}
-        className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+        className="rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
         aria-label="MCP 토큰 발급"
       >
         {isLoading ? "발급 중..." : "토큰 발급"}

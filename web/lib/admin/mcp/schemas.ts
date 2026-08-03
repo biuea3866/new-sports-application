@@ -32,12 +32,17 @@ export type IssueMcpTokenInput = z.infer<typeof IssueMcpTokenInputSchema>;
 
 // ─── BE 응답 타입 ─────────────────────────────────────────────────────────────
 
+// BE는 `McpObjectMapperConfig`(@Primary)의 JsonInclude.NON_NULL로 직렬화하므로
+// nullable 필드는 값이 null일 때 **응답 JSON에서 키가 생략**된다.
+// 따라서 nullable 필드 타입은 `string | null | undefined`로 열어 두고,
+// 화면은 `lib/admin/datetime`의 포맷터로 둘을 동일하게 "값 없음"으로 처리한다.
+
 export interface IssueMcpTokenResponse {
   tokenId: number;
   name: string;
   plainToken: string;
   status: McpTokenStatus;
-  expiresAt: string | null;
+  expiresAt?: string | null;
   createdAt: string;
 }
 
@@ -45,8 +50,8 @@ export interface McpTokenSummary {
   tokenId: number;
   name: string;
   status: McpTokenStatus;
-  expiresAt: string | null;
-  lastUsedAt: string | null;
+  expiresAt?: string | null;
+  lastUsedAt?: string | null;
   createdAt: string;
 }
 

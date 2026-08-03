@@ -97,7 +97,9 @@ describe("AuditLogsPage", () => {
     expect(screen.getByText(/총 2건/)).toBeInTheDocument();
   });
 
-  it("[U-04] 성공(2xx) statusCode는 초록 배지, 실패(5xx)는 빨간 배지로 렌더링된다", async () => {
+  // 배지 색은 시맨틱 토큰으로만 구분한다(no-hardcoded-color) — 라이트/다크 두 모드에서 모두 판독 가능해야 하므로
+  // `green`/`red` 팔레트 클래스가 아니라 success/destructive 토큰을 검증한다.
+  it("[U-04] 성공(2xx) statusCode는 success, 실패(5xx)는 destructive 토큰 배지로 렌더링된다", async () => {
     mockFetchAuditLogs.mockResolvedValue(SINGLE_PAGE_RESPONSE);
     render(<AuditLogsPage />);
 
@@ -106,8 +108,10 @@ describe("AuditLogsPage", () => {
     });
     const badge200 = screen.getByText("200");
     const badge500 = screen.getByText("500");
-    expect(badge200.className).toContain("green");
-    expect(badge500.className).toContain("red");
+    expect(badge200.className).toContain("success");
+    expect(badge500.className).toContain("destructive");
+    expect(badge200.className).not.toMatch(/green|red/);
+    expect(badge500.className).not.toMatch(/green|red/);
   });
 
   it("[U-05] 결과가 없을 때 빈 상태 메시지를 표시한다", async () => {
