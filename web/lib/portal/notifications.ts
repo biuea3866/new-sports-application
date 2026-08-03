@@ -37,10 +37,14 @@ export async function fetchMyNotifications(
   return res.json() as Promise<NotificationPage>;
 }
 
-/** 알림 읽음 처리 */
-export async function markNotificationRead(
-  notificationId: number
-): Promise<Notification> {
+/**
+ * 알림 읽음 처리.
+ *
+ * BE `PATCH /notifications/{id}/read` 응답은 목록(`MyNotificationResponse`)과 형태가 다른
+ * 발송 원형(`NotificationResponse`)이다. 호출부는 성공 후 목록을 다시 불러오므로 본문을
+ * 쓰지 않는다 — 목록 타입으로 단언해 계약을 왜곡하지 않고 반환하지 않는다.
+ */
+export async function markNotificationRead(notificationId: number): Promise<void> {
   const res = await fetch(
     `/api/portal/notifications/${notificationId}/read`,
     { method: "PATCH", cache: "no-store" }
@@ -51,5 +55,4 @@ export async function markNotificationRead(
     } | null;
     throw new Error(body?.message ?? `알림 읽음 처리 실패: ${res.status}`);
   }
-  return res.json() as Promise<Notification>;
 }

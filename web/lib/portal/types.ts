@@ -181,16 +181,24 @@ export interface AdminUser {
 
 // ─── Notification ────────────────────────────────────────────────────────────
 
-export type NotificationChannel = "IN_APP" | "EMAIL" | "SMS" | "PUSH";
-export type NotificationStatus = "QUEUED" | "SENT" | "FAILED" | "DELIVERED";
+/**
+ * 알림함 분류 — BE `domain/notification/vo/NotificationCategory`.
+ * templateId 에서 파생하는 표시용 값이라 BE가 미등록 접두사를 SYSTEM 으로 수렴시킨다.
+ */
+export type NotificationCategory = "BOOKING" | "PAYMENT" | "EVENT" | "SYSTEM" | "PROMOTION";
 
+/**
+ * 알림함 한 줄 — BE `MyNotificationResponse` 계약 그대로.
+ *
+ * BE는 발송 내부 값(channel·templateId·status·sentAt)을 이 응답에 싣지 않는다. 그 필드들을
+ * 기대하던 옛 타입이 남아 있어 카드가 통째로 비어 보인 이력이 있다(02-파트너포털/17 캡쳐).
+ */
 export interface Notification {
   id: number;
-  userId: number;
-  channel: NotificationChannel;
-  templateId: string;
-  status: NotificationStatus;
-  sentAt: string | null;
+  title: string;
+  content: string;
+  category: NotificationCategory;
+  isRead: boolean;
   readAt: string | null;
   createdAt: string;
 }

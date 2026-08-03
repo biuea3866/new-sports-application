@@ -220,16 +220,24 @@ export const AdminUserPageSchema = PageSchema(AdminUserSchema);
 
 // ─── Notification ────────────────────────────────────────────────────────────
 
-const NotificationChannelSchema = z.enum(["IN_APP", "EMAIL", "SMS", "PUSH"]);
-const NotificationStatusSchema = z.enum(["QUEUED", "SENT", "FAILED", "DELIVERED"]);
+export const NotificationCategorySchema = z.enum([
+  "BOOKING",
+  "PAYMENT",
+  "EVENT",
+  "SYSTEM",
+  "PROMOTION",
+]);
 
+/**
+ * BE `MyNotificationResponse` — 알림함이 그대로 렌더할 수 있는 사용자 관점 필드만 담는다.
+ * 발송 메타데이터(channel·templateId·status·sentAt)는 이 응답에 실리지 않는다.
+ */
 export const NotificationSchema = z.object({
   id: z.number().int().positive(),
-  userId: z.number().int().positive(),
-  channel: NotificationChannelSchema,
-  templateId: z.string(),
-  status: NotificationStatusSchema,
-  sentAt: absentAsNull(z.string()),
+  title: z.string(),
+  content: z.string(),
+  category: NotificationCategorySchema,
+  isRead: z.boolean(),
   readAt: absentAsNull(z.string()),
   createdAt: z.string(),
 });
