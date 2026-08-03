@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { AVAILABLE_SCOPES, type AvailableScope, type IssueMcpTokenResponse } from "@/lib/admin/mcp/schemas";
+import { DateField } from "@/components/ui/date-field";
 
 interface TokenIssueFormProps {
   onIssued: (response: IssueMcpTokenResponse) => void;
@@ -117,12 +118,11 @@ export function TokenIssueForm({ onIssued }: TokenIssueFormProps): JSX.Element {
         <label htmlFor="token-expires-at" className="block text-sm font-medium text-foreground">
           만료일 <span className="text-xs text-muted-foreground">(선택 — 미입력 시 무기한)</span>
         </label>
-        <input
+        <DateField
           id="token-expires-at"
-          type="date"
           value={expiresAt}
-          onChange={(e) => setExpiresAt(e.target.value)}
-          className="mt-1 w-full rounded border border-input bg-background px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
+          onChange={setExpiresAt}
+          className="mt-1"
           aria-label="토큰 만료일 (선택)"
         />
       </div>

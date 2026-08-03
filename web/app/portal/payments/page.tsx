@@ -19,6 +19,7 @@ import {
   paymentStatusLabel,
 } from "@/lib/portal/paymentStatus";
 import { toUserMessage } from "@/lib/portal/toUserMessage";
+import { DateField } from "@/components/ui/date-field";
 
 const PAGE_SIZE = 20;
 
@@ -62,13 +63,13 @@ export default function PaymentsPage() {
     setPage(0);
   }
 
-  function handleFromChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setPaidAtFrom(e.target.value);
+  function handleFromChange(nextValue: string) {
+    setPaidAtFrom(nextValue);
     setPage(0);
   }
 
-  function handleToChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setPaidAtTo(e.target.value);
+  function handleToChange(nextValue: string) {
+    setPaidAtTo(nextValue);
     setPage(0);
   }
 
@@ -106,12 +107,10 @@ export default function PaymentsPage() {
           <label htmlFor="paid-at-from" className="block text-sm font-medium mb-1">
             결제일 시작
           </label>
-          <input
+          <DateField
             id="paid-at-from"
-            type="date"
             value={paidAtFrom}
             onChange={handleFromChange}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="결제일 시작"
           />
         </div>
@@ -120,12 +119,10 @@ export default function PaymentsPage() {
           <label htmlFor="paid-at-to" className="block text-sm font-medium mb-1">
             결제일 종료
           </label>
-          <input
+          <DateField
             id="paid-at-to"
-            type="date"
             value={paidAtTo}
             onChange={handleToChange}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="결제일 종료"
           />
         </div>

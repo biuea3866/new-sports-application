@@ -29,6 +29,7 @@ import {
 import { cn } from "@/lib/utils";
 import { SlotRow } from "./_components/SlotRow";
 import { SlotCloseConfirmDialog } from "./_components/SlotCloseConfirmDialog";
+import { DateField } from "@/components/ui/date-field";
 
 interface FacilityOption {
   id: string;
@@ -421,13 +422,11 @@ export default function SlotsPage() {
                 <label htmlFor="slot-date" className="block text-sm font-medium mb-1">
                   날짜
                 </label>
-                <Input
+                <DateField
                   id="slot-date"
-                  type="date"
                   value={form.date}
-                  onChange={(e) => setForm((prev) => ({ ...prev, date: e.target.value }))}
+                  onChange={(nextValue) => setForm((prev) => ({ ...prev, date: nextValue }))}
                   required
-                  aria-required="true"
                   disabled={modalState?.mode === "edit"}
                 />
               </div>

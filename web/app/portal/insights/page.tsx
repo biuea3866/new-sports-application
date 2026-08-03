@@ -12,6 +12,7 @@ import {
   type FetchKpiParams,
   fetchOperationKpi,
 } from "@/lib/portal/operationKpi";
+import { DateField } from "@/components/ui/date-field";
 
 type DateRangePreset = "today" | "week" | "month" | "custom";
 
@@ -134,13 +135,11 @@ export default function InsightsPage(): JSX.Element {
               <label htmlFor="from-date" className="mb-1 block text-sm font-medium">
                 시작일
               </label>
-              <input
+              <DateField
                 id="from-date"
-                type="date"
                 value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
+                onChange={setFromDate}
                 max={toDate}
-                className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="조회 시작일"
               />
             </div>
@@ -148,14 +147,12 @@ export default function InsightsPage(): JSX.Element {
               <label htmlFor="to-date" className="mb-1 block text-sm font-medium">
                 종료일
               </label>
-              <input
+              <DateField
                 id="to-date"
-                type="date"
                 value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
+                onChange={setToDate}
                 min={fromDate}
                 max={todayStr()}
-                className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="조회 종료일"
               />
             </div>
