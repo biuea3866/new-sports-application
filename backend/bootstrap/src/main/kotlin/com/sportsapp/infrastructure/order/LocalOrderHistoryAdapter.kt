@@ -59,6 +59,7 @@ private fun BookingOrderItem.toOrderHistoryItem(): OrderHistoryItem = OrderHisto
     paymentId = paymentId,
     detailPath = "/bookings/$bookingId",
     createdAt = createdAt,
+    amount = amount,
 )
 
 private fun GoodsOrderWithTitle.toOrderHistoryItem(): OrderHistoryItem = OrderHistoryItem(
@@ -69,6 +70,7 @@ private fun GoodsOrderWithTitle.toOrderHistoryItem(): OrderHistoryItem = OrderHi
     paymentId = order.paymentId,
     detailPath = "/goods-orders/${order.id}",
     createdAt = order.createdAt,
+    amount = order.totalAmount,
 )
 
 private fun TicketOrderWithEventTitle.toOrderHistoryItem(): OrderHistoryItem = OrderHistoryItem(
@@ -79,6 +81,10 @@ private fun TicketOrderWithEventTitle.toOrderHistoryItem(): OrderHistoryItem = O
     paymentId = paymentId,
     detailPath = "/ticket-orders/$ticketOrderId",
     createdAt = createdAt,
+    amount = totalAmount,
+    // 같은 이벤트에 여러 좌석 주문이 있을 때 title(이벤트명)만으로는 구분되지 않는다 —
+    // 내부 식별자(sourceId) 대신 좌석 라벨로 구분한다.
+    subtitle = seatSummary.takeIf { it.isNotBlank() },
 )
 
 private fun ApplicationWithRecruitmentTitle.toOrderHistoryItem(): OrderHistoryItem = OrderHistoryItem(
@@ -89,4 +95,5 @@ private fun ApplicationWithRecruitmentTitle.toOrderHistoryItem(): OrderHistoryIt
     paymentId = paymentId,
     detailPath = "/applications/$applicationId",
     createdAt = createdAt,
+    amount = feeAmount,
 )

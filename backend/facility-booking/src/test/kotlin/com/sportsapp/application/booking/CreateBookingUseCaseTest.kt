@@ -60,7 +60,7 @@ class CreateBookingUseCaseTest : BehaviorSpec({
             pgTransactionId = "tid-booking-001",
             checkoutUrl = "http://checkout",
         )
-        every { bookingDomainService.requestBooking(1L, 42L) } returns bookingResult
+        every { bookingDomainService.requestBooking(1L, 42L, BigDecimal("50000")) } returns bookingResult
         every {
             paymentDomainService.createPending(
                 userId = 1L,
@@ -89,7 +89,7 @@ class CreateBookingUseCaseTest : BehaviorSpec({
             }
 
             Then("PG 호출(initiatePg)은 requestBooking + createPending tx 이후에 호출된다") {
-                verify(exactly = 1) { bookingDomainService.requestBooking(1L, 42L) }
+                verify(exactly = 1) { bookingDomainService.requestBooking(1L, 42L, BigDecimal("50000")) }
                 verify(exactly = 1) { paymentDomainService.createPending(any(), any(), any(), any(), any(), any(), any()) }
                 verify(exactly = 1) { paymentDomainService.initiatePg(any()) }
             }
@@ -100,7 +100,7 @@ class CreateBookingUseCaseTest : BehaviorSpec({
         val bookingDomainService = mockk<BookingDomainService>()
         val paymentDomainService = mockk<PaymentDomainService>()
         val useCase = CreateBookingUseCase(bookingDomainService, paymentDomainService, passthroughTransactionTemplate())
-        every { bookingDomainService.requestBooking(1L, 42L) } throws SlotBusyException(42L)
+        every { bookingDomainService.requestBooking(1L, 42L, BigDecimal("50000")) } throws SlotBusyException(42L)
 
         When("execute 를 호출하면") {
             Then("SlotBusyException 이 전파되고 PaymentDomainService 는 호출되지 않는다") {

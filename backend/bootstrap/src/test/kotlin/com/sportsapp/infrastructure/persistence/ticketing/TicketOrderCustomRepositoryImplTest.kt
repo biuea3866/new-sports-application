@@ -1,5 +1,6 @@
 package com.sportsapp.infrastructure.persistence.ticketing
 import com.sportsapp.infrastructure.ticketing.mysql.EventJpaRepository
+import com.sportsapp.infrastructure.ticketing.mysql.SeatJpaRepository
 import com.sportsapp.infrastructure.ticketing.mysql.TicketOrderCustomRepositoryImpl
 import com.sportsapp.infrastructure.ticketing.mysql.TicketOrderJpaRepository
 
@@ -7,15 +8,18 @@ import com.sportsapp.BaseJpaIntegrationTest
 import com.sportsapp.domain.ticketing.entity.Event
 import com.sportsapp.domain.ticketing.entity.EventStatus
 import com.sportsapp.domain.ticketing.entity.OrderStatus
+import com.sportsapp.domain.ticketing.entity.Seat
 import com.sportsapp.domain.ticketing.entity.TicketOrder
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
+import java.math.BigDecimal
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 
 class TicketOrderCustomRepositoryImplTest(
     @Autowired private val eventJpaRepository: EventJpaRepository,
     @Autowired private val ticketOrderJpaRepository: TicketOrderJpaRepository,
+    @Autowired private val seatJpaRepository: SeatJpaRepository,
     @Autowired private val ticketOrderCustomRepositoryImpl: TicketOrderCustomRepositoryImpl,
 ) : BaseJpaIntegrationTest() {
 
@@ -126,6 +130,65 @@ class TicketOrderCustomRepositoryImplTest(
                 Then("userId=13의 주문만 반환된다") {
                     result.size shouldBe 1
                     result.first().eventTitle shouldBe "Shared Event"
+                }
+            }
+        }
+
+        Given("좌석 2석을 예매한 TicketOrder가 있을 때") {
+            val event = eventJpaRepository.save(
+                Event(0L, "Amount Concert", "Seoul Arena", baseTime, EventStatus.OPEN, 1L)
+            )
+            val seat1 = seatJpaRepository.save(Seat(0L, event.id, "R", "1", "R-01", BigDecimal("30000")))
+            val seat2 = seatJpaRepository.save(Seat(0L, event.id, "R", "1", "R-02", BigDecimal("30000")))
+            val order = ticketOrderJpaRepository.save(
+                TicketOrder(
+                    userId = 15L,
+                    status = OrderStatus.PENDING,
+                    paymentId = null,
+                    lockedEventId = event.id,
+                    lockedSeatIds = listOf(seat1.id, seat2.id),
+                )
+            )
+
+            When("사용자 ID로 주문을 조회하면") {
+                val result = ticketOrderCustomRepositoryImpl.findBy(15L)
+
+                Then("좌석가 합계가 totalAmount로 반환된다") {
+                    result.size shouldBe 1
+                    result.first().ticketOrderId shouldBe order.id
+                    result.first().totalAmount shouldBe BigDecimal("60000")
+                }
+
+                Then("좌석 요약이 seatSummary로 반환된다") {
+                    result.first().seatSummary shouldBe "R 1열 R-01 외 1석"
+                }
+            }
+        }
+
+        Given("좌석 1석만 예매한 TicketOrder가 있을 때") {
+            val event = eventJpaRepository.save(
+                Event(0L, "Single Seat Concert", "Seoul Arena", baseTime, EventStatus.OPEN, 1L)
+            )
+            val seat = seatJpaRepository.save(Seat(0L, event.id, "S", "2", "S-05", BigDecimal("45000")))
+            val order = ticketOrderJpaRepository.save(
+                TicketOrder(
+                    userId = 16L,
+                    status = OrderStatus.PENDING,
+                    paymentId = null,
+                    lockedEventId = event.id,
+                    lockedSeatIds = listOf(seat.id),
+                )
+            )
+
+            When("사용자 ID로 주문을 조회하면") {
+                val result = ticketOrderCustomRepositoryImpl.findBy(16L)
+
+                Then("단일 좌석가가 totalAmount로 반환된다") {
+                    result.first().totalAmount shouldBe BigDecimal("45000")
+                }
+
+                Then("좌석 요약에 '외 N석' 접미사가 붙지 않는다") {
+                    result.first().seatSummary shouldBe "S 2열 S-05"
                 }
             }
         }

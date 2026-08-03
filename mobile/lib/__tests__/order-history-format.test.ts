@@ -7,6 +7,7 @@ import {
   isPaymentConfirmedStatus,
   formatPaymentLabel,
   formatOrderHistoryDisplayName,
+  formatOrderHistoryAmount,
 } from '../order-history-format';
 
 describe('formatOrderHistoryStatusLabel', () => {
@@ -64,5 +65,19 @@ describe('formatOrderHistoryDisplayName', () => {
     expect(
       formatOrderHistoryDisplayName({ title: '   ', orderType: 'RECRUITMENT', sourceId: 7 })
     ).toBe(`${ORDER_TYPE_LABEL.RECRUITMENT} #7`);
+  });
+});
+
+describe('formatOrderHistoryAmount', () => {
+  it('금액을 천 단위 구분자와 함께 원 단위로 반환한다', () => {
+    expect(formatOrderHistoryAmount(50000)).toBe('50,000원');
+  });
+
+  it('금액이 0이면 무료를 반환한다', () => {
+    expect(formatOrderHistoryAmount(0)).toBe('무료');
+  });
+
+  it('금액이 null이면 null을 반환한다(화면에서 금액 줄 생략)', () => {
+    expect(formatOrderHistoryAmount(null)).toBeNull();
   });
 });

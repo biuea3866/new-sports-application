@@ -7,6 +7,7 @@
  * `OrderHistoryItemCard`가 분기 로직 없이 렌더링에만 집중하도록 한다.
  */
 import type { OrderHistoryItem, OrderType } from '../api/order-history-types';
+import { formatFeeAmount } from './recruitment-format';
 
 /** orderType → 한글 배지 라벨. */
 export const ORDER_TYPE_LABEL: Record<OrderType, string> = {
@@ -52,6 +53,17 @@ export function isPaymentConfirmedStatus(status: string): boolean {
 /** paymentId 연계 표시. 있으면 "결제 #id", 없으면 "미결제". */
 export function formatPaymentLabel(paymentId: number | null): string {
   return paymentId === null ? '미결제' : `결제 #${paymentId}`;
+}
+
+/**
+ * 결제 금액 표시. `formatFeeAmount`(recruitment-format)를 재사용해 천 단위 구분자·"무료"(0원)
+ * 규칙을 중복 구현하지 않는다. `amount`가 `null`이면(금액 확정 불가 — 과거 BOOKING 예약 등)
+ * `null`을 반환해 화면이 금액 줄 자체를 생략하게 한다 — `0`(무료 확정값)과 구분해야 하므로
+ * 0으로 방어하지 않는다.
+ */
+export function formatOrderHistoryAmount(amount: number | null): string | null {
+  if (amount === null) return null;
+  return formatFeeAmount(amount);
 }
 
 /**

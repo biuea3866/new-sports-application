@@ -15,9 +15,11 @@ import com.sportsapp.domain.ticketing.dto.TicketOrderWithEventTitle
 import com.sportsapp.domain.ticketing.entity.OrderStatus
 import com.sportsapp.domain.ticketing.service.TicketingDomainService
 import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import java.math.BigDecimal
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import org.springframework.data.domain.PageImpl
@@ -28,11 +30,13 @@ private fun goodsOrderMock(
     status: GoodsOrderStatus,
     paymentId: Long?,
     createdAt: ZonedDateTime,
+    totalAmount: BigDecimal = BigDecimal("59000"),
 ): GoodsOrder = mockk(relaxed = true) {
     every { this@mockk.id } returns id
     every { this@mockk.status } returns status
     every { this@mockk.paymentId } returns paymentId
     every { this@mockk.createdAt } returns createdAt
+    every { this@mockk.totalAmount } returns totalAmount
 }
 
 /**
@@ -54,6 +58,7 @@ class LocalOrderHistoryAdapterTest : BehaviorSpec({
                 bookingId = 10L, slotId = 100L, userId = userId,
                 status = BookingStatus.EXPIRED, paymentId = null,
                 title = "2026-06-01 09:00-10:00 시설 예약", createdAt = now,
+                amount = BigDecimal("30000"),
             ),
         )
 
@@ -75,6 +80,10 @@ class LocalOrderHistoryAdapterTest : BehaviorSpec({
                 item.status shouldBe "EXPIRED"
                 item.paymentId shouldBe null
                 item.detailPath shouldBe "/bookings/10"
+            }
+
+            Then("booking 자기 컬럼의 amount가 그대로 매핑된다") {
+                items.single().amount shouldBe BigDecimal("30000")
             }
         }
     }
@@ -110,6 +119,10 @@ class LocalOrderHistoryAdapterTest : BehaviorSpec({
                 item.paymentId shouldBe 200L
                 item.detailPath shouldBe "/goods-orders/20"
             }
+
+            Then("GoodsOrder 자기 컬럼(totalAmount)이 그대로 매핑된다") {
+                items.single().amount shouldBe BigDecimal("59000")
+            }
         }
     }
 
@@ -119,6 +132,7 @@ class LocalOrderHistoryAdapterTest : BehaviorSpec({
             TicketOrderWithEventTitle(
                 ticketOrderId = 30L, status = OrderStatus.CONFIRMED, eventTitle = "Concert Dec",
                 paymentId = 300L, createdAt = now,
+                totalAmount = BigDecimal("60000"), seatSummary = "R 1열 R-01 외 1석",
             ),
         )
 
@@ -139,6 +153,12 @@ class LocalOrderHistoryAdapterTest : BehaviorSpec({
                 item.title shouldBe "Concert Dec"
                 item.detailPath shouldBe "/ticket-orders/30"
             }
+
+            Then("좌석가 합계(totalAmount)가 amount로, 좌석 요약이 subtitle로 매핑된다") {
+                val item = items.single()
+                item.amount shouldBe BigDecimal("60000")
+                item.subtitle shouldBe "R 1열 R-01 외 1석"
+            }
         }
     }
 
@@ -148,6 +168,7 @@ class LocalOrderHistoryAdapterTest : BehaviorSpec({
             ApplicationWithRecruitmentTitle(
                 applicationId = 40L, status = ApplicationStatus.REFUNDED, recruitmentTitle = "주말 축구 모임",
                 paymentId = 400L, createdAt = now,
+                feeAmount = BigDecimal("10000"),
             ),
         )
 
@@ -167,6 +188,62 @@ class LocalOrderHistoryAdapterTest : BehaviorSpec({
                 item.sourceId shouldBe 40L
                 item.title shouldBe "주말 축구 모임"
                 item.detailPath shouldBe "/applications/40"
+            }
+
+            Then("Recruitment의 feeAmount가 amount로 그대로 매핑된다") {
+                items.single().amount shouldBe BigDecimal("10000")
+            }
+        }
+    }
+
+    Given("무료(feeAmount=0) 모집에 신청한 이력이 있는 상황") {
+        val recruitmentDomainService = mockk<RecruitmentDomainService>()
+        every { recruitmentDomainService.listApplicationsWithTitleBy(userId) } returns listOf(
+            ApplicationWithRecruitmentTitle(
+                applicationId = 41L, status = ApplicationStatus.CONFIRMED, recruitmentTitle = "무료 러닝 모임",
+                paymentId = null, createdAt = now,
+                feeAmount = BigDecimal.ZERO,
+            ),
+        )
+
+        val adapter = LocalOrderHistoryAdapter(
+            bookingDomainService = mockk(),
+            goodsDomainService = mockk(),
+            ticketingDomainService = mockk(),
+            recruitmentDomainService = recruitmentDomainService,
+        )
+
+        When("findRecruitmentOrders를 호출하면") {
+            val items = adapter.findRecruitmentOrders(userId)
+
+            Then("amount가 0(무료 확정값)으로 매핑되고 null이 아니다") {
+                items.single().amount shouldBe BigDecimal.ZERO
+            }
+        }
+    }
+
+    Given("참조 Recruitment가 삭제되어 금액을 확정할 수 없는 상황") {
+        val recruitmentDomainService = mockk<RecruitmentDomainService>()
+        every { recruitmentDomainService.listApplicationsWithTitleBy(userId) } returns listOf(
+            ApplicationWithRecruitmentTitle(
+                applicationId = 42L, status = ApplicationStatus.CANCELLED, recruitmentTitle = "",
+                paymentId = null, createdAt = now,
+                feeAmount = null,
+            ),
+        )
+
+        val adapter = LocalOrderHistoryAdapter(
+            bookingDomainService = mockk(),
+            goodsDomainService = mockk(),
+            ticketingDomainService = mockk(),
+            recruitmentDomainService = recruitmentDomainService,
+        )
+
+        When("findRecruitmentOrders를 호출하면") {
+            val items = adapter.findRecruitmentOrders(userId)
+
+            Then("amount는 null이다(0으로 방어하지 않아 무료와 구분된다)") {
+                items.single().amount.shouldBeNull()
             }
         }
     }

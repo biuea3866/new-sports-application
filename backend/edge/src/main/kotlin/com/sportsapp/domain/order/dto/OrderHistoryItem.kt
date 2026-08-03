@@ -1,6 +1,7 @@
 package com.sportsapp.domain.order.dto
 
 import com.sportsapp.domain.common.order.OrderType
+import java.math.BigDecimal
 import java.time.ZonedDateTime
 
 /**
@@ -21,6 +22,15 @@ import java.time.ZonedDateTime
  *
  * [S2-01] [com.sportsapp.domain.order.gateway.OrderHistoryGateway] 계약의 반환 타입이라 domain
  * 레이어로 옮겼다 — Gateway는 application을 참조할 수 없다.
+ *
+ * [amount]는 4개 주문 컨텍스트가 **각자 자기 데이터**로 채운 결제 금액이다(주문 내역에 금액이
+ * 전혀 노출되지 않던 BE 계약 결함 후속) — edge/bootstrap이 payment 테이블을 역참조해 채우지
+ * 않는다. 금액을 확정할 수 없는 경우(과거 BOOKING 예약 등 참조가 삭제된 경우)는 `null`로
+ * 방어한다 — `0`(무료 확정값, RECRUITMENT)과 구분해야 하므로 0으로 방어하지 않는다.
+ *
+ * [subtitle]은 같은 title을 가진 서로 다른 주문을 사용자가 구분할 수 있게 돕는 부가 정보다
+ * (내부 식별자 노출 금지 — sourceId 대신 좌석 라벨 등 사람이 읽는 데이터). 현재는 TICKETING만
+ * 채운다(좌석 라벨) — 그 외 컨텍스트는 구분에 쓸 자기 데이터가 없어 `null`이다.
  */
 data class OrderHistoryItem(
     val orderType: OrderType,
@@ -30,4 +40,6 @@ data class OrderHistoryItem(
     val paymentId: Long?,
     val detailPath: String,
     val createdAt: ZonedDateTime,
+    val amount: BigDecimal?,
+    val subtitle: String? = null,
 )

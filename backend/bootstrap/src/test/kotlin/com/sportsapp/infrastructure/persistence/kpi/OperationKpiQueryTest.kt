@@ -51,13 +51,13 @@ class OperationKpiQueryTest(
             )
 
             bookingJpaRepository.save(
-                Booking(userId = 1L, slotId = slot1.id, initialStatus = BookingStatus.CONFIRMED, initialPaymentId = null)
+                Booking(userId = 1L, slotId = slot1.id, initialStatus = BookingStatus.CONFIRMED, initialPaymentId = null, initialAmount = null)
             )
             bookingJpaRepository.save(
-                Booking(userId = 2L, slotId = slot2.id, initialStatus = BookingStatus.CONFIRMED, initialPaymentId = null)
+                Booking(userId = 2L, slotId = slot2.id, initialStatus = BookingStatus.CONFIRMED, initialPaymentId = null, initialAmount = null)
             )
             bookingJpaRepository.save(
-                Booking(userId = 3L, slotId = slot1.id, initialStatus = BookingStatus.CANCELLED, initialPaymentId = null)
+                Booking(userId = 3L, slotId = slot1.id, initialStatus = BookingStatus.CANCELLED, initialPaymentId = null, initialAmount = null)
             )
 
             When("ownerUserId=777의 CONFIRMED 예약 카운트를 조회하면") {
@@ -89,7 +89,7 @@ class OperationKpiQueryTest(
                 Slot.create("fac-kpi-2", ZonedDateTime.now(), "09:00-11:00", 5, ownerUserId)
             )
             bookingJpaRepository.save(
-                Booking(userId = 10L, slotId = slot.id, initialStatus = BookingStatus.REFUNDED, initialPaymentId = null)
+                Booking(userId = 10L, slotId = slot.id, initialStatus = BookingStatus.REFUNDED, initialPaymentId = null, initialAmount = null)
             )
 
             When("ownerUserId=777의 노쇼(REFUNDED) 예약 카운트를 조회하면") {
@@ -154,10 +154,10 @@ class OperationKpiQueryTest(
             )
 
             bookingJpaRepository.save(
-                Booking(userId = 1L, slotId = mySlot.id, initialStatus = BookingStatus.CONFIRMED, initialPaymentId = null)
+                Booking(userId = 1L, slotId = mySlot.id, initialStatus = BookingStatus.CONFIRMED, initialPaymentId = null, initialAmount = null)
             )
             bookingJpaRepository.save(
-                Booking(userId = 2L, slotId = otherSlot.id, initialStatus = BookingStatus.CONFIRMED, initialPaymentId = null)
+                Booking(userId = 2L, slotId = otherSlot.id, initialStatus = BookingStatus.CONFIRMED, initialPaymentId = null, initialAmount = null)
             )
 
             When("ownerUserId=777로만 필터링하면") {

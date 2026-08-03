@@ -46,6 +46,8 @@ function makeItem(overrides: Partial<OrderHistoryItem> = {}): OrderHistoryItem {
     paymentId: 4821,
     detailPath: '/booking/4821',
     createdAt: '2026-07-05T10:00:00.000Z',
+    amount: 30000,
+    subtitle: null,
     ...overrides,
   };
 }

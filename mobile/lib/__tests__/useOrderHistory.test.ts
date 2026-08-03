@@ -38,6 +38,8 @@ const mockResponse: OrderHistoryResponse = {
       paymentId: 4821,
       detailPath: '/bookings/42',
       createdAt: '2026-07-05T14:00:00Z',
+      amount: 30000,
+      subtitle: null,
     },
   ],
   page: 0,

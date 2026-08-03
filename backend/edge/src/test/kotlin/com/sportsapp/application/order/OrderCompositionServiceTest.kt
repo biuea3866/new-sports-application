@@ -56,6 +56,9 @@ private fun orderHistoryItem(
     paymentId = paymentId,
     detailPath = "/orders/$sourceId",
     createdAt = createdAt,
+    // 이 스펙은 fan-out·타임아웃·정렬·페이지네이션 조합 로직만 검증한다(매핑 정확성은
+    // LocalOrderHistoryAdapterTest가 담당) — amount는 테스트 관심사 밖이라 null 고정.
+    amount = null,
 )
 
 /**

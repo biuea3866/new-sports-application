@@ -17,6 +17,7 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import jakarta.persistence.Transient
+import java.math.BigDecimal
 
 @Entity
 @Table(name = "bookings")
@@ -29,6 +30,14 @@ class Booking(
 
     initialStatus: BookingStatus,
     initialPaymentId: Long?,
+
+    /**
+     * 예약 결제 금액 — order 통합조회(BE-08 후속, order-amount 결함)가 소비하는 booking 자기
+     * 데이터다. payment 테이블을 역참조하지 않고 booking 생성 시점에 자기 컬럼으로 저장한다
+     * (V65 마이그레이션). 과거(이 컬럼 도입 전) 예약은 저장 이력이 없어 `null` — 무료(0)와
+     * 미확정(null)을 구분해야 하므로 0으로 방어하지 않는다.
+     */
+    initialAmount: BigDecimal?,
 ) : JpaAuditingBase() {
 
     @Transient
@@ -60,6 +69,9 @@ class Booking(
     @Column(name = "payment_id", nullable = true)
     var paymentId: Long? = initialPaymentId
         private set
+
+    @Column(name = "amount", nullable = true, precision = 15, scale = 2)
+    val amount: BigDecimal? = initialAmount
 
     /**
      * **CAS가 유일한 프로덕션 전이 경로다.** 실제 확정은
@@ -146,14 +158,22 @@ class Booking(
 
 
     companion object {
+        /** amount 미지정 호출 — 기존 호출부·시나리오(결제 금액을 다루지 않는 경로)를 그대로 보존한다. */
         fun createPending(
             userId: Long,
             slotId: Long,
+        ): Booking = createPending(userId = userId, slotId = slotId, amount = null)
+
+        fun createPending(
+            userId: Long,
+            slotId: Long,
+            amount: BigDecimal?,
         ): Booking = Booking(
             userId = userId,
             slotId = slotId,
             initialStatus = BookingStatus.PENDING,
             initialPaymentId = null,
+            initialAmount = amount,
         )
     }
 }

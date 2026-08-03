@@ -243,6 +243,8 @@ class EntryTokenGateInterceptorTest : BehaviorSpec({
         every { getLimitedDropUseCase.execute(99L) } returns LimitedDropView(
             dropId = 99L,
             productId = 1L,
+            productName = "테스트 한정판 상품",
+            productImageUrl = "https://example.com/product.jpg",
             status = LimitedDropStatus.OPEN,
             openAt = ZonedDateTime.now().minusHours(1),
             closeAt = ZonedDateTime.now().plusHours(1),

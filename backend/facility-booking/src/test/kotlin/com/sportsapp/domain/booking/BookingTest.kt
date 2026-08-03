@@ -4,6 +4,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
+import java.math.BigDecimal
 import java.time.ZonedDateTime
 import com.sportsapp.domain.booking.entity.Booking
 import com.sportsapp.domain.booking.entity.BookingStatus
@@ -209,6 +210,20 @@ class BookingTest : BehaviorSpec({
                 ownerId = 1L,
             )
             slot.timeRange shouldBe "09:00-10:00"
+        }
+    }
+
+    Given("결제 금액과 함께 예약을 생성할 때") {
+        Then("amount가 그대로 저장된다") {
+            val booking = Booking.createPending(userId = 1L, slotId = 10L, amount = BigDecimal("30000"))
+            booking.amount shouldBe BigDecimal("30000")
+        }
+    }
+
+    Given("결제 금액 없이(amount 미지정) 예약을 생성할 때") {
+        Then("amount는 null이다 (기존 2-인자 호출과 동일한 기본 동작)") {
+            val booking = Booking.createPending(userId = 1L, slotId = 10L)
+            booking.amount shouldBe null
         }
     }
 })

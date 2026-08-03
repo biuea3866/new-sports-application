@@ -6,6 +6,7 @@ import com.sportsapp.domain.ticketing.entity.QEvent.event
 import com.sportsapp.domain.ticketing.entity.QSeat.seat
 import com.sportsapp.domain.ticketing.entity.QTicket.ticket
 import com.sportsapp.domain.ticketing.entity.QTicketOrder.ticketOrder
+import com.sportsapp.domain.ticketing.entity.Seat
 import com.sportsapp.domain.ticketing.repository.TicketOrderCustomRepository
 import com.sportsapp.domain.ticketing.dto.TicketOrderWithEventTitle
 import com.sportsapp.domain.ticketing.dto.TicketSalesSummary
@@ -106,16 +107,12 @@ class TicketOrderCustomRepositoryImpl : TicketOrderCustomRepository {
                     )
                     .fetchOne() ?: 0L
 
-    override fun findBy(userId: Long): List<TicketOrderWithEventTitle> =
-        queryFactory
-            .select(
-                ticketOrder.id,
-                ticketOrder.status,
-                ticketOrder.paymentId,
-                ticketOrder.createdAt,
-                event.title,
-                event.deletedAt,
-            )
+    // 좌석(lockedSeatIds)은 JSON 텍스트 컬럼(JsonStringType)이라 QueryDSL Tuple로 직접 선택하지
+    // 않는다 — 엔티티 전체(ticketOrder)를 선택해 Hibernate가 커스텀 타입으로 정상 역직렬화하게
+    // 하고, 좌석가/좌석요약은 이 결과의 lockedSeatIds로 별도 배치 조회한다(N+1 회피).
+    override fun findBy(userId: Long): List<TicketOrderWithEventTitle> {
+        val tuples = queryFactory
+            .select(ticketOrder, event.title, event.deletedAt)
             .from(ticketOrder)
             .leftJoin(event).on(event.id.eq(ticketOrder.lockedEventId))
             .where(
@@ -123,15 +120,39 @@ class TicketOrderCustomRepositoryImpl : TicketOrderCustomRepository {
                 ticketOrder.deletedAt.isNull,
             )
             .fetch()
-            .map { tuple ->
-                val eventTitle = tuple.get(event.title)
-                val eventDeletedAt = tuple.get(event.deletedAt)
-                TicketOrderWithEventTitle(
-                    ticketOrderId = requireNotNull(tuple.get(ticketOrder.id)) { "ticketOrder.id must not be null" },
-                    status = requireNotNull(tuple.get(ticketOrder.status)) { "ticketOrder.status must not be null" },
-                    eventTitle = if (eventTitle == null || eventDeletedAt != null) "" else eventTitle,
-                    paymentId = tuple.get(ticketOrder.paymentId),
-                    createdAt = requireNotNull(tuple.get(ticketOrder.createdAt)) { "ticketOrder.createdAt must not be null" },
-                )
-            }
+
+        val orders = tuples.map { requireNotNull(it.get(ticketOrder)) { "ticketOrder must not be null" } }
+        val allSeatIds = orders.flatMap { it.lockedSeatIds }.distinct()
+        val seatById = findSeatsByIds(allSeatIds).associateBy { it.id }
+
+        return tuples.map { tuple ->
+            val order = requireNotNull(tuple.get(ticketOrder)) { "ticketOrder must not be null" }
+            val eventTitle = tuple.get(event.title)
+            val eventDeletedAt = tuple.get(event.deletedAt)
+            val lockedSeats = order.lockedSeatIds.mapNotNull { seatById[it] }
+            TicketOrderWithEventTitle(
+                ticketOrderId = order.id,
+                status = order.status,
+                eventTitle = if (eventTitle == null || eventDeletedAt != null) "" else eventTitle,
+                paymentId = order.paymentId,
+                createdAt = order.createdAt,
+                totalAmount = lockedSeats.fold(BigDecimal.ZERO) { sum, seatEntity -> sum + seatEntity.price },
+                seatSummary = buildSeatSummary(lockedSeats),
+            )
+        }
+    }
+
+    private fun findSeatsByIds(seatIds: List<Long>): List<Seat> {
+        if (seatIds.isEmpty()) return emptyList()
+        return queryFactory.selectFrom(seat).where(seat.id.`in`(seatIds)).fetch()
+    }
+
+    private fun buildSeatSummary(lockedSeats: List<Seat>): String {
+        val representative = lockedSeats.firstOrNull() ?: return ""
+        return if (lockedSeats.size > 1) {
+            "${representative.displayLabel} 외 ${lockedSeats.size - 1}석"
+        } else {
+            representative.displayLabel
+        }
+    }
 }

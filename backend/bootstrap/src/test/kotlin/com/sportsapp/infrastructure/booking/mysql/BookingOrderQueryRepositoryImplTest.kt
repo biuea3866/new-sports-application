@@ -7,10 +7,12 @@ import com.sportsapp.domain.booking.entity.Slot
 import com.sportsapp.domain.booking.repository.BookingOrderQueryRepository
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.jdbc.core.JdbcTemplate
+import java.math.BigDecimal
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 
@@ -116,6 +118,38 @@ class BookingOrderQueryRepositoryImplTest(
 
                 Then("빈 목록이 반환된다") {
                     results.shouldBeEmpty()
+                }
+            }
+        }
+
+        Given("결제 금액이 저장된 Booking이 존재할 때") {
+            val slot = createSlot(facilityId = "FAC-AMOUNT")
+            val booking = bookingJpaRepository.save(
+                Booking.createPending(userId = 70L, slotId = slot.id, amount = BigDecimal("30000")),
+            )
+
+            When("findByUserId로 조회하면") {
+                val results = bookingOrderQueryRepository.findByUserId(70L)
+
+                Then("amount가 그대로 반환된다") {
+                    results shouldHaveSize 1
+                    results[0].bookingId shouldBe booking.id
+                    results[0].amount shouldBe BigDecimal("30000")
+                }
+            }
+        }
+
+        Given("결제 금액 저장 이전(과거) Booking이 존재할 때") {
+            val slot = createSlot(facilityId = "FAC-NO-AMOUNT")
+            val booking = createBooking(slot.id, 71L)
+
+            When("findByUserId로 조회하면") {
+                val results = bookingOrderQueryRepository.findByUserId(71L)
+
+                Then("amount는 null이다(금액 확정 불가, 0으로 방어하지 않는다)") {
+                    results shouldHaveSize 1
+                    results[0].bookingId shouldBe booking.id
+                    results[0].amount.shouldBeNull()
                 }
             }
         }

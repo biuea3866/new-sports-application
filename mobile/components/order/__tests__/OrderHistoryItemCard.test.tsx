@@ -26,6 +26,8 @@ function makeOrderHistoryItem(overrides: Partial<OrderHistoryItem> = {}): OrderH
     paymentId: 4821,
     detailPath: '/booking/4821',
     createdAt: '2026-07-05T10:00:00.000Z',
+    amount: 50000,
+    subtitle: null,
     ...overrides,
   };
 }
@@ -108,6 +110,49 @@ describe('OrderHistoryItemCard', () => {
     render(<OrderHistoryItemCard item={item} onPress={jest.fn()} />);
 
     expect(screen.queryByTestId(`${testIdFor(item)}-status-dot`)).toBeNull();
+  });
+
+  it('금액이 있으면 천단위 구분자와 원 단위로 렌더한다', () => {
+    const item = makeOrderHistoryItem({ amount: 50000 });
+
+    render(<OrderHistoryItemCard item={item} onPress={jest.fn()} />);
+
+    expect(screen.getByText('50,000원')).toBeTruthy();
+  });
+
+  it('금액이 0(무료 확정값)이면 무료로 렌더한다', () => {
+    const item = makeOrderHistoryItem({ amount: 0 });
+
+    render(<OrderHistoryItemCard item={item} onPress={jest.fn()} />);
+
+    expect(screen.getByText('무료')).toBeTruthy();
+  });
+
+  it('금액이 null이면(금액 확정 불가) 금액 줄을 렌더하지 않는다', () => {
+    const item = makeOrderHistoryItem({ amount: null });
+
+    render(<OrderHistoryItemCard item={item} onPress={jest.fn()} />);
+
+    expect(screen.queryByTestId(`${testIdFor(item)}-amount`)).toBeNull();
+  });
+
+  it('subtitle이 있으면 부가 정보를 렌더한다(같은 제목 주문 구분용)', () => {
+    const item = makeOrderHistoryItem({
+      orderType: 'TICKETING',
+      subtitle: 'R석 1열 R-01 외 1석',
+    });
+
+    render(<OrderHistoryItemCard item={item} onPress={jest.fn()} />);
+
+    expect(screen.getByText('R석 1열 R-01 외 1석')).toBeTruthy();
+  });
+
+  it('subtitle이 없으면 부가 정보를 렌더하지 않는다', () => {
+    const item = makeOrderHistoryItem({ subtitle: null });
+
+    render(<OrderHistoryItemCard item={item} onPress={jest.fn()} />);
+
+    expect(screen.queryByTestId(`${testIdFor(item)}-subtitle`)).toBeNull();
   });
 
   it('라이트 모드에서 surface 토큰으로 카드가 렌더된다', () => {
