@@ -4,6 +4,7 @@ import com.sportsapp.BaseIntegrationTest
 import com.sportsapp.domain.user.entity.User
 import com.sportsapp.domain.user.entity.UserRole
 import com.sportsapp.domain.user.entity.UserStatus
+import com.sportsapp.domain.user.repository.UserRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -15,6 +16,7 @@ class UserRepositoryTest(
     @Autowired private val userJpaRepository: UserJpaRepository,
     @Autowired private val roleJpaRepository: RoleJpaRepository,
     @Autowired private val userRoleJpaRepository: UserRoleJpaRepository,
+    @Autowired private val userRepository: UserRepository,
 ) : BaseIntegrationTest() {
 
     init {
@@ -75,6 +77,37 @@ class UserRepositoryTest(
                         userEntity.id,
                         roleEntity.id,
                     ) shouldBe true
+                }
+            }
+        }
+
+        Given("닉네임이 있는 사용자와 없는 사용자") {
+            val nicknamedUser = userJpaRepository.save(
+                User.create("nickname-batch@example.com", "hash", "김철수"),
+            )
+            val unsetNicknameUser = userJpaRepository.save(
+                User(
+                    email = "unset-nickname-batch@example.com",
+                    passwordHash = "hash",
+                    status = UserStatus.ACTIVE,
+                )
+            )
+
+            When("findAllBy 로 id 목록을 한 번에 조회하면") {
+                val users = userRepository.findAllBy(
+                    listOf(nicknamedUser.id, unsetNicknameUser.id, -1L),
+                )
+
+                Then("[R-05] nickname 컬럼이 왕복 저장·조회된다") {
+                    users.map { it.id }.toSet() shouldBe setOf(nicknamedUser.id, unsetNicknameUser.id)
+                    users.first { it.id == nicknamedUser.id }.nickname shouldBe "김철수"
+                    users.first { it.id == unsetNicknameUser.id }.nickname.shouldBeNull()
+                }
+            }
+
+            When("빈 목록으로 조회하면") {
+                Then("[R-05] 빈 결과를 반환한다") {
+                    userRepository.findAllBy(emptyList()).isEmpty() shouldBe true
                 }
             }
         }

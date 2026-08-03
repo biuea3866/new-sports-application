@@ -75,11 +75,11 @@ class B2bHappyPathScenarioTest(
     init {
         Given("[S-05] 통합 happy path: 한 owner가 모든 B2B 도메인을 순서대로 등록") {
             val adminPassword = "HappyAdmin1!"
-            val admin = userDomainService.register("happy-path-admin@example.com", adminPassword)
+            val admin = userDomainService.register("happy-path-admin@example.com", adminPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = admin.id, roleName = "ADMIN")
 
             val ownerPassword = "HappyOwner1!"
-            val owner = userDomainService.register("happy-path-owner@example.com", ownerPassword)
+            val owner = userDomainService.register("happy-path-owner@example.com", ownerPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = owner.id, roleName = "FACILITY_OWNER")
             userDomainService.assignRole(adminId = admin.id, userId = owner.id, roleName = "EVENT_HOST")
             userDomainService.assignRole(adminId = admin.id, userId = owner.id, roleName = "GOODS_SELLER")

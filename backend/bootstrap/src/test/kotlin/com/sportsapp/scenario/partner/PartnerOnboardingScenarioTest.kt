@@ -35,7 +35,7 @@ class PartnerOnboardingScenarioTest(
     @Autowired private val jdbcTemplate: JdbcTemplate,
 ) : BaseJpaIntegrationTest() {
 
-    private fun registerAdmin(): User = userDomainService.register("onboarding-admin-${UUID.randomUUID()}@example.com", "Password1!")
+    private fun registerAdmin(): User = userDomainService.register("onboarding-admin-${UUID.randomUUID()}@example.com", "Password1!", "테스트회원")
 
     private fun adminAuth(admin: User) =
         SecurityMockMvcRequestPostProcessors.authentication(

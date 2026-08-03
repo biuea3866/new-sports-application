@@ -98,11 +98,11 @@ class B2bPermissionMatrixScenarioTest(
     init {
         Given("[S-02] EVENT_HOST 권한만 가진 사용자가") {
             val adminPassword = "PermAdmin1!"
-            val admin = userDomainService.register("perm-admin@example.com", adminPassword)
+            val admin = userDomainService.register("perm-admin@example.com", adminPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = admin.id, roleName = "ADMIN")
 
             val eventHostPassword = "EventHost1!"
-            val eventHost = userDomainService.register("perm-event-host@example.com", eventHostPassword)
+            val eventHost = userDomainService.register("perm-event-host@example.com", eventHostPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = eventHost.id, roleName = "EVENT_HOST")
             val eventHostToken = login("perm-event-host@example.com", eventHostPassword)
 
@@ -122,11 +122,11 @@ class B2bPermissionMatrixScenarioTest(
 
         Given("[S-02] GOODS_SELLER 권한만 가진 사용자가") {
             val adminPassword = "PermAdmin2!"
-            val admin = userDomainService.register("perm-admin-2@example.com", adminPassword)
+            val admin = userDomainService.register("perm-admin-2@example.com", adminPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = admin.id, roleName = "ADMIN")
 
             val goodsSellerPassword = "GoodsSeller1!"
-            val goodsSeller = userDomainService.register("perm-goods-seller@example.com", goodsSellerPassword)
+            val goodsSeller = userDomainService.register("perm-goods-seller@example.com", goodsSellerPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = goodsSeller.id, roleName = "GOODS_SELLER")
             val goodsSellerToken = login("perm-goods-seller@example.com", goodsSellerPassword)
 
@@ -146,11 +146,11 @@ class B2bPermissionMatrixScenarioTest(
 
         Given("[S-02] FACILITY_OWNER 권한만 가진 사용자가") {
             val adminPassword = "PermAdmin3!"
-            val admin = userDomainService.register("perm-admin-3@example.com", adminPassword)
+            val admin = userDomainService.register("perm-admin-3@example.com", adminPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = admin.id, roleName = "ADMIN")
 
             val facilityOwnerPassword = "FacilityOwner1!"
-            val facilityOwner = userDomainService.register("perm-facility-owner@example.com", facilityOwnerPassword)
+            val facilityOwner = userDomainService.register("perm-facility-owner@example.com", facilityOwnerPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = facilityOwner.id, roleName = "FACILITY_OWNER")
             val facilityOwnerToken = login("perm-facility-owner@example.com", facilityOwnerPassword)
 
@@ -170,11 +170,11 @@ class B2bPermissionMatrixScenarioTest(
 
         Given("[S-02] EVENT_HOST + GOODS_SELLER 다중 Role 사용자가") {
             val adminPassword = "PermAdmin4!"
-            val admin = userDomainService.register("perm-admin-4@example.com", adminPassword)
+            val admin = userDomainService.register("perm-admin-4@example.com", adminPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = admin.id, roleName = "ADMIN")
 
             val multiRolePassword = "MultiRole1!"
-            val multiRoleUser = userDomainService.register("perm-multi-role@example.com", multiRolePassword)
+            val multiRoleUser = userDomainService.register("perm-multi-role@example.com", multiRolePassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = multiRoleUser.id, roleName = "EVENT_HOST")
             userDomainService.assignRole(adminId = admin.id, userId = multiRoleUser.id, roleName = "GOODS_SELLER")
             val multiRoleToken = login("perm-multi-role@example.com", multiRolePassword)

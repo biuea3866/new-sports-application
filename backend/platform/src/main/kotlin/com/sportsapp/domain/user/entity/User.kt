@@ -5,6 +5,7 @@ import com.sportsapp.domain.common.UserRoleName
 import com.sportsapp.domain.user.exception.DuplicateRoleException
 import com.sportsapp.domain.user.exception.InvalidCredentialsException
 import com.sportsapp.domain.user.exception.InvalidEmailException
+import com.sportsapp.domain.user.exception.InvalidNicknameException
 import com.sportsapp.domain.user.exception.InvalidUserStatusTransitionException
 import com.sportsapp.domain.user.exception.SelfRevocationException
 import jakarta.persistence.Column
@@ -33,16 +34,39 @@ class User(
     @Column(name = "id")
     val id: Long = 0
 
+    /**
+     * 사람이 읽는 표시 이름. 닉네임 도입(V64) 이전에 가입한 계정과 연동 대리 계정(createInactive)은
+     * null 이며, 표시에는 [displayName] 을 쓴다 — 이메일·내부 id 는 소셜 화면에 노출하지 않는다.
+     * 변경은 [changeNickname] 으로만 가능하다(검증 우회 방지).
+     */
+    @Column(name = "nickname", nullable = true, length = MAX_NICKNAME_LENGTH)
+    var nickname: String? = null
+        private set
+
+    /**
+     * 게시글 작성자·방장·초대자·신청자 등 타인에게 노출되는 이름. 닉네임 미설정 계정은
+     * 개인정보(이메일)나 내부 식별자 대신 중립 기본값을 쓴다.
+     */
+    val displayName: String get() = nickname ?: UNSET_NICKNAME_DISPLAY_NAME
+
     companion object {
         private val EMAIL_REGEX = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
 
-        fun create(email: String, passwordHash: String): User {
+        /** 한글·영문·숫자·밑줄만 허용한다. 공백·특수문자는 표시 이름 혼동(사칭)을 유발해 제외한다. */
+        private val NICKNAME_REGEX = Regex("^[가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9_]+$")
+        const val MIN_NICKNAME_LENGTH = 2
+        const val MAX_NICKNAME_LENGTH = 20
+
+        /** 닉네임 미설정 계정의 표시 이름. */
+        const val UNSET_NICKNAME_DISPLAY_NAME = "닉네임 미설정"
+
+        fun create(email: String, passwordHash: String, nickname: String): User {
             if (!EMAIL_REGEX.matches(email)) throw InvalidEmailException(email)
             return User(
                 email = email,
                 passwordHash = passwordHash,
                 status = UserStatus.ACTIVE,
-            )
+            ).also { it.changeNickname(nickname) }
         }
 
         /**
@@ -61,6 +85,20 @@ class User(
     }
 
     fun canAccess(resourceOwnerId: Long): Boolean = id == resourceOwnerId
+
+    /**
+     * 닉네임 등록·수정. 앞뒤 공백을 제거한 뒤 길이·허용 문자를 검증한다.
+     * 중복은 허용한다 — 닉네임은 식별자가 아니라 표시 이름이며, 유일성 제약은 가입 실패·경합을
+     * 만들 뿐 사칭을 막지 못한다(식별은 id 로 한다).
+     */
+    fun changeNickname(newNickname: String) {
+        val trimmedNickname = newNickname.trim()
+        if (trimmedNickname.length !in MIN_NICKNAME_LENGTH..MAX_NICKNAME_LENGTH) {
+            throw InvalidNicknameException(newNickname)
+        }
+        if (!NICKNAME_REGEX.matches(trimmedNickname)) throw InvalidNicknameException(newNickname)
+        nickname = trimmedNickname
+    }
 
     fun changePassword(newPasswordHash: String) {
         passwordHash = newPasswordHash

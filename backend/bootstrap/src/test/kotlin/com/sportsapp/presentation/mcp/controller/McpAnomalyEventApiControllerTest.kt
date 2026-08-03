@@ -43,7 +43,7 @@ class McpAnomalyEventApiControllerTest(
     private fun baseUrl() = "http://localhost:$port"
 
     private fun loginAndGetToken(email: String, password: String): String {
-        userDomainService.register(email, password)
+        userDomainService.register(email, password, "테스트회원")
         val headers = HttpHeaders().apply { contentType = MediaType.APPLICATION_JSON }
         val body = objectMapper.writeValueAsString(mapOf("email" to email, "password" to password))
         val response = restTemplate.exchange(

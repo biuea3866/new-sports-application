@@ -52,7 +52,7 @@ class AdminRoleScenarioTest(
     init {
         Given("ADMIN Role을 가진 관리자와 일반 USER가 등록된 상태") {
             val adminPassword = "AdminPass123"
-            val admin = userDomainService.register("admin-role-test@example.com", adminPassword)
+            val admin = userDomainService.register("admin-role-test@example.com", adminPassword, "테스트회원")
             userDomainService.assignRole(
                 adminId = admin.id,
                 userId = admin.id,
@@ -60,7 +60,7 @@ class AdminRoleScenarioTest(
             )
 
             val userPassword = "UserPass456"
-            val normalUser = userDomainService.register("normal-role-test@example.com", userPassword)
+            val normalUser = userDomainService.register("normal-role-test@example.com", userPassword, "테스트회원")
 
             When("[S-01] ADMIN이 일반 사용자에게 FACILITY_OWNER Role을 부여하면") {
                 val adminToken = login("admin-role-test@example.com", adminPassword)
@@ -85,7 +85,7 @@ class AdminRoleScenarioTest(
 
         Given("USER Role만 가진 일반 사용자가 등록된 상태") {
             val userPassword = "UserOnly789"
-            userDomainService.register("user-only-test@example.com", userPassword)
+            userDomainService.register("user-only-test@example.com", userPassword, "테스트회원")
 
             When("[S-02] 일반 사용자가 Role 관리 API를 호출하면") {
                 val userToken = login("user-only-test@example.com", userPassword)
@@ -105,7 +105,7 @@ class AdminRoleScenarioTest(
 
         Given("ADMIN이 자기 자신의 ADMIN Role을 회수하려는 상태") {
             val adminPassword = "SelfRevokePass"
-            val admin = userDomainService.register("self-revoke-test@example.com", adminPassword)
+            val admin = userDomainService.register("self-revoke-test@example.com", adminPassword, "테스트회원")
             userDomainService.assignRole(
                 adminId = admin.id,
                 userId = admin.id,

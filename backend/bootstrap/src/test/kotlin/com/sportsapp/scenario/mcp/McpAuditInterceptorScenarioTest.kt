@@ -150,7 +150,7 @@ class McpAuditInterceptorScenarioTest(
         }
 
         Given("[S-01] read:facility scope를 가진 MCP 토큰으로 getFacilities tool을 호출하면") {
-            val user = userDomainService.register("mcp-audit-s01-${System.nanoTime()}@example.com", "Pass1234!")
+            val user = userDomainService.register("mcp-audit-s01-${System.nanoTime()}@example.com", "Pass1234!", "테스트회원")
             val tokenId = 1001L
             val beforeCall = ZonedDateTime.now().minusSeconds(2)
 
@@ -175,7 +175,7 @@ class McpAuditInterceptorScenarioTest(
         }
 
         Given("[S-02] audit log의 paramsMasked에 평문 PII가 없어야 한다") {
-            val user = userDomainService.register("mcp-audit-s02-${System.nanoTime()}@example.com", "Pass1234!")
+            val user = userDomainService.register("mcp-audit-s02-${System.nanoTime()}@example.com", "Pass1234!", "테스트회원")
             val tokenId = 1002L
             val beforeCall = ZonedDateTime.now().minusSeconds(2)
 

@@ -7,4 +7,5 @@ interface UserJpaRepository : JpaRepository<User, Long> {
     fun findByEmail(email: String): User?
     fun findByEmailAndDeletedAtIsNull(email: String): User?
     fun findByIdAndDeletedAtIsNull(id: Long): User?
+    fun findAllByIdInAndDeletedAtIsNull(ids: Collection<Long>): List<User>
 }

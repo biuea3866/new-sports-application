@@ -89,11 +89,11 @@ class DashboardCountIntegrityScenarioTest(
     init {
         Given("[S-04] owner가 facility 3건, event 2건(scheduled 1, open 1), product 5건(active 3, outOfStock 2) 등록 후") {
             val adminPassword = "DashAdmin1!"
-            val admin = userDomainService.register("dash-integrity-admin@example.com", adminPassword)
+            val admin = userDomainService.register("dash-integrity-admin@example.com", adminPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = admin.id, roleName = "ADMIN")
 
             val ownerPassword = "DashOwner1!"
-            val owner = userDomainService.register("dash-integrity-owner@example.com", ownerPassword)
+            val owner = userDomainService.register("dash-integrity-owner@example.com", ownerPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = owner.id, roleName = "FACILITY_OWNER")
             userDomainService.assignRole(adminId = admin.id, userId = owner.id, roleName = "EVENT_HOST")
             userDomainService.assignRole(adminId = admin.id, userId = owner.id, roleName = "GOODS_SELLER")

@@ -48,7 +48,7 @@ class LogoutScenarioTest(
 
     init {
         Given("로그인한 유저가 있을 때") {
-            userDomainService.register("logout-s01@example.com", "ValidPass123")
+            userDomainService.register("logout-s01@example.com", "ValidPass123", "테스트회원")
             val loginResult = login("logout-s01@example.com", "ValidPass123")
 
             When("[S-01] POST /auth/logout 을 accessToken 으로 호출하면") {
@@ -89,7 +89,7 @@ class LogoutScenarioTest(
         }
 
         Given("로그인한 유저가 로그아웃한 뒤") {
-            userDomainService.register("logout-s02@example.com", "ValidPass456")
+            userDomainService.register("logout-s02@example.com", "ValidPass456", "테스트회원")
             val loginResult = login("logout-s02@example.com", "ValidPass456")
 
             val logoutHeaders = HttpHeaders().apply { setBearerAuth(loginResult.accessToken) }

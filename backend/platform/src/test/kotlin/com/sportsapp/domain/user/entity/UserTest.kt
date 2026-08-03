@@ -17,13 +17,13 @@ class UserTest : BehaviorSpec({
         When("User.create 를 호출하면") {
             Then("[U-01] InvalidEmailException 을 던진다") {
                 shouldThrow<InvalidEmailException> {
-                    User.create("not-an-email", "hash")
+                    User.create("not-an-email", "hash", "닉네임")
                 }
                 shouldThrow<InvalidEmailException> {
-                    User.create("missing-at.com", "hash")
+                    User.create("missing-at.com", "hash", "닉네임")
                 }
                 shouldThrow<InvalidEmailException> {
-                    User.create("", "hash")
+                    User.create("", "hash", "닉네임")
                 }
             }
         }
@@ -54,7 +54,7 @@ class UserTest : BehaviorSpec({
         val encoder = mockk<(String) -> String>()
         every { encoder("newPassword") } returns "\$2a\$10\$" + "x".repeat(53)
 
-        val user = User.create("pw@example.com", "oldHash")
+        val user = User.create("pw@example.com", "oldHash", "닉네임")
 
         When("changePassword 를 호출하면") {
             val newHash = encoder("newPassword")
@@ -96,7 +96,7 @@ class UserTest : BehaviorSpec({
     }
 
     Given("이미 ACTIVE 상태인 User 가 있을 때") {
-        val user = User.create("already-active@example.com", "hashed-password")
+        val user = User.create("already-active@example.com", "hashed-password", "닉네임")
 
         When("activate 를 다시 호출하면") {
             Then("예외 없이 ACTIVE 상태가 유지된다 (멱등)") {
@@ -122,7 +122,7 @@ class UserTest : BehaviorSpec({
     }
 
     Given("ACTIVE 상태의 User 가 있을 때") {
-        val user = User.create("login-active@example.com", "hashed-password")
+        val user = User.create("login-active@example.com", "hashed-password", "닉네임")
 
         When("validateActiveForLogin 을 호출하면") {
             Then("예외 없이 통과한다") {

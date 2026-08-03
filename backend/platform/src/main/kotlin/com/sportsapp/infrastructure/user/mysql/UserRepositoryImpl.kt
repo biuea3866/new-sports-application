@@ -17,4 +17,8 @@ class UserRepositoryImpl(
 
     override fun findByEmail(email: String): User? =
         userJpaRepository.findByEmailAndDeletedAtIsNull(email)
+
+    override fun findAllBy(userIds: Collection<Long>): List<User> =
+        if (userIds.isEmpty()) emptyList()
+        else userJpaRepository.findAllByIdInAndDeletedAtIsNull(userIds.distinct())
 }

@@ -16,21 +16,21 @@ class RegisterUserUseCaseTest : BehaviorSpec({
     val registerUserUseCase = RegisterUserUseCase(userDomainService)
 
     Given("정상 가입 요청") {
-        val command = RegisterUserCommand(email = "new@example.com", rawPassword = "password1234")
+        val command = RegisterUserCommand(email = "new@example.com", rawPassword = "password1234", nickname = "새회원")
         val savedUser = User(
             email = "new@example.com",
             passwordHash = "\$2a\$10\$hashed",
             status = UserStatus.ACTIVE,
         )
 
-        every { userDomainService.register(command.email, command.rawPassword) } returns savedUser
+        every { userDomainService.register(command.email, command.rawPassword, command.nickname) } returns savedUser
 
         When("execute 를 호출하면") {
             val response = registerUserUseCase.execute(command)
 
             Then("[U-01] DomainService 만 호출하고 응답을 반환한다") {
                 response.email shouldBe "new@example.com"
-                verify(exactly = 1) { userDomainService.register(command.email, command.rawPassword) }
+                verify(exactly = 1) { userDomainService.register(command.email, command.rawPassword, command.nickname) }
             }
         }
     }

@@ -92,7 +92,7 @@ class EventHostApiScenarioTest(
 
         Given("[S-01] EVENT_HOST 사용자가 Event를 등록하고 일부 좌석 발권 후 판매 현황을 조회할 때") {
             val hostEmail = "event-host-s01@example.com"
-            val userId = userDomainService.register(hostEmail, eventHostPassword)
+            val userId = userDomainService.register(hostEmail, eventHostPassword, "테스트회원")
             userDomainService.assignRole(adminId = userId.id, userId = userId.id, roleName = "EVENT_HOST")
 
             val token = login(hostEmail, eventHostPassword)
@@ -148,7 +148,7 @@ class EventHostApiScenarioTest(
 
         Given("[S-02] EVENT_HOST가 좌석 501개 포함한 Event 등록 요청") {
             val hostEmail = "event-host-s02@example.com"
-            val userId = userDomainService.register(hostEmail, eventHostPassword)
+            val userId = userDomainService.register(hostEmail, eventHostPassword, "테스트회원")
             userDomainService.assignRole(adminId = userId.id, userId = userId.id, roleName = "EVENT_HOST")
             val token = login(hostEmail, eventHostPassword)
 
@@ -169,7 +169,7 @@ class EventHostApiScenarioTest(
 
         Given("[S-03] 좌석 중복 삽입으로 rollback 검증") {
             val hostEmail = "event-host-s03@example.com"
-            val userId = userDomainService.register(hostEmail, eventHostPassword)
+            val userId = userDomainService.register(hostEmail, eventHostPassword, "테스트회원")
             userDomainService.assignRole(adminId = userId.id, userId = userId.id, roleName = "EVENT_HOST")
             val token = login(hostEmail, eventHostPassword)
 
@@ -204,11 +204,11 @@ class EventHostApiScenarioTest(
 
         Given("[S-04] 다른 owner의 Event에 open/close 시도") {
             val ownerEmail = "event-owner-s04@example.com"
-            val ownerId = userDomainService.register(ownerEmail, eventHostPassword)
+            val ownerId = userDomainService.register(ownerEmail, eventHostPassword, "테스트회원")
             userDomainService.assignRole(adminId = ownerId.id, userId = ownerId.id, roleName = "EVENT_HOST")
 
             val otherOwnerEmail = "event-other-s04@example.com"
-            val otherOwnerId = userDomainService.register(otherOwnerEmail, anotherOwnerPassword)
+            val otherOwnerId = userDomainService.register(otherOwnerEmail, anotherOwnerPassword, "테스트회원")
             userDomainService.assignRole(adminId = otherOwnerId.id, userId = otherOwnerId.id, roleName = "EVENT_HOST")
 
             val ownerEvent = eventJpaRepository.save(
@@ -251,7 +251,7 @@ class EventHostApiScenarioTest(
 
         Given("[S-05] GOODS_SELLER 사용자가 Event 등록 시도") {
             val sellerEmail = "goods-seller-s05@example.com"
-            val userId = userDomainService.register(sellerEmail, goodsSellerPassword)
+            val userId = userDomainService.register(sellerEmail, goodsSellerPassword, "테스트회원")
             userDomainService.assignRole(adminId = userId.id, userId = userId.id, roleName = "GOODS_SELLER")
             val token = login(sellerEmail, goodsSellerPassword)
 

@@ -29,7 +29,7 @@ class PartnerAdminApiControllerTest(
     @Autowired private val objectMapper: ObjectMapper,
 ) : BaseJpaIntegrationTest() {
 
-    private fun registerUser(email: String): User = userDomainService.register(email, "Password1!")
+    private fun registerUser(email: String): User = userDomainService.register(email, "Password1!", "테스트회원")
 
     private fun adminAuth(user: User) =
         SecurityMockMvcRequestPostProcessors.authentication(

@@ -69,7 +69,7 @@ class FeatureFlagMultiInstancePropagationScenarioTest(
     }
 
     private fun loginAsAdmin(email: String): String {
-        val user = userDomainService.register(email, "Password1!")
+        val user = userDomainService.register(email, "Password1!", "테스트회원")
         userDomainService.assignRole(adminId = user.id, userId = user.id, roleName = "ADMIN")
         val headers = HttpHeaders().apply { contentType = MediaType.APPLICATION_JSON }
         val loginBody = objectMapper.writeValueAsString(mapOf("email" to email, "password" to "Password1!"))

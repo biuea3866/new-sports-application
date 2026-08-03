@@ -52,10 +52,10 @@ class AdminUserListScenarioTest(
     init {
         Given("[S-01] ADMIN 사용자가 등록된 상태에서 회원 목록을 조회하면") {
             val adminPassword = "AdminList123"
-            val admin = userDomainService.register("admin-list-scenario@example.com", adminPassword)
+            val admin = userDomainService.register("admin-list-scenario@example.com", adminPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = admin.id, roleName = "ADMIN")
 
-            userDomainService.register("target-list-scenario@example.com", "Pass123")
+            userDomainService.register("target-list-scenario@example.com", "Pass123", "테스트회원")
 
             When("[S-01] ADMIN 토큰으로 GET /admin/users 를 호출하면") {
                 val adminToken = login("admin-list-scenario@example.com", adminPassword)
@@ -81,7 +81,7 @@ class AdminUserListScenarioTest(
 
         Given("[S-02] 일반 USER 사용자가 등록된 상태에서 회원 목록을 조회하면") {
             val userPassword = "UserList456"
-            userDomainService.register("user-list-scenario@example.com", userPassword)
+            userDomainService.register("user-list-scenario@example.com", userPassword, "테스트회원")
 
             When("[S-02] USER 토큰으로 GET /admin/users 를 호출하면") {
                 val userToken = login("user-list-scenario@example.com", userPassword)
@@ -101,11 +101,11 @@ class AdminUserListScenarioTest(
 
         Given("[S-03] ADMIN 이 email 부분검색 필터로 목록을 조회하면") {
             val adminPassword = "AdminSearch789"
-            val admin = userDomainService.register("admin-search-scenario@example.com", adminPassword)
+            val admin = userDomainService.register("admin-search-scenario@example.com", adminPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = admin.id, roleName = "ADMIN")
 
-            userDomainService.register("search-target-scenario@example.com", "Pass123")
-            userDomainService.register("other-scenario-user@example.com", "Pass456")
+            userDomainService.register("search-target-scenario@example.com", "Pass123", "테스트회원")
+            userDomainService.register("other-scenario-user@example.com", "Pass456", "테스트회원")
 
             When("[S-03] emailKeyword=search-target 으로 GET /admin/users 를 호출하면") {
                 val adminToken = login("admin-search-scenario@example.com", adminPassword)

@@ -31,7 +31,7 @@ class SecurityConfigPartnerFilterDisabledTest(
 ) : BaseJpaIntegrationTest() {
 
     private fun registerUser(email: String, password: String = "Password1!"): User =
-        userDomainService.register(email, password)
+        userDomainService.register(email, password, "테스트회원")
 
     private fun adminAuth(user: User) =
         SecurityMockMvcRequestPostProcessors.authentication(

@@ -65,7 +65,7 @@ class GoodsSellerApiScenarioTest(
 
         Given("[S-01] GOODS_SELLER 사용자가 Product 등록 → restoreStock → activate → 목록 조회 전체 흐름") {
             val password = "Seller12345!"
-            val seller = userDomainService.register("b2b-product-seller-s01@example.com", password)
+            val seller = userDomainService.register("b2b-product-seller-s01@example.com", password, "테스트회원")
             userDomainService.assignRole(adminId = seller.id, userId = seller.id, roleName = "GOODS_SELLER")
             val token = login("b2b-product-seller-s01@example.com", password)
 
@@ -128,12 +128,12 @@ class GoodsSellerApiScenarioTest(
 
         Given("[S-02] 다른 사용자가 Product를 PATCH 시도하면") {
             val ownerPassword = "Owner12345!"
-            val owner = userDomainService.register("b2b-product-owner-s02@example.com", ownerPassword)
+            val owner = userDomainService.register("b2b-product-owner-s02@example.com", ownerPassword, "테스트회원")
             userDomainService.assignRole(adminId = owner.id, userId = owner.id, roleName = "GOODS_SELLER")
             val ownerToken = login("b2b-product-owner-s02@example.com", ownerPassword)
 
             val otherPassword = "Other12345!"
-            val other = userDomainService.register("b2b-product-other-s02@example.com", otherPassword)
+            val other = userDomainService.register("b2b-product-other-s02@example.com", otherPassword, "테스트회원")
             userDomainService.assignRole(adminId = other.id, userId = other.id, roleName = "GOODS_SELLER")
             val otherToken = login("b2b-product-other-s02@example.com", otherPassword)
 
@@ -171,7 +171,7 @@ class GoodsSellerApiScenarioTest(
 
         Given("[S-03] GOODS_SELLER Role 없는 사용자가 POST 시도하면") {
             val password = "NoRole12345!"
-            userDomainService.register("b2b-product-norole-s03@example.com", password)
+            userDomainService.register("b2b-product-norole-s03@example.com", password, "테스트회원")
             val token = login("b2b-product-norole-s03@example.com", password)
 
             When("POST /api/goods-seller/products 호출하면") {
@@ -199,7 +199,7 @@ class GoodsSellerApiScenarioTest(
 
         Given("[S-04] 재고 음수 입력 시") {
             val password = "Seller12345!"
-            val seller = userDomainService.register("b2b-product-seller-s04@example.com", password)
+            val seller = userDomainService.register("b2b-product-seller-s04@example.com", password, "테스트회원")
             userDomainService.assignRole(adminId = seller.id, userId = seller.id, roleName = "GOODS_SELLER")
             val token = login("b2b-product-seller-s04@example.com", password)
 

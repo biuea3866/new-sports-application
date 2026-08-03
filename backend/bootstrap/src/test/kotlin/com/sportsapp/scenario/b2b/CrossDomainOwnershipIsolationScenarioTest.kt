@@ -82,17 +82,17 @@ class CrossDomainOwnershipIsolationScenarioTest(
     init {
         Given("[S-01] Owner A와 Owner B가 각자 리소스를 등록한 상황에서") {
             val adminPassword = "AdminOwner1!"
-            val admin = userDomainService.register("isolation-admin@example.com", adminPassword)
+            val admin = userDomainService.register("isolation-admin@example.com", adminPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = admin.id, roleName = "ADMIN")
 
             val ownerAPassword = "OwnerA1!"
-            val ownerA = userDomainService.register("isolation-owner-a@example.com", ownerAPassword)
+            val ownerA = userDomainService.register("isolation-owner-a@example.com", ownerAPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = ownerA.id, roleName = "FACILITY_OWNER")
             userDomainService.assignRole(adminId = admin.id, userId = ownerA.id, roleName = "EVENT_HOST")
             userDomainService.assignRole(adminId = admin.id, userId = ownerA.id, roleName = "GOODS_SELLER")
 
             val ownerBPassword = "OwnerB1!"
-            val ownerB = userDomainService.register("isolation-owner-b@example.com", ownerBPassword)
+            val ownerB = userDomainService.register("isolation-owner-b@example.com", ownerBPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = ownerB.id, roleName = "FACILITY_OWNER")
             userDomainService.assignRole(adminId = admin.id, userId = ownerB.id, roleName = "EVENT_HOST")
             userDomainService.assignRole(adminId = admin.id, userId = ownerB.id, roleName = "GOODS_SELLER")

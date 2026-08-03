@@ -51,7 +51,7 @@ class GetMyProfileScenarioTest(
 
     init {
         Given("[S-01] 인증된 사용자가 GET /users/me 를 호출할 때") {
-            userDomainService.register("me-scenario@example.com", "ValidPass123")
+            userDomainService.register("me-scenario@example.com", "ValidPass123", "테스트회원")
             val accessToken = loginAndGetToken("me-scenario@example.com", "ValidPass123")
 
             When("Authorization: Bearer 헤더와 함께 GET /users/me 를 호출하면") {

@@ -78,9 +78,9 @@ class FacilityOwnerApiScenarioTest(
             mongoTemplate.remove(Query(), Facility::class.java)
             val ownerPassword = "OwnerTest1"
             val adminPassword = "AdminTest1"
-            val admin = userDomainService.register("b2b-admin-facility@example.com", adminPassword)
+            val admin = userDomainService.register("b2b-admin-facility@example.com", adminPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = admin.id, roleName = "ADMIN")
-            val owner = userDomainService.register("b2b-owner-facility@example.com", ownerPassword)
+            val owner = userDomainService.register("b2b-owner-facility@example.com", ownerPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = owner.id, roleName = "FACILITY_OWNER")
 
             val ownerToken = login("b2b-owner-facility@example.com", ownerPassword)
@@ -195,7 +195,7 @@ class FacilityOwnerApiScenarioTest(
             }
 
             When("[S-05] 다른 사용자 소유 시설 ID로 GET /api/facility-owner/facilities/{id} 를 호출하면") {
-                val otherOwner = userDomainService.register("b2b-other-owner@example.com", "Other1Pass")
+                val otherOwner = userDomainService.register("b2b-other-owner@example.com", "Other1Pass", "테스트회원")
                 userDomainService.assignRole(adminId = admin.id, userId = otherOwner.id, roleName = "FACILITY_OWNER")
 
                 val otherFacility = facilityRepository.save(
@@ -241,7 +241,7 @@ class FacilityOwnerApiScenarioTest(
 
         Given("FACILITY_OWNER 권한 없는 USER Role 사용자가") {
             val userPassword = "UserOnly1"
-            userDomainService.register("b2b-user-only-facility@example.com", userPassword)
+            userDomainService.register("b2b-user-only-facility@example.com", userPassword, "테스트회원")
             val userToken = login("b2b-user-only-facility@example.com", userPassword)
 
             When("[S-07] POST /api/facility-owner/facilities 를 호출하면") {

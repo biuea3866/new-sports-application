@@ -37,7 +37,7 @@ class LoginScenarioTest(
 
     init {
         Given("등록된 유저가 있을 때") {
-            userDomainService.register("login-scenario@example.com", "ValidPass123")
+            userDomainService.register("login-scenario@example.com", "ValidPass123", "테스트회원")
 
             When("[S-01] POST /auth/login 에 올바른 자격증명을 보내면") {
                 val headers = HttpHeaders().apply { set("Content-Type", "application/json") }
@@ -78,7 +78,7 @@ class LoginScenarioTest(
         }
 
         Given("유효한 accessToken 으로 보호 API 를 호출할 때") {
-            userDomainService.register("protected-scenario@example.com", "SecurePass456")
+            userDomainService.register("protected-scenario@example.com", "SecurePass456", "테스트회원")
 
             val loginHeaders = HttpHeaders().apply { set("Content-Type", "application/json") }
             val loginBody = objectMapper.writeValueAsString(
@@ -127,7 +127,7 @@ class LoginScenarioTest(
         }
 
         Given("로그인 후 발급된 refreshToken 이 있을 때") {
-            userDomainService.register("refresh-scenario@example.com", "RefreshPass789")
+            userDomainService.register("refresh-scenario@example.com", "RefreshPass789", "테스트회원")
 
             val loginHeaders = HttpHeaders().apply { set("Content-Type", "application/json") }
             val loginBody = objectMapper.writeValueAsString(

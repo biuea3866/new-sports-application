@@ -50,11 +50,11 @@ class MethodSecurityScenarioTest(
     init {
         Given("ADMIN 과 일반 USER 가 등록된 상태") {
             val adminPassword = "AdminPass111"
-            val admin = userDomainService.register("method-sec-admin@example.com", adminPassword)
+            val admin = userDomainService.register("method-sec-admin@example.com", adminPassword, "테스트회원")
             userDomainService.assignRole(adminId = admin.id, userId = admin.id, roleName = "ADMIN")
 
             val userPassword = "UserPass222"
-            val normalUser = userDomainService.register("method-sec-user@example.com", userPassword)
+            val normalUser = userDomainService.register("method-sec-user@example.com", userPassword, "테스트회원")
 
             When("[S-01] ADMIN 이 /admin/users/{userId}/roles/{roleName} 을 호출하면") {
                 val adminToken = login("method-sec-admin@example.com", adminPassword)

@@ -52,7 +52,7 @@ class UserDomainServiceTest : BehaviorSpec({
         every { userRoleRepository.save(any()) } returns UserRole(userId = 0L, roleId = 0L, grantedBy = null)
 
         When("register 를 호출하면") {
-            val user = userDomainService.register("new@example.com", "password1234")
+            val user = userDomainService.register("new@example.com", "password1234", "새회원")
 
             Then("[U-02] 이메일 중복 검사 → bcrypt → save 순서로 호출된다") {
                 verify(exactly = 1) { userRepository.findByEmail("new@example.com") }
@@ -72,7 +72,7 @@ class UserDomainServiceTest : BehaviorSpec({
         When("register 를 호출하면") {
             Then("[U-02] DuplicateEmailException 이 발생한다") {
                 shouldThrow<DuplicateEmailException> {
-                    userDomainService.register("dup@example.com", "password1234")
+                    userDomainService.register("dup@example.com", "password1234", "새회원")
                 }
             }
         }
@@ -86,7 +86,7 @@ class UserDomainServiceTest : BehaviorSpec({
         When("register 를 호출하면") {
             Then("[U-03] ResourceNotFoundException 이 발생한다") {
                 shouldThrow<ResourceNotFoundException> {
-                    userDomainService.register("noRole@example.com", "password1234")
+                    userDomainService.register("noRole@example.com", "password1234", "새회원")
                 }
             }
         }
