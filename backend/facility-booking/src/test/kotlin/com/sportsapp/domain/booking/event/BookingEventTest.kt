@@ -16,22 +16,33 @@ class BookingEventTest : BehaviorSpec({
         .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
 
     Given("BookingEvent.Confirmed 인스턴스") {
-        val event = BookingEvent.Confirmed(bookingId = 12L, paymentId = 55L, recipientUserId = 900L)
+        val event = BookingEvent.Confirmed(
+            bookingId = 12L,
+            paymentId = 55L,
+            recipientUserId = 900L,
+            facilityOwnerUserId = 69L,
+        )
 
         When("topic 과 필드를 확인하면") {
-            Then("서브 도메인 단일 토픽과 판별자/수신자를 노출한다") {
+            Then("서브 도메인 단일 토픽과 판별자/수신자/시설 소유주를 노출한다") {
                 event.topic shouldBe "event.booking.booking.v1"
                 event.aggregateId shouldBe 12L
                 event.bookingId shouldBe 12L
                 event.paymentId shouldBe 55L
                 event.recipientUserId shouldBe 900L
                 event.eventType shouldBe "CONFIRMED"
+                event.facilityOwnerUserId shouldBe 69L
             }
         }
     }
 
     Given("BookingEvent.Confirmed 를 JSON 으로 직렬화한 뒤 sealed 베이스로 역직렬화하면") {
-        val original = BookingEvent.Confirmed(bookingId = 33L, paymentId = 77L, recipientUserId = 901L)
+        val original = BookingEvent.Confirmed(
+            bookingId = 33L,
+            paymentId = 77L,
+            recipientUserId = 901L,
+            facilityOwnerUserId = 69L,
+        )
         val json = kafkaObjectMapper.writeValueAsString(original)
 
         When("eventType 판별자로 하위 타입을 결정하면") {

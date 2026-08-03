@@ -481,7 +481,7 @@ export default function ProductDetailPage() {
               href={product.imageUrl}
               target="_blank"
               rel="noreferrer"
-              className="text-sm text-blue-600 underline break-all"
+              className="text-sm text-primary underline break-all"
               aria-label={`상품 이미지 보기: ${product.imageUrl}`}
             >
               {product.imageUrl}

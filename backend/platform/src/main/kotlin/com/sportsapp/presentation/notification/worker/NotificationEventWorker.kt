@@ -47,12 +47,21 @@ class NotificationEventWorker(
     )
     fun consumeBooking(event: BookingEvent) {
         when (event) {
-            is BookingEvent.Confirmed -> enqueueBoth(
-                templateId = "booking-confirmed",
-                recipientUserId = event.recipientUserId,
-                baseEventId = event.eventId,
-                payload = NotificationPayload(emptyMap()),
-            )
+            is BookingEvent.Confirmed -> {
+                enqueueBoth(
+                    templateId = "booking-confirmed",
+                    recipientUserId = event.recipientUserId,
+                    baseEventId = event.eventId,
+                    payload = NotificationPayload(emptyMap()),
+                )
+                enqueueOwner(
+                    templateId = "booking-received-owner",
+                    ownerUserId = event.facilityOwnerUserId,
+                    buyerUserId = event.recipientUserId,
+                    baseEventId = event.eventId,
+                    payload = NotificationPayload(emptyMap()),
+                )
+            }
         }
     }
 
@@ -63,13 +72,47 @@ class NotificationEventWorker(
     )
     fun consumeTicket(event: TicketEvent) {
         when (event) {
-            is TicketEvent.Issued -> enqueueBoth(
-                templateId = "ticket-issued",
-                recipientUserId = event.recipientUserId,
-                baseEventId = event.eventId,
-                payload = NotificationPayload(mapOf("eventTitle" to event.eventTitle)),
-            )
+            is TicketEvent.Issued -> {
+                enqueueBoth(
+                    templateId = "ticket-issued",
+                    recipientUserId = event.recipientUserId,
+                    baseEventId = event.eventId,
+                    payload = NotificationPayload(mapOf("eventTitle" to event.eventTitle)),
+                )
+                enqueueOwner(
+                    templateId = "ticket-sold-owner",
+                    ownerUserId = event.eventOwnerUserId,
+                    buyerUserId = event.recipientUserId,
+                    baseEventId = event.eventId,
+                    payload = NotificationPayload(mapOf("eventTitle" to event.eventTitle)),
+                )
+            }
         }
+    }
+
+    /**
+     * 판매자(시설 소유주·경기 주최자)에게 보내는 알림.
+     *
+     * - 소유주를 모르는 경우(이벤트에 실리지 않음)는 건너뛴다 — 구매자 알림까지 막지 않는다.
+     * - 구매자와 소유주가 같은 사람이면(자기 시설을 자기가 예약) 같은 사건으로 알림이 두 벌
+     *   쌓여 소음이 되므로 발행하지 않는다.
+     * - 멱등 키에 `:owner` 접미사를 붙인다. 구매자 알림과 키가 겹치면 하류 `enqueueOrSkip`이
+     *   둘 중 하나를 중복으로 보고 건너뛴다.
+     */
+    private fun enqueueOwner(
+        templateId: String,
+        ownerUserId: Long?,
+        buyerUserId: Long,
+        baseEventId: String,
+        payload: NotificationPayload,
+    ) {
+        if (ownerUserId == null || ownerUserId == buyerUserId) return
+        enqueueBoth(
+            templateId = templateId,
+            recipientUserId = ownerUserId,
+            baseEventId = "$baseEventId:owner",
+            payload = payload,
+        )
     }
 
     private fun enqueueBoth(

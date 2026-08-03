@@ -35,6 +35,11 @@ import java.util.UUID
 sealed class TicketEvent(
     val ticketOrderId: Long,
     val recipientUserId: Long,
+    /**
+     * 발권된 티켓이 속한 경기의 주최자. 알림 컨텍스트는 티켓이 누구 경기인지 모르므로,
+     * 주최자를 아는 ticketing이 payload에 담아 발행한다(역참조 대신 이벤트 계약 확장).
+     */
+    val eventOwnerUserId: Long?,
     eventId: String,
     occurredAt: ZonedDateTime,
 ) : AbstractDomainEvent(
@@ -47,15 +52,16 @@ sealed class TicketEvent(
 
     /**
      * 티켓이 발권되었다는 과거형 사실. 알림 컨텍스트가 별도 조회 없이 발권 알림을 만들 수 있도록
-     * 수신자([recipientUserId])와 이벤트 제목([eventTitle])을 payload 에 함께 담는다.
+     * 수신자([recipientUserId])·경기 제목([eventTitle])·주최자([eventOwnerUserId])를 payload 에 함께 담는다.
      */
     class Issued(
         ticketOrderId: Long,
         recipientUserId: Long,
         val eventTitle: String,
+        eventOwnerUserId: Long?,
         eventId: String = UUID.randomUUID().toString(),
         occurredAt: ZonedDateTime = ZonedDateTime.now(ZoneOffset.UTC),
-    ) : TicketEvent(ticketOrderId, recipientUserId, eventId, occurredAt) {
+    ) : TicketEvent(ticketOrderId, recipientUserId, eventOwnerUserId, eventId, occurredAt) {
         override val eventType: String = TYPE_ISSUED
     }
 

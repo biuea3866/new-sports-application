@@ -94,6 +94,30 @@ describe("Portal Bookings Route Handler", () => {
       const fetchCallArg = mockFetch.mock.calls[0]?.[0] as string;
       expect(fetchCallArg).toContain("status=PENDING");
     });
+
+    it("예약자 스코프가 아니라 파트너(시설 소유자) 스코프 엔드포인트로 forward한다", async () => {
+      // 포털 "예약 관리"는 내 시설에 들어온 남의 예약을 봐야 한다. `/bookings/me`는 예약자
+      // 스코프라 파트너 본인 예약만 나와, 소유 시설에 예약이 실재해도 0건으로 보였다.
+      const { cookies } = await import("next/headers");
+      vi.mocked(cookies).mockReturnValue({
+        get: vi.fn().mockReturnValue({ value: "test-token" }),
+      } as unknown as ReturnType<typeof cookies>);
+
+      mockFetch.mockResolvedValue(
+        new Response(
+          JSON.stringify({ bookings: [], totalElements: 0, totalPages: 0, page: 0, size: 20 }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+      const { GET } = await import("../route");
+      const response = await GET(new NextRequest("http://localhost:3000/api/portal/bookings"));
+
+      expect(response.status).toBe(200);
+      const fetchCallArg = mockFetch.mock.calls[0]?.[0] as string;
+      expect(fetchCallArg).toContain("/api/facility-owner/bookings");
+      expect(fetchCallArg).not.toContain("/bookings/me");
+    });
   });
 
   describe("BE 401 응답 forward", () => {

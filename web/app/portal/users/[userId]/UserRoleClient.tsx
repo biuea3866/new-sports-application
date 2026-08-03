@@ -101,11 +101,11 @@ export default function UserRoleClient({ userId, initialRoleNames }: UserRoleCli
                   <td className="py-3 px-4 text-sm font-mono">{roleName}</td>
                   <td className="py-3 px-4">
                     {hasRole ? (
-                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800">
+                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-status-success text-status-success-foreground">
                         보유
                       </span>
                     ) : (
-                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600">
+                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-status-neutral text-status-neutral-foreground">
                         미보유
                       </span>
                     )}

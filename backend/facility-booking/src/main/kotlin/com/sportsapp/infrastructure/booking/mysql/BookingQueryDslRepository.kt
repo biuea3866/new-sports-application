@@ -21,6 +21,14 @@ interface BookingQueryDslRepository {
         pageable: Pageable,
     ): Page<Booking>
 
+    fun findIdsByOwnerUserId(ownerUserId: Long): List<Long>
+
+    fun findPageByOwnerUserId(
+        ownerUserId: Long,
+        status: BookingStatus?,
+        pageable: Pageable,
+    ): Page<Booking>
+
     fun findPendingCreatedBefore(before: ZonedDateTime, afterId: Long, limit: Int): List<BookingExpiryCandidate>
 
     fun tryExpire(bookingId: Long): Boolean

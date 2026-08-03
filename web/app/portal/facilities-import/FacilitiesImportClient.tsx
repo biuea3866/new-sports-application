@@ -58,6 +58,8 @@ export default function FacilitiesImportClient() {
   const [rowResults, setRowResults] = React.useState<RowResult[]>([]);
   const [progress, setProgress] = React.useState<{ done: number; total: number }>({ done: 0, total: 0 });
   const [fileError, setFileError] = React.useState<string | null>(null);
+  // 네이티브 파일 입력을 감췄으므로 선택한 파일명을 직접 들고 있다가 화면에 보여준다.
+  const [selectedFileName, setSelectedFileName] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // 파일 선택
@@ -65,6 +67,7 @@ export default function FacilitiesImportClient() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setSelectedFileName(file.name);
     setFileError(null);
     setParseResult(null);
     setRowResults([]);
@@ -123,6 +126,7 @@ export default function FacilitiesImportClient() {
     setRowResults([]);
     setProgress({ done: 0, total: 0 });
     setFileError(null);
+    setSelectedFileName(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -146,9 +150,11 @@ export default function FacilitiesImportClient() {
         </p>
 
         <div className="flex items-center gap-3">
-          <label htmlFor="csv-file-input" className="sr-only">
-            CSV 파일 선택
-          </label>
+          {/*
+            네이티브 파일 입력은 브라우저가 "Choose File / No file chosen"을 직접 그리며 그
+            문자열은 CSS로 바꿀 수 없다. 입력은 sr-only로 감춰 키보드 포커스와 라벨 연결을
+            유지하고, 눈에 보이는 버튼·파일명은 아래에서 한국어로 직접 렌더한다.
+          */}
           <input
             id="csv-file-input"
             ref={fileInputRef}
@@ -158,8 +164,19 @@ export default function FacilitiesImportClient() {
             disabled={phase === "importing"}
             aria-describedby={fileError ? "csv-file-error" : undefined}
             aria-invalid={!!fileError}
-            className="block text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="CSV 파일 선택"
+            className="sr-only"
           />
+          <label
+            htmlFor="csv-file-input"
+            className="inline-flex cursor-pointer items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-within:ring-2 focus-within:ring-ring aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+            aria-disabled={phase === "importing"}
+          >
+            파일 선택
+          </label>
+          <span className="text-sm text-muted-foreground" aria-live="polite">
+            {selectedFileName ?? "선택된 파일 없음"}
+          </span>
           {(phase === "parsed" || phase === "done") && (
             <Button type="button" variant="outline" size="sm" onClick={handleReset} aria-label="초기화하고 다른 파일 선택">
               초기화
@@ -182,7 +199,7 @@ export default function FacilitiesImportClient() {
           </h2>
 
           <div className="flex gap-4 mb-4 text-sm">
-            <span className="text-green-700 font-medium">유효 행: {parseResult.valid.length}건</span>
+            <span className="text-success font-medium">유효 행: {parseResult.valid.length}건</span>
             {parseResult.errors.length > 0 && (
               <span className="text-destructive font-medium">오류 행: {parseResult.errors.length}건</span>
             )}
@@ -301,7 +318,7 @@ export default function FacilitiesImportClient() {
                       <td className="px-3 py-2">{r.name}</td>
                       <td className="px-3 py-2">
                         {r.status === "success" ? (
-                          <span className="text-green-700 font-medium">성공</span>
+                          <span className="text-success font-medium">성공</span>
                         ) : (
                           <span className="text-destructive">
                             실패 — {r.errorMessage}
@@ -329,7 +346,7 @@ export default function FacilitiesImportClient() {
             className="rounded-md border p-4 space-y-1 text-sm"
           >
             <p>
-              <span className="text-green-700 font-semibold">성공:</span> {successCount}건
+              <span className="text-success font-semibold">성공:</span> {successCount}건
             </p>
             {failCount > 0 && (
               <p>

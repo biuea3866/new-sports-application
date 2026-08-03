@@ -307,14 +307,14 @@ export default function SlotsPage() {
 
       {/* 오류 */}
       {error && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       )}
 
       {/* 로딩 */}
       {loading && (
-        <p aria-busy="true" className="text-sm text-gray-500">
+        <p aria-busy="true" className="text-sm text-muted-foreground">
           슬롯 목록을 불러오는 중...
         </p>
       )}
@@ -323,7 +323,7 @@ export default function SlotsPage() {
       <section aria-label={`${currentMonthLabel} 슬롯 캘린더`}>
         {/* 요일 헤더 */}
         <div
-          className="grid grid-cols-7 gap-px bg-gray-200 border border-gray-200 rounded-t-md overflow-hidden"
+          className="grid grid-cols-7 gap-px bg-border border border-border rounded-t-md overflow-hidden"
           role="row"
           aria-label="요일"
         >
@@ -331,7 +331,7 @@ export default function SlotsPage() {
             <div
               key={day}
               role="columnheader"
-              className="bg-gray-50 text-center text-xs font-medium text-gray-600 py-2"
+              className="bg-muted/50 text-center text-xs font-medium text-muted-foreground py-2"
             >
               {day}
             </div>
@@ -340,7 +340,7 @@ export default function SlotsPage() {
 
         {/* 날짜 셀 */}
         <div
-          className="grid grid-cols-7 gap-px bg-gray-200 border-x border-b border-gray-200 rounded-b-md overflow-hidden"
+          className="grid grid-cols-7 gap-px bg-border border-x border-b border-border rounded-b-md overflow-hidden"
           role="grid"
           aria-label={`${currentMonthLabel} 캘린더`}
         >
@@ -351,7 +351,7 @@ export default function SlotsPage() {
                   key={`empty-${idx}`}
                   role="gridcell"
                   aria-hidden="true"
-                  className="bg-gray-50 min-h-[80px]"
+                  className="bg-muted/50 min-h-[80px]"
                 />
               );
             }
@@ -365,8 +365,8 @@ export default function SlotsPage() {
                 key={formatDate(day)}
                 role="gridcell"
                 className={cn(
-                  "bg-white min-h-[80px] p-1 text-xs cursor-pointer hover:bg-blue-50 transition-colors",
-                  isToday && "ring-2 ring-inset ring-blue-400"
+                  "bg-card min-h-[80px] p-1 text-xs cursor-pointer hover:bg-accent transition-colors",
+                  isToday && "ring-2 ring-inset ring-ring"
                 )}
                 onClick={() => openCreateModal(day)}
                 onKeyDown={(e) => {
@@ -381,7 +381,7 @@ export default function SlotsPage() {
                 <span
                   className={cn(
                     "font-semibold",
-                    isToday && "text-blue-600"
+                    isToday && "text-primary"
                   )}
                 >
                   {day.getDate()}
@@ -463,7 +463,7 @@ export default function SlotsPage() {
               </div>
 
               {submitError && (
-                <p role="alert" className="text-sm text-red-600">
+                <p role="alert" className="text-sm text-destructive">
                   {submitError}
                 </p>
               )}

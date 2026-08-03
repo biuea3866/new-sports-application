@@ -32,9 +32,9 @@ const STATUS_LABELS: Record<InboxNotificationStatus, string> = {
 };
 
 const STATUS_COLORS: Record<InboxNotificationStatus, string> = {
-  UNREAD: "bg-blue-100 text-blue-800",
-  READ: "bg-gray-100 text-gray-600",
-  ARCHIVED: "bg-yellow-100 text-yellow-700",
+  UNREAD: "bg-status-info text-status-info-foreground",
+  READ: "bg-status-neutral text-status-neutral-foreground",
+  ARCHIVED: "bg-status-warning text-status-warning-foreground",
 };
 
 const PAGE_SIZE = 20;
@@ -122,7 +122,7 @@ export default function InboxPage(): JSX.Element {
         <h1 className="text-2xl font-bold">알림센터</h1>
         {unreadCount > 0 && (
           <span
-            className="inline-flex items-center justify-center rounded-full bg-blue-600 px-2 py-0.5 text-xs font-bold text-white min-w-[1.5rem]"
+            className="inline-flex items-center justify-center rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground min-w-[1.5rem]"
             aria-label={`읽지 않은 알림 ${unreadCount}개`}
           >
             {unreadCount}
@@ -185,14 +185,14 @@ export default function InboxPage(): JSX.Element {
 
       {/* 오류 */}
       {error !== null && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       )}
 
       {/* 로딩 */}
       {loading && (
-        <p aria-busy="true" className="text-sm text-gray-500">
+        <p aria-busy="true" className="text-sm text-muted-foreground">
           알림 목록을 불러오는 중...
         </p>
       )}
@@ -200,12 +200,12 @@ export default function InboxPage(): JSX.Element {
       {/* 알림 목록 */}
       {!loading && (
         <section aria-label="알림 목록">
-          <p className="text-sm text-gray-500 mb-2">
+          <p className="text-sm text-muted-foreground mb-2">
             총 <strong>{totalElements}</strong>건
           </p>
 
           {notifications.length === 0 ? (
-            <p className="text-sm text-gray-400 py-8 text-center">알림이 없습니다.</p>
+            <p className="text-sm text-muted-foreground py-8 text-center">알림이 없습니다.</p>
           ) : (
             <ul className="space-y-2" aria-label="알림 항목 목록">
               {notifications.map((notification) => (
@@ -213,8 +213,8 @@ export default function InboxPage(): JSX.Element {
                   key={notification.id}
                   className={`rounded-lg border p-4 transition-colors ${
                     notification.status === "UNREAD"
-                      ? "border-blue-200 bg-blue-50"
-                      : "bg-white hover:bg-gray-50"
+                      ? "border-accent bg-accent"
+                      : "bg-card hover:bg-muted/50"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -225,15 +225,15 @@ export default function InboxPage(): JSX.Element {
                         >
                           {STATUS_LABELS[notification.status]}
                         </span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-muted-foreground">
                           {TYPE_LABELS[notification.type]}
                         </span>
-                        <span className="text-xs text-gray-400">
+                        <span className="text-xs text-muted-foreground">
                           {new Date(notification.createdAt).toLocaleString("ko-KR")}
                         </span>
                       </div>
                       <p className="font-medium text-sm truncate">{notification.title}</p>
-                      <p className="text-sm text-gray-600 mt-1">{notification.body}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{notification.body}</p>
                     </div>
                     <Button
                       variant={notification.status === "UNREAD" ? "default" : "outline"}

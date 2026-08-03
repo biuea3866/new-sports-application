@@ -4,7 +4,7 @@ import com.sportsapp.application.ticketing.usecase.CloseMyEventUseCase
 import com.sportsapp.application.ticketing.usecase.CreateMyEventUseCase
 import com.sportsapp.application.ticketing.dto.CreateMyEventResult
 import com.sportsapp.application.ticketing.usecase.DeleteMyEventUseCase
-import com.sportsapp.application.ticketing.dto.EventResponse
+import com.sportsapp.application.ticketing.dto.MyEventResponse
 import com.sportsapp.application.ticketing.usecase.GetMyEventWithSalesUseCase
 import com.sportsapp.application.ticketing.usecase.ListMyEventsUseCase
 import com.sportsapp.application.ticketing.dto.MyEventWithSalesResponse
@@ -57,7 +57,7 @@ class EventHostApiController(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
         @RequestParam(required = false) status: EventStatus?,
-    ): ResponseEntity<Page<EventResponse>> {
+    ): ResponseEntity<Page<MyEventResponse>> {
         val authUserId = ownershipGuard.authUserId()
         val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "startsAt"))
         return ResponseEntity.ok(listMyEventsUseCase.execute(authUserId, pageable, status))

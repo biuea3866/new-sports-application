@@ -38,6 +38,13 @@ class OperatorInboxNotification(
 
     @Column(name = "read_at")
     var readAt: ZonedDateTime?,
+
+    /**
+     * 이벤트 멱등 키 — 같은 도메인 이벤트를 두 번 수신해도 중복 적재되지 않게 한다.
+     * 이벤트에서 비롯되지 않은 적재(운영자 수동 생성 등)는 null이다.
+     */
+    @Column(name = "event_id", length = 100)
+    val eventId: String?,
 ) : JpaAuditingBase() {
 
     @Id
@@ -64,6 +71,7 @@ class OperatorInboxNotification(
             title: String,
             body: String,
             link: String?,
+            eventId: String? = null,
         ): OperatorInboxNotification = OperatorInboxNotification(
             recipientUserId = recipientUserId,
             type = type,
@@ -72,6 +80,7 @@ class OperatorInboxNotification(
             link = link,
             status = OperatorInboxNotificationStatus.UNREAD,
             readAt = null,
+            eventId = eventId,
         )
     }
 }

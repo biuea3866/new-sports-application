@@ -12,6 +12,15 @@ interface GoodsOrderCustomRepository {
     fun sumRevenueByProductOwnerUserId(ownerUserId: Long): BigDecimal
     fun sumRevenueByProductOwnerUserIdAndDateRange(ownerUserId: Long, from: ZonedDateTime, to: ZonedDateTime): BigDecimal
 
+    /**
+     * 판매자(파트너)의 상품이 담긴 굿즈 주문 id → **그 판매자 몫 금액** — 포털 매출 내역이 소비한다.
+     *
+     * 한 주문에 여러 판매자의 상품이 섞일 수 있어 결제 총액을 그대로 판매자 매출로 쓰면
+     * 남의 매출까지 내 것으로 계상된다. 내 상품 항목(unitPrice × quantity)만 합산해 귀속 금액을
+     * 따로 돌려준다(KPI의 sumRevenueByProductOwnerUserIdAndDateRange와 동일한 귀속 기준).
+     */
+    fun findSellerAmountsByProductOwnerUserId(ownerUserId: Long): Map<Long, BigDecimal>
+
     /** order 통합조회(BE-08 예정)용 — 대표 상품명(title) 조인 읽기(BE-03). */
     fun findBy(userId: Long, pageable: Pageable): Page<GoodsOrderWithTitle>
 

@@ -30,10 +30,10 @@ const STATUS_LABELS: Record<BookingStatus, string> = {
 };
 
 const STATUS_COLORS: Record<BookingStatus, string> = {
-  PENDING: "bg-yellow-100 text-yellow-800",
-  CONFIRMED: "bg-green-100 text-green-800",
-  CANCELLED: "bg-gray-100 text-gray-600",
-  EXPIRED: "bg-red-100 text-red-700",
+  PENDING: "bg-status-warning text-status-warning-foreground",
+  CONFIRMED: "bg-status-success text-status-success-foreground",
+  CANCELLED: "bg-status-neutral text-status-neutral-foreground",
+  EXPIRED: "bg-status-danger text-status-danger-foreground",
 };
 
 const CANCELLABLE_STATUSES: BookingStatus[] = ["PENDING", "CONFIRMED"];
@@ -172,14 +172,14 @@ export default function BookingsPage() {
 
       {/* 오류 */}
       {error && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       )}
 
       {/* 로딩 */}
       {loading && (
-        <p aria-busy="true" className="text-sm text-gray-500">
+        <p aria-busy="true" className="text-sm text-muted-foreground">
           예약 목록을 불러오는 중...
         </p>
       )}
@@ -187,46 +187,46 @@ export default function BookingsPage() {
       {/* 예약 목록 테이블 */}
       {!loading && (
         <section aria-label="예약 목록">
-          <p className="text-sm text-gray-500 mb-2">
+          <p className="text-sm text-muted-foreground mb-2">
             총 <strong>{totalElements}</strong>건
           </p>
           <div className="overflow-x-auto rounded-md border">
             <table className="min-w-full text-sm">
-              <thead className="bg-gray-50">
+              <thead className="bg-muted/50">
                 <tr>
-                  <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                  <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                     예약 ID
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                  <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                     예약자 ID
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                  <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                     슬롯 ID
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                  <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                     상태
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                  <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                     결제 상태
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                  <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                     예약 일시
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left font-medium text-gray-600">
+                  <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                     액션
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-border">
                 {bookings.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                    <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                       예약이 없습니다.
                     </td>
                   </tr>
                 ) : (
                   bookings.map((booking) => (
-                    <tr key={booking.id} className="hover:bg-gray-50">
+                    <tr key={booking.id} className="hover:bg-muted/50">
                       <td className="px-4 py-3">{booking.id}</td>
                       <td className="px-4 py-3">{booking.userId}</td>
                       <td className="px-4 py-3">{booking.slotId}</td>
@@ -237,10 +237,10 @@ export default function BookingsPage() {
                           {STATUS_LABELS[booking.status]}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-600">
+                      <td className="px-4 py-3 text-muted-foreground">
                         {booking.paymentStatus ?? "-"}
                       </td>
-                      <td className="px-4 py-3 text-gray-600">
+                      <td className="px-4 py-3 text-muted-foreground">
                         {new Date(booking.createdAt).toLocaleString("ko-KR")}
                       </td>
                       <td className="px-4 py-3 flex items-center gap-2">
@@ -312,13 +312,13 @@ export default function BookingsPage() {
           </DialogHeader>
 
           {detailModal?.loading && (
-            <p aria-busy="true" className="text-sm text-gray-500 py-4">
+            <p aria-busy="true" className="text-sm text-muted-foreground py-4">
               불러오는 중...
             </p>
           )}
 
           {detailModal?.error && (
-            <p role="alert" className="text-sm text-red-600 py-4">
+            <p role="alert" className="text-sm text-destructive py-4">
               {detailModal.error}
             </p>
           )}
@@ -327,19 +327,19 @@ export default function BookingsPage() {
             <>
               <dl className="space-y-3 text-sm py-2">
                 <div className="flex gap-2">
-                  <dt className="w-28 font-medium text-gray-500">예약 ID</dt>
+                  <dt className="w-28 font-medium text-muted-foreground">예약 ID</dt>
                   <dd>{detailModal.booking.id}</dd>
                 </div>
                 <div className="flex gap-2">
-                  <dt className="w-28 font-medium text-gray-500">슬롯 ID</dt>
+                  <dt className="w-28 font-medium text-muted-foreground">슬롯 ID</dt>
                   <dd>{detailModal.booking.slotId}</dd>
                 </div>
                 <div className="flex gap-2">
-                  <dt className="w-28 font-medium text-gray-500">예약자 ID</dt>
+                  <dt className="w-28 font-medium text-muted-foreground">예약자 ID</dt>
                   <dd>{detailModal.booking.userId}</dd>
                 </div>
                 <div className="flex gap-2">
-                  <dt className="w-28 font-medium text-gray-500">상태</dt>
+                  <dt className="w-28 font-medium text-muted-foreground">상태</dt>
                   <dd>
                     <span
                       className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[detailModal.booking.status]}`}
@@ -350,22 +350,22 @@ export default function BookingsPage() {
                 </div>
                 {detailModal.booking.paymentId !== null && (
                   <div className="flex gap-2">
-                    <dt className="w-28 font-medium text-gray-500">결제 ID</dt>
+                    <dt className="w-28 font-medium text-muted-foreground">결제 ID</dt>
                     <dd>{detailModal.booking.paymentId}</dd>
                   </div>
                 )}
                 {detailModal.booking.paymentStatus !== null && (
                   <div className="flex gap-2">
-                    <dt className="w-28 font-medium text-gray-500">결제 상태</dt>
+                    <dt className="w-28 font-medium text-muted-foreground">결제 상태</dt>
                     <dd>{detailModal.booking.paymentStatus}</dd>
                   </div>
                 )}
                 <div className="flex gap-2">
-                  <dt className="w-28 font-medium text-gray-500">예약 일시</dt>
+                  <dt className="w-28 font-medium text-muted-foreground">예약 일시</dt>
                   <dd>{new Date(detailModal.booking.createdAt).toLocaleString("ko-KR")}</dd>
                 </div>
                 <div className="flex gap-2">
-                  <dt className="w-28 font-medium text-gray-500">수정 일시</dt>
+                  <dt className="w-28 font-medium text-muted-foreground">수정 일시</dt>
                   <dd>{new Date(detailModal.booking.updatedAt).toLocaleString("ko-KR")}</dd>
                 </div>
               </dl>
@@ -395,7 +395,7 @@ export default function BookingsPage() {
           <DialogHeader>
             <DialogTitle id="cancel-confirm-title">예약 취소 확인</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-gray-700 py-2">
+          <p className="text-sm text-foreground py-2">
             예약 #{cancelConfirm?.bookingId}을 취소하시겠습니까? 이 작업은 되돌릴 수 없습니다.
           </p>
           <div className="flex justify-end gap-2 pt-2">

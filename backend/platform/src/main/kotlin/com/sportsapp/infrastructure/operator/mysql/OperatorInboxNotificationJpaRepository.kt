@@ -10,6 +10,8 @@ interface OperatorInboxNotificationJpaRepository :
 
     fun findByIdAndDeletedAtIsNull(id: Long): OperatorInboxNotification?
     fun findByIdAndRecipientUserIdAndDeletedAtIsNull(id: Long, recipientUserId: Long): OperatorInboxNotification?
+    fun existsByRecipientUserIdAndEventId(recipientUserId: Long, eventId: String): Boolean
+
     fun countByRecipientUserIdAndStatusAndDeletedAtIsNull(
         recipientUserId: Long,
         status: OperatorInboxNotificationStatus,

@@ -111,6 +111,30 @@ class GoodsOrderCustomRepositoryImpl(
         return result ?: BigDecimal.ZERO
     }
 
+    override fun findSellerAmountsByProductOwnerUserId(ownerUserId: Long): Map<Long, BigDecimal> {
+        val sellerAmount = goodsOrderItem.unitPrice
+            .multiply(goodsOrderItem.quantity.castToNum(BigDecimal::class.java))
+            .sum()
+        return queryFactory.select(goodsOrderItem.orderId, sellerAmount)
+                           .from(goodsOrderItem)
+                           .join(goodsOrder).on(goodsOrder.id.eq(goodsOrderItem.orderId))
+                           .join(product).on(product.id.eq(goodsOrderItem.productId))
+                           .where(
+                               product.ownerId.eq(ownerUserId),
+                               goodsOrder.deletedAt.isNull,
+                               goodsOrderItem.deletedAt.isNull,
+                               product.deletedAt.isNull,
+                           )
+                           .groupBy(goodsOrderItem.orderId)
+                           .fetch()
+                           .mapNotNull { row ->
+                               val orderId = row.get(goodsOrderItem.orderId) ?: return@mapNotNull null
+                               val amount = row.get(sellerAmount) ?: return@mapNotNull null
+                               orderId to amount
+                           }
+                           .toMap()
+    }
+
     override fun sumRevenueByProductOwnerUserIdAndDateRange(
         ownerUserId: Long,
         from: ZonedDateTime,

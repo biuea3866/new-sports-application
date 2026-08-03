@@ -445,6 +445,13 @@ class GoodsDomainService(
     fun sumRevenueByOwnerUserId(ownerUserId: Long): BigDecimal =
         goodsOrderCustomRepository.sumRevenueByProductOwnerUserId(ownerUserId)
 
+    /**
+     * 판매자의 상품이 담긴 굿즈 주문 id → 그 판매자 몫 금액.
+     * 혼합 주문에서 결제 총액을 그대로 매출로 계상하지 않기 위해 귀속 금액을 함께 돌려준다.
+     */
+    fun findGoodsOrderSellerAmounts(ownerUserId: Long): Map<Long, BigDecimal> =
+        goodsOrderCustomRepository.findSellerAmountsByProductOwnerUserId(ownerUserId)
+
     fun aggregateGoodsKpi(ownerUserId: Long, from: ZonedDateTime, to: ZonedDateTime): GoodsKpiSummary {
         val periodRevenue = goodsOrderCustomRepository.sumRevenueByProductOwnerUserIdAndDateRange(ownerUserId, from, to)
         val outOfStockSkuCount = stockRepository.countOutOfStockByOwnerId(ownerUserId)

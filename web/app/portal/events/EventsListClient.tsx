@@ -2,9 +2,14 @@
 
 import { useState } from "react";
 import { useEvents } from "@/lib/portal/useEvents";
-import type { EventStatus } from "@/lib/portal/types";
+import type { EventStatus, MyEvent } from "@/lib/portal/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { formatSeatSalesSummary } from "./seat-sales-summary";
+
+function seatSalesSummaryOf(event: MyEvent): string | null {
+  return formatSeatSalesSummary(event.soldSeats, event.totalSeats);
+}
 
 const STATUS_LABELS: Record<EventStatus, string> = {
   SCHEDULED: "예정",
@@ -116,9 +121,11 @@ export default function EventsListClient() {
                       <Badge variant={STATUS_BADGE_VARIANT[event.status]}>
                         {STATUS_LABELS[event.status]}
                       </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        판매 {event.soldSeats} / {event.totalSeats}석
-                      </span>
+                      {seatSalesSummaryOf(event) !== null && (
+                        <span className="text-xs text-muted-foreground">
+                          {seatSalesSummaryOf(event)}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </a>

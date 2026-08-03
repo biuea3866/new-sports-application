@@ -125,9 +125,15 @@ notification:
       # 변수를 쓰면 " 예약이 확정되었습니다." 처럼 앞 공백만 남으므로 변수 없이 쓴다.
       title: "예약 확정"
       body: "예약이 확정되었습니다."
+    booking-received-owner:
+      title: "신규 예약 접수"
+      body: "내 시설에 예약이 접수됐습니다."
     ticket-issued:
       title: "티켓 발권 완료"
       body: "{eventTitle} 티켓이 발권되었습니다."
+    ticket-sold-owner:
+      title: "티켓 판매"
+      body: "{eventTitle} 티켓이 발권됐습니다."
     welcome:
       title: "가입 완료"
       body: "{userName}님, 스포츠 앱에 오신 것을 환영합니다."

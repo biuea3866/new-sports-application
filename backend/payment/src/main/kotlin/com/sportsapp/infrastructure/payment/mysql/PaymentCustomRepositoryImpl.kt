@@ -3,6 +3,7 @@ package com.sportsapp.infrastructure.payment.mysql
 import com.querydsl.core.BooleanBuilder
 import com.querydsl.core.types.Projections
 import com.querydsl.jpa.impl.JPAQueryFactory
+import com.sportsapp.domain.common.order.OrderRef
 import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.payment.dto.PaymentLivenessQueryResult
 import com.sportsapp.domain.payment.dto.PaymentLivenessRow
@@ -62,6 +63,43 @@ class PaymentCustomRepositoryImpl(
         val content = fetchContent(predicate, pageable)
         val total = fetchCount(predicate)
         return PageImpl(content, pageable, total)
+    }
+
+    override fun findByOrderRefs(
+        orderRefs: List<OrderRef>,
+        status: PaymentStatus?,
+        paidAtFrom: ZonedDateTime?,
+        paidAtTo: ZonedDateTime?,
+        pageable: Pageable,
+    ): Page<Payment> {
+        // 참조가 비면 아래 OR 누적이 빈 조건이 되어 전체 결제가 노출된다 — 빈 페이지로 막는다.
+        if (orderRefs.isEmpty()) return PageImpl(emptyList(), pageable, 0L)
+        val predicate = buildOrderRefPredicate(orderRefs, status, paidAtFrom, paidAtTo)
+        return PageImpl(fetchContent(predicate, pageable), pageable, fetchCount(predicate))
+    }
+
+    private fun buildOrderRefPredicate(
+        orderRefs: List<OrderRef>,
+        status: PaymentStatus?,
+        paidAtFrom: ZonedDateTime?,
+        paidAtTo: ZonedDateTime?,
+    ): BooleanBuilder {
+        val payment = QPayment.payment
+        // 유형별로 묶어 `(type = ? AND orderId IN (...))` 를 OR로 잇는다. 유형을 빼고 id만
+        // IN하면 유형이 다른 주문끼리 id가 겹쳐 남의 결제가 섞인다.
+        val orderIdsByType = orderRefs.groupBy({ it.orderType }, { it.orderId })
+        val orderRefPredicate = BooleanBuilder()
+        orderIdsByType.forEach { (orderType, orderIds) ->
+            orderRefPredicate.or(payment.orderType.eq(orderType).and(payment.orderId.`in`(orderIds)))
+        }
+
+        val predicate = BooleanBuilder()
+        predicate.and(orderRefPredicate)
+        predicate.and(payment.deletedAt.isNull)
+        status?.let { predicate.and(payment.status.eq(it)) }
+        paidAtFrom?.let { predicate.and(payment.paidAt.goe(it)) }
+        paidAtTo?.let { predicate.and(payment.paidAt.loe(it)) }
+        return predicate
     }
 
     private fun buildPredicate(

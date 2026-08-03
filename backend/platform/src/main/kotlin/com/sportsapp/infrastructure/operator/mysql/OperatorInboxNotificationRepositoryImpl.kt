@@ -30,6 +30,9 @@ class OperatorInboxNotificationRepositoryImpl(
     ): Page<OperatorInboxNotification> =
         jpaRepository.findByRecipientPaged(recipientUserId, type, status, pageable)
 
+    override fun existsByRecipientUserIdAndEventId(recipientUserId: Long, eventId: String): Boolean =
+        jpaRepository.existsByRecipientUserIdAndEventId(recipientUserId, eventId)
+
     override fun countUnreadByRecipientUserId(recipientUserId: Long): Long =
         jpaRepository.countByRecipientUserIdAndStatusAndDeletedAtIsNull(
             recipientUserId,

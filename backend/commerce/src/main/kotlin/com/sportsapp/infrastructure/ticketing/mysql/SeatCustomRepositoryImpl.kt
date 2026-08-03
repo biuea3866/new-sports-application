@@ -49,6 +49,48 @@ class SeatCustomRepositoryImpl(
                            .toMap()
     }
 
+    override fun countSeatsByEventIds(eventIds: List<Long>): Map<Long, Long> {
+        if (eventIds.isEmpty()) return emptyMap()
+        val seat = QSeat.seat
+        return queryFactory.select(seat.eventId, seat.count())
+                           .from(seat)
+                           .where(
+                               seat.eventId.`in`(eventIds),
+                               seat.deletedAt.isNull,
+                           )
+                           .groupBy(seat.eventId)
+                           .fetch()
+                           .mapNotNull { row ->
+                               val eventId = row.get(seat.eventId) ?: return@mapNotNull null
+                               val seatCount = row.get(seat.count()) ?: return@mapNotNull null
+                               eventId to seatCount
+                           }
+                           .toMap()
+    }
+
+    override fun countSoldSeatsByEventIds(eventIds: List<Long>): Map<Long, Long> {
+        if (eventIds.isEmpty()) return emptyMap()
+        val seat = QSeat.seat
+        val ticket = QTicket.ticket
+        return queryFactory.select(seat.eventId, ticket.count())
+                           .from(ticket)
+                           .join(seat).on(seat.id.eq(ticket.seatId))
+                           .where(
+                               seat.eventId.`in`(eventIds),
+                               seat.deletedAt.isNull,
+                               ticket.deletedAt.isNull,
+                               ticket.status.eq(TicketStatus.ISSUED),
+                           )
+                           .groupBy(seat.eventId)
+                           .fetch()
+                           .mapNotNull { row ->
+                               val eventId = row.get(seat.eventId) ?: return@mapNotNull null
+                               val soldCount = row.get(ticket.count()) ?: return@mapNotNull null
+                               eventId to soldCount
+                           }
+                           .toMap()
+    }
+
     override fun sumTotalSeatsByOwnerId(ownerId: Long): Long {
         val seat = QSeat.seat
         val event = QEvent.event

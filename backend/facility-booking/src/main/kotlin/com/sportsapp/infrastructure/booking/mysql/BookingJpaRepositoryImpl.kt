@@ -6,6 +6,7 @@ import com.sportsapp.domain.booking.dto.BookingExpiryCandidate
 import com.sportsapp.domain.booking.entity.Booking
 import com.sportsapp.domain.booking.entity.BookingStatus
 import com.sportsapp.domain.booking.entity.QBooking.booking
+import com.sportsapp.domain.booking.entity.QSlot.slot
 import jakarta.persistence.EntityManager
 import jakarta.persistence.PersistenceContext
 import org.springframework.data.domain.Page
@@ -56,6 +57,56 @@ class BookingJpaRepositoryImpl : BookingQueryDslRepository {
                                 .from(booking)
                                 .where(
                                     booking.userId.eq(userId),
+                                    status?.let { booking.status.eq(it) },
+                                )
+                                .fetchOne() ?: 0L
+
+        return PageImpl(content, pageable, total)
+    }
+
+    override fun findIdsByOwnerUserId(ownerUserId: Long): List<Long> =
+        queryFactory.select(booking.id)
+                    .from(booking)
+                    .join(slot).on(slot.id.eq(booking.slotId))
+                    .where(
+                        slot.ownerId.eq(ownerUserId),
+                        slot.deletedAt.isNull,
+                        booking.deletedAt.isNull,
+                    )
+                    .fetch()
+
+    /**
+     * 파트너 스코프 예약 조회 — 예약이 걸린 슬롯의 소유자로 판정한다.
+     *
+     * 조인 조건에서 `slot.ownerId`를 못 걸면 다른 파트너의 예약이 그대로 새어 나가므로
+     * (권한 누수) content/count 두 쿼리 모두 동일한 조건을 적용한다.
+     * 삭제된 슬롯·예약은 목록에서 제외한다.
+     */
+    override fun findPageByOwnerUserId(
+        ownerUserId: Long,
+        status: BookingStatus?,
+        pageable: Pageable,
+    ): Page<Booking> {
+        val content = queryFactory.selectFrom(booking)
+                                  .join(slot).on(slot.id.eq(booking.slotId))
+                                  .where(
+                                      slot.ownerId.eq(ownerUserId),
+                                      slot.deletedAt.isNull,
+                                      booking.deletedAt.isNull,
+                                      status?.let { booking.status.eq(it) },
+                                  )
+                                  .orderBy(booking.createdAt.desc())
+                                  .offset(pageable.offset)
+                                  .limit(pageable.pageSize.toLong())
+                                  .fetch()
+
+        val total = queryFactory.select(booking.count())
+                                .from(booking)
+                                .join(slot).on(slot.id.eq(booking.slotId))
+                                .where(
+                                    slot.ownerId.eq(ownerUserId),
+                                    slot.deletedAt.isNull,
+                                    booking.deletedAt.isNull,
                                     status?.let { booking.status.eq(it) },
                                 )
                                 .fetchOne() ?: 0L

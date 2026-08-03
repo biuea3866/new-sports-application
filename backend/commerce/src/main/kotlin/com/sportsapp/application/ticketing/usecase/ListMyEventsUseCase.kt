@@ -1,7 +1,7 @@
 package com.sportsapp.application.ticketing.usecase
 
 import com.sportsapp.domain.ticketing.entity.EventStatus
-import com.sportsapp.application.ticketing.dto.EventResponse
+import com.sportsapp.application.ticketing.dto.MyEventResponse
 import com.sportsapp.domain.ticketing.service.TicketingDomainService
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -13,7 +13,7 @@ class ListMyEventsUseCase(
     private val ticketingDomainService: TicketingDomainService,
 ) {
     @Transactional(readOnly = true)
-    fun execute(authUserId: Long, pageable: Pageable, statusFilter: EventStatus?): Page<EventResponse> =
-        ticketingDomainService.findEventsByOwnerId(authUserId, pageable, statusFilter)
-            .map { EventResponse.of(it) }
+    fun execute(authUserId: Long, pageable: Pageable, statusFilter: EventStatus?): Page<MyEventResponse> =
+        ticketingDomainService.findEventsWithSeatCountsByOwnerId(authUserId, pageable, statusFilter)
+            .map { MyEventResponse.of(it) }
 }

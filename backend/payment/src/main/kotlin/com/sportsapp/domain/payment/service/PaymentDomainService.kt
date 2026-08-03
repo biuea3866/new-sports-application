@@ -15,6 +15,7 @@ import com.sportsapp.domain.payment.gateway.PaymentGateway
 import com.sportsapp.domain.payment.gateway.PgPrepareRequest
 import com.sportsapp.domain.payment.gateway.PgPrepareResult
 import com.sportsapp.domain.payment.repository.PaymentRepository
+import com.sportsapp.domain.common.order.OrderRef
 import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.payment.vo.PaymentMethod
 import com.sportsapp.domain.payment.vo.toPgProviderName
@@ -248,6 +249,27 @@ class PaymentDomainService(
         if (payment.userId != userId) throw NotPaymentOwnerException(paymentId)
         return payment
     }
+
+    /**
+     * 주문 참조 목록에 해당하는 결제 조회 — 포털 판매자 매출 내역이 소비한다.
+     *
+     * payment는 판매자를 알지 못한다. "내 주문이 무엇인가"는 각 주문 컨텍스트가 답하고
+     * 이 메서드는 받은 참조에 대한 결제 행만 돌려준다 — 그래서 공용 컨텍스트가 주문
+     * 컨텍스트를 역참조하지 않는다.
+     */
+    fun findSalesByOrderRefs(
+        orderRefs: List<OrderRef>,
+        status: PaymentStatus?,
+        paidAtFrom: ZonedDateTime?,
+        paidAtTo: ZonedDateTime?,
+        pageable: Pageable,
+    ): Page<Payment> = paymentRepository.findByOrderRefs(
+        orderRefs = orderRefs,
+        status = status,
+        paidAtFrom = paidAtFrom,
+        paidAtTo = paidAtTo,
+        pageable = pageable,
+    )
 
     fun findMyPayments(
         userId: Long,

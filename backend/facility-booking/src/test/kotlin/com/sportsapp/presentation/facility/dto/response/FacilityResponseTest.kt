@@ -36,6 +36,21 @@ class FacilityResponseTest : BehaviorSpec({
         }
     }
 
+    Given("코드가 부여된 Facility") {
+        val facility = buildFacility()
+
+        When("FacilityResponse.of를 호출하면") {
+            val response = FacilityResponse.of(facility)
+
+            // 포털 시설 목록의 "코드" 컬럼과 상세의 "코드" 필드가 이 값을 렌더한다.
+            // 응답에서 빠지면 두 화면 모두 공백으로 보이고, 상세의 수정 폼이 필수 항목인
+            // code를 빈 값으로 채워 보내 기존 코드를 지우는 2차 피해까지 난다.
+            Then("code가 응답에 포함된다") {
+                response.code shouldBe "C-001"
+            }
+        }
+    }
+
     Given("운영시간·휴무일이 등록된 Facility") {
         val facility = buildFacility()
         val hours = OperatingHours(
