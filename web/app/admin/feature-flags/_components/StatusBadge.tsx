@@ -5,13 +5,19 @@
  * 근거 티켓: FE-05.
  */
 import { cn } from "@/lib/utils";
-import { featureFlagStatusLabel } from "@/lib/admin/feature-flags/featureFlagStatus";
+import {
+  featureFlagStatusLabel,
+  isKnownFeatureFlagStatus,
+  type FeatureFlagStatusValue,
+} from "@/lib/admin/feature-flags/featureFlagStatus";
 
 interface StatusBadgeProps {
   status: string;
 }
 
-const KNOWN_STATUS_CLASS_NAMES: Record<string, string> = {
+// 키를 FeatureFlagStatusValue로 좁혀 값 목록의 단일 출처를 featureFlagStatus.ts 하나로 유지한다 —
+// Record<string, string>이면 BE가 상태를 추가해도 이 맵 갱신 누락이 컴파일 타임에 드러나지 않는다.
+const KNOWN_STATUS_CLASS_NAMES: Record<FeatureFlagStatusValue, string> = {
   ACTIVE: "bg-success/15 text-success",
   ARCHIVED: "bg-muted text-muted-foreground",
 };
@@ -19,7 +25,7 @@ const KNOWN_STATUS_CLASS_NAMES: Record<string, string> = {
 const UNKNOWN_STATUS_CLASS_NAME = "bg-muted text-muted-foreground";
 
 function statusClassName(status: string): string {
-  return KNOWN_STATUS_CLASS_NAMES[status] ?? UNKNOWN_STATUS_CLASS_NAME;
+  return isKnownFeatureFlagStatus(status) ? KNOWN_STATUS_CLASS_NAMES[status] : UNKNOWN_STATUS_CLASS_NAME;
 }
 
 export function StatusBadge({ status }: StatusBadgeProps) {

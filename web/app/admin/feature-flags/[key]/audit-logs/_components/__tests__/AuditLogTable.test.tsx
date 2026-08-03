@@ -41,12 +41,14 @@ const CREATED_LOG: FeatureFlagAuditLogResponse = {
 };
 
 describe("AuditLogTable", () => {
-  it("각 행에 변경 유형 배지·변경자 표시 이름·before→after 요약이 렌더된다", () => {
+  // 변경자는 이름을 주 정보로, 식별자(#actorUserId)를 보조로 병기한다 — 감사 로그는 행위자
+  // 식별의 정확성이 표현의 깔끔함보다 중요하다(닉네임 중복 허용·미설정 시 식별력 확보).
+  it("각 행에 변경 유형 배지·변경자 이름+식별자·before→after 요약이 렌더된다", () => {
     render(<AuditLogTable logs={[ARCHIVED_LOG]} />);
 
     expect(screen.getByText("아카이브")).toBeInTheDocument();
     expect(screen.getByText("김철수")).toBeInTheDocument();
-    expect(screen.queryByText("#12")).not.toBeInTheDocument();
+    expect(screen.getByText("#12")).toBeInTheDocument();
     expect(screen.getAllByText("전역 ON").length).toBeGreaterThan(0);
   });
 

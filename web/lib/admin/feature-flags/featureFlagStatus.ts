@@ -19,7 +19,12 @@ export const FEATURE_FLAG_STATUS_LABELS: Record<FeatureFlagStatusValue, string> 
   ARCHIVED: "아카이브됨",
 };
 
-function isKnownFeatureFlagStatus(value: string): value is FeatureFlagStatusValue {
+/**
+ * 상태 값이 계약 목록 안에 있는지 판별하는 타입 가드. 라벨 함수뿐 아니라 배지 색 맵(StatusBadge)도
+ * 이 가드로 좁혀야 색 맵의 키가 `FeatureFlagStatusValue`로 제한되고, BE가 상태를 추가했는데 색
+ * 맵 갱신을 빠뜨리면 컴파일 타임에 드러난다 — `Record<string, string>`로 두면 이 보호가 없다.
+ */
+export function isKnownFeatureFlagStatus(value: string): value is FeatureFlagStatusValue {
   return (FEATURE_FLAG_STATUS_VALUES as readonly string[]).includes(value);
 }
 
