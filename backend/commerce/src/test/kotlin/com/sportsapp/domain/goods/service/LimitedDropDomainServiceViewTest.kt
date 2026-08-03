@@ -37,8 +37,13 @@ class LimitedDropDomainServiceViewTest : BehaviorSpec({
         When("getView를 호출하면") {
             val result = service.getView(DROP_ID)
 
-            Then("drop과 Redis remaining·상품 가격을 그대로 결합해 반환한다") {
-                result shouldBe Triple(drop, 42, product.price)
+            Then("drop과 Redis remaining·연결 상품을 그대로 결합해 반환한다") {
+                result shouldBe Triple(drop, 42, productWithStock)
+            }
+
+            Then("상세 화면이 쓸 상품명·가격을 상품 래퍼로 노출한다") {
+                result.third.productName shouldBe product.name
+                result.third.price shouldBe product.price
             }
         }
     }

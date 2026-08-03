@@ -53,13 +53,13 @@ class CreateLimitedDropUseCaseTest : BehaviorSpec({
                 perUserLimit = PER_USER_LIMIT,
                 ownerUserId = OWNER_USER_ID,
             )
-        } returns (drop to PRICE)
+        } returns (drop to productWithStock())
 
         When("execute를 호출하면") {
             val result = useCase.execute(requestCommand)
 
             Then("domainService.createDrop 결과를 LimitedDropView로 변환해 반환한다") {
-                result shouldBe LimitedDropView.of(drop, LIMITED_QUANTITY, PRICE)
+                result shouldBe LimitedDropView.of(drop, LIMITED_QUANTITY, PRODUCT_NAME, PRODUCT_IMAGE_URL, PRICE)
                 result.remaining shouldBe LIMITED_QUANTITY
                 result.price shouldBe PRICE
                 verify(exactly = 1) {
@@ -109,3 +109,16 @@ class CreateLimitedDropUseCaseTest : BehaviorSpec({
         }
     }
 })
+
+private const val PRODUCT_NAME = "실내 클라이밍 초크백"
+private const val PRODUCT_IMAGE_URL = "https://cdn.example.com/product.jpg"
+
+private fun productWithStock(price: java.math.BigDecimal = PRICE) =
+    com.sportsapp.domain.goods.dto.ProductWithStock(
+        product = io.mockk.mockk {
+            io.mockk.every { name } returns PRODUCT_NAME
+            io.mockk.every { imageUrl } returns PRODUCT_IMAGE_URL
+            io.mockk.every { this@mockk.price } returns price
+        },
+        stockQuantity = 1000,
+    )

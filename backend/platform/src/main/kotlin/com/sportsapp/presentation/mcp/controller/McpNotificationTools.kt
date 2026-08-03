@@ -49,6 +49,9 @@ class McpNotificationTools(
                 ?: throw AccessDeniedException("MCP authentication required")
             val command = ListMyNotificationsCommand(
                 userId = principal.userId,
+                // 발송 진단 도구 — IN_APP/PUSH/EMAIL 전 채널 이력을 봐야 채널별 SENT/FAILED 를
+                // 판별할 수 있다. 채널을 좁히면 이 툴의 존재 이유가 사라진다.
+                channel = null,
                 onlyUnread = onlyUnread,
                 page = page,
                 size = size.coerceIn(1, 100),

@@ -27,8 +27,8 @@ class BookingOrderItemTest : BehaviorSpec({
                 ),
             )
 
-            Then("title이 자기 데이터로 구성한 서술형 라벨(date timeRange 시설 예약)이다") {
-                item.title shouldBe "2026-07-10 09:00-10:00 시설 예약"
+            Then("title이 자기 데이터로 구성한 서술형 라벨(한국어 날짜 timeRange 시설 예약)이다") {
+                item.title shouldBe "2026. 07. 10. 09:00-10:00 시설 예약"
             }
 
             Then("title이 BOOKING #id 형태의 기술 식별자를 포함하지 않는다") {

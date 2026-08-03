@@ -3,6 +3,7 @@ import com.querydsl.jpa.impl.JPAQueryFactory
 import com.sportsapp.domain.notification.repository.NotificationCustomRepository
 import com.sportsapp.domain.notification.entity.Notification
 import com.sportsapp.domain.notification.entity.QNotification
+import com.sportsapp.domain.notification.vo.NotificationChannel
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
@@ -13,9 +14,16 @@ class NotificationCustomRepositoryImpl(
     private val queryFactory: JPAQueryFactory,
 ) : NotificationCustomRepository {
 
-    override fun findByUserIdPaged(userId: Long, onlyUnread: Boolean, pageable: Pageable): Page<Notification> {
+    override fun findByUserIdPaged(
+        userId: Long,
+        channel: NotificationChannel?,
+        onlyUnread: Boolean,
+        pageable: Pageable,
+    ): Page<Notification> {
         val notification = QNotification.notification
-        val baseCondition = notification.userId.eq(userId).and(notification.deletedAt.isNull)
+        val baseCondition = notification.userId.eq(userId)
+            .and(notification.deletedAt.isNull)
+            .and(channel?.let { notification.channel.eq(it) })
         val condition = if (onlyUnread) baseCondition.and(notification.readAt.isNull) else baseCondition
 
         val content = queryFactory.selectFrom(notification)

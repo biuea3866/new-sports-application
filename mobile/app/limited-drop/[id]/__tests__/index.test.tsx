@@ -39,6 +39,8 @@ const isFeatureEnabledMock = isFeatureEnabled as jest.MockedFunction<typeof isFe
 const baseDrop: LimitedDropResponse = {
   dropId: 1,
   productId: 100,
+  productName: '한정판 러닝화',
+  productImageUrl: 'https://cdn.example.com/100.jpg',
   status: 'SCHEDULED',
   openAt: '2026-07-05T20:00:00Z',
   closeAt: '2026-07-06T20:00:00Z',

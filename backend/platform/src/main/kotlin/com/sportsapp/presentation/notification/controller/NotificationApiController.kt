@@ -6,6 +6,7 @@ import com.sportsapp.application.notification.usecase.ListMyNotificationsUseCase
 import com.sportsapp.application.notification.dto.MarkNotificationReadCommand
 import com.sportsapp.application.notification.usecase.MarkNotificationReadUseCase
 import com.sportsapp.domain.common.security.UserPrincipal
+import com.sportsapp.domain.notification.vo.NotificationChannel
 import com.sportsapp.presentation.notification.dto.request.RegisterPushTokenRequest
 import com.sportsapp.presentation.notification.dto.response.NotificationPageResponse
 import com.sportsapp.presentation.notification.dto.response.NotificationResponse
@@ -48,6 +49,8 @@ class NotificationApiController(
     ): ResponseEntity<NotificationPageResponse> {
         val command = ListMyNotificationsCommand(
             userId = principal.id,
+            // 알림함은 인앱 채널만 — PUSH 발송 쌍둥이 행이 중복 노출되지 않게 한다.
+            channel = NotificationChannel.IN_APP,
             onlyUnread = onlyUnread,
             page = page,
             size = size,

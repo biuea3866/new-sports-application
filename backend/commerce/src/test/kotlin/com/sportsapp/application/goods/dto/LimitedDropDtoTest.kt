@@ -51,7 +51,7 @@ class LimitedDropDtoTest : BehaviorSpec({
             val remaining = 42
             val price = BigDecimal("89000")
 
-            val view = LimitedDropView.of(drop, remaining, price)
+            val view = LimitedDropView.of(drop, remaining, PRODUCT_NAME, PRODUCT_IMAGE_URL, price)
 
             view.dropId shouldBe drop.id
             view.productId shouldBe drop.productId
@@ -100,3 +100,6 @@ class LimitedDropDtoTest : BehaviorSpec({
         }
     }
 })
+
+private const val PRODUCT_NAME = "실내 클라이밍 초크백"
+private const val PRODUCT_IMAGE_URL = "https://cdn.example.com/product.jpg"

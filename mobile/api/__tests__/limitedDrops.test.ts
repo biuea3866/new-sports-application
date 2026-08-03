@@ -53,6 +53,8 @@ afterAll(() => {
 const mockDropResponse: LimitedDropResponse = {
   dropId: 1,
   productId: 100,
+  productName: '한정판 러닝화',
+  productImageUrl: 'https://cdn.example.com/100.jpg',
   status: 'OPEN',
   openAt: '2026-07-03T10:00:00Z',
   closeAt: '2026-07-03T12:00:00Z',

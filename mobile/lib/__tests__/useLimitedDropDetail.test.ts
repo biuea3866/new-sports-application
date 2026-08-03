@@ -28,6 +28,8 @@ function createWrapper() {
 const scheduledDropOpeningSoon: LimitedDropResponse = {
   dropId: 1,
   productId: 100,
+  productName: '한정판 러닝화',
+  productImageUrl: 'https://cdn.example.com/100.jpg',
   status: 'SCHEDULED',
   openAt: new Date(Date.now() + 500).toISOString(),
   closeAt: new Date(Date.now() + 100000).toISOString(),
@@ -40,6 +42,8 @@ const scheduledDropOpeningSoon: LimitedDropResponse = {
 const openDrop: LimitedDropResponse = {
   dropId: 2,
   productId: 200,
+  productName: '한정판 러닝화',
+  productImageUrl: 'https://cdn.example.com/200.jpg',
   status: 'OPEN',
   openAt: new Date(Date.now() - 100000).toISOString(),
   closeAt: new Date(Date.now() + 100000).toISOString(),

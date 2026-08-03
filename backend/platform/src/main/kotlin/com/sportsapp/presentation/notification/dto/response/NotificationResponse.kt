@@ -4,8 +4,9 @@ import com.sportsapp.application.notification.dto.NotificationPageResult
 import com.sportsapp.domain.notification.entity.Notification
 import com.sportsapp.domain.notification.vo.NotificationChannel
 import com.sportsapp.domain.notification.dto.NotificationResult
+import com.sportsapp.domain.notification.dto.NotificationView
+import com.sportsapp.domain.notification.vo.NotificationCategory
 import com.sportsapp.domain.notification.entity.NotificationStatus
-import org.springframework.data.domain.Page
 import java.time.ZonedDateTime
 
 data class NotificationResponse(
@@ -43,24 +44,42 @@ data class NotificationResponse(
     }
 }
 
+/**
+ * 알림함 한 줄 응답 — 앱 알림함이 그대로 렌더할 수 있는 사용자 관점 필드만 담는다.
+ * channel/templateId/status 같은 발송 내부 값은 노출하지 않는다.
+ */
+data class MyNotificationResponse(
+    val id: Long,
+    val title: String,
+    val content: String,
+    val category: NotificationCategory,
+    val isRead: Boolean,
+    val readAt: ZonedDateTime?,
+    val createdAt: ZonedDateTime,
+) {
+    companion object {
+        fun of(view: NotificationView) = MyNotificationResponse(
+            id = view.id,
+            title = view.title,
+            content = view.content,
+            category = view.category,
+            isRead = view.isRead,
+            readAt = view.readAt,
+            createdAt = view.createdAt,
+        )
+    }
+}
+
 data class NotificationPageResponse(
-    val content: List<NotificationResponse>,
+    val content: List<MyNotificationResponse>,
     val totalElements: Long,
     val totalPages: Int,
     val page: Int,
     val size: Int,
 ) {
     companion object {
-        fun of(page: Page<Notification>) = NotificationPageResponse(
-            content = page.content.map { NotificationResponse.of(it) },
-            totalElements = page.totalElements,
-            totalPages = page.totalPages,
-            page = page.number,
-            size = page.size,
-        )
-
         fun of(result: NotificationPageResult) = NotificationPageResponse(
-            content = result.content.map { NotificationResponse.of(it) },
+            content = result.content.map { MyNotificationResponse.of(it) },
             totalElements = result.totalElements,
             totalPages = result.totalPages,
             page = result.page,

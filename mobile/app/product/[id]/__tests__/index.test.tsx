@@ -125,6 +125,21 @@ describe('ProductDetailScreen 한정판 진입점', () => {
     expect(screen.queryByText('상품 이미지')).toBeNull();
   });
 
+  // 시드 이미지 URL 이 깨져도 깨진 이미지 아이콘이 아니라 placeholder 가 떠야 한다
+  // (갤러리 조사 RC-5 후속 — fallback 존재를 회귀로 고정).
+  it('이미지 로드에 실패하면 placeholder 문구로 대체한다', () => {
+    useLocalSearchParamsMock.mockReturnValue({ id: '1' });
+    mockUseProductsReturn([productWithDrop]);
+
+    render(<ProductDetailScreen />);
+    fireEvent(screen.getByTestId('product-detail-image', { includeHiddenElements: true }), 'error', {
+      nativeEvent: { error: 'network failure' },
+    });
+
+    expect(screen.getByText('상품 이미지', { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.queryByTestId('product-detail-image')).toBeNull();
+  });
+
   it('imageUrl이 없으면 placeholder 문구를 렌더한다', () => {
     useLocalSearchParamsMock.mockReturnValue({ id: '2' });
     mockUseProductsReturn([{ ...productWithoutDrop, imageUrl: '' }]);

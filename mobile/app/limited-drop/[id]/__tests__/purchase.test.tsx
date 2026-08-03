@@ -34,6 +34,8 @@ const useRouterMock = useRouter as jest.MockedFunction<typeof useRouter>;
 const baseDrop: LimitedDropResponse = {
   dropId: 1,
   productId: 100,
+  productName: '한정판 러닝화',
+  productImageUrl: 'https://cdn.example.com/100.jpg',
   status: 'OPEN',
   openAt: '2026-07-05T20:00:00Z',
   closeAt: '2026-07-06T20:00:00Z',

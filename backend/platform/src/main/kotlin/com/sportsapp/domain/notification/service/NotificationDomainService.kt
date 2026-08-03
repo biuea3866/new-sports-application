@@ -16,8 +16,11 @@ import com.sportsapp.domain.notification.exception.NotificationNotFoundException
 import com.sportsapp.domain.notification.vo.NotificationPayload
 import com.sportsapp.domain.notification.repository.NotificationRepository
 import com.sportsapp.domain.notification.dto.NotificationResult
+import com.sportsapp.domain.notification.dto.NotificationView
 import com.sportsapp.domain.notification.gateway.TemplateRenderer
 import com.sportsapp.domain.notification.exception.UnknownTemplateException
+import com.sportsapp.domain.notification.vo.NotificationCategory
+import com.sportsapp.domain.notification.vo.RenderedNotification
 
 private val SUPPORTED_ENQUEUE_CHANNELS = setOf(
     NotificationChannel.IN_APP,
@@ -110,9 +113,72 @@ class NotificationDomainService(
         notificationRepository.save(notification)
     }
 
-    fun listMyNotifications(userId: Long, onlyUnread: Boolean, page: Int, size: Int): Page<Notification> {
+    /**
+     * 사용자 알림 목록. 채널은 **호출자가 결정한다** — 알림함은 IN_APP(같은 사건이 IN_APP·PUSH
+     * 두 행으로 적재돼 중복 노출되므로), MCP 발송 진단 도구는 null(전 채널).
+     * 도메인이 채널을 하드코딩하면 재사용 지점이 전부 끌려간다.
+     */
+    fun listMyNotifications(
+        userId: Long,
+        channel: NotificationChannel?,
+        onlyUnread: Boolean,
+        page: Int,
+        size: Int,
+    ): Page<Notification> {
         val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
-        return notificationCustomRepository.findByUserIdPaged(userId, onlyUnread, pageable)
+        return notificationCustomRepository.findByUserIdPaged(
+            userId = userId,
+            channel = channel,
+            onlyUnread = onlyUnread,
+            pageable = pageable,
+        )
+    }
+
+    /**
+     * 알림함 목록 — 저장 원형을 사용자에게 보여줄 제목·본문·분류·읽음 여부까지 확정해 돌려준다.
+     * 목록 화면이 templateId/status 같은 내부 값을 해석하지 않게 하려는 것이 목적이다.
+     */
+    fun listMyNotificationViews(
+        userId: Long,
+        channel: NotificationChannel?,
+        onlyUnread: Boolean,
+        page: Int,
+        size: Int,
+    ): Page<NotificationView> =
+        listMyNotifications(userId, channel, onlyUnread, page, size).map { toView(it) }
+
+    private fun toView(notification: Notification): NotificationView {
+        val rendered = resolveRendered(notification)
+        return NotificationView(
+            id = notification.id,
+            userId = notification.userId,
+            title = rendered.title,
+            content = rendered.body,
+            category = NotificationCategory.from(notification.templateId),
+            channel = notification.channel,
+            templateId = notification.templateId,
+            status = notification.status,
+            isRead = notification.isRead,
+            sentAt = notification.sentAt,
+            readAt = notification.readAt,
+            createdAt = notification.createdAt,
+        )
+    }
+
+    /**
+     * 적재 시 저장된 렌더 결과를 우선 쓰고, 없으면 템플릿을 렌더한다.
+     * 설정에 없는 템플릿 1건이 목록 전체를 실패시키지 않도록 기본 문구로 방어한다.
+     */
+    private fun resolveRendered(notification: Notification): RenderedNotification {
+        val storedTitle = notification.renderedTitle()
+        if (storedTitle != null) {
+            return RenderedNotification(title = storedTitle, body = notification.renderedBody() ?: "")
+        }
+        return try {
+            templateRenderer.render(notification.templateId, notification.payloadData())
+        } catch (exception: UnknownTemplateException) {
+            RenderedNotification(title = FALLBACK_TITLE, body = "")
+        }
     }
 
     @Transactional
@@ -138,6 +204,14 @@ class NotificationDomainService(
         return send(userId, channel, templateId, enrichedPayload)
     }
 
-    fun countUnread(userId: Long): Long =
-        notificationRepository.countUnreadByUserId(userId)
+    /**
+     * 미읽음 배지. 목록과 **같은 채널 기준**으로 세야 배지와 목록 건수가 어긋나지 않는다.
+     */
+    fun countUnread(userId: Long, channel: NotificationChannel?): Long =
+        notificationRepository.countUnreadByUserId(userId, channel)
+
+    companion object {
+        /** 설정에 없는 템플릿으로 적재된 알림의 기본 제목. */
+        const val FALLBACK_TITLE = "알림"
+    }
 }

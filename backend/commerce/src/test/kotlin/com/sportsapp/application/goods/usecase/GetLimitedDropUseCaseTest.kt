@@ -37,13 +37,13 @@ class GetLimitedDropUseCaseTest : BehaviorSpec({
         val useCase = GetLimitedDropUseCase(limitedDropDomainService)
         val existingDrop = drop()
 
-        every { limitedDropDomainService.getView(DROP_ID) } returns Triple(existingDrop, REMAINING, PRICE)
+        every { limitedDropDomainService.getView(DROP_ID) } returns Triple(existingDrop, REMAINING, productWithStock())
 
         When("execute를 호출하면") {
             val result = useCase.execute(DROP_ID)
 
             Then("status·openAt·closeAt·remaining·perUserLimit·totalQuantity·price를 결합한 LimitedDropView를 반환한다") {
-                result shouldBe LimitedDropView.of(existingDrop, REMAINING, PRICE)
+                result shouldBe LimitedDropView.of(existingDrop, REMAINING, PRODUCT_NAME, PRODUCT_IMAGE_URL, PRICE)
                 verify(exactly = 1) { limitedDropDomainService.getView(DROP_ID) }
             }
         }
@@ -54,13 +54,19 @@ class GetLimitedDropUseCaseTest : BehaviorSpec({
         val useCase = GetLimitedDropUseCase(limitedDropDomainService)
         val scheduledDrop = drop()
 
-        every { limitedDropDomainService.getView(DROP_ID) } returns Triple(scheduledDrop, null, PRICE)
+        every { limitedDropDomainService.getView(DROP_ID) } returns Triple(scheduledDrop, null, productWithStock())
 
         When("execute를 호출하면") {
             val result = useCase.execute(DROP_ID)
 
             Then("remaining을 limitedQuantity로 채운 LimitedDropView를 반환한다") {
-                result shouldBe LimitedDropView.of(scheduledDrop, scheduledDrop.limitedQuantity, PRICE)
+                result shouldBe LimitedDropView.of(
+                    scheduledDrop,
+                    scheduledDrop.limitedQuantity,
+                    PRODUCT_NAME,
+                    PRODUCT_IMAGE_URL,
+                    PRICE,
+                )
             }
         }
     }
@@ -88,3 +94,16 @@ class GetLimitedDropUseCaseTest : BehaviorSpec({
         }
     }
 })
+
+private const val PRODUCT_NAME = "실내 클라이밍 초크백"
+private const val PRODUCT_IMAGE_URL = "https://cdn.example.com/product.jpg"
+
+private fun productWithStock(price: java.math.BigDecimal = PRICE) =
+    com.sportsapp.domain.goods.dto.ProductWithStock(
+        product = io.mockk.mockk {
+            io.mockk.every { name } returns PRODUCT_NAME
+            io.mockk.every { imageUrl } returns PRODUCT_IMAGE_URL
+            io.mockk.every { this@mockk.price } returns price
+        },
+        stockQuantity = 1000,
+    )

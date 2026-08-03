@@ -35,6 +35,7 @@ import {
 } from '../../../api/ticketOrders';
 import { ROUTES } from '../../../lib/navigation';
 import type { PaymentMethod, SeatInfo } from '../../../api/types';
+import { formatSeatDescription } from '../../../lib/seat-format';
 import { useTheme } from '../../../theme/useTheme';
 import { createStyles } from '../../../theme/createStyles';
 import type { ThemeTokens } from '../../../theme/tokens';
@@ -61,10 +62,10 @@ function SeatRow({ seat }: SeatRowProps) {
     <View
       style={styles.seatRow}
       accessible={true}
-      accessibilityLabel={`${seat.section}구역 ${seat.rowNo}열 ${seat.seatNo}번 ${formatPrice(seat.price)}`}
+      accessibilityLabel={`${formatSeatDescription(seat.section, seat.rowNo, seat.seatNo)} ${formatPrice(seat.price)}`}
     >
       <Text style={styles.seatLabel}>
-        {seat.section}구역 {seat.rowNo}열 {seat.seatNo}번
+        {formatSeatDescription(seat.section, seat.rowNo, seat.seatNo)}
       </Text>
       <Text style={styles.seatPrice}>{formatPrice(seat.price)}</Text>
     </View>

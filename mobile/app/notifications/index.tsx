@@ -10,7 +10,7 @@ import {
   useUnreadCount,
   useMarkNotificationRead,
 } from '../../lib/useNotifications';
-import type { NotificationResponse, NotificationType } from '../../api/types';
+import type { NotificationCategory, NotificationResponse } from '../../api/types';
 import { useTheme } from '../../theme/useTheme';
 import { createStyles } from '../../theme/createStyles';
 import type { ThemeTokens } from '../../theme/tokens';
@@ -25,15 +25,16 @@ function formatDate(iso: string): string {
   });
 }
 
-function typeLabel(type: NotificationType): string {
-  const map: Record<NotificationType, string> = {
-    BOOKING: '예약',
-    PAYMENT: '결제',
-    EVENT: '이벤트',
-    SYSTEM: '시스템',
-    PROMOTION: '프로모션',
-  };
-  return map[type];
+const CATEGORY_LABEL: Record<NotificationCategory, string> = {
+  BOOKING: '예약',
+  PAYMENT: '결제',
+  EVENT: '이벤트',
+  SYSTEM: '시스템',
+  PROMOTION: '프로모션',
+};
+
+function categoryLabel(category: NotificationCategory): string {
+  return CATEGORY_LABEL[category] ?? CATEGORY_LABEL.SYSTEM;
 }
 
 interface NotificationItemProps {
@@ -48,12 +49,12 @@ function NotificationItem({ item, onPress }: NotificationItemProps) {
     <Pressable
       style={[styles.item, !item.isRead && styles.itemUnread]}
       accessibilityRole="button"
-      accessibilityLabel={`${item.title}, ${typeLabel(item.type)}, ${item.isRead ? '읽음' : '안읽음'}`}
+      accessibilityLabel={`${item.title}, ${categoryLabel(item.category)}, ${item.isRead ? '읽음' : '안읽음'}`}
       onPress={() => onPress(item.id)}
     >
       <View style={styles.itemHeader}>
         <View style={styles.typeBadge}>
-          <Text style={styles.typeBadgeText}>{typeLabel(item.type)}</Text>
+          <Text style={styles.typeBadgeText}>{categoryLabel(item.category)}</Text>
         </View>
         {!item.isRead && <View style={styles.unreadDot} accessibilityLabel="안읽음 표시" />}
       </View>

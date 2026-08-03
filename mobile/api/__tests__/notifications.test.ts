@@ -23,7 +23,7 @@ describe('Notification API', () => {
     id: 1,
     title: '예약이 확정되었습니다',
     content: '잠실 야구장 2024-10-20 예약이 확정되었습니다.',
-    type: 'BOOKING',
+    category: 'BOOKING',
     isRead: false,
     readAt: null,
     createdAt: '2024-10-19T10:00:00Z',
@@ -33,7 +33,7 @@ describe('Notification API', () => {
     content: [mockNotification],
     totalElements: 1,
     totalPages: 1,
-    number: 0,
+    page: 0,
     size: 20,
   };
 
@@ -48,7 +48,7 @@ describe('Notification API', () => {
       expect(res.data.content).toHaveLength(1);
       expect(res.data.content[0].id).toBe(1);
       expect(res.data.content[0].isRead).toBe(false);
-      expect(res.data.content[0].type).toBe('BOOKING');
+      expect(res.data.content[0].category).toBe('BOOKING');
       expect(res.data.totalElements).toBe(1);
     });
   });
@@ -57,7 +57,7 @@ describe('Notification API', () => {
     it('page=1, size=10 파라미터가 포함된 GET /notifications/me 요청이 성공한다', async () => {
       const secondPageResponse: NotificationListResponse = {
         ...mockListResponse,
-        number: 1,
+        page: 1,
         size: 10,
       };
       mock.onGet('/notifications/me').reply(200, secondPageResponse);
@@ -66,7 +66,7 @@ describe('Notification API', () => {
         params: { page: 1, size: 10 },
       });
 
-      expect(res.data.number).toBe(1);
+      expect(res.data.page).toBe(1);
       expect(res.data.size).toBe(10);
     });
   });

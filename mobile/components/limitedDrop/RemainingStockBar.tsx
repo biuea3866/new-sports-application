@@ -26,18 +26,29 @@ export function RemainingStockBar({ remaining, limited }: RemainingStockBarProps
   const ratio = calculateRemainingRatio(remaining, limited);
 
   return (
-    <View accessible accessibilityLabel={`남은 수량 ${remaining}개 중 ${limited}개`}>
+    <View
+      accessible
+      accessibilityLabel={`남은 수량 ${remaining}개 중 ${limited}개`}
+      style={styles.container}
+    >
       <ThemedText variant="secondary" style={styles.label}>
         {`남은 수량 ${remaining}/${limited}`}
       </ThemedText>
       <View style={[styles.track, { backgroundColor: tokens.border }]}>
-        <View style={[styles.fill, { backgroundColor: tokens.accent, width: `${ratio * 100}%` }]} />
+        <View
+          testID="remaining-stock-fill"
+          style={[styles.fill, { backgroundColor: tokens.accent, width: `${ratio * 100}%` }]}
+        />
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // 부모가 alignItems: 'flex-start' 여도 바가 라벨 텍스트 폭으로 줄어들지 않게 한다.
+  container: {
+    alignSelf: 'stretch',
+  },
   label: {
     fontSize: 14,
     marginBottom: 6,

@@ -8,7 +8,9 @@ import com.sportsapp.domain.goods.repository.CartItemRepository
 import com.sportsapp.domain.goods.repository.CartRepository
 import com.sportsapp.domain.goods.repository.ProductRepository
 import com.sportsapp.domain.goods.repository.StockRepository
+import com.sportsapp.domain.goods.vo.CartLineItem
 import org.springframework.stereotype.Service
+import java.math.BigDecimal
 
 @Service
 class CartDomainService(
@@ -26,7 +28,39 @@ class CartDomainService(
         return cart to cartItemRepository.findByCartId(cart.id)
     }
 
-    fun addItem(userId: Long, productId: Long, quantity: Int): Pair<Cart, List<CartItem>> {
+    /**
+     * 장바구니 조회 — 담긴 항목에 상품명·단가를 결합해 돌려준다.
+     * 화면이 productId 로 "상품 #121" 같은 기술 식별자를 렌더하지 않게 하는 것이 목적이다.
+     */
+    fun getCartWithLineItems(userId: Long): Pair<Cart, List<CartLineItem>> {
+        val (cart, items) = getCartWithItems(userId)
+        return cart to toLineItems(items)
+    }
+
+    /**
+     * 상품을 한 번에 배치 조회해 결합한다 — 항목 수만큼 SELECT 하지 않는다(N+1 방지).
+     * 소프트 삭제된 상품은 조회에서 빠지므로, 그 항목은 기본 문구로 방어해 장바구니 전체가
+     * 실패하지 않게 한다.
+     */
+    private fun toLineItems(items: List<CartItem>): List<CartLineItem> {
+        if (items.isEmpty()) return emptyList()
+        val productsById = productRepository
+            .findAllByIdsAndDeletedAtIsNull(items.map { it.productId })
+            .associateBy { it.id }
+        return items.map { item ->
+            val product = productsById[item.productId]
+            CartLineItem(
+                id = item.id,
+                productId = item.productId,
+                productName = product?.name ?: UNKNOWN_PRODUCT_NAME,
+                productImageUrl = product?.imageUrl ?: "",
+                unitPrice = product?.price ?: BigDecimal.ZERO,
+                quantity = item.quantity,
+            )
+        }
+    }
+
+    fun addItem(userId: Long, productId: Long, quantity: Int): Pair<Cart, List<CartLineItem>> {
         val product = productRepository.findById(productId)
             ?: throw ResourceNotFoundException("Product", productId)
         product.requireActive()
@@ -46,10 +80,10 @@ class CartDomainService(
             cartItemRepository.save(CartItem(cartId = cart.id, productId = productId, quantity = quantity))
         }
 
-        return cart to cartItemRepository.findByCartId(cart.id)
+        return cart to toLineItems(cartItemRepository.findByCartId(cart.id))
     }
 
-    fun updateItem(userId: Long, itemId: Long, newQuantity: Int): Pair<Cart, List<CartItem>> {
+    fun updateItem(userId: Long, itemId: Long, newQuantity: Int): Pair<Cart, List<CartLineItem>> {
         val cart = getOrCreateCart(userId)
         val item = cartItemRepository.findById(itemId)
             ?: throw ResourceNotFoundException("CartItem", itemId)
@@ -61,10 +95,10 @@ class CartDomainService(
         item.updateQuantity(newQuantity)
         cartItemRepository.save(item)
 
-        return cart to cartItemRepository.findByCartId(cart.id)
+        return cart to toLineItems(cartItemRepository.findByCartId(cart.id))
     }
 
-    fun removeItem(userId: Long, itemId: Long): Pair<Cart, List<CartItem>> {
+    fun removeItem(userId: Long, itemId: Long): Pair<Cart, List<CartLineItem>> {
         val cart = getOrCreateCart(userId)
         val item = cartItemRepository.findById(itemId)
             ?: throw ResourceNotFoundException("CartItem", itemId)
@@ -73,7 +107,7 @@ class CartDomainService(
         item.softDelete(userId)
         cartItemRepository.save(item)
 
-        return cart to cartItemRepository.findByCartId(cart.id)
+        return cart to toLineItems(cartItemRepository.findByCartId(cart.id))
     }
 
     fun clearCart(userId: Long) {
@@ -81,5 +115,10 @@ class CartDomainService(
         val items = cartItemRepository.findAllByCartId(cart.id)
         items.forEach { it.softDelete(userId) }
         cartItemRepository.saveAll(items)
+    }
+
+    companion object {
+        /** 상품이 삭제되어 이름을 알 수 없을 때 표시할 기본 문구. */
+        const val UNKNOWN_PRODUCT_NAME = "삭제된 상품"
     }
 }

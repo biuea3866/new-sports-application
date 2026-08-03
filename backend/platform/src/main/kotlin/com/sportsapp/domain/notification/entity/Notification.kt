@@ -79,6 +79,26 @@ class Notification(
         if (userId != requestUserId) throw NotificationNotOwnedException(id, requestUserId)
     }
 
+    /** 읽음 여부 — 별도 플래그 컬럼 없이 readAt 존재 여부가 곧 상태다. */
+    val isRead: Boolean
+        get() = readAt != null
+
+    /**
+     * 적재 시점에 렌더돼 payload 에 보관된 제목·본문(`_title`/`_body`).
+     * 발송 채널이 쓰던 값을 알림함이 재사용해 조회마다 템플릿을 다시 렌더하지 않게 한다.
+     * 비어 있으면 null 을 돌려 호출부가 렌더로 폴백하게 한다.
+     */
+    fun renderedTitle(): String? = payloadText("_title")
+
+    fun renderedBody(): String? = payloadText("_body")
+
+    fun payloadData(): Map<String, Any> = payload.data
+
+    // 변수 치환이 빈 값으로 이뤄져 앞뒤 공백이 남은 채 저장된 기존 행이 있어(캡쳐 36-알림함
+    // booking-confirmed " 예약이 확정되었습니다.") 노출 시점에 정리한다.
+    private fun payloadText(key: String): String? =
+        payload.data[key]?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+
     companion object {
         fun queue(
             userId: Long,

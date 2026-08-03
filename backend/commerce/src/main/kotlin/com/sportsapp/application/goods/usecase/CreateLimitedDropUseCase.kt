@@ -16,7 +16,7 @@ class CreateLimitedDropUseCase(
 ) {
     @Transactional
     fun execute(command: CreateLimitedDropCommand): LimitedDropView {
-        val (drop, price) = limitedDropDomainService.createDrop(
+        val (drop, product) = limitedDropDomainService.createDrop(
             productId = command.productId,
             openAt = command.openAt,
             closeAt = command.closeAt,
@@ -24,6 +24,12 @@ class CreateLimitedDropUseCase(
             perUserLimit = command.perUserLimit,
             ownerUserId = command.ownerUserId,
         )
-        return LimitedDropView.of(drop, command.limitedQuantity, price)
+        return LimitedDropView.of(
+            drop = drop,
+            remaining = command.limitedQuantity,
+            productName = product.productName,
+            productImageUrl = product.productImageUrl,
+            price = product.price,
+        )
     }
 }
