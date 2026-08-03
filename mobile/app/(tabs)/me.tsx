@@ -80,7 +80,7 @@ export default function MeScreen() {
   const [nicknameDraft, setNicknameDraft] = useState('');
   const [nicknameError, setNicknameError] = useState<string | null>(null);
 
-  // 형제 필드(이메일·사용자 ID)와 같은 4상태 규칙을 따른다 — 로딩·조회 실패를 "미설정" 으로
+  // 형제 필드(이메일)와 같은 4상태 규칙을 따른다 — 로딩·조회 실패를 "미설정" 으로
   // 오인시키지 않기 위해서다. 서버 응답이 왔을 때만 미설정 안내를 띄운다.
   const isProfileLoaded = profile !== undefined;
   const nicknameText = resolveProfileField(
@@ -117,12 +117,6 @@ export default function MeScreen() {
   }
 
   const emailText = resolveProfileField(profile?.email, payload?.email, isLoading, isError);
-  const userIdText = resolveProfileField(
-    profile?.id !== undefined ? String(profile.id) : undefined,
-    payload?.sub,
-    isLoading,
-    isError
-  );
 
   async function handleLogout() {
     await logout();
@@ -187,9 +181,6 @@ export default function MeScreen() {
 
         <Text style={[styles.label, styles.mt]}>이메일</Text>
         <Text style={styles.value}>{emailText}</Text>
-
-        <Text style={[styles.label, styles.mt]}>사용자 ID</Text>
-        <Text style={styles.value}>{userIdText}</Text>
 
         <Text style={[styles.label, styles.mt]}>역할</Text>
         <Text style={styles.value}>{formatUserRoleLabels(payload?.roles)}</Text>

@@ -20,6 +20,7 @@ import {
   type FetchUsageAnalyticsParams,
   fetchUsageAnalytics,
 } from "@/lib/admin/mcp/usageAnalytics";
+import { DateField } from "@/components/ui/date-field";
 
 /** 차트 축·툴팁도 시맨틱 토큰을 사용한다 — recharts 기본 회색은 다크 카드 위에서 판독 불가. */
 const AXIS_TICK = { fontSize: 12, fill: "hsl(var(--muted-foreground))" } as const;
@@ -105,27 +106,18 @@ export default function UsageAnalyticsPage(): JSX.Element {
             <label htmlFor="from-date" className="mb-1 block text-sm font-medium">
               시작일
             </label>
-            <input
-              id="from-date"
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              max={toDate}
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
+            <DateField id="from-date" value={fromDate} onChange={setFromDate} max={toDate} />
           </div>
           <div>
             <label htmlFor="to-date" className="mb-1 block text-sm font-medium">
               종료일
             </label>
-            <input
+            <DateField
               id="to-date"
-              type="date"
               value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
+              onChange={setToDate}
               min={fromDate}
               max={todayStr()}
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
           <Button type="submit" size="sm" aria-label="사용 분석 조회">

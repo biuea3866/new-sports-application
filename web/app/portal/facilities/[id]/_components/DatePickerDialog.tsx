@@ -5,7 +5,6 @@
  */
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +12,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { DateField } from "@/components/ui/date-field";
 
 export interface DatePickerDialogProps {
   open: boolean;
@@ -51,13 +51,7 @@ export function DatePickerDialog({
             <label htmlFor="holiday-date" className="block text-sm font-medium">
               날짜
             </label>
-            <Input
-              id="holiday-date"
-              type="date"
-              value={dateInput}
-              onChange={(e) => setDateInput(e.target.value)}
-              aria-required="true"
-            />
+            <DateField id="holiday-date" value={dateInput} onChange={setDateInput} aria-required />
             {error && (
               <p role="alert" className="text-sm text-destructive">
                 {error}

@@ -98,11 +98,11 @@ describe("슬롯 open/close", () => {
     vi.unstubAllGlobals();
   });
 
-  it("OPEN 슬롯에는 상태 배지와 마감 버튼이 노출된다", async () => {
+  it("예약 가능한 슬롯에는 상태 배지와 마감 버튼이 노출된다", async () => {
     render(<SlotsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("OPEN")).toBeInTheDocument();
+      expect(screen.getByText("예약 가능")).toBeInTheDocument();
     });
     expect(screen.getByRole("button", { name: /마감/ })).toBeInTheDocument();
   });
@@ -111,7 +111,7 @@ describe("슬롯 open/close", () => {
     render(<SlotsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("OPEN")).toBeInTheDocument();
+      expect(screen.getByText("예약 가능")).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole("button", { name: /마감/ }));
@@ -121,11 +121,11 @@ describe("슬롯 open/close", () => {
     });
   });
 
-  it("확인 다이얼로그에서 마감을 확정하면 상태가 CLOSED로 전환된다", async () => {
+  it("확인 다이얼로그에서 마감을 확정하면 상태가 마감됨으로 전환된다", async () => {
     render(<SlotsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("OPEN")).toBeInTheDocument();
+      expect(screen.getByText("예약 가능")).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole("button", { name: /마감/ }));
@@ -137,7 +137,7 @@ describe("슬롯 open/close", () => {
     fireEvent.click(screen.getByRole("button", { name: "마감" }));
 
     await waitFor(() => {
-      expect(screen.getByText("CLOSED")).toBeInTheDocument();
+      expect(screen.getByText("마감됨")).toBeInTheDocument();
     });
     expect(screen.getByRole("button", { name: /오픈/ })).toBeInTheDocument();
   });
@@ -147,7 +147,7 @@ describe("슬롯 open/close", () => {
     render(<SlotsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("OPEN")).toBeInTheDocument();
+      expect(screen.getByText("예약 가능")).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole("button", { name: /마감/ }));
@@ -162,6 +162,30 @@ describe("슬롯 open/close", () => {
       expect(mockAddToast).toHaveBeenCalledWith(
         expect.objectContaining({ title: "이미 처리된 슬롯입니다.", variant: "destructive" })
       );
+    });
+  });
+
+  /**
+   * 슬롯 시간 표기 — 좁은 달력 칸에서 `07:0…` 로 잘려 분 단위를 읽을 수 없던 결함
+   * (02-파트너포털/06 캡쳐)의 회귀 방지.
+   *
+   * 잘림 자체는 CSS(text-overflow)라 jsdom 으로 판정할 수 없다. 대신 화면과 접근성 이름 양쪽에
+   * **끝나는 시각까지 온전한 문자열**이 들어가는지를 고정한다 — JS 쪽에서 문자열을 잘라내는
+   * 방식으로 되돌아가면 이 테스트가 잡는다.
+   */
+  it("시작·종료 시각이 온전히 표시된다", async () => {
+    render(<SlotsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("14:00-15:00")).toBeInTheDocument();
+    });
+  });
+
+  it("편집 버튼의 접근성 이름에도 온전한 시간이 들어간다", async () => {
+    render(<SlotsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "슬롯 14:00-15:00 편집" })).toBeInTheDocument();
     });
   });
 });

@@ -23,11 +23,9 @@ import { PrimaryButton } from '../../../components/themed/PrimaryButton';
 import { ThemedText } from '../../../components/themed/ThemedText';
 import { ThemedView } from '../../../components/themed/ThemedView';
 import { isFeatureEnabled } from '../../../lib/feature-flags';
+import { displayProductName } from '../../../lib/limitedDropDetailPresentation';
 import { ROUTES } from '../../../lib/navigation';
 import { useLimitedDropDetail } from '../../../lib/useLimitedDropDetail';
-
-/** 상품명이 비어 있을 때 화면 제목이 사라지지 않도록 쓰는 기본 문구. */
-const FALLBACK_PRODUCT_NAME = '한정판 상품';
 
 export default function LimitedDropDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -80,7 +78,7 @@ export default function LimitedDropDetailScreen() {
         <DropStatusBadge status={drop.status} />
 
         <ThemedText variant="primary" style={styles.productName} accessibilityRole="header">
-          {drop.productName?.trim() ? drop.productName : FALLBACK_PRODUCT_NAME}
+          {displayProductName(drop.productName)}
         </ThemedText>
 
         <ThemedView style={styles.heroSection}>

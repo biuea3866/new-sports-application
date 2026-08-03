@@ -10,8 +10,10 @@ import type {
   PartnerSalesResponseSchema,
 } from "./schemas";
 import { PartnerSalesResponseSchema as PartnerSalesResponseParser } from "./schemas";
+// BE PaymentStatus enum과 어긋나지 않도록 `paymentStatus.ts` 단일 출처에서 가져온다.
+import type { PaymentStatus } from "./paymentStatus";
 
-export type PaymentStatus = "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED";
+export type { PaymentStatus };
 export type PaymentMethod =
   | "CREDIT_CARD"
   | "BANK_TRANSFER"

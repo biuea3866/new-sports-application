@@ -13,20 +13,13 @@ import {
   type PartnerSalesResponse,
   fetchPartnerSales,
 } from "@/lib/portal/payments";
-
-const STATUS_LABELS: Record<PaymentStatus, string> = {
-  PENDING: "대기",
-  COMPLETED: "완료",
-  FAILED: "실패",
-  REFUNDED: "환불",
-};
-
-const STATUS_COLORS: Record<PaymentStatus, string> = {
-  PENDING: "bg-status-warning text-status-warning-foreground",
-  COMPLETED: "bg-status-success text-status-success-foreground",
-  FAILED: "bg-status-danger text-status-danger-foreground",
-  REFUNDED: "bg-status-neutral text-status-neutral-foreground",
-};
+import {
+  PAYMENT_STATUS_VALUES,
+  paymentStatusBadgeClass,
+  paymentStatusLabel,
+} from "@/lib/portal/paymentStatus";
+import { toUserMessage } from "@/lib/portal/toUserMessage";
+import { DateField } from "@/components/ui/date-field";
 
 const PAGE_SIZE = 20;
 
@@ -54,7 +47,8 @@ export default function PaymentsPage() {
       setTotalPages(data.totalPages);
       setTotalElements(data.totalElements);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "매출 내역을 불러오지 못했습니다.");
+      // 스키마 검증 실패 원문(Zod issue 배열)이 화면에 새지 않도록 사람이 읽는 문장으로 치환한다.
+      setError(toUserMessage(err));
     } finally {
       setLoading(false);
     }
@@ -69,13 +63,13 @@ export default function PaymentsPage() {
     setPage(0);
   }
 
-  function handleFromChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setPaidAtFrom(e.target.value);
+  function handleFromChange(nextValue: string) {
+    setPaidAtFrom(nextValue);
     setPage(0);
   }
 
-  function handleToChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setPaidAtTo(e.target.value);
+  function handleToChange(nextValue: string) {
+    setPaidAtTo(nextValue);
     setPage(0);
   }
 
@@ -101,9 +95,9 @@ export default function PaymentsPage() {
             aria-label="결제 상태 필터"
           >
             <option value="">전체</option>
-            {(Object.keys(STATUS_LABELS) as PaymentStatus[]).map((s) => (
-              <option key={s} value={s}>
-                {STATUS_LABELS[s]}
+            {PAYMENT_STATUS_VALUES.map((status) => (
+              <option key={status} value={status}>
+                {paymentStatusLabel(status)}
               </option>
             ))}
           </select>
@@ -113,12 +107,10 @@ export default function PaymentsPage() {
           <label htmlFor="paid-at-from" className="block text-sm font-medium mb-1">
             결제일 시작
           </label>
-          <input
+          <DateField
             id="paid-at-from"
-            type="date"
             value={paidAtFrom}
             onChange={handleFromChange}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="결제일 시작"
           />
         </div>
@@ -127,12 +119,10 @@ export default function PaymentsPage() {
           <label htmlFor="paid-at-to" className="block text-sm font-medium mb-1">
             결제일 종료
           </label>
-          <input
+          <DateField
             id="paid-at-to"
-            type="date"
             value={paidAtTo}
             onChange={handleToChange}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="결제일 종료"
           />
         </div>
@@ -218,9 +208,9 @@ export default function PaymentsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <span
-                          className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[payment.status]}`}
+                          className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${paymentStatusBadgeClass(payment.status)}`}
                         >
-                          {STATUS_LABELS[payment.status]}
+                          {paymentStatusLabel(payment.status)}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">

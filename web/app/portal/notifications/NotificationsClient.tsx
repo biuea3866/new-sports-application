@@ -9,8 +9,43 @@ import {
   fetchMyNotifications,
   markNotificationRead,
 } from "@/lib/portal/notifications";
+import type { NotificationCategory } from "@/lib/portal/types";
+import { toUserMessage } from "@/lib/portal/toUserMessage";
 
 const PAGE_SIZE = 20;
+
+const CATEGORY_LABELS: Record<NotificationCategory, string> = {
+  BOOKING: "예약",
+  PAYMENT: "결제",
+  EVENT: "경기",
+  SYSTEM: "시스템",
+  PROMOTION: "프로모션",
+};
+
+const CATEGORY_BADGE_CLASSES: Record<NotificationCategory, string> = {
+  BOOKING: "bg-status-info text-status-info-foreground",
+  PAYMENT: "bg-status-success text-status-success-foreground",
+  EVENT: "bg-status-warning text-status-warning-foreground",
+  SYSTEM: "bg-status-neutral text-status-neutral-foreground",
+  PROMOTION: "bg-status-neutral text-status-neutral-foreground",
+};
+
+const UNKNOWN_CATEGORY_BADGE_CLASS = "bg-status-neutral text-status-neutral-foreground";
+
+function isKnownCategory(value: string): value is NotificationCategory {
+  return Object.prototype.hasOwnProperty.call(CATEGORY_LABELS, value);
+}
+
+/** 분류 라벨. BE에 분류가 추가돼도 화면이 죽지 않도록 모르는 값은 원문으로 떨어뜨린다. */
+function categoryLabel(category: string): string {
+  return isKnownCategory(category) ? CATEGORY_LABELS[category] : category;
+}
+
+function categoryBadgeClass(category: string): string {
+  return isKnownCategory(category)
+    ? CATEGORY_BADGE_CLASSES[category]
+    : UNKNOWN_CATEGORY_BADGE_CLASS;
+}
 
 interface TabValue {
   label: string;
@@ -43,22 +78,29 @@ function NotificationCard({
   onMarkRead,
   markingId,
 }: NotificationCardProps) {
-  const isRead = notification.readAt !== null;
+  const isRead = notification.isRead;
   const isMarking = markingId === notification.id;
 
   return (
     <article
-      aria-label={`알림 ${notification.id}: ${notification.templateId}`}
+      aria-label={`알림 ${notification.id}: ${notification.title}`}
       className={`rounded-lg border p-4 space-y-2 ${
         isRead ? "bg-card" : "bg-accent border-accent"
       }`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm truncate">{notification.templateId}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            채널: {notification.channel} &middot; 상태: {notification.status}
-          </p>
+          <div className="flex items-center gap-2">
+            <span
+              className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${categoryBadgeClass(
+                notification.category
+              )}`}
+            >
+              {categoryLabel(notification.category)}
+            </span>
+            <p className="font-medium text-sm truncate">{notification.title}</p>
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">{notification.content}</p>
         </div>
         {!isRead && (
           <Button
@@ -79,12 +121,6 @@ function NotificationCard({
           <dt className="w-16 shrink-0">생성</dt>
           <dd>{formatDate(notification.createdAt)}</dd>
         </div>
-        {notification.sentAt && (
-          <div className="flex gap-2">
-            <dt className="w-16 shrink-0">발송</dt>
-            <dd>{formatDate(notification.sentAt)}</dd>
-          </div>
-        )}
         {notification.readAt && (
           <div className="flex gap-2">
             <dt className="w-16 shrink-0">읽음</dt>
@@ -130,9 +166,9 @@ export default function NotificationsClient() {
       setTotalPages(data.totalPages);
       setTotalElements(data.totalElements);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "알림 목록을 불러오지 못했습니다."
-      );
+      // 응답을 실제로 파싱하므로 계약 위반 시 ZodError 가 온다 — issue 배열 원문이 화면에
+      // 새지 않도록 사람이 읽는 문장으로 치환한다(상세는 콘솔).
+      setError(toUserMessage(err));
     } finally {
       setLoading(false);
     }
@@ -160,9 +196,7 @@ export default function NotificationsClient() {
       setToast("알림을 읽음 처리했습니다.");
       void loadNotifications();
     } catch (err) {
-      setToast(
-        err instanceof Error ? err.message : "읽음 처리에 실패했습니다."
-      );
+      setToast(toUserMessage(err));
     } finally {
       setMarkingId(null);
     }

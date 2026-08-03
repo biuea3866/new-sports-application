@@ -432,13 +432,14 @@ describe("입력 스키마 검증", () => {
 });
 
 describe("[U-02] NotificationSchema 검증", () => {
+  // BE `MyNotificationResponse` 계약 — 발송 내부 값(channel·templateId·status·sentAt)은
+  // 이 응답에 실리지 않고, 알림함이 그대로 렌더할 사용자 관점 필드만 담긴다.
   const baseNotification = {
     id: 1,
-    userId: 10,
-    channel: "IN_APP",
-    templateId: "booking.confirmed",
-    status: "SENT",
-    sentAt: "2026-05-30T09:00:00Z",
+    title: "예약이 확정됐습니다",
+    content: "내 시설에 예약이 접수됐습니다. 예약 번호 6",
+    category: "BOOKING",
+    isRead: false,
     readAt: null,
     createdAt: "2026-05-30T09:00:00Z",
   };
@@ -454,18 +455,36 @@ describe("[U-02] NotificationSchema 검증", () => {
     });
 
     it("readAt이 있는 읽음 알림을 파싱한다", () => {
-      const data = { ...baseNotification, readAt: "2026-05-30T10:00:00Z" };
+      const data = { ...baseNotification, isRead: true, readAt: "2026-05-30T10:00:00Z" };
       expect(NotificationSchema.safeParse(data).success).toBe(true);
     });
 
-    it("channel이 유효하지 않으면 파싱에 실패한다", () => {
-      const data = { ...baseNotification, channel: "UNKNOWN" };
+    // BE가 분류를 추가했다고 알림함 전체가 비면 안 된다 — 모르는 값은 원문으로 통과시키고
+    // 화면이 한글 라벨을 못 찾으면 원문을 보여준다.
+    it("모르는 category는 원문으로 통과시킨다", () => {
+      const data = { ...baseNotification, category: "BRAND_NEW" };
+      const result = NotificationSchema.safeParse(data);
+
+      expect(result.success).toBe(true);
+      expect(result.data?.category).toBe("BRAND_NEW");
+    });
+
+    it("category가 문자열이 아니면 파싱에 실패한다", () => {
+      const data = { ...baseNotification, category: 42 };
       expect(NotificationSchema.safeParse(data).success).toBe(false);
     });
 
-    it("status가 유효하지 않으면 파싱에 실패한다", () => {
-      const data = { ...baseNotification, status: "READ" };
-      expect(NotificationSchema.safeParse(data).success).toBe(false);
+    // 제목·본문이 빠지면 카드가 통째로 비어 보인다 — 계약 위반을 파싱 단계에서 잡는다.
+    it("title이 없으면 파싱에 실패한다", () => {
+      const { title, ...withoutTitle } = baseNotification;
+      void title;
+      expect(NotificationSchema.safeParse(withoutTitle).success).toBe(false);
+    });
+
+    it("content가 없으면 파싱에 실패한다", () => {
+      const { content, ...withoutContent } = baseNotification;
+      void content;
+      expect(NotificationSchema.safeParse(withoutContent).success).toBe(false);
     });
   });
 
@@ -524,8 +543,18 @@ describe("[U-04] PaymentSummarySchema 검증", () => {
     expect(PaymentSummarySchema.safeParse(withoutPg).success).toBe(true);
   });
 
-  it("status가 유효하지 않으면 파싱에 실패한다", () => {
-    const invalid = { ...validPayment, status: "UNKNOWN" };
+  // 목록 응답은 통째로 파싱되므로 미지 상태 한 건에 전량 실패하면 화면이 `총 0건`이 된다
+  // (02-파트너포털/14 결함). 상태값에만 내성을 주고 원문을 보존한다.
+  it("모르는 status는 원문으로 통과시킨다", () => {
+    const unknownStatus = { ...validPayment, status: "SOMETHING_NEW" };
+    const result = PaymentSummarySchema.safeParse(unknownStatus);
+
+    expect(result.success).toBe(true);
+    expect(result.data?.status).toBe("SOMETHING_NEW");
+  });
+
+  it("status가 문자열이 아니면 파싱에 실패한다", () => {
+    const invalid = { ...validPayment, status: 42 };
     expect(PaymentSummarySchema.safeParse(invalid).success).toBe(false);
   });
 

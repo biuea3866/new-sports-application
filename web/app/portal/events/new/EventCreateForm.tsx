@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CreateEventInputSchema } from "@/lib/portal/schemas";
+import { DateTimeField } from "@/components/ui/date-field";
 
 interface FormFields {
   title: string;
@@ -177,14 +178,13 @@ export default function EventCreateForm() {
           <label htmlFor="event-starts-at" className="block text-sm font-medium mb-1">
             경기 시작 시각 <span aria-hidden="true" className="text-destructive">*</span>
           </label>
-          <Input
+          <DateTimeField
             id="event-starts-at"
-            type="datetime-local"
             value={fields.startsAt}
-            onChange={(e) => setField("startsAt", e.target.value)}
-            aria-required="true"
-            aria-describedby={errors.startsAt !== undefined ? "event-starts-at-error" : undefined}
+            onChange={(nextValue) => setField("startsAt", nextValue)}
+            aria-required
             aria-invalid={errors.startsAt !== undefined}
+            aria-describedby={errors.startsAt !== undefined ? "event-starts-at-error" : undefined}
           />
           {errors.startsAt !== undefined && (
             <p id="event-starts-at-error" className="text-xs text-destructive mt-1" role="alert">

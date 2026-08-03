@@ -23,6 +23,8 @@ import { QuantityStepper } from '../../../components/limitedDrop/QuantityStepper
 import { PrimaryButton } from '../../../components/themed/PrimaryButton';
 import { ThemedText } from '../../../components/themed/ThemedText';
 import { ThemedView } from '../../../components/themed/ThemedView';
+import { formatCurrency } from '../../../lib/currency-format';
+import { displayProductName } from '../../../lib/limitedDropDetailPresentation';
 import { ROUTES } from '../../../lib/navigation';
 import { useLimitedDrop } from '../../../lib/useLimitedDrop';
 import { usePurchaseLimitedDrop } from '../../../lib/usePurchaseLimitedDrop';
@@ -199,13 +201,35 @@ export default function LimitedDropPurchaseScreen() {
     );
   }
 
+  // 단가 × 수량 — 무엇을 얼마에 사는지 확인하고 누르게 한다.
+  const totalAmount = drop.price * quantity;
+
   return (
     <ThemedView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
+        <ThemedText variant="primary" style={styles.screenTitle} accessibilityLabel="구매 확인">
+          구매 확인
+        </ThemedText>
+
+        <ThemedText variant="primary" style={styles.productName} accessibilityRole="header">
+          {displayProductName(drop.productName)}
+        </ThemedText>
+        <ThemedText variant="secondary" style={styles.unitPrice}>
+          {formatCurrency(drop.price)}
+        </ThemedText>
+
         <ThemedText variant="secondary" style={styles.spacingBottom}>
           구매 수량
         </ThemedText>
         <QuantityStepper value={quantity} max={drop.perUserLimit} onChange={setQuantity} />
+
+        <ThemedText
+          variant="primary"
+          style={styles.totalAmount}
+          accessibilityLabel={`결제 예정 금액 ${formatCurrency(totalAmount)}`}
+        >
+          {`결제 예정 금액 ${formatCurrency(totalAmount)}`}
+        </ThemedText>
 
         <PrimaryButton label="구매 확정" onPress={handleSubmit} />
 
@@ -246,5 +270,21 @@ const styles = StyleSheet.create({
   limitHint: {
     marginTop: 4,
     fontSize: 13,
+  },
+  screenTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  productName: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  unitPrice: {
+    fontSize: 15,
+    marginBottom: 4,
+  },
+  totalAmount: {
+    fontSize: 18,
+    fontWeight: '700',
   },
 });

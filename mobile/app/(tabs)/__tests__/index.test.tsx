@@ -146,4 +146,34 @@ describe('홈 화면 — 통합 검색 진입점', () => {
 
     expect(screen.getByLabelText(/유니폼/)).toBeTruthy();
   });
+
+  // ── 라벨 한글화 ──────────────────────────────────────────────────────────
+  // 회귀 방지: 같은 데이터를 스토어 탭은 `오픈` 배지로 한글화했는데 홈 피드만 원문이었다
+  // (01-모바일앱/03 캡쳐 — 경기 `OPEN`, 상품 `APPAREL`·`ACCESSORY`·`EQUIPMENT`).
+
+  it('경기 상태를 한글로 보여준다', () => {
+    mockQueries([UPCOMING_EVENT]);
+
+    render(<HomeScreen />);
+
+    expect(screen.getByText(/오픈/)).toBeTruthy();
+    expect(screen.queryByText(/OPEN/)).toBeNull();
+  });
+
+  it('상품 카테고리를 한글로 보여준다', () => {
+    mockQueries([], [{ ...UPCOMING_PRODUCT, category: 'APPAREL' }]);
+
+    render(<HomeScreen />);
+
+    expect(screen.getByText(/의류/)).toBeTruthy();
+    expect(screen.queryByText(/APPAREL/)).toBeNull();
+  });
+
+  it('모르는 상품 카테고리가 와도 화면이 죽지 않는다', () => {
+    mockQueries([], [{ ...UPCOMING_PRODUCT, category: 'SUPPLEMENT' }]);
+
+    render(<HomeScreen />);
+
+    expect(screen.getByText('유니폼')).toBeTruthy();
+  });
 });

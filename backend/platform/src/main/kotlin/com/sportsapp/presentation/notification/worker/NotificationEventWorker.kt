@@ -34,7 +34,7 @@ class NotificationEventWorker(
                 templateId = "payment-completed",
                 recipientUserId = event.recipientUserId,
                 baseEventId = event.eventId,
-                payload = NotificationPayload(mapOf("amount" to event.amount.toString())),
+                payload = NotificationPayload.paymentCompleted(event.amount),
             )
             is PaymentEvent.Cancelled -> Unit
         }
@@ -52,14 +52,14 @@ class NotificationEventWorker(
                     templateId = "booking-confirmed",
                     recipientUserId = event.recipientUserId,
                     baseEventId = event.eventId,
-                    payload = NotificationPayload(emptyMap()),
+                    payload = NotificationPayload.empty(),
                 )
                 enqueueOwner(
                     templateId = "booking-received-owner",
                     ownerUserId = event.facilityOwnerUserId,
                     buyerUserId = event.recipientUserId,
                     baseEventId = event.eventId,
-                    payload = NotificationPayload(emptyMap()),
+                    payload = NotificationPayload.empty(),
                 )
             }
         }
@@ -77,14 +77,14 @@ class NotificationEventWorker(
                     templateId = "ticket-issued",
                     recipientUserId = event.recipientUserId,
                     baseEventId = event.eventId,
-                    payload = NotificationPayload(mapOf("eventTitle" to event.eventTitle)),
+                    payload = NotificationPayload.ticketIssued(event.eventTitle),
                 )
                 enqueueOwner(
                     templateId = "ticket-sold-owner",
                     ownerUserId = event.eventOwnerUserId,
                     buyerUserId = event.recipientUserId,
                     baseEventId = event.eventId,
-                    payload = NotificationPayload(mapOf("eventTitle" to event.eventTitle)),
+                    payload = NotificationPayload.ticketIssued(event.eventTitle),
                 )
             }
         }

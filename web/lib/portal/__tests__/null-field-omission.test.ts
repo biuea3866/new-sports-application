@@ -67,17 +67,17 @@ describe("null 필드 키 생략 내성", () => {
     expect(MyFacilitySchema.safeParse(withNullValues).success).toBe(true);
   });
 
-  it("Notification — 미발송·미읽음이라 sentAt·readAt 키가 빠져도 파싱된다", () => {
-    const unsentNotification = {
+  it("Notification — 미읽음이라 readAt 키가 빠져도 파싱된다", () => {
+    const unreadNotification = {
       id: 1,
-      userId: 69,
-      channel: "EMAIL",
-      templateId: "BOOKING_CONFIRMED",
-      status: "QUEUED",
+      title: "예약이 확정됐습니다",
+      content: "내 시설에 예약이 접수됐습니다. 예약 번호 6",
+      category: "BOOKING",
+      isRead: false,
       createdAt: "2026-07-01T10:00:00+09:00",
     };
 
-    expect(NotificationSchema.safeParse(unsentNotification).success).toBe(true);
+    expect(NotificationSchema.safeParse(unreadNotification).success).toBe(true);
   });
 
   it("Booking — 미결제라 paymentId·paymentStatus 키가 빠져도 파싱된다", () => {

@@ -40,6 +40,17 @@ export function getCtaConfig(status: LimitedDropStatus): DetailCtaConfig {
   return CTA_CONFIG_BY_STATUS[status];
 }
 
+/** 상품명이 비어 있을 때 화면 제목이 사라지지 않도록 쓰는 기본 문구. */
+const FALLBACK_PRODUCT_NAME = '한정판 상품';
+
+/**
+ * 화면에 띄울 상품명. 공백뿐인 이름도 "없음"으로 보고 기본 문구로 대체한다.
+ * 상세(S1)와 구매(S2)가 같은 규칙을 써야 두 화면의 제목이 어긋나지 않는다.
+ */
+export function displayProductName(productName: string | null | undefined): string {
+  return productName != null && productName.trim().length > 0 ? productName : FALLBACK_PRODUCT_NAME;
+}
+
 /**
  * 404(존재하지 않는 회차)와 그 외 오류(5xx·네트워크)를 구분해 사용자 메시지를 반환한다.
  */

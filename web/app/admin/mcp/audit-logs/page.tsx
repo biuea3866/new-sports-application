@@ -8,6 +8,7 @@ import {
   type FetchAuditLogsParams,
   fetchAuditLogs,
 } from "@/lib/admin/auditLogs";
+import { DateField } from "@/components/ui/date-field";
 
 function toIsoString(dateStr: string, endOfDay = false): string {
   // dateStr은 "YYYY-MM-DD" 형식. UTC 자정 기준으로 변환한다.
@@ -89,16 +90,14 @@ export default function AuditLogsPage(): JSX.Element {
             >
               시작일
             </label>
-            <input
+            <DateField
               id="from-date"
-              type="date"
               value={fromDate}
-              onChange={(e) => {
-                setFromDate(e.target.value);
+              onChange={(nextValue) => {
+                setFromDate(nextValue);
                 setPage(0);
               }}
               max={toDate}
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
           <div>
@@ -108,17 +107,15 @@ export default function AuditLogsPage(): JSX.Element {
             >
               종료일
             </label>
-            <input
+            <DateField
               id="to-date"
-              type="date"
               value={toDate}
-              onChange={(e) => {
-                setToDate(e.target.value);
+              onChange={(nextValue) => {
+                setToDate(nextValue);
                 setPage(0);
               }}
               min={fromDate}
               max={todayStr()}
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
           <Button type="submit" size="sm" aria-label="감사 로그 검색">
@@ -155,25 +152,25 @@ export default function AuditLogsPage(): JSX.Element {
                     scope="col"
                     className="px-4 py-3 text-left font-medium text-muted-foreground"
                   >
-                    Tool Name
+                    도구 이름
                   </th>
                   <th
                     scope="col"
                     className="px-4 py-3 text-left font-medium text-muted-foreground"
                   >
-                    Status Code
+                    응답 코드
                   </th>
                   <th
                     scope="col"
                     className="px-4 py-3 text-left font-medium text-muted-foreground"
                   >
-                    Latency (ms)
+                    응답 시간(ms)
                   </th>
                   <th
                     scope="col"
                     className="px-4 py-3 text-left font-medium text-muted-foreground"
                   >
-                    Called At
+                    호출 시각
                   </th>
                 </tr>
               </thead>

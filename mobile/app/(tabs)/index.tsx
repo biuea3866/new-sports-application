@@ -17,6 +17,7 @@ import { StatusBar } from 'expo-status-bar';
 import { getBeClient } from '../../api/be-client';
 import { ChatEntryButton } from '../../components/common/ChatEntryButton';
 import { ListItem, ThemedText } from '../../components/ui';
+import { eventStatusLabel, productCategoryLabel } from '../../lib/catalog-labels';
 import { isFeatureEnabled } from '../../lib/feature-flags';
 import { ROUTES } from '../../lib/navigation';
 import { useTheme } from '../../theme/useTheme';
@@ -111,7 +112,7 @@ export default function HomeScreen() {
               {e.title}
             </ThemedText>
             <ThemedText variant="secondary" style={styles.cardMeta}>
-              {e.venue} · {formatDate(e.startsAt)} · {e.status}
+              {e.venue} · {formatDate(e.startsAt)} · {eventStatusLabel(e.status)}
             </ThemedText>
           </Pressable>
         ))
@@ -143,7 +144,7 @@ export default function HomeScreen() {
               {p.name}
             </ThemedText>
             <ThemedText variant="secondary" style={styles.cardMeta}>
-              {p.category} · {p.price.toLocaleString('ko-KR')}원
+              {productCategoryLabel(p.category)} · {p.price.toLocaleString('ko-KR')}원
             </ThemedText>
           </Pressable>
         ))

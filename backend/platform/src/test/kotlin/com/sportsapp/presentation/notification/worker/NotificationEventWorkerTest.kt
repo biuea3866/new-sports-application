@@ -45,7 +45,8 @@ class NotificationEventWorkerTest : BehaviorSpec({
                 captured.forEach { command ->
                     command.templateId shouldBe "payment-completed"
                     command.recipientUserId shouldBe 900L
-                    command.payload.data["amount"] shouldBe "30000"
+                    // 사용자에게 보이는 문장에 들어가므로 천 단위 구분자가 있어야 한다.
+                    command.payload.data["amount"] shouldBe "30,000"
                 }
                 val inApp = captured.single { it.channel == NotificationChannel.IN_APP }
                 val push = captured.single { it.channel == NotificationChannel.PUSH }
