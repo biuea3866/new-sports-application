@@ -56,7 +56,7 @@ class SearchRecruitmentsForCatalogUseCaseTest : BehaviorSpec({
                 result.size shouldBe 1
                 result[0].sourceId shouldBe 1L
                 result[0].title shouldBe "주말 축구 모임"
-                result[0].feeAmount shouldBe BigDecimal("10000")
+                result[0].price shouldBe BigDecimal("10000")
                 result[0].status shouldBe RecruitmentStatus.OPEN
                 result[0].createdAt shouldBe createdAt
             }

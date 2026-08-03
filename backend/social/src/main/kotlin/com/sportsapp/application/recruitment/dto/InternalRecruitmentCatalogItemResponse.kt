@@ -15,7 +15,7 @@ import java.time.ZonedDateTime
 data class InternalRecruitmentCatalogItemResponse(
     val sourceId: Long,
     val title: String,
-    val feeAmount: BigDecimal,
+    val price: BigDecimal,
     val status: RecruitmentStatus,
     val createdAt: ZonedDateTime,
 ) {
@@ -23,7 +23,7 @@ data class InternalRecruitmentCatalogItemResponse(
         fun of(recruitment: Recruitment): InternalRecruitmentCatalogItemResponse = InternalRecruitmentCatalogItemResponse(
             sourceId = recruitment.id,
             title = recruitment.title,
-            feeAmount = recruitment.feeAmount,
+            price = recruitment.feeAmount,
             status = recruitment.status,
             createdAt = recruitment.createdAt,
         )

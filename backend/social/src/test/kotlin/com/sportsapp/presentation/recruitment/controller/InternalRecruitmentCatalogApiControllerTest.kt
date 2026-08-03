@@ -28,7 +28,7 @@ class InternalRecruitmentCatalogApiControllerTest : BehaviorSpec({
     fun catalogItem(sourceId: Long): InternalRecruitmentCatalogItemResponse = InternalRecruitmentCatalogItemResponse(
         sourceId = sourceId,
         title = "주말 축구 모임",
-        feeAmount = BigDecimal("10000"),
+        price = BigDecimal("10000"),
         status = RecruitmentStatus.OPEN,
         createdAt = ZonedDateTime.now(),
     )
@@ -46,7 +46,7 @@ class InternalRecruitmentCatalogApiControllerTest : BehaviorSpec({
                     .andExpect(jsonPath("$.length()").value(1))
                     .andExpect(jsonPath("$[0].sourceId").value(1))
                     .andExpect(jsonPath("$[0].title").value("주말 축구 모임"))
-                    .andExpect(jsonPath("$[0].feeAmount").value(10000))
+                    .andExpect(jsonPath("$[0].price").value(10000))
                     .andExpect(jsonPath("$[0].status").value("OPEN"))
                     .andExpect(jsonPath("$[0].description").doesNotExist())
                     .andExpect(jsonPath("$[0].capacity").doesNotExist())
