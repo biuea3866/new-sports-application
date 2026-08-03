@@ -120,15 +120,39 @@ describe("라이트 모드 텍스트 토큰 대비가 현재 수준 아래로 �
   });
 });
 
-describe("실선 배경 조합이 UI 컴포넌트 기준을 만족한다", () => {
-  // `components/ui/{button,badge,toast}.tsx` 와 TokenList 확인 버튼이 쓰는 조합.
-  it.each([":root", ".dark"] as const)(
-    "%s 의 bg-destructive + text-destructive-foreground",
-    (scope) => {
-      const background = hslToRgb(readToken(scope, "destructive"));
-      const foreground = hslToRgb(readToken(scope, "destructive-foreground"));
+describe("불투명 destructive 배경 위 글자가 판독 가능하다", () => {
+  /*
+   * 사용처: components/ui/{button,badge,toast}.tsx, TokenList 폐기 확인 버튼.
+   * 전부 `text-xs`~`text-sm` 본문 크기라 큰글자 예외(3:1)를 받을 수 없다 → 4.5:1 필요.
+   *
+   * 이전 판(42fed7e3)은 이 조합을 UI 컴포넌트 기준(3:1)으로 재서 3.44:1 을 통과시켰다.
+   * --destructive 명도만 올리고 전경을 그대로 둔 역회귀를 못 잡은 직접 원인이므로 본문 기준으로 올린다.
+   */
+  it("다크 bg-destructive + text-destructive-foreground 가 AA 본문 기준을 만족한다", () => {
+    const background = hslToRgb(readToken(".dark", "destructive"));
+    const foreground = hslToRgb(readToken(".dark", "destructive-foreground"));
 
-      expect(contrastRatio(foreground, background)).toBeGreaterThanOrEqual(UI_COMPONENT_MINIMUM);
+    expect(contrastRatio(foreground, background)).toBeGreaterThanOrEqual(TEXT_MINIMUM);
+  });
+
+  // 라이트는 이번 변경 대상이 아니다 (3.59:1 — 브랜치 이전부터의 상태). 악화만 차단한다.
+  it("라이트 bg-destructive + text-destructive-foreground 가 현재 수준을 유지한다", () => {
+    const background = hslToRgb(readToken(":root", "destructive"));
+    const foreground = hslToRgb(readToken(":root", "destructive-foreground"));
+
+    expect(contrastRatio(foreground, background)).toBeGreaterThanOrEqual(UI_COMPONENT_MINIMUM);
+  });
+});
+
+describe("다크 텍스트 토큰이 bg-background 위에서도 판독 가능하다", () => {
+  const darkBackground = hslToRgb(readToken(".dark", "background"));
+
+  it.each(["foreground", "muted-foreground", "destructive", "success", "warning"] as const)(
+    "text-%s 가 bg-background 위에서 AA 본문 기준을 만족한다",
+    (token) => {
+      const ratio = contrastRatio(hslToRgb(readToken(".dark", token)), darkBackground);
+
+      expect(ratio).toBeGreaterThanOrEqual(TEXT_MINIMUM);
     }
   );
 });
