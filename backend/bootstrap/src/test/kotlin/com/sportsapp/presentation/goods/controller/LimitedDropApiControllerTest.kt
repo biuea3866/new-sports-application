@@ -133,8 +133,8 @@ class LimitedDropApiControllerTest(
 
                     purchase(dropId, BUYER_USER_ID, UUID.randomUUID().toString())
                         .andExpect { result -> result.response.status shouldBe 425 }
-                        .andExpect(jsonPath("$.properties.code").value("LIMITED_DROP_TOO_EARLY"))
-                        .andExpect(jsonPath("$.properties.openAt").exists())
+                        .andExpect(jsonPath("$.code").value("LIMITED_DROP_TOO_EARLY"))
+                        .andExpect(jsonPath("$.openAt").exists())
                 }
             }
         }
@@ -148,7 +148,7 @@ class LimitedDropApiControllerTest(
 
                     purchase(dropId, OTHER_BUYER_USER_ID, UUID.randomUUID().toString())
                         .andExpect(status().isConflict)
-                        .andExpect(jsonPath("$.properties.code").value("LIMITED_DROP_SOLD_OUT"))
+                        .andExpect(jsonPath("$.code").value("LIMITED_DROP_SOLD_OUT"))
                 }
             }
         }
@@ -162,7 +162,7 @@ class LimitedDropApiControllerTest(
 
                     purchase(dropId, BUYER_USER_ID, UUID.randomUUID().toString())
                         .andExpect(status().isConflict)
-                        .andExpect(jsonPath("$.properties.code").value("LIMITED_DROP_CLOSED"))
+                        .andExpect(jsonPath("$.code").value("LIMITED_DROP_CLOSED"))
                 }
             }
         }
@@ -176,7 +176,7 @@ class LimitedDropApiControllerTest(
 
                     purchase(dropId, BUYER_USER_ID, UUID.randomUUID().toString())
                         .andExpect(status().isForbidden)
-                        .andExpect(jsonPath("$.properties.code").value("LIMITED_DROP_PER_USER_LIMIT_EXCEEDED"))
+                        .andExpect(jsonPath("$.code").value("LIMITED_DROP_PER_USER_LIMIT_EXCEEDED"))
                 }
             }
         }

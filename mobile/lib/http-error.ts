@@ -24,10 +24,13 @@ export function isUnauthorizedError(error: Error | null | undefined): boolean {
 /**
  * BE 에러 응답 본문 — Spring ProblemDetail.
  *
- * `ProblemDetailBuilder.build` 가 `setProperty("code", ...)` 로 담고,
- * `spring.mvc.problemdetails.enabled` 미설정이라 unwrap 되지 않아 실제 직렬화는
- * `properties.code` 다 (BE 통합 테스트가 `$.properties.code` 로 검증). 구 응답의
- * 최상위 `code` 형태도 방어적으로 폴백한다.
+ * `ProblemDetailBuilder.build` 가 `setProperty("code", ...)` 로 담는다. Spring 의
+ * `ProblemDetailJacksonMixin` 이 `getProperties()` 에 `@JsonAnyGetter` 를 붙여 **최상위 `code` 로
+ * 평탄화**되는 것이 현재 동작이다 (RFC 7807 확장 멤버 규약과 일치, BE 통합 테스트가 `$.code` 로 검증).
+ *
+ * 전역 ObjectMapper 가 Boot 빌더 기반이 아니던 시절(PR #385 이전)에는 그 믹스인이 없어
+ * `properties.code` 로 중첩됐다. 두 형태를 모두 읽는 아래 폴백은 그 시절 응답과 캐시된 오류 본문을
+ * 위한 방어이며, 순서(중첩 우선)를 바꿀 필요는 없다 — 둘 중 하나만 존재한다.
  */
 interface ProblemDetailBody {
   properties?: { code?: string };

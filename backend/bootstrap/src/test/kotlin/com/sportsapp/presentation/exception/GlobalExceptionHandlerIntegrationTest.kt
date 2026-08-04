@@ -43,6 +43,19 @@ import java.sql.SQLTransientConnectionException
  * [DEF-001] S-07: 유효 enum 쿼리 파라미터 전달 시 200을 반환한다 (회귀).
  * [F6] S-08: 필수 @RequestParam 누락 시 500 대신 400을 반환한다.
  * [F6] S-09: 필수 @RequestParam이 있으면 200을 반환한다 (회귀).
+ *
+ * ## 커스텀 프로퍼티는 최상위로 평탄화된다 (`$.code`, `$.properties.code` 아님)
+ *
+ * `ProblemDetail.getProperties()` 에는 Spring 의 `ProblemDetailJacksonMixin` 이 `@JsonAnyGetter` 를
+ * 붙여, `setProperty("code", ..)` 로 넣은 값이 **응답 최상위**로 펼쳐진다. RFC 7807 이 확장 멤버를
+ * 최상위에 두는 규약과 일치한다.
+ *
+ * 이 테스트들이 한동안 `$.properties.code` 를 단언한 이유는, 앱 전역 `@Primary` ObjectMapper 가
+ * `JsonMapper.builder()` 로 직접 만들어져 그 믹스인이 **없던** 시절의 동작(중첩 직렬화)을 굳혀
+ * 두었기 때문이다. PR #385 가 전역 매퍼를 Boot 의 `Jackson2ObjectMapperBuilder` 기반으로 바꾸면서
+ * 믹스인이 등록돼 평탄화가 실제 동작이 됐고, 이 단언들만 구 형태로 남아 red 였다 — 응답이 맞고
+ * 단언이 틀린 상태였다. 모바일 클라이언트는 `body?.properties?.code ?? body?.code` 로 두 형태를
+ * 모두 읽어 런타임 파손은 없었다(`mobile/lib/http-error.ts`).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
@@ -77,7 +90,7 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
                         .andExpect(status().isNotFound)
                         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                         .andExpect(jsonPath("$.status").value(404))
-                        .andExpect(jsonPath("$.properties.code").value("RESOURCE_NOT_FOUND"))
+                        .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"))
                         .andExpect(jsonPath("$.detail").exists())
                         .andExpect(jsonPath("$.type").exists())
                 }
@@ -95,7 +108,7 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
                         .andExpect(status().isUnprocessableEntity)
                         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                         .andExpect(jsonPath("$.status").value(422))
-                        .andExpect(jsonPath("$.properties.code").value("BUSINESS_RULE_VIOLATION"))
+                        .andExpect(jsonPath("$.code").value("BUSINESS_RULE_VIOLATION"))
                 }
             }
         }
@@ -111,7 +124,7 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
                         .andExpect(status().isInternalServerError)
                         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                         .andExpect(jsonPath("$.status").value(500))
-                        .andExpect(jsonPath("$.properties.code").value("INTERNAL_ERROR"))
+                        .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
                 }
             }
         }
@@ -129,8 +142,8 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
                         .andExpect(status().isBadRequest)
                         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                         .andExpect(jsonPath("$.status").value(400))
-                        .andExpect(jsonPath("$.properties.fieldErrors").exists())
-                        .andExpect(jsonPath("$.properties.fieldErrors").isArray)
+                        .andExpect(jsonPath("$.fieldErrors").exists())
+                        .andExpect(jsonPath("$.fieldErrors").isArray)
                 }
             }
         }
@@ -146,7 +159,7 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
                         .andExpect(status().isConflict)
                         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                         .andExpect(jsonPath("$.status").value(409))
-                        .andExpect(jsonPath("$.properties.code").value("OPTIMISTIC_LOCK_CONFLICT"))
+                        .andExpect(jsonPath("$.code").value("OPTIMISTIC_LOCK_CONFLICT"))
                 }
             }
         }
@@ -162,7 +175,7 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
                         .andExpect(status().isInternalServerError)
                         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                         .andExpect(jsonPath("$.status").value(500))
-                        .andExpect(jsonPath("$.properties.code").value("INTERNAL_ERROR"))
+                        .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
                 }
             }
         }
@@ -178,7 +191,7 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
                         .andExpect(status().isBadRequest)
                         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                         .andExpect(jsonPath("$.status").value(400))
-                        .andExpect(jsonPath("$.properties.code").value("INVALID_ENUM_VALUE"))
+                        .andExpect(jsonPath("$.code").value("INVALID_ENUM_VALUE"))
                 }
             }
 
@@ -219,7 +232,7 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
                         .andExpect(status().isBadRequest)
                         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                         .andExpect(jsonPath("$.status").value(400))
-                        .andExpect(jsonPath("$.properties.code").value("MALFORMED_REQUEST_BODY"))
+                        .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST_BODY"))
                 }
             }
 
@@ -234,7 +247,7 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
                     )
                         .andExpect(status().isBadRequest)
                         .andExpect(jsonPath("$.status").value(400))
-                        .andExpect(jsonPath("$.properties.code").value("MALFORMED_REQUEST_BODY"))
+                        .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST_BODY"))
                 }
             }
 
@@ -263,7 +276,7 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
                         .andExpect(status().isBadRequest)
                         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                         .andExpect(jsonPath("$.status").value(400))
-                        .andExpect(jsonPath("$.properties.code").value("MISSING_REQUEST_PARAMETER"))
+                        .andExpect(jsonPath("$.code").value("MISSING_REQUEST_PARAMETER"))
                         .andExpect(jsonPath("$.detail").value("Required request parameter is missing: category"))
                 }
             }
@@ -295,7 +308,7 @@ class GlobalExceptionHandlerIntegrationTest : BehaviorSpec() {
                         .andExpect(status().isServiceUnavailable)
                         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                         .andExpect(jsonPath("$.status").value(503))
-                        .andExpect(jsonPath("$.properties.code").value("SERVICE_UNAVAILABLE"))
+                        .andExpect(jsonPath("$.code").value("SERVICE_UNAVAILABLE"))
                         .andExpect(header().exists("Retry-After"))
                 }
             }

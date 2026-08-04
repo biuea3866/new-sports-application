@@ -118,7 +118,7 @@ class ProductApiControllerTest(
                     mockMvc.perform(get("/products/popular").accept(MediaType.APPLICATION_JSON))
                         .andExpect(status().isBadRequest)
                         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-                        .andExpect(jsonPath("$.properties.code").value("MISSING_REQUEST_PARAMETER"))
+                        .andExpect(jsonPath("$.code").value("MISSING_REQUEST_PARAMETER"))
                         .andExpect(jsonPath("$.detail").value("Required request parameter is missing: category"))
                 }
             }

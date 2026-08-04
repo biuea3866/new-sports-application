@@ -69,7 +69,8 @@ describe('isUnauthorizedError', () => {
 /**
  * extractProblemCode — BE ProblemDetail 의 에러 코드 판별.
  * BE(ProblemDetailBuilder)는 `setProperty("code", ...)` 로 내려주고 `spring.mvc.problemdetails.enabled`
- * 미설정이라 unwrap 되지 않아 실제 직렬화는 `properties.code` 다 (BE 통합 테스트가 `$.properties.code` 로 검증).
+ * Spring ProblemDetailJacksonMixin 의 @JsonAnyGetter 로 실제 직렬화는 최상위 `code` 다 (BE 통합 테스트가 `$.code` 로 검증).
+ * 아래 케이스는 구 형태(properties 중첩) 응답도 읽는 폴백을 고정한다.
  * 화면이 `errorCode` 같은 없는 필드를 읽어 안내가 죽는 사고를 막기 위한 단일 판별 지점이다.
  */
 describe('extractProblemCode', () => {
