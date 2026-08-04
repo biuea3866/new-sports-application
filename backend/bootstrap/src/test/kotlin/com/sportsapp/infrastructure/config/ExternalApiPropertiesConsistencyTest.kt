@@ -43,10 +43,13 @@ class ExternalApiPropertiesConsistencyTest : BehaviorSpec({
     // 선점해 실제 env를 가리고, 개별 시나리오가 필요하면 *properties로 다시 덮어쓴다(더 뒤에
     // 적용되어 우선한다).
     //
-    // 주의 — 이 선점 때문에 `contextRunner()`(무인자)로 해석한 값은 **yml 의 기본값이 아니라
-    // 여기서 주입한 시스템 프로퍼티**다. 따라서 "env 미주입 시 mock 기본값" 규약은 바인딩 결과로
+    // 주의 — 이 선점 때문에 `contextRunner()`(무인자)로 해석한 **api-key** 값은 yml 의 기본값이 아니라
+    // 여기서 주입한 시스템 프로퍼티다. 따라서 "env 미주입 시 mock 기본값" 규약은 바인딩 결과로
     // 검증할 수 없다(동어반복이 된다) — 아래 "application.yml 의 플레이스홀더 선언" Given 이
-    // yml 텍스트를 직접 읽어 그 불변식을 담당한다.
+    // yml 텍스트를 직접 읽어 그 불변식을 담당하고, 동어반복이던 바인딩 케이스는 제거했다.
+    //
+    // base-url 은 선점 대상이 아니라 아래 "env 가 전혀 주입되지 않은 상태" Given 의 mock host 단언은
+    // 여전히 yml 기본값을 검증한다. 기본 생성자 Given 도 Kotlin 기본값을 보므로 영향받지 않는다.
     fun contextRunner(vararg properties: String) =
         ApplicationContextRunner()
             .withInitializer(ConfigDataApplicationContextInitializer())
@@ -122,20 +125,6 @@ class ExternalApiPropertiesConsistencyTest : BehaviorSpec({
                     publicFacilityApiKey shouldBe "real-service-key-abc"
                     weatherApiKey shouldBe "real-service-key-abc"
                     airQualityApiKey shouldBe "real-service-key-abc"
-                }
-            }
-        }
-    }
-
-    Given("env 가 전혀 주입되지 않은 기본 상태") {
-        When("application.yml 로 public-facility·weather api-key 를 바인딩하면") {
-            Then("weather api-key 기본값 비대칭이 해소되어 public-facility 와 동일 규약으로 해석된다") {
-                contextRunner().run { context ->
-                    val publicFacilityApiKey = context.getBean(PublicFacilityProperties::class.java).apiKey
-                    val weatherApiKey = context.getBean(WeatherProperties::class.java).apiKey
-
-                    weatherApiKey shouldBe publicFacilityApiKey
-                    weatherApiKey shouldBe "mock-service-key"
                 }
             }
         }

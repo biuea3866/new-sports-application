@@ -11,10 +11,12 @@ import java.io.File
  */
 class EnvSampleTest : BehaviorSpec({
 
-    // 테스트 JVM의 working dir는 이 모듈(bootstrap/)이다 — 멀티모듈 골격(W1-01a) 이전에는
-    // backend/가 곧 모듈 루트라 한 단계로 충분했으나, backend/bootstrap/으로 한 단계 더
-    // 들어간 뒤에는 레포 루트까지 두 단계 올라가야 한다.
-    val envSampleFile = File("../../.env.sample")
+    // 깊이를 세지 않고 표식 파일로 레포 루트를 찾는다 — 멀티모듈 골격 전환(W1-01a)으로 working dir
+    // 가 한 단계 깊어졌을 때 `../` 하드코딩이 깨졌던 지점이라, 계층이 또 바뀌어도 안 깨지는
+    // 방식으로 통일한다(같은 모듈 IngressRoutingMapTest·InternalIngressGuardTest 선례).
+    val repositoryRoot = generateSequence(File(System.getProperty("user.dir")).absoluteFile) { it.parentFile }
+        .firstOrNull { File(it, ".env.sample").isFile }
+    val envSampleFile = File(requireNotNull(repositoryRoot) { "레포 루트(.env.sample)를 찾지 못했습니다" }, ".env.sample")
 
     val requiredKeys = listOf(
         "KAKAO_REST_API_KEY",

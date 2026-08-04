@@ -567,7 +567,6 @@ class GoodsDomainServiceTest : BehaviorSpec({
         }
     }
 
-
     Given("owner_id=555인 Product(id=777)가 삭제되지 않은 상태로 존재할 때") {
         val product = forceId(
             Product(

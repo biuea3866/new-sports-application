@@ -9,7 +9,7 @@
  * U-08: 저장된 입장 토큰이 있으면 selectSeats가 X-Entry-Token 헤더를 부착한다(FE-09)
  * U-09: 저장된 입장 토큰이 없으면 selectSeats가 X-Entry-Token 헤더 없이 호출한다(FE-09)
  * U-10: isQueueBypassDeniedError는 403 QUEUE_BYPASS_DENIED만 true를 반환한다(FE-09)
- * ProblemDetail `properties.code` 중첩 응답과 flat `code` 폴백 응답 모두를 검증한다(FE-09)
+ * 실 BE 형태인 최상위 `code` 응답과 구 형태(`properties` 중첩) 폴백 응답 모두를 검증한다(FE-09)
  */
 import MockAdapter from 'axios-mock-adapter';
 import { AxiosError } from 'axios';

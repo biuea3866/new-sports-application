@@ -14,5 +14,4 @@ interface ProductRepository {
     fun findByCategoryAndStatus(category: ProductCategory, status: ProductStatus): List<Product>
     fun findByOwnerId(ownerId: Long): List<Product>
     fun countByOwnerIdAndStatus(ownerId: Long, status: ProductStatus): Long
-
 }

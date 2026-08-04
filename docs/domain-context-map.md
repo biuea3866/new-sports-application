@@ -146,7 +146,7 @@ flowchart LR
 | partner → user (1) | 1 | 연동 계정 프로비저닝 **쓰기** (SAGA, R3 화이트리스트) |
 | featureflag → user (1) | 1 | 감사 로그 변경자 표시 이름 **읽기** 조합(`GetFeatureFlagAuditLogsUseCase`, PR #393) — R3 화이트리스트. `domain.featureflag` 는 user 를 모르고 조합은 application 에만 있다 |
 
-> **읽기 경로 동기 결합 16지점** — post→community 3 / recruitment→community 2 / community→message 3 / dashboard→코어 8. 전부 `@Transactional(readOnly = true)` 로, 상세·목록·대시보드 조회가 매 요청 타 컨텍스트를 동기 호출합니다. 서비스 분리 시 원격 홉이 조회 지연에 직결되는 지점입니다. 파사드 8건(catalog·order)은 **이미 300ms 타임아웃 + 부분 저하 설계가 있어** 성격이 다릅니다.
+> **읽기 경로 동기 결합 17지점** — post→community 3 / recruitment→community 2 / community→message 3 / dashboard→코어 8 / featureflag→user 1. 전부 `@Transactional(readOnly = true)` 로, 상세·목록·대시보드 조회가 매 요청 타 컨텍스트를 동기 호출합니다. 서비스 분리 시 원격 홉이 조회 지연에 직결되는 지점입니다. 파사드 8건(catalog·order)은 **이미 300ms 타임아웃 + 부분 저하 설계가 있어** 성격이 다릅니다.
 >
 > **presentation 레이어의 교차 컨텍스트 결합** — 이 표는 application 레이어 스코프라 아래 **동기 결합** 두 건이 빠집니다(이벤트 경로인 `AlertDeliveryEventWorker`·`CommunityChatIntegrationEventWorker` 는 ②에 기재돼 있습니다). ArchUnit R3 도 `domain`·`application` 만 스캔해 이 경로를 보지 않습니다.
 > - `presentation/mcp/**` 툴 **12파일**이 **6개 컨텍스트의 UseCase** 를 직접 주입합니다 — 코어 4(booking·ticketing·goods·facility) / 지원 1(notification) / 조회·유틸 1(dashboard). (import 전체: booking 12·ticketing 5·goods 4·facility 4·notification 2·dashboard 2. UseCase 만 세면 6·2·2·3·1·1) 서브시스템 mcp 의 최대 결합 지점이며 `McpPermissionGateway`(④)보다 훨씬 큽니다. **코어 4개로 가는 결합이 application 레이어에 있었다면 R3 위반**입니다.

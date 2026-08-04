@@ -37,6 +37,10 @@ class CatalogCompositionServiceTest : BehaviorSpec({
             initialize()
         }
 
+    /**
+     * 구분 정보(`locationName`·`scheduledAt`)는 이 헬퍼가 받지 않는다 — 넘기는 호출부가 없어
+     * 죽은 파라미터였고(LongParameterList 위반 원인), 필요한 케이스는 `copy()` 로 채운다.
+     */
     fun catalogItem(
         itemType: CatalogItemType,
         sourceId: Long,
@@ -44,8 +48,6 @@ class CatalogCompositionServiceTest : BehaviorSpec({
         price: BigDecimal?,
         sellerType: SellerType?,
         createdAt: ZonedDateTime,
-        locationName: String? = null,
-        scheduledAt: ZonedDateTime? = null,
     ) = CatalogItem(
         itemType = itemType,
         sourceId = sourceId,
@@ -55,8 +57,8 @@ class CatalogCompositionServiceTest : BehaviorSpec({
         status = "ACTIVE",
         detailPath = "/items/$sourceId",
         createdAt = createdAt,
-        locationName = locationName,
-        scheduledAt = scheduledAt,
+        locationName = null,
+        scheduledAt = null,
     )
 
     fun buildService(
@@ -102,6 +104,39 @@ class CatalogCompositionServiceTest : BehaviorSpec({
                 )
                 response.items.map { it.sourceId } shouldBe listOf(1L, 99L, 3L, 4L, 5L)
                 response.failedDomains.shouldBeEmpty()
+            }
+        }
+    }
+
+    Given("공급자가 구분 정보(장소·일정)를 채워 보낸 상황") {
+        val gateway = mockk<CatalogSearchGateway>()
+        val scheduledAt = now.plusDays(3)
+        every { gateway.searchGoods(any(), any(), any()) } returns emptyList()
+        every { gateway.searchPrograms(any(), any()) } returns listOf(
+            catalogItem(CatalogItemType.PROGRAM, 3L, "주말 정기 레슨", BigDecimal("30000"), null, now.minusMinutes(1))
+                .copy(locationName = "강남 스포츠센터"),
+        )
+        every { gateway.searchRecruitments(any(), any()) } returns emptyList()
+        every { gateway.searchTicketingEvents(any(), any()) } returns listOf(
+            catalogItem(CatalogItemType.TICKET, 5L, "농구 결승전", BigDecimal("44000"), null, now.minusMinutes(2))
+                .copy(locationName = "잠실 실내체육관", scheduledAt = scheduledAt),
+        )
+
+        val service = buildService(catalogSearchGateway = gateway)
+
+        When("전체 검색을 실행하면") {
+            val response = service.search(
+                CatalogSearchCriteria(keyword = null, itemType = null, sellerType = null, page = 0, size = 20),
+            )
+
+            Then("파사드는 구분 정보를 만들지 않고 공급자가 준 값을 그대로 실어 보낸다") {
+                val program = response.items.single { it.sourceId == 3L }
+                program.locationName shouldBe "강남 스포츠센터"
+                program.scheduledAt shouldBe null
+
+                val ticket = response.items.single { it.sourceId == 5L }
+                ticket.locationName shouldBe "잠실 실내체육관"
+                ticket.scheduledAt shouldBe scheduledAt
             }
         }
     }

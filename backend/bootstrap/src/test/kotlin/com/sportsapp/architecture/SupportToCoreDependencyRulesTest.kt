@@ -128,6 +128,23 @@ class SupportToCoreDependencyRulesTest : FunSpec({
             .check(importedClasses)
     }
 
+    test("(위반 시나리오) application.featureflag 가 실제로 의존하는 패키지를 금지 대상으로 지정하면 화이트리스트 규칙이 위반으로 탐지한다") {
+        // featureflag 도 r3Whitelisted 로 일반 R3 루프에서 빠졌으므로, 위 두 전용 규칙이 유일한
+        // 방어선이다. 두 규칙 모두 allowEmptyShould(true) 라, application.featureflag 가 이동·리네임되면
+        // 공허 통과하고 방어가 0 이 된다 — partner 와 같은 사유로 거부 능력을 고정한다.
+        importedClasses
+            .filter { javaClass -> javaClass.packageName.startsWith("com.sportsapp.application.featureflag") }
+            .shouldNotBeEmpty()
+
+        val ruleTreatingOwnDomainAsForbidden = noClasses()
+            .that().resideInAnyPackage("com.sportsapp.application.featureflag..")
+            .should().dependOnClassesThat().resideInAnyPackage("com.sportsapp.domain.featureflag..")
+
+        shouldThrow<AssertionError> {
+            ruleTreatingOwnDomainAsForbidden.check(importedClasses)
+        }
+    }
+
     test("(위반 시나리오) application.partner 가 실제로 의존하는 패키지를 금지 대상으로 지정하면 화이트리스트 규칙이 위반으로 탐지한다") {
         // partner 가 r3Whitelisted 로 일반 R3 루프에서 빠지면서, 위 "user 외 코어 접근 금지" 규칙이
         // partner 의 유일한 방어선이 됐다. 그 규칙이 실제로 실패할 수 있는지(거부 능력)를 고정한다.

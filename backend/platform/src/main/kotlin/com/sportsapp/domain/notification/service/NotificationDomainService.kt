@@ -38,7 +38,8 @@ private val SUPPORTED_ENQUEUE_CHANNELS = setOf(
 // 다만 `listMyNotificationViews`·`toView`·`resolveRendered`(표시용 렌더 조합)는 "알림을 보내고
 // 상태를 전이한다"는 이 서비스의 책임과 성격이 다르다 — 별도 조립자로 분리하는 것이 옳은 방향이고,
 // 그 리팩토링은 생성자 시그니처가 바뀌어 호출부(테스트 6곳)를 함께 고쳐야 하므로 red 정리 범위와
-// 분리해 후속으로 등록했다(후속 리스크 등록부 R-25). 분리 시 이 억제를 제거한다.
+// 분리해 후속으로 등록했다
+// (`MSA 물리분리/후속-리스크-등록부.md` R-25). 분리 시 이 억제를 제거한다.
 @Suppress("TooManyFunctions")
 class NotificationDomainService(
     private val notificationRepository: NotificationRepository,

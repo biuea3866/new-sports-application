@@ -24,8 +24,6 @@ dependencies {
     implementation("org.springframework.kafka:spring-kafka")
 
     // Spring Batch — SellerTypeBackfillJob (BE-11 products.seller_type 청크 백필)
-    implementation("org.springframework.boot:spring-boot-starter-batch")
-    testImplementation("org.springframework.batch:spring-batch-test")
 
     // Retry — 한정판 예약 보상(DropReservationCompensationRetryListener) 재시도
     implementation("org.springframework.retry:spring-retry")

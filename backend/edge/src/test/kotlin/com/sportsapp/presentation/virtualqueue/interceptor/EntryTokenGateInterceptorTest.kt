@@ -1,8 +1,5 @@
 package com.sportsapp.presentation.virtualqueue.interceptor
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.sportsapp.application.goods.dto.LimitedDropPurchaseResult
 import com.sportsapp.application.goods.dto.LimitedDropView
 import com.sportsapp.application.goods.usecase.CreateLimitedDropUseCase
@@ -21,6 +18,7 @@ import com.sportsapp.domain.goods.entity.GoodsOrderStatus
 import com.sportsapp.domain.goods.entity.LimitedDropStatus
 import com.sportsapp.domain.virtualqueue.VirtualQueueFeatureFlagKeys
 import sportsapp.testkit.presentation.exception.GlobalExceptionHandler
+import sportsapp.testkit.presentation.support.productionEquivalentJsonConverter
 import com.sportsapp.presentation.goods.controller.LimitedDropApiController
 import sportsapp.testkit.presentation.support.fixedPrincipalResolver
 import sportsapp.testkit.presentation.support.withAuthenticatedPrincipal
@@ -33,7 +31,6 @@ import io.mockk.mockk
 import java.math.BigDecimal
 import java.time.ZonedDateTime
 import org.springframework.http.MediaType
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
@@ -83,11 +80,12 @@ class EntryTokenGateInterceptorTest : BehaviorSpec({
             selectSeatsUseCase = selectSeatsUseCase,
             releaseSeatsUseCase = mockk<ReleaseSeatsUseCase>(),
         )
-        val objectMapper = ObjectMapper().registerKotlinModule().registerModule(JavaTimeModule())
         return MockMvcBuilders
             .standaloneSetup(limitedDropApiController, eventApiController)
             .setControllerAdvice(GlobalExceptionHandler())
-            .setMessageConverters(MappingJackson2HttpMessageConverter(objectMapper))
+            // 프로덕션 등가 컨버터 — 맨 ObjectMapper 는 ProblemDetailJacksonMixin 이 없어 커스텀
+            // 프로퍼티가 properties 아래 중첩되고, 실제 응답 형태($.code)를 검증하지 못한다.
+            .setMessageConverters(productionEquivalentJsonConverter())
             .setCustomArgumentResolvers(fixedPrincipalResolver(userId))
             .addMappedInterceptors(
                 arrayOf(
@@ -158,7 +156,7 @@ class EntryTokenGateInterceptorTest : BehaviorSpec({
                             .content("""{"quantity":1}"""),
                     )
                         .andExpect(status().isForbidden)
-                        .andExpect(jsonPath("$.properties.code").value("QUEUE_BYPASS_DENIED"))
+                        .andExpect(jsonPath("$.code").value("QUEUE_BYPASS_DENIED"))
                 }
             }
         }
