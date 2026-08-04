@@ -3,6 +3,7 @@ package com.sportsapp
 import com.sportsapp.domain.booking.dto.FacilitySchedule
 import com.sportsapp.domain.booking.gateway.FacilityOwnershipGateway
 import com.sportsapp.domain.booking.gateway.FacilityScheduleGateway
+import com.sportsapp.domain.facility.service.FacilityDomainService
 import com.sportsapp.domain.facility.service.ProgramDomainService
 import io.mockk.every
 import io.mockk.mockk
@@ -42,5 +43,19 @@ class TestJpaGatewayStubConfig {
     @Profile("test-jpa")
     fun programDomainService(): ProgramDomainService = mockk(relaxed = true) {
         every { searchForCatalog(any(), any()) } returns Page.empty()
+    }
+
+    /**
+     * `GetOperationKpiUseCase`(dashboard, 프로파일 무관 빈)가 인기 시설 이름을 채우려고
+     * `FacilityDomainService`(`@Profile("!test-jpa")`)를 주입받는다 (PR #386) — 스텁이 없으면
+     * **`BaseJpaIntegrationTest` 를 쓰는 모든 테스트의 컨텍스트 로드가 실패한다**
+     * (`UnsatisfiedDependencyException`). 위 두 게이트웨이·`ProgramDomainService` 와 같은 사유의 스텁이다.
+     *
+     * `findBy` 가 null 을 반환해도 UseCase 가 대체 문구("알 수 없는 시설")로 방어하므로 relaxed 스텁으로 충분하다.
+     */
+    @Bean
+    @Profile("test-jpa")
+    fun facilityDomainService(): FacilityDomainService = mockk(relaxed = true) {
+        every { findBy(any<String>()) } returns null
     }
 }
