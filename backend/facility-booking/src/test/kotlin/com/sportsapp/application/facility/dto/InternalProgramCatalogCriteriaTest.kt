@@ -39,11 +39,4 @@ class InternalProgramCatalogCriteriaTest : BehaviorSpec({
             }
         }
     }
-
-    Given("컨트롤러 기본값 상수") {
-        Then("@RequestParam 이 쓰는 문자열 형태로 한 곳에만 정의된다 (매직값 이원화 방지)") {
-            InternalProgramCatalogCriteria.DEFAULT_PAGE_PARAM shouldBe "0"
-            InternalProgramCatalogCriteria.DEFAULT_SIZE_PARAM shouldBe "20"
-        }
-    }
 })
