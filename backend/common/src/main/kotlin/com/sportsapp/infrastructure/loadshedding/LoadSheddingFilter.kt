@@ -15,7 +15,7 @@ import java.util.concurrent.Semaphore
  * 열화한다. 허용 동시 처리 수([maxConcurrentRequests])를 초과하는 요청은 큐잉하지 않고
  * 즉시 503으로 거부한다(fast-fail).
  *
- * 인증 연산(JWT 파싱 등) 이전에 거부하도록 [SecurityConfig][com.sportsapp.infrastructure.security.SecurityConfig]에서
+ * 인증 연산(JWT 파싱 등) 이전에 거부하도록 각 서비스의 `SecurityConfig`에서
  * 필터 체인 최전방에 등록한다. 헬스체크 경로는 셰딩 대상에서 제외해 과부하 시에도
  * 오케스트레이터의 헬스체크 자체가 실패하지 않게 한다. [enabled]로 기능 전체를 즉시 끌 수 있다.
  */

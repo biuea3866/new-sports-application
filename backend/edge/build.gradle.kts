@@ -53,6 +53,15 @@ dependencies {
     // 2·3 은 모듈 경계를 넘는 **이름 기반** 바인딩이라 컴파일·모듈 테스트가 잡지 못하고 조립된
     // 컨텍스트(현재 bootstrap 풀부팅)에서만 검증된다 — 파사드 전용 스레드풀이므로 2단계에서
     // 파사드와 함께 반드시 옮긴다.
+    //
+    // [S2-02 로 해소된 항목 — 다시 실측하지 않아도 된다]
+    // 아래 3종도 bootstrap main 이 공급하던 빈이었고, edge 단독 기동 시 없으면 부팅이 깨진다.
+    // S2-02 가 `common` 으로 승격해(6서비스 공통 의존 지점) edge 가 직접 소유할 필요가 없어졌다:
+    //  4. GlobalExceptionHandler·ProblemDetailBuilder — 오류 응답 계약
+    //  5. LoadSheddingFilter — 각 서비스 SecurityConfig 가 체인 최전방에 등록
+    //  6. RedisDistributedLock (`DistributedLock`) — **AdmissionPumpScheduler 부팅 필수 의존**이라
+    //     빠지면 edge 단독 기동이 즉시 실패한다
+    // 즉 S2-08(edge 독립 실행 골격)이 자기 소유로 만들어야 하는 것은 1~3 뿐이다.
     implementation("io.micrometer:micrometer-core")
 
     // 단위 테스트 — standalone MockMvc(VirtualQueue·Catalog·OrderHistory ApiControllerTest),

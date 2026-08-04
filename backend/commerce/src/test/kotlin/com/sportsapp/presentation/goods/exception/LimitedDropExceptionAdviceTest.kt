@@ -1,6 +1,7 @@
 package com.sportsapp.presentation.goods.exception
 
 import com.sportsapp.domain.goods.exception.LimitedDropTooEarlyException
+import com.sportsapp.presentation.exception.GlobalExceptionHandler
 import io.kotest.core.spec.style.BehaviorSpec
 import java.time.ZonedDateTime
 import org.springframework.http.MediaType
@@ -9,9 +10,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import sportsapp.testkit.goods.LimitedDropTriggerController
 
 private val FIXED_OPEN_AT: ZonedDateTime = ZonedDateTime.parse("2026-08-10T10:00:00+09:00[Asia/Seoul]")
 
@@ -26,9 +25,9 @@ private val FIXED_OPEN_AT: ZonedDateTime = ZonedDateTime.parse("2026-08-10T10:00
  */
 class LimitedDropExceptionAdviceTest : BehaviorSpec({
 
-    val mockMvc = MockMvcBuilders.standaloneSetup(LimitedDropTriggerController())
+    val mockMvc = MockMvcBuilders.standaloneSetup(LimitedDropTriggerController(FIXED_OPEN_AT))
         .setControllerAdvice(
-            com.sportsapp.presentation.exception.GlobalExceptionHandler(),
+            GlobalExceptionHandler(),
             LimitedDropExceptionAdvice(),
         )
         .build()
@@ -50,13 +49,3 @@ class LimitedDropExceptionAdviceTest : BehaviorSpec({
         }
     }
 })
-
-@RestController
-@RequestMapping("/test/goods")
-class LimitedDropTriggerController {
-
-    @GetMapping("/limited-drop-too-early")
-    fun throwLimitedDropTooEarly(): String {
-        throw LimitedDropTooEarlyException(dropId = 1L, openAt = FIXED_OPEN_AT)
-    }
-}
