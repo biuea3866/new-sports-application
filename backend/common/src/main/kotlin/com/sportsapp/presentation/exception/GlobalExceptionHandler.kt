@@ -2,8 +2,9 @@ package com.sportsapp.presentation.exception
 
 import com.sportsapp.domain.common.BusinessException
 import com.sportsapp.domain.common.ErrorStatus
-import com.sportsapp.domain.goods.exception.LimitedDropTooEarlyException
 import org.slf4j.LoggerFactory
+import org.springframework.core.Ordered
+import org.springframework.core.annotation.Order
 import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail
 import org.springframework.http.ResponseEntity
@@ -23,7 +24,16 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 import org.springframework.web.servlet.resource.NoResourceFoundException
 
+/**
+ * [S2-02] `common` 소유 공용 예외 어드바이스. `LimitedDropTooEarlyException`(commerce 소유)은
+ * common → commerce 역의존을 만들지 않기 위해 이 클래스에서 제외했다 — commerce 자신의
+ * `LimitedDropExceptionAdvice`가 처리한다. 두 advice 는 `LimitedDropTooEarlyException`이
+ * `BusinessException`의 하위 타입이라 순서에 민감하므로, 이 클래스는 명시적으로
+ * `Ordered.LOWEST_PRECEDENCE`(가장 낮은 우선순위 — 다른 더 구체적인 advice 가 먼저 매칭되게
+ * 양보)를 선언한다.
+ */
 @RestControllerAdvice
+@Order(Ordered.LOWEST_PRECEDENCE)
 // TooManyFunctions 억제 근거(W1-DEBT-01): 예외 타입별 @ExceptionHandler 디스패치 테이블이다.
 // 함수 수 = 처리하는 예외 종류 수이고, 쪼개면 @RestControllerAdvice 가 여러 개로 늘어나 우선순위가
 // 불명확해진다. common testFixtures 의 미러 구현도 같은 사유로 억제돼 있다.
@@ -39,21 +49,6 @@ class GlobalExceptionHandler {
             code = exception.errorCode,
             detail = exception.message
         )
-        return ResponseEntity.status(exception.status.httpStatus).body(problemDetail)
-    }
-
-    /**
-     * [LimitedDropTooEarlyException]은 [BusinessException]보다 먼저 매칭돼(더 구체적인 타입)
-     * 응답 본문에 [LimitedDropTooEarlyException.openAt]을 추가로 포함한다 — FE 재시도 시점 판단용.
-     */
-    @ExceptionHandler(LimitedDropTooEarlyException::class)
-    fun handleLimitedDropTooEarlyException(exception: LimitedDropTooEarlyException): ResponseEntity<ProblemDetail> {
-        val problemDetail = ProblemDetailBuilder.build(
-            status = exception.status,
-            code = exception.errorCode,
-            detail = exception.message
-        )
-        problemDetail.setProperty("openAt", exception.openAt.toString())
         return ResponseEntity.status(exception.status.httpStatus).body(problemDetail)
     }
 

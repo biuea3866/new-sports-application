@@ -24,6 +24,33 @@ dependencies {
     implementation("jakarta.persistence:jakarta.persistence-api")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 
+    // [S2-02] 공유 런타임 커널 승격 — GlobalExceptionHandler·ProblemDetailBuilder·LoadSheddingFilter·
+    // RedisDistributedLock 이 bootstrap main 에서 이 모듈로 이동하며 필요해진 main 의존. 새 기술
+    // 스택 도입이 아니라, 아래 testFixtures 가 같은 클래스들의 미러를 컴파일하려고 이미 선언 중인
+    // 목록을 main 으로 승격한 것이다(testFixtures 는 mockwebserver 를 더 갖는다) — edge 를 별 프로세스로
+    // 띄우면 bootstrap 이 공급하던 이 빈들이 사라지므로, 6개 서비스가 공통으로 의존하는 지점(common)
+    // 으로 옮긴다.
+    //
+    // 전부 **직접 사용** 의존이다 — 전이 해결에 기대지 않는다(상위 의존을 정리하면 조용히 깨진다):
+    //   spring-web       ProblemDetail·ResponseEntity·RestControllerAdvice·OncePerRequestFilter 등
+    //   spring-webmvc    NoResourceFoundException
+    //   spring-security-core  AccessDeniedException·AuthorizationDeniedException
+    //   spring-tx        CannotCreateTransactionException
+    //   spring-orm       ObjectOptimisticLockingFailureException
+    //   spring-data-redis     StringRedisTemplate·DefaultRedisScript
+    //   slf4j-api        LoggerFactory
+    //   jakarta.servlet-api   HttpServletRequest/Response·FilterChain
+    //   jakarta.validation-api ConstraintViolationException
+    implementation("org.springframework:spring-web")
+    implementation("org.springframework:spring-webmvc")
+    implementation("org.springframework.security:spring-security-core")
+    implementation("org.springframework:spring-tx")
+    implementation("org.springframework:spring-orm")
+    implementation("org.springframework.data:spring-data-redis")
+    implementation("org.slf4j:slf4j-api")
+    implementation("jakarta.servlet:jakarta.servlet-api")
+    implementation("jakarta.validation:jakarta.validation-api")
+
     // JpaAuditingBase(@MappedSuperclass)가 common 소유라, 이를 상속하는 각 컨텍스트 모듈의 @Entity가
     // 참조할 QJpaAuditingBase 도 common 자신의 kapt 실행에서 생성돼야 한다 — 그래야 bootstrap 등
     // 하위 모듈의 kapt 가 컴파일된 클래스로 그것을 참조할 수 있다 (cross-module Q-supertype 문제).
