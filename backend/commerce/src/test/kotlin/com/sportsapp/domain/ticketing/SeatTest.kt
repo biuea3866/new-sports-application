@@ -56,4 +56,89 @@ class SeatTest : BehaviorSpec({
             }
         }
     }
+
+    Given("seatNo에 구역명이 구분자와 함께 접두로 들어있는 좌석") {
+        val seat = Seat(
+            id = 1L,
+            eventId = 10L,
+            section = "R석",
+            rowNo = "1",
+            seatNo = "R석-01",
+            price = BigDecimal("50000"),
+        )
+
+        When("displayLabel을 조회하면") {
+            Then("구역명이 중복되지 않고 한 번만 표기된다") {
+                seat.displayLabel shouldBe "R석 01"
+            }
+        }
+    }
+
+    Given("seatNo에 구역명이 구분자 없이 접두로 들어있는 좌석") {
+        val seat = Seat(
+            id = 1L,
+            eventId = 10L,
+            section = "R석",
+            rowNo = "1",
+            seatNo = "R석05",
+            price = BigDecimal("50000"),
+        )
+
+        When("displayLabel을 조회하면") {
+            Then("구역명이 중복되지 않고 한 번만 표기된다") {
+                seat.displayLabel shouldBe "R석 05"
+            }
+        }
+    }
+
+    Given("seatNo가 구역명과 무관한 좌석") {
+        val seat = Seat(
+            id = 1L,
+            eventId = 10L,
+            section = "S석",
+            rowNo = "1",
+            seatNo = "B12",
+            price = BigDecimal("50000"),
+        )
+
+        When("displayLabel을 조회하면") {
+            Then("seatNo가 그대로 유지된다") {
+                seat.displayLabel shouldBe "S석 B12"
+            }
+        }
+    }
+
+    Given("rowNo가 미수집 센티널 값(\"1\")인 좌석") {
+        val seat = Seat(
+            id = 1L,
+            eventId = 10L,
+            section = "A석",
+            rowNo = "1",
+            seatNo = "07",
+            price = BigDecimal("50000"),
+        )
+
+        When("displayLabel을 조회하면") {
+            Then("수집하지 않은 열 정보를 사실처럼 표기하지 않도록 열 파트가 생략된다") {
+                seat.displayLabel shouldBe "A석 07"
+            }
+        }
+    }
+
+    Given("rowNo가 미수집 센티널이 아닌 실제 값(\"2\")인 좌석") {
+        val seat = Seat(
+            id = 1L,
+            eventId = 10L,
+            section = "S석",
+            rowNo = "2",
+            seatNo = "S석-01",
+            price = BigDecimal("44000"),
+        )
+
+        When("displayLabel을 조회하면") {
+            Then("열 정보가 그대로 표기된다") {
+                seat.displayLabel shouldBe "S석 2열 01"
+            }
+        }
+    }
 })

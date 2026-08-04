@@ -64,6 +64,8 @@ class GetEventUseCaseTest : BehaviorSpec({
                 result.sections.size shouldBe 2
                 result.sections.find { it.section == "A" }?.totalSeats shouldBe 2
                 result.sections.find { it.section == "B" }?.totalSeats shouldBe 1
+                result.sections.find { it.section == "A" }?.minPrice shouldBe BigDecimal("50000")
+                result.sections.find { it.section == "A" }?.maxPrice shouldBe BigDecimal("50000")
                 result.seats.size shouldBe 3
                 result.seats.count { it.available } shouldBe 2
                 result.seats.count { !it.available } shouldBe 1
