@@ -10,3 +10,18 @@ export function formatCurrency(amount: string | number): string {
   const safeAmount = Number.isFinite(numericAmount) ? numericAmount : 0;
   return `${safeAmount.toLocaleString('ko-KR')}원`;
 }
+
+/**
+ * 구역 대표가 표기 (이벤트 상세 "구역별 좌석").
+ *
+ * BE `SectionAvailability.minPrice`/`maxPrice`를 받아, 구역 내 좌석 가격이 모두 같으면
+ * 단일가를, 등급이 다르면 최저가 기준 "~" 범위로 표기한다.
+ */
+export function formatPriceRange(minPrice: string | number, maxPrice: string | number): string {
+  const min = typeof minPrice === 'number' ? minPrice : Number(minPrice);
+  const max = typeof maxPrice === 'number' ? maxPrice : Number(maxPrice);
+  const safeMin = Number.isFinite(min) ? min : 0;
+  const safeMax = Number.isFinite(max) ? max : 0;
+  if (safeMin === safeMax) return formatCurrency(safeMin);
+  return `${formatCurrency(safeMin)}~`;
+}

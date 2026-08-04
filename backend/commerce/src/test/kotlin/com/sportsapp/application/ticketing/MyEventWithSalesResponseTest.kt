@@ -68,11 +68,11 @@ class MyEventWithSalesResponseTest : BehaviorSpec({
                 response.seats.size shouldBe 3
             }
 
-            Then("좌석 라벨은 구역·열·번호를 사람이 읽는 형태로 조합한다") {
+            Then("좌석 라벨은 구역·열·번호를 사람이 읽는 형태로 조합하고, 구역명 중복과 미수집 열 표기를 남기지 않는다") {
                 response.seats.map { it.label } shouldBe listOf(
-                    "R석 1열 R석-01",
-                    "R석 1열 R석-02",
-                    "S석 2열 S석-01",
+                    "R석 01", // rowNo="1"은 미수집 센티널이라 열 파트 생략, seatNo의 "R석" 중복 접두 제거
+                    "R석 02",
+                    "S석 2열 01", // rowNo="2"는 실제 값이라 열 파트 유지
                 )
             }
 

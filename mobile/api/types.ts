@@ -244,6 +244,10 @@ export interface EventResponse {
 export interface SectionAvailability {
   section: string;
   totalSeats: number;
+  /** 구역 내 최저·최고 좌석가 (BigDecimal 문자열). 등급별 가격을 목록에서 보여주기 위한 값 —
+   *  단일가면 두 값이 같고, 등급이 섞이면 최저가 기준 범위로 표기한다. */
+  minPrice: string;
+  maxPrice: string;
 }
 
 export interface SeatInfo {

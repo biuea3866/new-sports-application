@@ -54,7 +54,7 @@ const baseEvent: EventDetailResponse = {
   venue: '잠실 종합운동장',
   startsAt: '2026-08-01T09:00:00Z',
   status: 'OPEN',
-  sections: [{ section: 'A', totalSeats: 100 }],
+  sections: [{ section: 'A', totalSeats: 100, minPrice: '50000', maxPrice: '50000' }],
   seats: [{ id: 10, section: 'A', rowNo: '1', seatNo: '1', price: '50000', available: true }],
 };
 

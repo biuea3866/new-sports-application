@@ -8,6 +8,8 @@ import java.time.ZonedDateTime
 data class SectionAvailability(
     val section: String,
     val totalSeats: Int,
+    val minPrice: BigDecimal,
+    val maxPrice: BigDecimal,
 )
 
 data class SeatInfo(
@@ -33,7 +35,14 @@ data class EventDetailResponse(
             val sectionAvailabilities = seatsWithAvailability
                 .map { (seat, _) -> seat }
                 .groupBy { it.section }
-                .map { (section, sectionSeats) -> SectionAvailability(section, sectionSeats.size) }
+                .map { (section, sectionSeats) ->
+                    SectionAvailability(
+                        section = section,
+                        totalSeats = sectionSeats.size,
+                        minPrice = sectionSeats.minOf { it.price },
+                        maxPrice = sectionSeats.maxOf { it.price },
+                    )
+                }
                 .sortedBy { it.section }
 
             val seatInfos = seatsWithAvailability.map { (seat, available) ->

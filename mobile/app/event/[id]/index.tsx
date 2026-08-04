@@ -19,6 +19,7 @@ import { isFeatureEnabled } from '../../../lib/feature-flags';
 import { ROUTES } from '../../../lib/navigation';
 import type { SeatInfo, SectionAvailability } from '../../../api/types';
 import { formatSeatDescription, formatSeatLabel } from '../../../lib/seat-format';
+import { formatPriceRange } from '../../../lib/currency-format';
 import { useTheme } from '../../../theme/useTheme';
 import { createStyles } from '../../../theme/createStyles';
 import type { ThemeTokens } from '../../../theme/tokens';
@@ -51,14 +52,20 @@ interface SectionRowProps {
 function SectionRow({ section }: SectionRowProps) {
   const { tokens } = useTheme();
   const styles = useStyles(tokens);
+  // 좌석 수만 보여주면 사용자가 등급을 고를 근거가 없다 — 가격은 같은 응답의 좌석 데이터에서
+  // 파생된 구역 최저·최고가로 표기한다(단일가면 그 값, 등급이 섞이면 최저가 기준 범위).
+  const priceLabel = formatPriceRange(section.minPrice, section.maxPrice);
   return (
     <View
       style={styles.sectionRow}
       accessible={true}
-      accessibilityLabel={`${section.section} 구역 총 ${section.totalSeats}석`}
+      accessibilityLabel={`${section.section} 구역 총 ${section.totalSeats}석 ${priceLabel}`}
     >
       <Text style={styles.sectionName}>{section.section}</Text>
-      <Text style={styles.sectionSeats}>{section.totalSeats}석</Text>
+      <View style={styles.sectionMeta}>
+        <Text style={styles.sectionSeats}>{section.totalSeats}석</Text>
+        <Text style={styles.sectionPrice}>{priceLabel}</Text>
+      </View>
     </View>
   );
 }
@@ -361,10 +368,18 @@ const useStyles = createStyles((theme: ThemeTokens) =>
       fontSize: 15,
       color: theme.textPrimary,
     },
+    sectionMeta: {
+      alignItems: 'flex-end',
+    },
     sectionSeats: {
       fontSize: 15,
       fontWeight: '600',
       color: theme.accent,
+    },
+    sectionPrice: {
+      fontSize: 13,
+      color: theme.textSecondary,
+      marginTop: 2,
     },
     emptyText: {
       textAlign: 'center',
