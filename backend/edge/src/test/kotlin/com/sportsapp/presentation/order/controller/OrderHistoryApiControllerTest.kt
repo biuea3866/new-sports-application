@@ -42,6 +42,7 @@ class OrderHistoryApiControllerTest : BehaviorSpec({
                     paymentId = 200L,
                     detailPath = "/goods-orders/20",
                     createdAt = ZonedDateTime.of(2026, 6, 2, 9, 0, 0, 0, ZoneOffset.UTC),
+                    amount = java.math.BigDecimal("59000"),
                 ),
             ),
             page = 0,
@@ -58,6 +59,7 @@ class OrderHistoryApiControllerTest : BehaviorSpec({
                 result.andExpect(status().isOk)
                     .andExpect(jsonPath("$.items[0].orderType").value("GOODS"))
                     .andExpect(jsonPath("$.items[0].title").value("요가매트 프리미엄 외 1건"))
+                    .andExpect(jsonPath("$.items[0].amount").value(59000))
                     .andExpect(jsonPath("$.failedDomains").isArray)
                 verify(exactly = 1) { getOrderHistoryUseCase.execute(1L, any()) }
                 criteriaSlot.captured shouldBe OrderHistoryCriteria(orderType = null, status = null, page = 0, size = 20)

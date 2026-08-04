@@ -118,5 +118,63 @@ class ApplicationCustomRepositoryImplTest(
                 }
             }
         }
+
+        Given("유료 모집(참가비 10,000원)에 신청한 Application이 있을 때") {
+            val recruitment = saveRecruitment("유료 축구 모임")
+            val application = applicationJpaRepository.save(
+                Application.create(recruitmentId = recruitment.id, applicantUserId = 21L),
+            )
+
+            When("사용자 ID로 findBy를 호출하면") {
+                val result = applicationCustomRepository.findBy(21L)
+
+                Then("모집의 참가비(feeAmount)가 그대로 포함된다") {
+                    result.size shouldBe 1
+                    result.first().applicationId shouldBe application.id
+                    result.first().feeAmount shouldBe BigDecimal("10000")
+                }
+            }
+        }
+
+        Given("무료 모집(참가비 0원)에 신청한 Application이 있을 때") {
+            val freeRecruitment = recruitmentJpaRepository.save(
+                Recruitment.create(
+                    title = "무료 러닝 모임",
+                    capacity = 10,
+                    feeAmount = BigDecimal.ZERO,
+                    activityAt = activityAt,
+                    applicationDeadline = activityAt.minusDays(1),
+                    communityId = null,
+                    recruiterUserId = 1L,
+                ),
+            )
+            val application = applicationJpaRepository.save(
+                Application.create(recruitmentId = freeRecruitment.id, applicantUserId = 22L),
+            )
+
+            When("사용자 ID로 findBy를 호출하면") {
+                val result = applicationCustomRepository.findBy(22L)
+
+                Then("feeAmount가 0(무료)으로 확정되어 null이 아니다") {
+                    result.size shouldBe 1
+                    result.first().feeAmount shouldBe BigDecimal.ZERO
+                }
+            }
+        }
+
+        Given("참조 Recruitment가 존재하지 않는 Application이 있을 때 (금액 확정 불가)") {
+            val application = applicationJpaRepository.save(
+                Application.create(recruitmentId = 999_998L, applicantUserId = 23L),
+            )
+
+            When("사용자 ID로 findBy를 호출하면") {
+                val result = applicationCustomRepository.findBy(23L)
+
+                Then("feeAmount는 null로 방어된다(0으로 방어하면 무료와 미확정을 구분 못함)") {
+                    result.size shouldBe 1
+                    result.first().feeAmount shouldBe null
+                }
+            }
+        }
     }
 }

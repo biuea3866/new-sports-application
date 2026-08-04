@@ -26,6 +26,7 @@ class ApplicationCustomRepositoryImpl : ApplicationCustomRepository {
                 application.paymentId,
                 application.createdAt,
                 recruitment.title,
+                recruitment.feeAmount,
                 recruitment.deletedAt,
             )
             .from(application)
@@ -36,12 +37,14 @@ class ApplicationCustomRepositoryImpl : ApplicationCustomRepository {
             .map { tuple ->
                 val recruitmentTitle = tuple.get(recruitment.title)
                 val recruitmentDeletedAt = tuple.get(recruitment.deletedAt)
+                val recruitmentGone = recruitmentTitle == null || recruitmentDeletedAt != null
                 ApplicationWithRecruitmentTitle(
                     applicationId = requireNotNull(tuple.get(application.id)) { "application.id must not be null" },
                     status = requireNotNull(tuple.get(application.status)) { "application.status must not be null" },
-                    recruitmentTitle = if (recruitmentTitle == null || recruitmentDeletedAt != null) "" else recruitmentTitle,
+                    recruitmentTitle = recruitmentTitle.takeUnless { recruitmentGone } ?: "",
                     paymentId = tuple.get(application.paymentId),
                     createdAt = requireNotNull(tuple.get(application.createdAt)) { "application.createdAt must not be null" },
+                    feeAmount = tuple.get(recruitment.feeAmount).takeUnless { recruitmentGone },
                 )
             }
 }

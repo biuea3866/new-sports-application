@@ -7,6 +7,8 @@ import {
   isPaymentConfirmedStatus,
   formatPaymentLabel,
   formatOrderHistoryDisplayName,
+  formatOrderHistoryAmount,
+  formatOrderHistorySeatSummary,
 } from '../order-history-format';
 
 describe('formatOrderHistoryStatusLabel', () => {
@@ -34,12 +36,37 @@ describe('isPaymentConfirmedStatus', () => {
 });
 
 describe('formatPaymentLabel', () => {
-  it('paymentId가 있으면 결제 #id를 반환한다', () => {
-    expect(formatPaymentLabel(4821)).toBe('결제 #4821');
+  it('paymentId가 있으면 내부 식별자를 노출하지 않는다(null 반환 — 화면이 줄 생략)', () => {
+    expect(formatPaymentLabel(4821)).toBeNull();
   });
 
-  it('paymentId가 없으면 미결제를 반환한다', () => {
+  it('paymentId가 없으면 미결제를 반환한다(사용자에게 의미 있는 정보라 유지)', () => {
     expect(formatPaymentLabel(null)).toBe('미결제');
+  });
+});
+
+describe('formatOrderHistorySeatSummary', () => {
+  it('좌석이 1건이면 해당 좌석 서술형 라벨만 반환한다', () => {
+    expect(formatOrderHistorySeatSummary([{ section: 'A석', rowNo: '1', seatNo: 'A석-05' }])).toBe(
+      'A석구역 1열 05번'
+    );
+  });
+
+  it('좌석이 2건 이상이면 대표 좌석 + "외 N석"을 반환한다', () => {
+    expect(
+      formatOrderHistorySeatSummary([
+        { section: 'A석', rowNo: '1', seatNo: 'A석-05' },
+        { section: 'A석', rowNo: '1', seatNo: 'A석-06' },
+      ])
+    ).toBe('A석구역 1열 05번 외 1석');
+  });
+
+  it('좌석 정보가 없으면(null) null을 반환한다(화면에서 부가정보 줄 생략)', () => {
+    expect(formatOrderHistorySeatSummary(null)).toBeNull();
+  });
+
+  it('좌석 정보가 빈 배열이면 null을 반환한다', () => {
+    expect(formatOrderHistorySeatSummary([])).toBeNull();
   });
 });
 
@@ -64,5 +91,19 @@ describe('formatOrderHistoryDisplayName', () => {
     expect(
       formatOrderHistoryDisplayName({ title: '   ', orderType: 'RECRUITMENT', sourceId: 7 })
     ).toBe(`${ORDER_TYPE_LABEL.RECRUITMENT} #7`);
+  });
+});
+
+describe('formatOrderHistoryAmount', () => {
+  it('금액을 천 단위 구분자와 함께 원 단위로 반환한다', () => {
+    expect(formatOrderHistoryAmount(50000)).toBe('50,000원');
+  });
+
+  it('금액이 0이면 무료를 반환한다', () => {
+    expect(formatOrderHistoryAmount(0)).toBe('무료');
+  });
+
+  it('금액이 null이면 null을 반환한다(화면에서 금액 줄 생략)', () => {
+    expect(formatOrderHistoryAmount(null)).toBeNull();
   });
 });

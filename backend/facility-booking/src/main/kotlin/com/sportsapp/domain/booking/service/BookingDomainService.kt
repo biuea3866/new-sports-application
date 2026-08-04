@@ -58,10 +58,26 @@ class BookingDomainService(
         val lockValue = "user:$userId"
         if (!spinLock(lockKey, lockValue)) throw SlotBusyException(slotId)
         registerUnlockOnCompletion(lockKey, lockValue)
-        return doBooking(userId, slotId, lockKey, lockValue)
+        return doBooking(userId, slotId, amount = null, lockKey = lockKey, lockValue = lockValue)
     }
 
-    private fun doBooking(userId: Long, slotId: Long, lockKey: String, lockValue: String): BookingResult {
+    /**
+     * 결제 금액과 함께 예약을 생성한다 — [CreateBookingUseCase]가 결제를 개시할 때 쓰는 경로다.
+     * amount는 booking 자기 컬럼(V65)에 저장되어 order 통합조회가 payment를 거치지 않고 자기
+     * 데이터로 금액을 답할 수 있게 한다. 락·트랜잭션 경계는 amount 없는 [requestBooking]과
+     * 동일 — 트랜잭션 프록시 self-invocation 우회를 피하려고 로직을 [doBooking]으로 공유하되
+     * 진입 메서드 각각에 `@Transactional`을 직접 선언한다.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    fun requestBooking(userId: Long, slotId: Long, amount: BigDecimal?): BookingResult {
+        val lockKey = "booking:slot:$slotId"
+        val lockValue = "user:$userId"
+        if (!spinLock(lockKey, lockValue)) throw SlotBusyException(slotId)
+        registerUnlockOnCompletion(lockKey, lockValue)
+        return doBooking(userId, slotId, amount, lockKey, lockValue)
+    }
+
+    private fun doBooking(userId: Long, slotId: Long, amount: BigDecimal?, lockKey: String, lockValue: String): BookingResult {
         try {
             val slot = slotRepository.findForUpdateById(slotId)
                 ?: throw ResourceNotFoundException("Slot", slotId)
@@ -71,7 +87,7 @@ class BookingDomainService(
                 listOf(BookingStatus.PENDING, BookingStatus.CONFIRMED),
             )
             if (activeCount >= slot.capacity) throw SlotFullException(slotId)
-            val booking = Booking.createPending(userId, slotId)
+            val booking = Booking.createPending(userId, slotId, amount)
             booking.registerEvent(BookingRequestedEvent(bookingId = booking.id, slotId = slotId, userId = userId))
             val saved = bookingRepository.save(booking)
             domainEventPublisher.publishAll(saved.pullDomainEvents())

@@ -86,6 +86,22 @@ function isApplicationConfirmed(status: ApplicationStatus): boolean {
   return status === 'CONFIRMED';
 }
 
+const PAYMENT_ATTEMPTING_LABEL = '결제 진행 중';
+
+/**
+ * 상세 화면의 결제 상태 라벨 — 내부 결제 PK(`formatPaymentLabel`이 반환하던 "결제 #id")를
+ * 노출하지 않는다. 각 도메인이 이미 아는 `isConfirmed`(실제 확정 여부, 상태 기반)를 우선
+ * 신뢰하고, paymentId 존재만으로 "결제완료"를 단정하지 않는다 — paymentId는 결제 생성
+ * 시점(PG 왕복 이전)에 이미 채워지므로 존재 자체가 완료를 보장하지 않는다.
+ * - 확정됨 → "결제완료"
+ * - paymentId 없음 → "미결제"(formatPaymentLabel)
+ * - paymentId는 있지만 미확정 → "결제 진행 중"
+ */
+function resolvePaymentStatusLabel(paymentId: number | null, isConfirmed: boolean): string {
+  if (isConfirmed) return '결제완료';
+  return formatPaymentLabel(paymentId) ?? PAYMENT_ATTEMPTING_LABEL;
+}
+
 /**
  * `GET /bookings/{id}` 응답 → 공통 뷰모델. facilityId·title은 Slot 조인 경로에서만 채워져
  * 여전히 nullable이다(cancel 경로 등) — null이면 title은 fallback, 원본 보기는 숨긴다.
@@ -95,7 +111,7 @@ export function toBookingDetailViewModel(id: number, data: BookingResponse): Ord
     title: resolveTitle('BOOKING', id, data.title),
     statusLabel: formatOrderHistoryStatusLabel(data.status),
     isPaymentConfirmed: isBookingConfirmed(data.status),
-    paymentLabel: formatPaymentLabel(data.paymentId),
+    paymentLabel: resolvePaymentStatusLabel(data.paymentId, isBookingConfirmed(data.status)),
     dateTimeLabel: formatOrderDetailDateTime(data.createdAt),
     summaryLines: [`슬롯 #${data.slotId}`],
     originRoute:
@@ -125,7 +141,7 @@ export function toGoodsOrderDetailViewModel(
     statusLabel:
       data.status === null ? STATUS_UNKNOWN_LABEL : formatOrderHistoryStatusLabel(data.status),
     isPaymentConfirmed: isGoodsOrderConfirmed(data.status),
-    paymentLabel: formatPaymentLabel(data.paymentId),
+    paymentLabel: resolvePaymentStatusLabel(data.paymentId, isGoodsOrderConfirmed(data.status)),
     dateTimeLabel: formatOrderDetailDateTime(data.createdAt),
     summaryLines: [...itemLines, totalLine],
     // 상품이 1건일 때만 그 상품 상세로 연결한다(2건 이상이면 단일 원본을 특정할 수 없음).
@@ -145,7 +161,7 @@ export function toTicketOrderDetailViewModel(
     title: resolveTitle('TICKETING', data.ticketOrderId, data.eventTitle),
     statusLabel: formatOrderHistoryStatusLabel(data.status),
     isPaymentConfirmed: isTicketOrderConfirmed(data.status),
-    paymentLabel: formatPaymentLabel(data.paymentId),
+    paymentLabel: resolvePaymentStatusLabel(data.paymentId, isTicketOrderConfirmed(data.status)),
     dateTimeLabel: formatOrderDetailDateTime(data.createdAt),
     summaryLines: [],
     originRoute: ROUTES.event.detail(String(data.eventId)),
@@ -165,7 +181,7 @@ export function toApplicationDetailViewModel(
     title: resolveTitle('RECRUITMENT', data.applicationId, data.recruitmentTitle),
     statusLabel: formatOrderHistoryStatusLabel(data.status),
     isPaymentConfirmed: isApplicationConfirmed(data.status),
-    paymentLabel: formatPaymentLabel(data.paymentId),
+    paymentLabel: resolvePaymentStatusLabel(data.paymentId, isApplicationConfirmed(data.status)),
     dateTimeLabel: formatOrderDetailDateTime(data.createdAt),
     summaryLines: [feeLine],
     originRoute: ROUTES.recruitment.detail(String(data.recruitmentId)),

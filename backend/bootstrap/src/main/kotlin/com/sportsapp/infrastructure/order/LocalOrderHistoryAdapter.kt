@@ -6,10 +6,12 @@ import com.sportsapp.domain.common.order.OrderType
 import com.sportsapp.domain.goods.dto.GoodsOrderWithTitle
 import com.sportsapp.domain.goods.service.GoodsDomainService
 import com.sportsapp.domain.order.dto.OrderHistoryItem
+import com.sportsapp.domain.order.dto.OrderHistorySeat
 import com.sportsapp.domain.order.gateway.OrderHistoryGateway
 import com.sportsapp.domain.recruitment.dto.ApplicationWithRecruitmentTitle
 import com.sportsapp.domain.recruitment.service.RecruitmentDomainService
 import com.sportsapp.domain.ticketing.dto.TicketOrderWithEventTitle
+import com.sportsapp.domain.ticketing.dto.TicketSeatLabel
 import com.sportsapp.domain.ticketing.service.TicketingDomainService
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Component
@@ -59,6 +61,7 @@ private fun BookingOrderItem.toOrderHistoryItem(): OrderHistoryItem = OrderHisto
     paymentId = paymentId,
     detailPath = "/bookings/$bookingId",
     createdAt = createdAt,
+    amount = amount,
 )
 
 private fun GoodsOrderWithTitle.toOrderHistoryItem(): OrderHistoryItem = OrderHistoryItem(
@@ -69,6 +72,7 @@ private fun GoodsOrderWithTitle.toOrderHistoryItem(): OrderHistoryItem = OrderHi
     paymentId = order.paymentId,
     detailPath = "/goods-orders/${order.id}",
     createdAt = order.createdAt,
+    amount = order.totalAmount,
 )
 
 private fun TicketOrderWithEventTitle.toOrderHistoryItem(): OrderHistoryItem = OrderHistoryItem(
@@ -79,7 +83,14 @@ private fun TicketOrderWithEventTitle.toOrderHistoryItem(): OrderHistoryItem = O
     paymentId = paymentId,
     detailPath = "/ticket-orders/$ticketOrderId",
     createdAt = createdAt,
+    amount = totalAmount,
+    // 같은 이벤트에 여러 좌석 주문이 있을 때 title(이벤트명)만으로는 구분되지 않는다 —
+    // 내부 식별자(sourceId) 대신 좌석 원본 필드로 구분한다(조합은 모바일 포맷터가 담당).
+    seats = seats.map { it.toOrderHistorySeat() }.takeIf { it.isNotEmpty() },
 )
+
+private fun TicketSeatLabel.toOrderHistorySeat(): OrderHistorySeat =
+    OrderHistorySeat(section = section, rowNo = rowNo, seatNo = seatNo)
 
 private fun ApplicationWithRecruitmentTitle.toOrderHistoryItem(): OrderHistoryItem = OrderHistoryItem(
     orderType = OrderType.RECRUITMENT,
@@ -89,4 +100,5 @@ private fun ApplicationWithRecruitmentTitle.toOrderHistoryItem(): OrderHistoryIt
     paymentId = paymentId,
     detailPath = "/applications/$applicationId",
     createdAt = createdAt,
+    amount = feeAmount,
 )

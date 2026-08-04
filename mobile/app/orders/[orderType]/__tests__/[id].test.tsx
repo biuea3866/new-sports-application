@@ -130,8 +130,9 @@ describe('OrderDetailScreen', () => {
       render(<OrderDetailScreen />);
 
       expect(screen.getByText('강남 풋살장 예약')).toBeTruthy();
-      expect(screen.getByText('결제완료')).toBeTruthy();
-      expect(screen.getByText('결제 #900')).toBeTruthy();
+      // 상태 배지·결제 라벨이 둘 다 "결제완료"다(내부 결제 PK는 더 이상 노출하지 않는다).
+      expect(screen.getAllByText('결제완료')).toHaveLength(2);
+      expect(screen.queryByText(/결제 #/)).toBeNull();
     });
 
     it('facilityId가 있으면 원본 보기를 탭했을 때 시설 상세로 이동한다', () => {
@@ -229,8 +230,9 @@ describe('OrderDetailScreen', () => {
       render(<OrderDetailScreen />);
 
       expect(screen.getByText('2026 서울 마라톤')).toBeTruthy();
-      expect(screen.getByText('결제완료')).toBeTruthy();
-      expect(screen.getByText('결제 #500')).toBeTruthy();
+      // 상태 배지·결제 라벨이 둘 다 "결제완료"다(내부 결제 PK는 더 이상 노출하지 않는다).
+      expect(screen.getAllByText('결제완료')).toHaveLength(2);
+      expect(screen.queryByText(/결제 #/)).toBeNull();
     });
 
     it('원본 보기를 탭하면 이벤트 상세 경로로 이동한다', () => {

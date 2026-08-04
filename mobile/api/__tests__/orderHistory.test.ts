@@ -41,6 +41,8 @@ describe('orderHistory API', () => {
         paymentId: 4821,
         detailPath: '/bookings/42',
         createdAt: '2026-07-05T14:00:00Z',
+        amount: 30000,
+        seats: null,
       },
     ],
     page: 0,

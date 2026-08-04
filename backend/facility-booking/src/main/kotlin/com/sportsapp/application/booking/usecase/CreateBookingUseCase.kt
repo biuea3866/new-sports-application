@@ -45,7 +45,7 @@ class CreateBookingUseCase(
 
     private fun persistBookingAndPendingPayment(command: CreateBookingCommand): Triple<BookingResult, Long, String> {
         return transactionTemplate.execute {
-            val bookingResult = bookingDomainService.requestBooking(command.userId, command.slotId)
+            val bookingResult = bookingDomainService.requestBooking(command.userId, command.slotId, command.amount)
             val idempotencyKey = buildIdempotencyKey(bookingResult)
             val paymentId = paymentDomainService.createPending(
                 userId = command.userId,

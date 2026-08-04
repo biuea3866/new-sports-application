@@ -15,7 +15,9 @@ import { useTheme } from '../../theme/useTheme';
 import { formatRelativeTime } from '../../lib/post-format';
 import {
   ORDER_TYPE_LABEL,
+  formatOrderHistoryAmount,
   formatOrderHistoryDisplayName,
+  formatOrderHistorySeatSummary,
   formatOrderHistoryStatusLabel,
   formatPaymentLabel,
   isPaymentConfirmedStatus,
@@ -35,6 +37,8 @@ export function OrderHistoryItemCard({ item, onPress }: OrderHistoryItemCardProp
   const paymentLabel = formatPaymentLabel(item.paymentId);
   const relativeTime = formatRelativeTime(item.createdAt);
   const showSuccessDot = isPaymentConfirmedStatus(item.status);
+  const amountLabel = formatOrderHistoryAmount(item.amount);
+  const seatSummaryLabel = formatOrderHistorySeatSummary(item.seats);
 
   const testId = `order-history-item-card-${item.orderType}-${item.sourceId}`;
 
@@ -66,9 +70,24 @@ export function OrderHistoryItemCard({ item, onPress }: OrderHistoryItemCardProp
       <ThemedText variant="primary" style={styles.title} numberOfLines={1}>
         {displayName}
       </ThemedText>
+      {seatSummaryLabel !== null ? (
+        <ThemedText
+          testID={`${testId}-seats`}
+          variant="secondary"
+          style={styles.subtitle}
+          numberOfLines={1}
+        >
+          {seatSummaryLabel}
+        </ThemedText>
+      ) : null}
+      {amountLabel !== null ? (
+        <ThemedText testID={`${testId}-amount`} variant="primary" style={styles.amount}>
+          {amountLabel}
+        </ThemedText>
+      ) : null}
       <View style={styles.footerRow}>
         <ThemedText variant="secondary" style={styles.meta}>
-          {paymentLabel}
+          {paymentLabel ?? ''}
         </ThemedText>
         <ThemedText variant="secondary" style={styles.meta}>
           {relativeTime}
@@ -114,6 +133,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginTop: 10,
+  },
+  subtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  amount: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginTop: 6,
   },
   footerRow: {
     flexDirection: 'row',

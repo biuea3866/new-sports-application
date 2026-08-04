@@ -33,6 +33,7 @@ class BookingOrderQueryRepositoryImpl : BookingOrderQueryRepository {
                 booking.status,
                 booking.paymentId,
                 booking.createdAt,
+                booking.amount,
                 slot.date,
                 slot.timeRange,
             )
@@ -54,5 +55,6 @@ class BookingOrderQueryRepositoryImpl : BookingOrderQueryRepository {
             date = tuple.get(slot.date),
             timeRange = tuple.get(slot.timeRange),
         ),
+        amount = tuple.get(booking.amount),
     )
 }
