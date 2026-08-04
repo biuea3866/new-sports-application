@@ -15,6 +15,4 @@ interface ProductRepository {
     fun findByOwnerId(ownerId: Long): List<Product>
     fun countByOwnerIdAndStatus(ownerId: Long, status: ProductStatus): Long
 
-    /** BE-11 배치 백필 검증 스텝 — 잔여 NULL 건수 확인용. */
-    fun countBySellerTypeIsNull(): Long
 }

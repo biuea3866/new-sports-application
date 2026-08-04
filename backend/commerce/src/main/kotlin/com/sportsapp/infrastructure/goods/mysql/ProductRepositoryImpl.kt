@@ -33,5 +33,4 @@ class ProductRepositoryImpl(
     override fun countByOwnerIdAndStatus(ownerId: Long, status: ProductStatus): Long =
         productJpaRepository.countByOwnerIdAndStatusAndDeletedAtIsNull(ownerId, status)
 
-    override fun countBySellerTypeIsNull(): Long = productJpaRepository.countBySellerTypeIsNull()
 }

@@ -567,18 +567,6 @@ class GoodsDomainServiceTest : BehaviorSpec({
         }
     }
 
-    Given("seller_type이 NULL인 Product가 3건 존재하는 상태") {
-        every { productRepository.countBySellerTypeIsNull() } returns 3L
-
-        When("countProductsMissingSellerType을 호출하면") {
-            val result = service.countProductsMissingSellerType()
-
-            Then("ProductRepository.countBySellerTypeIsNull 결과를 그대로 반환한다") {
-                result shouldBe 3L
-                verify(exactly = 1) { productRepository.countBySellerTypeIsNull() }
-            }
-        }
-    }
 
     Given("owner_id=555인 Product(id=777)가 삭제되지 않은 상태로 존재할 때") {
         val product = forceId(
