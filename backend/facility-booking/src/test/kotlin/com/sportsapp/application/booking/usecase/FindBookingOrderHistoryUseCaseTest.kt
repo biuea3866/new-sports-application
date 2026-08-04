@@ -9,11 +9,17 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import java.math.BigDecimal
 import java.time.ZonedDateTime
 
 class FindBookingOrderHistoryUseCaseTest : BehaviorSpec({
 
-    fun orderItem(bookingId: Long, userId: Long, status: BookingStatus = BookingStatus.CONFIRMED) = BookingOrderItem(
+    fun orderItem(
+        bookingId: Long,
+        userId: Long,
+        status: BookingStatus = BookingStatus.CONFIRMED,
+        amount: BigDecimal? = BigDecimal("30000"),
+    ) = BookingOrderItem(
         bookingId = bookingId,
         slotId = 10L,
         userId = userId,
@@ -21,6 +27,7 @@ class FindBookingOrderHistoryUseCaseTest : BehaviorSpec({
         paymentId = 100L,
         title = "8월 3일 10:00~11:00",
         createdAt = ZonedDateTime.now(),
+        amount = amount,
     )
 
     Given("사용자의 예약 이력을 조회하면") {
@@ -36,6 +43,25 @@ class FindBookingOrderHistoryUseCaseTest : BehaviorSpec({
                 result.first().sourceId shouldBe 1L
                 result.first().status shouldBe "CONFIRMED"
                 result.first().paymentId shouldBe 100L
+            }
+
+            Then("예약 자기 데이터인 결제 금액을 함께 공급한다 — edge 가 payment 를 역참조하지 않는 근거다") {
+                result.first().amount shouldBe BigDecimal("30000")
+            }
+        }
+    }
+
+    Given("금액 저장 이력이 없는(V65 이전) 예약을 조회하면") {
+        val bookingDomainService = mockk<BookingDomainService>()
+        every { bookingDomainService.findOrderHistory(1L) } returns
+            listOf(orderItem(bookingId = 1L, userId = 1L, amount = null))
+        val useCase = FindBookingOrderHistoryUseCase(bookingDomainService)
+
+        When("execute(1L)를 호출하면") {
+            val result = useCase.execute(1L)
+
+            Then("금액을 null 로 공급한다 (0원 확정값과 구분한다)") {
+                result.first().amount shouldBe null
             }
         }
     }

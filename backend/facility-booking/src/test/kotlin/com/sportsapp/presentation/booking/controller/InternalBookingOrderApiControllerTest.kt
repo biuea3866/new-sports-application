@@ -7,6 +7,7 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import java.math.BigDecimal
 import java.time.ZonedDateTime
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
@@ -33,6 +34,7 @@ class InternalBookingOrderApiControllerTest : BehaviorSpec({
         status = status,
         paymentId = 100L,
         createdAt = ZonedDateTime.now(),
+        amount = BigDecimal("30000"),
     )
 
     Given("X-Internal-Auth-Subject 헤더로 사용자를 식별해 예약 이력을 요청하면") {
@@ -68,6 +70,22 @@ class InternalBookingOrderApiControllerTest : BehaviorSpec({
             val result = mockMvc.perform(get("/internal/order-history/bookings"))
 
             Then("400으로 거부한다") {
+                result.andExpect(status().isBadRequest)
+                verify(exactly = 0) { findBookingOrderHistoryUseCase.execute(any()) }
+            }
+        }
+    }
+
+    Given("X-Internal-Auth-Subject 헤더 값이 사용자 PK 로 해석되지 않으면") {
+        val findBookingOrderHistoryUseCase = mockk<FindBookingOrderHistoryUseCase>()
+        val mockMvc = buildMockMvc(findBookingOrderHistoryUseCase)
+
+        When("GET /internal/order-history/bookings 요청 시") {
+            val result = mockMvc.perform(
+                get("/internal/order-history/bookings").header(INTERNAL_AUTH_SUBJECT_HEADER, "not-a-user-id"),
+            )
+
+            Then("400으로 거부하고 조회를 수행하지 않는다") {
                 result.andExpect(status().isBadRequest)
                 verify(exactly = 0) { findBookingOrderHistoryUseCase.execute(any()) }
             }

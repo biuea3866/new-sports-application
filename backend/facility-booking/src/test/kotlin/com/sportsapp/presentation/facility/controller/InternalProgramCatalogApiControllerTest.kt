@@ -31,6 +31,7 @@ class InternalProgramCatalogApiControllerTest : BehaviorSpec({
         title = title,
         price = BigDecimal("50000"),
         createdAt = ZonedDateTime.now(),
+        locationName = "강남 스포츠센터",
     )
 
     Given("키워드·페이지 조건으로 시설상품 목록을 요청하면") {
