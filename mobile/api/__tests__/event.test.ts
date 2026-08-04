@@ -37,8 +37,8 @@ describe('Event API', () => {
     startsAt: '2024-10-20T18:30:00Z',
     status: 'OPEN',
     sections: [
-      { section: 'A', totalSeats: 100 },
-      { section: 'B', totalSeats: 80 },
+      { section: 'A', totalSeats: 100, minPrice: '50000', maxPrice: '50000' },
+      { section: 'B', totalSeats: 80, minPrice: '30000', maxPrice: '44000' },
     ],
     seats: [
       { id: 10, section: 'A', rowNo: '1', seatNo: '1', price: '30000', available: true },

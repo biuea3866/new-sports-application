@@ -40,7 +40,7 @@ const baseEvent: EventDetailResponse = {
   venue: '잠실 종합운동장',
   startsAt: '2026-08-01T09:00:00Z',
   status: 'OPEN',
-  sections: [{ section: 'A', totalSeats: 100 }],
+  sections: [{ section: 'A', totalSeats: 100, minPrice: '50000', maxPrice: '50000' }],
   seats: [{ id: 10, section: 'A', rowNo: '1', seatNo: '1', price: '50000', available: true }],
 };
 
@@ -53,6 +53,34 @@ function mockUseEventReturn(overrides: Partial<ReturnType<typeof useEvent>>) {
     ...overrides,
   } as ReturnType<typeof useEvent>);
 }
+
+// 구역 목록이 좌석 수만 보여주고 가격이 없어 사용자가 등급을 고를 근거가 없던 결함
+// (17-이벤트-좌석-선택). 가격 데이터는 같은 응답의 seats[].price 에 이미 있었다.
+function renderWithSections(sections: EventDetailResponse['sections']) {
+  useLocalSearchParamsMock.mockReturnValue({ id: '1' });
+  mockUseEventReturn({ data: { ...baseEvent, sections } });
+  render(<EventDetailScreen />);
+}
+
+describe('구역별 좌석 — 등급별 가격 표시', () => {
+  it('구역 내 좌석가가 모두 같으면 단일가로 표시한다', () => {
+    renderWithSections([{ section: 'A', totalSeats: 100, minPrice: '50000', maxPrice: '50000' }]);
+
+    expect(screen.getByText('50,000원')).toBeTruthy();
+  });
+
+  it('구역 내 좌석가가 다르면 최저가 기준 범위로 표시한다', () => {
+    renderWithSections([{ section: 'A', totalSeats: 100, minPrice: '44000', maxPrice: '88000' }]);
+
+    expect(screen.getByText('44,000원~')).toBeTruthy();
+  });
+
+  it('접근성 라벨에도 가격이 포함된다', () => {
+    renderWithSections([{ section: 'R', totalSeats: 20, minPrice: '99000', maxPrice: '99000' }]);
+
+    expect(screen.getByLabelText('R 구역 총 20석 99,000원')).toBeTruthy();
+  });
+});
 
 function selectFirstSeat() {
   fireEvent.press(screen.getByLabelText('A구역 1열 1번'));
