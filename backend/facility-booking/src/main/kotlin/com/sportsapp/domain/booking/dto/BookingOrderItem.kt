@@ -35,25 +35,37 @@ data class BookingOrderItem(
         val timeRange: String?,
     )
 
+    /**
+     * 주문 내역이 함께 노출하는 청구 관련 값을 묶은 값객체 ([SlotLabelSource]와 같은 사유 —
+     * LongParameterList 회피).
+     *
+     * [paymentId]는 payment 컨텍스트 행의 참조 id 이고, [amount]는 booking 자기 컬럼(V65)이다 —
+     * 한 값객체에 묶여 있어도 소유 컨텍스트는 다르다. 결제 전 예약은 [paymentId]가, V65 도입 이전
+     * 예약은 [amount]가 null 이다.
+     */
+    data class ChargeSource(
+        val paymentId: Long?,
+        val amount: BigDecimal?,
+    )
+
     companion object {
         fun of(
             bookingId: Long,
             slotId: Long,
             userId: Long,
             status: BookingStatus,
-            paymentId: Long?,
             createdAt: ZonedDateTime,
             slotLabelSource: SlotLabelSource,
-            amount: BigDecimal? = null,
+            chargeSource: ChargeSource,
         ): BookingOrderItem = BookingOrderItem(
             bookingId = bookingId,
             slotId = slotId,
             userId = userId,
             status = status,
-            paymentId = paymentId,
+            paymentId = chargeSource.paymentId,
             title = BookingTitleLabel.of(slotLabelSource.date, slotLabelSource.timeRange),
             createdAt = createdAt,
-            amount = amount,
+            amount = chargeSource.amount,
         )
     }
 }

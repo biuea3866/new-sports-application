@@ -49,12 +49,14 @@ class BookingOrderQueryRepositoryImpl : BookingOrderQueryRepository {
         slotId = requireNotNull(tuple.get(booking.slotId)),
         userId = requireNotNull(tuple.get(booking.userId)),
         status = requireNotNull(tuple.get(booking.status)),
-        paymentId = tuple.get(booking.paymentId),
         createdAt = requireNotNull(tuple.get(booking.createdAt)),
         slotLabelSource = BookingOrderItem.SlotLabelSource(
             date = tuple.get(slot.date),
             timeRange = tuple.get(slot.timeRange),
         ),
-        amount = tuple.get(booking.amount),
+        chargeSource = BookingOrderItem.ChargeSource(
+            paymentId = tuple.get(booking.paymentId),
+            amount = tuple.get(booking.amount),
+        ),
     )
 }
