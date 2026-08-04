@@ -61,7 +61,10 @@ dependencies {
     //  5. LoadSheddingFilter — 각 서비스 SecurityConfig 가 체인 최전방에 등록
     //  6. RedisDistributedLock (`DistributedLock`) — **AdmissionPumpScheduler 부팅 필수 의존**이라
     //     빠지면 edge 단독 기동이 즉시 실패한다
-    // 즉 S2-08(edge 독립 실행 골격)이 자기 소유로 만들어야 하는 것은 1~3 뿐이다.
+    // 즉 S2-08(edge 독립 실행 골격)이 **자기 소유로 만들어야 하는 빈**은 1~3 뿐이다. 다만
+    // 4~6 은 소유가 아니라 **배선**이 남는다 — LoadSheddingFilter 를 edge 자기 SecurityConfig
+    // 체인 최전방에 등록하고, RedisDistributedLock 이 요구하는 StringRedisTemplate 연결 설정을
+    // 채워야 한다(edge 는 starter-data-redis 를 이미 선언한다).
     implementation("io.micrometer:micrometer-core")
 
     // 단위 테스트 — standalone MockMvc(VirtualQueue·Catalog·OrderHistory ApiControllerTest),
