@@ -31,6 +31,7 @@ class InternalRecruitmentCatalogApiControllerTest : BehaviorSpec({
         price = BigDecimal("10000"),
         status = RecruitmentStatus.OPEN,
         createdAt = ZonedDateTime.now(),
+        scheduledAt = ZonedDateTime.now().plusDays(7),
     )
 
     Given("신원 헤더 없이 오픈 모집 목록을 조회하면") {

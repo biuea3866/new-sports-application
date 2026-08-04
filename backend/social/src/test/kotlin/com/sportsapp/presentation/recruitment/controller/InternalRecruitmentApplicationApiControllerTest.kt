@@ -7,6 +7,8 @@ import sportsapp.testkit.presentation.exception.GlobalExceptionHandler
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
+import java.math.BigDecimal
 import java.time.ZonedDateTime
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
@@ -33,6 +35,7 @@ class InternalRecruitmentApplicationApiControllerTest : BehaviorSpec({
             status = ApplicationStatus.CONFIRMED,
             paymentId = 701L,
             createdAt = ZonedDateTime.now(),
+            amount = BigDecimal("15000"),
         )
 
     Given("X-Internal-Auth-Subject 헤더로 본인 신청 이력을 조회하면") {
@@ -63,6 +66,23 @@ class InternalRecruitmentApplicationApiControllerTest : BehaviorSpec({
             Then("400을 반환한다") {
                 result.andExpect(status().isBadRequest)
                     .andExpect(jsonPath("$.code").value("MISSING_REQUEST_HEADER"))
+            }
+        }
+    }
+
+    Given("신원 헤더 값이 사용자 PK 로 해석되지 않으면") {
+        val listRecruitmentApplicationsForOrderHistoryUseCase = mockk<ListRecruitmentApplicationsForOrderHistoryUseCase>()
+        val mockMvc = buildMockMvc(listRecruitmentApplicationsForOrderHistoryUseCase)
+
+        When("GET /internal/order-history/recruitment-applications 요청 시") {
+            val result = mockMvc.perform(
+                get("/internal/order-history/recruitment-applications")
+                    .header(INTERNAL_AUTH_SUBJECT_HEADER, "not-a-user-id"),
+            )
+
+            Then("400으로 거부하고 조회를 수행하지 않는다") {
+                result.andExpect(status().isBadRequest)
+                verify(exactly = 0) { listRecruitmentApplicationsForOrderHistoryUseCase.execute(any()) }
             }
         }
     }

@@ -9,6 +9,7 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import java.math.BigDecimal
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 
@@ -28,6 +29,7 @@ class ListRecruitmentApplicationsForOrderHistoryUseCaseTest : BehaviorSpec({
             recruitmentTitle = "주말 축구 모임",
             paymentId = 701L,
             createdAt = createdAt,
+            feeAmount = BigDecimal("15000"),
         )
         every { recruitmentDomainService.listApplicationsWithTitleBy(9L) } returns listOf(application)
 
@@ -41,6 +43,32 @@ class ListRecruitmentApplicationsForOrderHistoryUseCaseTest : BehaviorSpec({
                 result[0].status shouldBe ApplicationStatus.CONFIRMED
                 result[0].paymentId shouldBe 701L
                 result[0].createdAt shouldBe createdAt
+            }
+
+            Then("결제 금액을 함께 공급한다 — edge 가 payment 를 역참조하지 않고 주문내역에 금액을 노출하는 근거다") {
+                result[0].amount shouldBe BigDecimal("15000")
+            }
+        }
+    }
+
+    Given("참가비 0원(무료) 모임에 신청한 사용자") {
+        val recruitmentDomainService = mockk<RecruitmentDomainService>()
+        val useCase = ListRecruitmentApplicationsForOrderHistoryUseCase(recruitmentDomainService)
+        val application = ApplicationWithRecruitmentTitle(
+            applicationId = 12L,
+            status = ApplicationStatus.CONFIRMED,
+            recruitmentTitle = "무료 러닝 크루",
+            paymentId = null,
+            createdAt = createdAt,
+            feeAmount = BigDecimal.ZERO,
+        )
+        every { recruitmentDomainService.listApplicationsWithTitleBy(9L) } returns listOf(application)
+
+        When("execute(applicantUserId=9)를 호출하면") {
+            val result = useCase.execute(9L)
+
+            Then("무료 확정값 0을 그대로 공급한다 (금액 확정 불가인 null 과 구분한다)") {
+                result[0].amount shouldBe BigDecimal.ZERO
             }
         }
     }

@@ -23,6 +23,7 @@ import org.springframework.data.domain.PageRequest
 class SearchRecruitmentsForCatalogUseCaseTest : BehaviorSpec({
 
     val createdAt = ZonedDateTime.of(2026, 6, 2, 9, 0, 0, 0, ZoneOffset.UTC)
+    val activityAt = ZonedDateTime.of(2026, 6, 20, 19, 0, 0, 0, ZoneOffset.UTC)
 
     fun mockRecruitment(
         id: Long,
@@ -38,6 +39,7 @@ class SearchRecruitmentsForCatalogUseCaseTest : BehaviorSpec({
         every { recruitment.feeAmount } returns feeAmount
         every { recruitment.status } returns status
         every { recruitment.createdAt } returns createdAt
+        every { recruitment.activityAt } returns activityAt
         return recruitment
     }
 
@@ -59,6 +61,10 @@ class SearchRecruitmentsForCatalogUseCaseTest : BehaviorSpec({
                 result[0].price shouldBe BigDecimal("10000")
                 result[0].status shouldBe RecruitmentStatus.OPEN
                 result[0].createdAt shouldBe createdAt
+            }
+
+            Then("모임 활동 일시를 함께 공급한다 — 같은 제목의 모집글을 통합 카탈로그에서 구분하는 근거다") {
+                result[0].scheduledAt shouldBe activityAt
             }
 
             Then("도메인 페이징만 위임하고 정렬 병합은 하지 않는다") {
