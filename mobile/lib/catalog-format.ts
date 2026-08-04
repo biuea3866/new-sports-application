@@ -8,6 +8,8 @@
 import type { CatalogItemType } from '../api/catalog-types';
 
 const PRICE_UNAVAILABLE_LABEL = '가격 상세 확인';
+/** 참가비 0원 항목 표기. 모집 목록(`formatFeeAmount`)과 동일한 문구를 쓴다. */
+const FREE_LABEL = '무료';
 
 /**
  * 가격을 표시 문자열로 변환한다.
@@ -18,6 +20,12 @@ const PRICE_UNAVAILABLE_LABEL = '가격 상세 확인';
 export function formatCatalogPrice(price: number | null | undefined): string {
   if (price == null) {
     return PRICE_UNAVAILABLE_LABEL;
+  }
+  // 0은 "무료"다 — `0원`으로 찍으면 실제 금액처럼 읽힌다. 같은 값을 모집 목록
+  // (`recruitment-format.ts#formatFeeAmount`)은 이미 `무료`로 표시하므로 기준을 맞춘다.
+  // `null`(가격 미확정)과 `0`(무료 확정)은 끝까지 구분한다 — 위 분기가 먼저 걸러낸다.
+  if (price === 0) {
+    return FREE_LABEL;
   }
   return `${price.toLocaleString()}원`;
 }
