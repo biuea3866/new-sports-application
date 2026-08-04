@@ -42,6 +42,11 @@ class ExternalApiPropertiesConsistencyTest : BehaviorSpec({
     // 상태에 의존하게 되는 결함이다. systemProperties(더 높은 우선순위)로 동일 키를 명시
     // 선점해 실제 env를 가리고, 개별 시나리오가 필요하면 *properties로 다시 덮어쓴다(더 뒤에
     // 적용되어 우선한다).
+    //
+    // 주의 — 이 선점 때문에 `contextRunner()`(무인자)로 해석한 값은 **yml 의 기본값이 아니라
+    // 여기서 주입한 시스템 프로퍼티**다. 따라서 "env 미주입 시 mock 기본값" 규약은 바인딩 결과로
+    // 검증할 수 없다(동어반복이 된다) — 아래 "application.yml 의 플레이스홀더 선언" Given 이
+    // yml 텍스트를 직접 읽어 그 불변식을 담당한다.
     fun contextRunner(vararg properties: String) =
         ApplicationContextRunner()
             .withInitializer(ConfigDataApplicationContextInitializer())
@@ -49,6 +54,32 @@ class ExternalApiPropertiesConsistencyTest : BehaviorSpec({
             .withPropertyValues("spring.config.location=file:$mainApplicationYmlPath")
             .withSystemProperties("KAKAO_REST_API_KEY=", "DATA_GO_KR_SERVICE_KEY=mock-service-key")
             .withPropertyValues(*properties)
+
+    // 호스트 env·시스템 프로퍼티에 영향받지 않는 유일한 검증 지점 — 배포 규약이 적힌 텍스트 자체다.
+    Given("application.yml 의 플레이스홀더 선언") {
+        val mainApplicationYml = File(mainApplicationYmlPath).readText()
+
+        fun declaredDefaultsOf(envVariableName: String): List<String> =
+            Regex("""api-key:\s*\$\{$envVariableName:([^}]*)}""")
+                .findAll(mainApplicationYml)
+                .map { it.groupValues[1] }
+                .toList()
+
+        When("DATA_GO_KR_SERVICE_KEY 를 공유하는 3개 블록의 기본값을 비교하면") {
+            Then("셋 다 동일한 mock 기본값(mock-service-key)을 선언한다 — 키 1건 동시 전환 규약(FR-3)") {
+                val declaredDefaults = declaredDefaultsOf("DATA_GO_KR_SERVICE_KEY")
+
+                declaredDefaults.size shouldBe 3
+                declaredDefaults.distinct() shouldBe listOf("mock-service-key")
+            }
+        }
+
+        When("공유 규약과 무관한 키의 기본값을 확인하면") {
+            Then("geocoding(KAKAO_REST_API_KEY)은 빈 기본값을 선언한다 — 실키 없이 mock 으로 대체되지 않는다") {
+                declaredDefaultsOf("KAKAO_REST_API_KEY") shouldBe listOf("")
+            }
+        }
+    }
 
     Given("Properties 를 기본 생성자로 직접 생성하는 경우") {
         When("weather 와 public-facility 의 api-key 기본값을 비교하면") {
