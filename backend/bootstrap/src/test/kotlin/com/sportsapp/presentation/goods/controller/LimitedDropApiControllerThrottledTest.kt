@@ -103,7 +103,7 @@ class LimitedDropApiControllerThrottledTest(
                     )
 
                     result.andExpect { mvcResult -> mvcResult.response.status shouldBe 429 }
-                        .andExpect(jsonPath("$.properties.code").value("LIMITED_DROP_THROTTLED"))
+                        .andExpect(jsonPath("$.code").value("LIMITED_DROP_THROTTLED"))
                 }
             }
         }

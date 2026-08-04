@@ -1,7 +1,5 @@
 package com.sportsapp.presentation.featuredemo.controller
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.sportsapp.application.featuredemo.dto.DemoGreetingResponse
 import com.sportsapp.application.featuredemo.dto.GetDemoGreetingCommand
 import com.sportsapp.application.featuredemo.usecase.GetDemoGreetingUseCase
@@ -10,12 +8,12 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every
 import io.mockk.mockk
 import org.springframework.http.MediaType
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import sportsapp.testkit.presentation.exception.GlobalExceptionHandler
+import sportsapp.testkit.presentation.support.productionEquivalentJsonConverter
 import java.time.ZonedDateTime
 
 /**
@@ -25,11 +23,12 @@ import java.time.ZonedDateTime
 class FeatureDemoApiControllerTest : BehaviorSpec({
 
     val getDemoGreetingUseCase = mockk<GetDemoGreetingUseCase>()
-    val objectMapper = ObjectMapper().registerModule(JavaTimeModule())
+    // 프로덕션 등가 컨버터를 쓴다 — 맨 ObjectMapper 는 ProblemDetailJacksonMixin 이 없어
+    // 커스텀 프로퍼티가 properties 아래 중첩되고, 그러면 실제 응답 형태($.code)를 검증하지 못한다.
     val mockMvc = MockMvcBuilders
         .standaloneSetup(FeatureDemoApiController(getDemoGreetingUseCase))
         .setControllerAdvice(GlobalExceptionHandler())
-        .setMessageConverters(MappingJackson2HttpMessageConverter(objectMapper))
+        .setMessageConverters(productionEquivalentJsonConverter())
         .build()
 
     Given("demo.feature.hello 플래그가 ON이고 X-User-Id 헤더가 있는 상태") {
@@ -71,7 +70,7 @@ class FeatureDemoApiControllerTest : BehaviorSpec({
                         .accept(MediaType.APPLICATION_JSON)
                 )
                     .andExpect(status().isServiceUnavailable)
-                    .andExpect(jsonPath("$.properties.code").value("FEATURE_DISABLED"))
+                    .andExpect(jsonPath("$.code").value("FEATURE_DISABLED"))
             }
         }
     }
@@ -88,7 +87,7 @@ class FeatureDemoApiControllerTest : BehaviorSpec({
                         .accept(MediaType.APPLICATION_JSON)
                 )
                     .andExpect(status().isServiceUnavailable)
-                    .andExpect(jsonPath("$.properties.code").value("FEATURE_DISABLED"))
+                    .andExpect(jsonPath("$.code").value("FEATURE_DISABLED"))
             }
         }
     }

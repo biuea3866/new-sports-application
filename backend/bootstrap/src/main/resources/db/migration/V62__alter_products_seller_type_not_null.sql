@@ -5,12 +5,16 @@
 --
 -- ⚠️ 선행 게이트 (모두 충족 전 이 마이그레이션 적용 금지 — 운영 적용 시점 구속, 코드 의존 아님):
 --   1. BE-03 듀얼라이트 배포 완료 (신규 Product 등록 시 seller_type 값이 채워짐)
---   2. BE-11 Spring Batch 배치 백필 완료 (기존 NULL 행을 B2C로 채움)
+--   2. 기존 NULL 행 백필 완료 (BE-11 Spring Batch 잡이 담당했다 — 이 마이그레이션 적용 완료로
+--      expand-contract 가 종료돼 2026-08-04 그 잡을 제거했다)
 --   3. 백필 검증 통과: SELECT COUNT(*) FROM products WHERE seller_type IS NULL; -- 결과 0
 --   4. 기능 배포 완료 (catalog/order 파사드 BE-07/08 + SecurityConfig BE-09)
 --   위 게이트 미충족 상태에서 이 파일을 적용하면 ERROR 1138 (22004) Invalid use of NULL value로
 --   실패한다 (로컬 재현 완료 — NULL 잔존 1건 상태에서 적용 시 동일 에러 확인).
---   실패 시 대응: 마이그레이션을 되돌리지 말고, BE-11 배치를 먼저 완료 후 재적용한다.
+--   실패 시 대응: 마이그레이션을 되돌리지 말고 잔여 NULL 행을 먼저 채운 뒤 재적용한다.
+--      BE-11 배치 잡은 제거됐으므로, PK 범위를 나눈 청크 UPDATE 를 수동 수행한다 (한 번에 전체를
+--      UPDATE 하면 테이블 전체 락으로 서비스 쓰기가 막힌다):
+--        UPDATE products SET seller_type='B2C' WHERE seller_type IS NULL AND id BETWEEN ? AND ?;
 --
 -- 락 영향: NULL 허용 → NOT NULL 속성 변경은 MySQL 8.0 Online DDL에서 테이블 재작성(rebuild)을
 --   동반한다(MySQL 공식 Online DDL 표 "Changing NULL/NOT NULL attribute" = Rebuilds Table: Yes,

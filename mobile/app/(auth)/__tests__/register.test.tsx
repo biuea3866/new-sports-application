@@ -89,8 +89,9 @@ describe('회원가입 화면 — 닉네임', () => {
     });
   });
 
-  // BE 는 Spring ProblemDetail 로 내려주고 code 는 `properties.code` 에 중첩 직렬화된다
-  // (ProblemDetailBuilder.setProperty("code", ...), BE 통합 테스트가 `$.properties.code` 로 검증).
+  // BE 는 Spring ProblemDetail 로 내려주고 code 는 최상위로 평탄화된다
+  // (setProperty("code", ...) + ProblemDetailJacksonMixin 의 @JsonAnyGetter, BE 통합 테스트가 `$.code` 로 검증).
+  // 이 케이스는 구 형태(properties 중첩) 응답도 읽는 클라이언트 폴백을 함께 고정한다.
   // 더블이 계약을 발명하지 않도록 실제 응답 모양을 그대로 쓴다.
   function problemDetailError(status: number, code: string) {
     return new AxiosError('boom', undefined, undefined, undefined, {

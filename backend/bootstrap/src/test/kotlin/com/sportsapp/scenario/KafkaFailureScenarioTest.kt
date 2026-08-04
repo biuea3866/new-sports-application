@@ -19,7 +19,13 @@ class KafkaFailureScenarioTest : BehaviorSpec({
     data class TestEvent(val id: Long, val name: String)
 
     Given("Kafka 브로커가 없는 환경(unreachable host)") {
-        val unreachableBootstrapServers = "localhost:19092"
+        // RFC 5737 TEST-NET-1(문서 전용 예약 대역) — 이 호스트의 어떤 프로세스도 이 주소로 리스닝할 수
+        // 없어 "도달 불가" 전제가 환경과 무관하게 성립한다.
+        //
+        // 이전에는 `localhost:19092` 를 썼는데, 같은 머신의 다른 프로젝트 컨테이너가 19092 를
+        // 매핑하고 있으면 발행이 **성공**해 shouldThrow 가 실패했다(실측: stock-kafka 컨테이너가
+        // 0.0.0.0:19092 점유). 테스트가 통제하지 않는 호스트 상태에 의존한 결함이다.
+        val unreachableBootstrapServers = "192.0.2.1:9092"
 
         val producerProps = mapOf(
             ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to unreachableBootstrapServers,

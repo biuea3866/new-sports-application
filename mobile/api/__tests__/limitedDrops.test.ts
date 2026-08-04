@@ -5,10 +5,9 @@
  * U-04: purchaseLimitedDrop이 409/429/403/425 응답 상태코드를 판별 가능한 결과로 매핑한다
  * U-05: getLimitedDrop이 404 응답 시 에러를 던진다
  *
- * code 판별 케이스는 실제 BE의 Spring ProblemDetail 응답 형태(code가 properties.code에
- * 중첩 직렬화됨 — ProblemDetailBuilder.build의 setProperty("code", ...),
- * spring.mvc.problemdetails.enabled 미설정으로 unwrap되지 않음)를 그대로 목킹해 검증한다.
- * 과거 형태(top-level code)로도 폴백 판별되는지는 별도 케이스로 확인한다.
+ * 실 BE 응답은 ProblemDetail 확장 멤버가 최상위 `code`로 평탄화된 형태다
+ * (ProblemDetailJacksonMixin의 @JsonAnyGetter). 아래 케이스는 구 형태(`properties` 중첩)
+ * 응답도 클라이언트가 계속 읽는지 폴백을 고정하는 것이고, 최상위 형태는 별도 케이스로 확인한다.
  */
 import MockAdapter from 'axios-mock-adapter';
 import { createBeClient } from '../be-client';
@@ -157,7 +156,7 @@ describe('purchaseLimitedDrop', () => {
     expect(result).toEqual({ outcome: 'SOLD_OUT' });
   });
 
-  it('409 응답(ProblemDetail properties.code=LIMITED_DROP_CLOSED, 실제 BE 형태)을 CLOSED outcome으로 매핑한다', async () => {
+  it('409 응답(ProblemDetail properties.code=LIMITED_DROP_CLOSED, 구 형태 폴백)을 CLOSED outcome으로 매핑한다', async () => {
     mock
       .onPost('/limited-drops/1/orders')
       .reply(409, problemDetailBody(409, 'LIMITED_DROP_CLOSED', 'Closed'));
@@ -171,7 +170,7 @@ describe('purchaseLimitedDrop', () => {
     expect(result).toEqual({ outcome: 'CLOSED' });
   });
 
-  it('409 응답(ProblemDetail properties.code=LIMITED_DROP_SOLD_OUT, 실제 BE 형태)을 SOLD_OUT outcome으로 매핑한다', async () => {
+  it('409 응답(ProblemDetail properties.code=LIMITED_DROP_SOLD_OUT, 구 형태 폴백)을 SOLD_OUT outcome으로 매핑한다', async () => {
     mock
       .onPost('/limited-drops/1/orders')
       .reply(409, problemDetailBody(409, 'LIMITED_DROP_SOLD_OUT', 'Sold out'));
@@ -185,7 +184,7 @@ describe('purchaseLimitedDrop', () => {
     expect(result).toEqual({ outcome: 'SOLD_OUT' });
   });
 
-  it('409 응답(과거 형태 top-level code)도 폴백으로 SOLD_OUT outcome으로 매핑한다', async () => {
+  it('409 응답(최상위 code, 실 BE 형태)을 SOLD_OUT outcome으로 매핑한다', async () => {
     mock
       .onPost('/limited-drops/1/orders')
       .reply(409, { code: 'LIMITED_DROP_SOLD_OUT', message: 'Sold out' });
@@ -223,7 +222,7 @@ describe('purchaseLimitedDrop', () => {
     expect(result).toEqual({ outcome: 'LIMIT_EXCEEDED' });
   });
 
-  it('403 응답(ProblemDetail properties.code=QUEUE_BYPASS_DENIED, 실제 BE 형태)을 BYPASS_DENIED outcome으로 매핑한다', async () => {
+  it('403 응답(ProblemDetail properties.code=QUEUE_BYPASS_DENIED, 구 형태 폴백)을 BYPASS_DENIED outcome으로 매핑한다', async () => {
     mock
       .onPost('/limited-drops/1/orders')
       .reply(403, problemDetailBody(403, 'QUEUE_BYPASS_DENIED', 'Entry token invalid or expired'));

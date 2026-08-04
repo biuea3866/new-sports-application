@@ -56,11 +56,10 @@ export async function purchaseLimitedDrop(
 }
 
 /**
- * BE는 에러를 Spring ProblemDetail로 내리며, code는 최상위가 아니라
- * `properties.code`에 중첩 직렬화된다 (ProblemDetailBuilder.build의 setProperty("code", ...),
- * spring.mvc.problemdetails.enabled 미설정으로 unwrap되지 않음 — 전 BE 통합 테스트가
- * `$.properties.code`로 검증). 중첩 값을 우선 읽고, 과거 형태(top-level code) 응답도
- * 방어적으로 폴백 처리한다.
+ * BE는 에러를 Spring ProblemDetail로 내리며, `ProblemDetailBuilder.build`가
+ * `setProperty("code", ...)`로 담은 값은 Spring `ProblemDetailJacksonMixin`의 `@JsonAnyGetter`로
+ * **최상위 `code`로 평탄화**된다 (BE 통합 테스트가 `$.code`로 검증). 구 형태(`properties` 중첩)
+ * 응답도 방어적으로 폴백 처리한다 — 전역 ObjectMapper가 Boot 빌더 기반이 아니던 시절의 형태다.
  */
 function extractProblemCode(data: LimitedDropApiErrorBody | undefined): string | undefined {
   return data?.properties?.code ?? data?.code;

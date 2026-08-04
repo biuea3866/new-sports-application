@@ -11,6 +11,7 @@ import com.sportsapp.domain.ticketing.entity.OrderStatus
 import com.sportsapp.domain.ticketing.entity.Seat
 import com.sportsapp.domain.ticketing.entity.TicketOrder
 import com.sportsapp.domain.ticketing.dto.TicketSeatLabel
+import io.kotest.matchers.comparables.shouldBeEqualComparingTo
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import java.math.BigDecimal
@@ -157,7 +158,9 @@ class TicketOrderCustomRepositoryImplTest(
                 Then("좌석가 합계가 totalAmount로 반환된다") {
                     result.size shouldBe 1
                     result.first().ticketOrderId shouldBe order.id
-                    result.first().totalAmount shouldBe BigDecimal("60000")
+                    // DECIMAL(_,2) 컬럼이라 DB 왕복 후 스케일 2로 돌아온다(60000 → 60000.00).
+                    // BigDecimal.equals 는 스케일까지 비교하므로 금액 동치는 수치 비교로 단언한다.
+                    result.first().totalAmount shouldBeEqualComparingTo BigDecimal("60000")
                 }
 
                 Then("잠긴 좌석 2석이 section/rowNo/seatNo 구조로 반환된다") {
@@ -188,7 +191,7 @@ class TicketOrderCustomRepositoryImplTest(
                 val result = ticketOrderCustomRepositoryImpl.findBy(16L)
 
                 Then("단일 좌석가가 totalAmount로 반환된다") {
-                    result.first().totalAmount shouldBe BigDecimal("45000")
+                    result.first().totalAmount shouldBeEqualComparingTo BigDecimal("45000")
                 }
 
                 Then("좌석 1건이 단일 원소 리스트로 반환된다") {

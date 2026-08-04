@@ -83,6 +83,13 @@ class CartDomainService(
         return cart to toLineItems(cartItemRepository.findByCartId(cart.id))
     }
 
+    // ThrowsCount 억제 근거: 세 개 모두 서로 다른 실패를 구분하는 guard clause 다 —
+    // 항목 부재(404)·타인 장바구니 접근(403)·재고 레코드 부재(404). 컨벤션이 권장하는
+    // early return 형태이고, 합치면 호출자가 404/403 을 구분할 수 없다.
+    // 중복(`removeItem` 과 앞 두 guard 가 동일)을 헬퍼로 묶는 리팩토링은 이 경로에 테스트가
+    // 0건이라 지금 하지 않는다 — 커버리지 확보 후 진행한다
+    // (`MSA 물리분리/후속-리스크-등록부.md` R-22).
+    @Suppress("ThrowsCount")
     fun updateItem(userId: Long, itemId: Long, newQuantity: Int): Pair<Cart, List<CartLineItem>> {
         val cart = getOrCreateCart(userId)
         val item = cartItemRepository.findById(itemId)

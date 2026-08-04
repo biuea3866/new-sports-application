@@ -35,12 +35,54 @@ class ExternalApiPropertiesConsistencyTest : BehaviorSpec({
     // 직접 로드해 검증 대상으로 삼는다.
     val mainApplicationYmlPath = File("src/main/resources/application.yml").absolutePath
 
+    // 호스트 쉘이 다른 프로젝트(mock-servers/kakao-local, mock-servers/solapi 등)용으로
+    // KAKAO_REST_API_KEY·DATA_GO_KR_SERVICE_KEY를 실제 값으로 export해 두면, 이 OS 환경변수가
+    // Spring Environment의 systemEnvironment PropertySource로 유입되어 application.yml의
+    // `${VAR:default}` 플레이스홀더가 기대하는 기본값을 조용히 덮어쓴다 — 테스트가 호스트 쉘
+    // 상태에 의존하게 되는 결함이다. systemProperties(더 높은 우선순위)로 동일 키를 명시
+    // 선점해 실제 env를 가리고, 개별 시나리오가 필요하면 *properties로 다시 덮어쓴다(더 뒤에
+    // 적용되어 우선한다).
+    //
+    // 주의 — 이 선점 때문에 `contextRunner()`(무인자)로 해석한 **api-key** 값은 yml 의 기본값이 아니라
+    // 여기서 주입한 시스템 프로퍼티다. 따라서 "env 미주입 시 mock 기본값" 규약은 바인딩 결과로
+    // 검증할 수 없다(동어반복이 된다) — 아래 "application.yml 의 플레이스홀더 선언" Given 이
+    // yml 텍스트를 직접 읽어 그 불변식을 담당하고, 동어반복이던 바인딩 케이스는 제거했다.
+    //
+    // base-url 은 선점 대상이 아니라 아래 "env 가 전혀 주입되지 않은 상태" Given 의 mock host 단언은
+    // 여전히 yml 기본값을 검증한다. 기본 생성자 Given 도 Kotlin 기본값을 보므로 영향받지 않는다.
     fun contextRunner(vararg properties: String) =
         ApplicationContextRunner()
             .withInitializer(ConfigDataApplicationContextInitializer())
             .withUserConfiguration(ExternalApiPropertiesTestConfig::class.java)
             .withPropertyValues("spring.config.location=file:$mainApplicationYmlPath")
+            .withSystemProperties("KAKAO_REST_API_KEY=", "DATA_GO_KR_SERVICE_KEY=mock-service-key")
             .withPropertyValues(*properties)
+
+    // 호스트 env·시스템 프로퍼티에 영향받지 않는 유일한 검증 지점 — 배포 규약이 적힌 텍스트 자체다.
+    Given("application.yml 의 플레이스홀더 선언") {
+        val mainApplicationYml = File(mainApplicationYmlPath).readText()
+
+        fun declaredDefaultsOf(envVariableName: String): List<String> =
+            Regex("""api-key:\s*\$\{$envVariableName:([^}]*)}""")
+                .findAll(mainApplicationYml)
+                .map { it.groupValues[1] }
+                .toList()
+
+        When("DATA_GO_KR_SERVICE_KEY 를 공유하는 3개 블록의 기본값을 비교하면") {
+            Then("셋 다 동일한 mock 기본값(mock-service-key)을 선언한다 — 키 1건 동시 전환 규약(FR-3)") {
+                val declaredDefaults = declaredDefaultsOf("DATA_GO_KR_SERVICE_KEY")
+
+                declaredDefaults.size shouldBe 3
+                declaredDefaults.distinct() shouldBe listOf("mock-service-key")
+            }
+        }
+
+        When("공유 규약과 무관한 키의 기본값을 확인하면") {
+            Then("geocoding(KAKAO_REST_API_KEY)은 빈 기본값을 선언한다 — 실키 없이 mock 으로 대체되지 않는다") {
+                declaredDefaultsOf("KAKAO_REST_API_KEY") shouldBe listOf("")
+            }
+        }
+    }
 
     Given("Properties 를 기본 생성자로 직접 생성하는 경우") {
         When("weather 와 public-facility 의 api-key 기본값을 비교하면") {
@@ -83,20 +125,6 @@ class ExternalApiPropertiesConsistencyTest : BehaviorSpec({
                     publicFacilityApiKey shouldBe "real-service-key-abc"
                     weatherApiKey shouldBe "real-service-key-abc"
                     airQualityApiKey shouldBe "real-service-key-abc"
-                }
-            }
-        }
-    }
-
-    Given("env 가 전혀 주입되지 않은 기본 상태") {
-        When("application.yml 로 public-facility·weather api-key 를 바인딩하면") {
-            Then("weather api-key 기본값 비대칭이 해소되어 public-facility 와 동일 규약으로 해석된다") {
-                contextRunner().run { context ->
-                    val publicFacilityApiKey = context.getBean(PublicFacilityProperties::class.java).apiKey
-                    val weatherApiKey = context.getBean(WeatherProperties::class.java).apiKey
-
-                    weatherApiKey shouldBe publicFacilityApiKey
-                    weatherApiKey shouldBe "mock-service-key"
                 }
             }
         }

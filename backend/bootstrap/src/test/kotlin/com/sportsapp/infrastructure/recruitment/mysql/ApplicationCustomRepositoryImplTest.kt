@@ -5,6 +5,8 @@ import com.sportsapp.domain.recruitment.entity.Application
 import com.sportsapp.domain.recruitment.entity.ApplicationStatus
 import com.sportsapp.domain.recruitment.entity.Recruitment
 import com.sportsapp.domain.recruitment.repository.ApplicationCustomRepository
+import io.kotest.matchers.comparables.shouldBeEqualComparingTo
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import java.math.BigDecimal
 import java.time.ZonedDateTime
@@ -131,7 +133,9 @@ class ApplicationCustomRepositoryImplTest(
                 Then("모집의 참가비(feeAmount)가 그대로 포함된다") {
                     result.size shouldBe 1
                     result.first().applicationId shouldBe application.id
-                    result.first().feeAmount shouldBe BigDecimal("10000")
+                    // DECIMAL(_,2) 컬럼이라 DB 왕복 후 스케일 2로 돌아온다(10000 → 10000.00).
+                    // BigDecimal.equals 는 스케일까지 비교하므로 금액 동치는 수치 비교로 단언한다.
+                    result.first().feeAmount.shouldNotBeNull() shouldBeEqualComparingTo BigDecimal("10000")
                 }
             }
         }
@@ -157,7 +161,9 @@ class ApplicationCustomRepositoryImplTest(
 
                 Then("feeAmount가 0(무료)으로 확정되어 null이 아니다") {
                     result.size shouldBe 1
-                    result.first().feeAmount shouldBe BigDecimal.ZERO
+                    // 무료 확정값 0 과 "금액 확정 불가" null 을 구분하는 것이 이 케이스의 핵심이다.
+                    // DECIMAL(_,2) 왕복으로 0 이 0.00 으로 돌아오므로 스케일 무관 수치 비교로 단언한다.
+                    result.first().feeAmount.shouldNotBeNull() shouldBeEqualComparingTo BigDecimal.ZERO
                 }
             }
         }

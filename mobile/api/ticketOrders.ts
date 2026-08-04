@@ -52,9 +52,9 @@ export async function selectSeats(
 
 /**
  * 좌석 선점 API가 가상 대기열 우회로 거부됐는지 판별한다.
- * BE 계약(TDD "FE/외부 계약"): 403 Spring `ProblemDetail` — `code`는 `properties.code`에 중첩
- * 직렬화된다(백엔드 통합 테스트가 `$.properties.code`로 읽는 것과 동일 계약). 과거 flat `code`
- * 응답과의 하위 호환을 위해 `properties.code` 부재 시 top-level `code`로 폴백한다.
+ * BE 계약(TDD "FE/외부 계약"): 403 Spring `ProblemDetail` — `code`는 `ProblemDetailJacksonMixin`의
+ * `@JsonAnyGetter`로 **최상위 `code`로 평탄화**된다(백엔드 통합 테스트가 `$.code`로 읽는 것과 동일
+ * 계약). 구 형태(`properties` 중첩) 응답과의 하위 호환을 위해 `properties.code`도 함께 읽는다.
  * `order.tsx`가 이 판별로 일반 오류와 구분해 "다시 대기하기" 안내를 띄운다.
  */
 export function isQueueBypassDeniedError(error: unknown): boolean {

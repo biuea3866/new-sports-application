@@ -40,8 +40,10 @@ class Product(
     var status: ProductStatus,
 
     /**
-     * 판매자 유형(B2C/B2B, DB-01 듀얼라이트). `seller_type` 컬럼은 nullable — 기존 행은
-     * BE-11 배치 백필 전까지 null일 수 있다. 신규 등록은 [create]가 항상 명시값을 요구한다.
+     * 판매자 유형(B2C/B2B). `seller_type` 컬럼은 **V62 로 NOT NULL 이 됐고**(expand-contract contract
+     * 완료, 백필 잡도 제거) 실 데이터에는 null 이 없다. 이 프로퍼티가 아직 nullable 인 것은 원시
+     * 생성자를 쓰는 기존 테스트 픽스처 호환 때문이며, 타입 조임은 후속 과제다
+     * (`MSA 물리분리/후속-리스크-등록부.md` R-26). 신규 등록은 [create]가 항상 명시값을 요구한다.
      *
      * 원시 생성자의 기본값(B2C)은 sellerType과 무관한 기존 테스트 픽스처(goods 밖 30여개 파일)의
      * 컴파일 호환을 위한 실용적 예외다 — no-default-constructor-values 원칙은 실제 쓰기 경로인
@@ -76,16 +78,6 @@ class Product(
 
     fun requireOwnedBy(ownerUserId: Long) {
         if (ownerId != ownerUserId) throw ResourceNotFoundException("Product", id)
-    }
-
-    /**
-     * BE-11 배치 백필 전용 — 기존 데이터 정책(전량 B2C)에 따라 미확정 상태(null)만 채운다.
-     * 이미 값이 있는 행(B2C/B2B 무관, 듀얼라이트로 채워진 신규 상품 포함)은 그대로 둔다
-     * (no-op) — 재실행해도 안전한 멱등 연산이며, 신규 등록([create])의 판별 결과를 덮어쓰지 않는다.
-     */
-    fun assignDefaultSellerTypeIfMissing() {
-        if (sellerType != null) return
-        sellerType = SellerType.B2C
     }
 
     fun update(
