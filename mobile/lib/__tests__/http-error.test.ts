@@ -84,13 +84,13 @@ describe('extractProblemCode', () => {
     });
   }
 
-  it('properties.code 에 중첩된 코드를 읽는다', () => {
+  it('구 형태(properties.code 중첩) 응답도 폴백으로 읽는다', () => {
     expect(extractProblemCode(problemDetailError(400, { properties: { code: 'INVALID_NICKNAME' } }))).toBe(
       'INVALID_NICKNAME'
     );
   });
 
-  it('최상위 code 형태(구 응답)도 폴백으로 읽는다', () => {
+  it('최상위 code(실 BE 형태)를 읽는다', () => {
     expect(extractProblemCode(problemDetailError(400, { code: 'INVALID_NICKNAME' }))).toBe(
       'INVALID_NICKNAME'
     );

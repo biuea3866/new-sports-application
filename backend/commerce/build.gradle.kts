@@ -23,7 +23,6 @@ dependencies {
     // Kafka — GoodsPaymentEventWorker·TicketingPaymentEventWorker(event.payment.payment.v1 구독)
     implementation("org.springframework.kafka:spring-kafka")
 
-    // Spring Batch — SellerTypeBackfillJob (BE-11 products.seller_type 청크 백필)
 
     // Retry — 한정판 예약 보상(DropReservationCompensationRetryListener) 재시도
     implementation("org.springframework.retry:spring-retry")

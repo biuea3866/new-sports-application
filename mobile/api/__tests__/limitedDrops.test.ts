@@ -184,7 +184,7 @@ describe('purchaseLimitedDrop', () => {
     expect(result).toEqual({ outcome: 'SOLD_OUT' });
   });
 
-  it('409 응답(과거 형태 top-level code)도 폴백으로 SOLD_OUT outcome으로 매핑한다', async () => {
+  it('409 응답(최상위 code, 실 BE 형태)을 SOLD_OUT outcome으로 매핑한다', async () => {
     mock
       .onPost('/limited-drops/1/orders')
       .reply(409, { code: 'LIMITED_DROP_SOLD_OUT', message: 'Sold out' });

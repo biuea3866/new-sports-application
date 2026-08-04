@@ -16,14 +16,27 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
  * 단언이 red 없이 통과하면서 "실 BE 응답은 properties.code" 라는 잘못된 진술이 모바일 주석까지
  * 퍼졌다).
  *
- * 앱 전역 매퍼(`McpObjectMapperConfig.applicationObjectMapper`)와 같은 방식으로 Boot 의
- * [Jackson2ObjectMapperBuilder] 기반으로 만들고, 그 매퍼가 기본값과 다르게 명시하는 두 정책을
- * 함께 보존한다 — 컨버터 셋업이 프로덕션과 갈라지지 않게 하는 것이 이 팩토리의 목적이다.
+ * 앱 전역 매퍼(`McpObjectMapperConfig.applicationObjectMapper`)와 등가가 되도록 맞춘다 —
+ * 이 팩토리의 목적은 더블이 계약을 발명하지 않게 하는 것이다. 다만 그 매퍼는 **Boot 가 커스터마이즈한**
+ * 빌더를 주입받고 이 팩토리는 맨 [Jackson2ObjectMapperBuilder.json] 이라, 아래 세 정책의 출처가 다르다:
+ *
+ * | 정책 | 프로덕션에서 누가 끄/켜는가 | 여기서 |
+ * |---|---|---|
+ * | `FAIL_ON_UNKNOWN_PROPERTIES`·`DEFAULT_VIEW_INCLUSION` | `Jackson2ObjectMapperBuilder` 기본값 | 자동 |
+ * | `ACCEPT_EMPTY_STRING_AS_NULL_OBJECT` 활성, `FAIL_ON_EMPTY_BEANS` 비활성 | `applicationObjectMapper` 가 명시 | **명시 복제** |
+ * | `WRITE_DATES_AS_TIMESTAMPS` 비활성(ISO-8601) | Boot 의 `StandardJackson2ObjectMapperBuilderCustomizer` | **명시 복제** |
+ *
+ * 세 번째를 빼면 슬라이스는 날짜를 숫자 타임스탬프로, 프로덕션은 ISO-8601 로 내보낸다 — 지금은
+ * 날짜 값 형식을 단언하는 테스트가 없어 red 가 아니지만, 그 상태로 두면 다음에 누가 형식을
+ * 단언하는 순간 프로덕션과 어긋난 계약을 고정한다.
  */
 fun productionEquivalentJsonConverter(): MappingJackson2HttpMessageConverter =
     MappingJackson2HttpMessageConverter(
         Jackson2ObjectMapperBuilder.json()
             .featuresToEnable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT)
-            .featuresToDisable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
+            .featuresToDisable(
+                SerializationFeature.FAIL_ON_EMPTY_BEANS,
+                SerializationFeature.WRITE_DATES_AS_TIMESTAMPS,
+            )
             .build(),
     )
