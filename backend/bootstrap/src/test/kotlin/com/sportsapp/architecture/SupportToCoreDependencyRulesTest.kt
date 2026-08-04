@@ -38,8 +38,17 @@ object DomainClassification {
      * R3 일반 스캔에서 제외하고 전용 화이트리스트 테스트가 담당하는 도메인 (ADR-002 rule #4 예외 ②).
      * partner → domain.user 는 B2B admin 프로비저닝 쓰기 오케스트레이션으로 사전 등록된 화이트리스트이며,
      * 전용 테스트("application.partner 는 domain.user 를 제외한 코어 도메인을 동기 의존하지 않는다")가 담당한다.
+     *
+     * featureflag → domain.user 도 같은 카브아웃이다 — `GetFeatureFlagAuditLogsUseCase` 가 감사 로그의
+     * 변경자를 내부 PK 대신 표시 이름으로 보이려고 `UserDomainService.findDisplayNamesBy` 를 읽는다
+     * (PR #393). 근거: ① 의존이 **`domain.user` 단 하나**이고 읽기 전용 조합이다(dashboard 예외 ①과 동일
+     * 성격), ② featureflag 와 user 는 2단계 목표 토폴로지에서 **같은 서비스(`platform`)** 에 속해 이
+     * 동기 호출이 서비스 간 결합을 만들지 않는다, ③ 코드 자체는 "크로스 컨텍스트 조합은 application
+     * 레이어 책임" 컨벤션을 따른다. 대안(변경자 표시 이름을 감사 행에 비정규화)은 마이그레이션·백필을
+     * 수반하는데 R3 의 목적(서비스 간 동기 결합 차단)에는 기여하지 않아 채택하지 않았다.
+     * 전용 테스트가 "user 를 제외한 코어 접근"을 여전히 금지한다.
      */
-    val r3Whitelisted = listOf("partner")
+    val r3Whitelisted = listOf("partner", "featureflag")
 }
 
 private fun packagesOf(layer: String, domains: List<String>): Array<String> =
@@ -55,12 +64,14 @@ private fun packagesOf(layer: String, domains: List<String>): Array<String> =
  * 스캔 대상은 `DomainClassification.support + subsystem - r3Whitelisted` 로 상수에서 직접 구동한다 —
  * 상수에 도메인을 추가하면 스캔 대상이 자동으로 늘어난다 (FR-8 컨텍스트 맵 갱신 절차의 실효성 보장).
  *
- * 화이트리스트 예외 2건 — 둘 다 일반 R3 루프의 스캔 대상이 아니며, 각자 전용 테스트가 담당한다:
+ * 화이트리스트 예외 3건 — 모두 일반 R3 루프의 스캔 대상이 아니며, 각자 전용 테스트가 담당한다:
  *  ① application.dashboard → 코어 (읽기 전용 조합, Conformist read model).
  *     dashboard 는 support/subsystem 어디에도 속하지 않아 애초에 루프에 들어오지 않는다.
  *  ② application.partner → domain.user (B2B admin 프로비저닝 쓰기 오케스트레이션, ADR-002 rule #4).
  *     partner 는 support 이지만 r3Whitelisted 로 루프에서 제외하고, 아래 전용 규칙이 "user 를 제외한
  *     코어 접근"만 금지한다. 그 전용 규칙의 거부 능력은 stand-in sanity check 로 고정한다.
+ *  ③ application.featureflag → domain.user (감사 로그 변경자 표시 이름 읽기 조합, PR #393).
+ *     ②와 동일한 처리 — 근거는 [DomainClassification.r3Whitelisted] KDoc 참고.
  */
 class SupportToCoreDependencyRulesTest : FunSpec({
 
@@ -92,6 +103,27 @@ class SupportToCoreDependencyRulesTest : FunSpec({
             .that().resideInAnyPackage("com.sportsapp.application.partner..")
             .should().dependOnClassesThat().resideInAnyPackage(*corePackagesExceptUser)
             .because("partner→user 는 admin 프로비저닝 쓰기 오케스트레이션으로 사전 등록된 예외 — user 외 코어 접근은 여전히 금지")
+            .allowEmptyShould(true)
+            .check(importedClasses)
+    }
+
+    test("application.featureflag 는 domain.user 를 제외한 코어 도메인을 동기 의존하지 않는다 (사전 등록 화이트리스트)") {
+        // GetFeatureFlagAuditLogsUseCase 가 감사 로그 변경자를 표시 이름으로 보이려고
+        // domain.user.service.UserDomainService 를 읽기 조합한다 — user 를 제외한 코어 접근만 금지 대상이다.
+        noClasses()
+            .that().resideInAnyPackage("com.sportsapp.application.featureflag..", "com.sportsapp.domain.featureflag..")
+            .should().dependOnClassesThat().resideInAnyPackage(*corePackagesExceptUser)
+            .because("featureflag→user 는 감사 로그 표시 이름 읽기 조합으로 사전 등록된 예외 — user 외 코어 접근은 여전히 금지")
+            .allowEmptyShould(true)
+            .check(importedClasses)
+    }
+
+    test("domain.featureflag 는 domain.user 조차 의존하지 않는다 (조합은 application 레이어에만 허용)") {
+        // 화이트리스트를 domain 까지 열어 주지 않는다 — 도메인은 user 를 모른 채로 둔다.
+        noClasses()
+            .that().resideInAnyPackage("com.sportsapp.domain.featureflag..")
+            .should().dependOnClassesThat().resideInAnyPackage(*corePackages)
+            .because("featureflag 도메인은 user 를 모른다 — 표시 이름 조합은 application UseCase 의 책임")
             .allowEmptyShould(true)
             .check(importedClasses)
     }
@@ -205,14 +237,16 @@ class SupportToCoreDependencyRulesTest : FunSpec({
         (DomainClassification.core.size + DomainClassification.support.size + DomainClassification.subsystem.size) shouldBe 23
     }
 
-    test("R3 스캔 대상에 기존 5개와 신규 편입 4개를 합한 9개 도메인이 모두 포함된다") {
+    test("R3 스캔 대상에 기존 5개와 신규 편입 3개를 합한 8개 도메인이 모두 포함된다") {
+        // featureflag 는 domain.user 읽기 조합(PR #393)으로 r3Whitelisted 로 이동해 전용 테스트가 담당한다.
         r3ScannedDomains.shouldContainAll(
-            listOf("notification", "operator", "weather", "mcp", "alerting", "featureflag", "virtualqueue", "airquality", "featuredemo"),
+            listOf("notification", "operator", "weather", "mcp", "alerting", "virtualqueue", "airquality", "featuredemo"),
         )
     }
 
-    test("partner는 r3Whitelisted로 일반 R3 루프의 스캔 대상에서 제외된다 (전용 화이트리스트 테스트가 담당)") {
+    test("partner·featureflag는 r3Whitelisted로 일반 R3 루프의 스캔 대상에서 제외된다 (전용 화이트리스트 테스트가 담당)") {
         r3ScannedDomains.shouldNotContain("partner")
-        DomainClassification.r3Whitelisted.shouldContainAll(listOf("partner"))
+        r3ScannedDomains.shouldNotContain("featureflag")
+        DomainClassification.r3Whitelisted.shouldContainAll(listOf("partner", "featureflag"))
     }
 })

@@ -144,6 +144,7 @@ flowchart LR
 | catalog → facility·goods·recruitment·ticketing (각 1) | 4 (1개 파일) | 읽기 조합 파사드 |
 | order → booking·goods·recruitment·ticketing (각 1) | 4 (1개 파일) | 읽기 조합 파사드 |
 | partner → user (1) | 1 | 연동 계정 프로비저닝 **쓰기** (SAGA, R3 화이트리스트) |
+| featureflag → user (1) | 1 | 감사 로그 변경자 표시 이름 **읽기** 조합(`GetFeatureFlagAuditLogsUseCase`, PR #393) — R3 화이트리스트. `domain.featureflag` 는 user 를 모르고 조합은 application 에만 있다 |
 
 > **읽기 경로 동기 결합 16지점** — post→community 3 / recruitment→community 2 / community→message 3 / dashboard→코어 8. 전부 `@Transactional(readOnly = true)` 로, 상세·목록·대시보드 조회가 매 요청 타 컨텍스트를 동기 호출합니다. 서비스 분리 시 원격 홉이 조회 지연에 직결되는 지점입니다. 파사드 8건(catalog·order)은 **이미 300ms 타임아웃 + 부분 저하 설계가 있어** 성격이 다릅니다.
 >
@@ -248,6 +249,8 @@ flowchart LR
 | 조회·유틸 | dashboard, image, catalog, order (domain 레이어 없음) | — |
 
 `partner`는 `application.partner → domain.user`(연동 계정 프로비저닝)가 ADR-002 rule #4의 사전 등록 예외라, 일반 R3 루프에서 제외되고 전용 화이트리스트 테스트가 담당합니다.
+
+`featureflag`도 2026-08-04부터 같은 처리입니다 — `application.featureflag → domain.user`(감사 로그 변경자 표시 이름 읽기 조합, PR #393)가 유일한 코어 의존이고, featureflag·user 가 2단계 목표 토폴로지에서 같은 서비스(`platform`)에 속해 서비스 간 결합을 만들지 않습니다. `domain.featureflag` 는 코어를 전혀 의존하지 않음을 별도 테스트로 고정합니다.
 
 ### 바운디드 컨텍스트 정의
 
