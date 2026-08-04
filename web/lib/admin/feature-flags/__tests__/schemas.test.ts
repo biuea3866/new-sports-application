@@ -2,11 +2,13 @@
  * 피처 플래그 zod 스키마 파싱 검증 (BE 계약 SSOT).
  */
 import { describe, it, expect } from "vitest";
+import { z } from "zod";
 import {
   FeatureFlagStrategySchema,
   FeatureFlagResponseSchema,
   FeatureFlagSnapshotSchema,
   FeatureFlagAuditLogPageSchema,
+  FeatureFlagAuditLogResponseSchema,
 } from "../schemas";
 
 const baseFlag = {
@@ -22,6 +24,7 @@ const baseFlag = {
 const auditLog = {
   changeType: "CREATED",
   actorUserId: 1,
+  actorDisplayName: "김철수",
   before: null,
   after: { key: "demo.feature.hello", type: "RELEASE", status: "ACTIVE", description: "d", strategy: { strategyType: "GLOBAL_TOGGLE", enabled: true } },
   occurredAt: "2026-07-01T00:00:00.000Z",
@@ -116,10 +119,40 @@ describe("FeatureFlagResponseSchema", () => {
     expect(FeatureFlagResponseSchema.safeParse(data).success).toBe(true);
   });
 
-  it("status가 계약 외 값이면 파싱이 실패한다", () => {
+  // 목록은 통째로 파싱된다 — status/type 계약 밖 값 하나로 배열 전체가 실패하면 화면은
+  // "총 0건" + Zod 에러 원문 노출이 된다(재캡쳐 검수 후속 결함 #388과 동일 실패 모드).
+  // enum을 강제하지 않고 원문을 통과시켜 그 행만 원문 라벨로 남긴다 — 구조(필드 존재)는 계속
+  // 엄하게 본다, 내성은 이 두 값에만 준다.
+  it("status가 계약 외 값이어도 파싱에 성공하고 원문이 보존된다", () => {
     const data = {
       ...baseFlag,
       status: "DELETED",
+      strategy: { strategyType: "GLOBAL_TOGGLE", enabled: true },
+    };
+    const result = FeatureFlagResponseSchema.safeParse(data);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.status).toBe("DELETED");
+    }
+  });
+
+  it("type이 계약 외 값이어도 파싱에 성공하고 원문이 보존된다", () => {
+    const data = {
+      ...baseFlag,
+      type: "LEGACY_TYPE",
+      strategy: { strategyType: "GLOBAL_TOGGLE", enabled: true },
+    };
+    const result = FeatureFlagResponseSchema.safeParse(data);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.type).toBe("LEGACY_TYPE");
+    }
+  });
+
+  it("status가 숫자면(구조 파손) 파싱이 실패한다", () => {
+    const data = {
+      ...baseFlag,
+      status: 42,
       strategy: { strategyType: "GLOBAL_TOGGLE", enabled: true },
     };
     expect(FeatureFlagResponseSchema.safeParse(data).success).toBe(false);
@@ -154,6 +187,33 @@ describe("FeatureFlagResponseSchema", () => {
 
     expect(FeatureFlagResponseSchema.safeParse(data).success).toBe(true);
   });
+
+  // 목록 화면은 배열을 통째로 parse한다 — 계약 밖 값이 섞인 한 행 때문에 나머지 정상 행까지
+  // 함께 사라지면 안 된다(02-피처플래그-목록 재발 방지 가드).
+  it("계약 밖 status·type이 섞인 배열도 파싱에 성공하고 나머지 행이 보존된다", () => {
+    const known = { ...baseFlag, strategy: { strategyType: "GLOBAL_TOGGLE", enabled: true } };
+    const unknownStatus = {
+      ...baseFlag,
+      key: "demo.feature.unknown-status",
+      status: "DELETED",
+      strategy: { strategyType: "GLOBAL_TOGGLE", enabled: true },
+    };
+    const unknownType = {
+      ...baseFlag,
+      key: "demo.feature.unknown-type",
+      type: "LEGACY_TYPE",
+      strategy: { strategyType: "GLOBAL_TOGGLE", enabled: true },
+    };
+
+    const result = z.array(FeatureFlagResponseSchema).safeParse([known, unknownStatus, unknownType]);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toHaveLength(3);
+      expect(result.data[1]?.status).toBe("DELETED");
+      expect(result.data[2]?.type).toBe("LEGACY_TYPE");
+    }
+  });
 });
 
 describe("FeatureFlagSnapshotSchema", () => {
@@ -181,6 +241,33 @@ describe("FeatureFlagSnapshotSchema", () => {
     };
 
     expect(FeatureFlagSnapshotSchema.safeParse(data).success).toBe(true);
+  });
+});
+
+describe("FeatureFlagAuditLogResponseSchema", () => {
+  it("actorDisplayName을 포함해 파싱한다", () => {
+    const result = FeatureFlagAuditLogResponseSchema.safeParse(auditLog);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.actorDisplayName).toBe("김철수");
+    }
+  });
+
+  it("actorDisplayName이 없으면 파싱이 실패한다", () => {
+    const withoutActorDisplayName: Record<string, unknown> = { ...auditLog };
+    delete withoutActorDisplayName.actorDisplayName;
+    expect(FeatureFlagAuditLogResponseSchema.safeParse(withoutActorDisplayName).success).toBe(false);
+  });
+
+  // 05-피처플래그-감사로그 결함 재발 방지 — 변경 유형이 계약 밖 값이어도 그 행만 원문으로 남고
+  // 로그 전체 파싱이 죽지 않아야 한다.
+  it("changeType이 계약 외 값이어도 파싱에 성공하고 원문이 보존된다", () => {
+    const data = { ...auditLog, changeType: "ROLLED_BACK" };
+    const result = FeatureFlagAuditLogResponseSchema.safeParse(data);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.changeType).toBe("ROLLED_BACK");
+    }
   });
 });
 
@@ -219,6 +306,7 @@ describe("FeatureFlagAuditLogPageSchema", () => {
     const createdLogWithoutBefore = {
       changeType: "CREATED",
       actorUserId: 1,
+      actorDisplayName: "김철수",
       after: auditLog.after,
       occurredAt: "2026-07-01T00:00:00.000Z",
     };

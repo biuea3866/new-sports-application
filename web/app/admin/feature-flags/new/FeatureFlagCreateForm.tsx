@@ -15,6 +15,7 @@ import {
   createDefaultStrategyFor,
   strategyTypeOptionsFor,
 } from "@/app/admin/feature-flags/_components/strategyFormState";
+import { featureFlagTypeLabel } from "@/lib/admin/feature-flags/featureFlagType";
 
 interface FeatureFlagCreateFormProps {
   onSubmit: (input: CreateFeatureFlagInput) => void | Promise<void>;
@@ -120,7 +121,7 @@ export function FeatureFlagCreateForm({
         >
           {FeatureFlagTypeSchema.options.map((option) => (
             <option key={option} value={option}>
-              {option}
+              {featureFlagTypeLabel(option)}
             </option>
           ))}
         </select>

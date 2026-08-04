@@ -34,16 +34,44 @@ const FLAGS: FeatureFlagResponse[] = [
 ];
 
 describe("FeatureFlagTable", () => {
-  it("각 행에 key·상태 배지·전략 요약이 렌더된다", () => {
+  it("각 행에 key·상태 배지·전략 요약이 한글 라벨로 렌더된다", () => {
     render(<FeatureFlagTable flags={FLAGS} onRowClick={vi.fn()} />);
 
     expect(screen.getByText("demo.feature.hello")).toBeInTheDocument();
-    expect(screen.getByText("ACTIVE")).toBeInTheDocument();
+    expect(screen.getByText("활성")).toBeInTheDocument();
+    expect(screen.getByText("릴리즈")).toBeInTheDocument();
     expect(screen.getByText("전역 ON")).toBeInTheDocument();
 
     expect(screen.getByText("old.experiment")).toBeInTheDocument();
-    expect(screen.getByText("ARCHIVED")).toBeInTheDocument();
+    expect(screen.getByText("아카이브됨")).toBeInTheDocument();
+    expect(screen.getByText("실험")).toBeInTheDocument();
     expect(screen.getByText("A:50, B:50")).toBeInTheDocument();
+  });
+
+  // 계약 밖 status/type이 섞여도 그 행만 원문으로 남고 나머지 행은 정상 렌더돼야 한다
+  // (재캡쳐 검수 후속 결함 #388과 동일 실패 모드 재발 방지).
+  it("계약 밖 status·type 값이 섞여도 화면이 죽지 않고 모든 행이 렌더된다", () => {
+    const flagsWithUnknownValue: FeatureFlagResponse[] = [
+      ...FLAGS,
+      {
+        id: 3,
+        key: "demo.feature.unknown",
+        type: "LEGACY_TYPE",
+        status: "DELETED",
+        description: "계약 밖 값",
+        strategy: { strategyType: "GLOBAL_TOGGLE", enabled: true },
+        createdAt: "2026-07-02T00:00:00Z",
+        updatedAt: "2026-07-02T00:00:00Z",
+      },
+    ];
+
+    render(<FeatureFlagTable flags={flagsWithUnknownValue} onRowClick={vi.fn()} />);
+
+    expect(screen.getByText("demo.feature.hello")).toBeInTheDocument();
+    expect(screen.getByText("old.experiment")).toBeInTheDocument();
+    expect(screen.getByText("demo.feature.unknown")).toBeInTheDocument();
+    expect(screen.getByText("DELETED")).toBeInTheDocument();
+    expect(screen.getByText("LEGACY_TYPE")).toBeInTheDocument();
   });
 
   it("행을 클릭하면 onRowClick이 해당 flag key로 호출된다", () => {

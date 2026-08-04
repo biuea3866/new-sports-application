@@ -1,9 +1,18 @@
 /**
  * S1 목록 화면 status/type 필터 — 순수 프레젠테이션(controlled).
  * 필터 값은 page.tsx(컨테이너)가 지역 useState로 소유하고, 이 컴포넌트는 props만 받아 렌더한다(no-logic-in-component).
+ * select 옵션 라벨은 featureFlagStatus/featureFlagType(단일 출처)의 한글 라벨을 쓴다.
  * 근거 티켓: FE-07-list-screen.md, 근거 설계: design-fe-web.md "S1 텍스트 와이어프레임".
  */
 import type { FeatureFlagStatus, FeatureFlagType } from "@/lib/admin/feature-flags/schemas";
+import {
+  FEATURE_FLAG_STATUS_VALUES,
+  FEATURE_FLAG_STATUS_LABELS,
+} from "@/lib/admin/feature-flags/featureFlagStatus";
+import {
+  FEATURE_FLAG_TYPE_VALUES,
+  FEATURE_FLAG_TYPE_LABELS,
+} from "@/lib/admin/feature-flags/featureFlagType";
 
 interface FeatureFlagFiltersProps {
   status: FeatureFlagStatus | undefined;
@@ -14,16 +23,12 @@ interface FeatureFlagFiltersProps {
 
 const STATUS_OPTIONS: { value: FeatureFlagStatus | ""; label: string }[] = [
   { value: "", label: "전체" },
-  { value: "ACTIVE", label: "ACTIVE" },
-  { value: "ARCHIVED", label: "ARCHIVED" },
+  ...FEATURE_FLAG_STATUS_VALUES.map((value) => ({ value, label: FEATURE_FLAG_STATUS_LABELS[value] })),
 ];
 
 const TYPE_OPTIONS: { value: FeatureFlagType | ""; label: string }[] = [
   { value: "", label: "전체" },
-  { value: "RELEASE", label: "RELEASE" },
-  { value: "OPERATIONAL", label: "OPERATIONAL" },
-  { value: "EXPERIMENT", label: "EXPERIMENT" },
-  { value: "ENTITLEMENT", label: "ENTITLEMENT" },
+  ...FEATURE_FLAG_TYPE_VALUES.map((value) => ({ value, label: FEATURE_FLAG_TYPE_LABELS[value] })),
 ];
 
 const SELECT_CLASS_NAME =

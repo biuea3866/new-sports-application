@@ -4,9 +4,10 @@
  * 근거 티켓: FE-08-create-screen.md.
  */
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { FeatureFlagCreateForm } from "../FeatureFlagCreateForm";
+import { FEATURE_FLAG_TYPE_LABELS } from "@/lib/admin/feature-flags/featureFlagType";
 
 function fillRequiredFields(key: string, description: string): void {
   fireEvent.change(screen.getByLabelText("Key"), { target: { value: key } });
@@ -34,6 +35,24 @@ describe("FeatureFlagCreateForm", () => {
       description: "데모 인사 엔드포인트 킬스위치",
       strategy: { strategyType: "GLOBAL_TOGGLE", enabled: false },
     });
+  });
+
+  // 03-피처플래그-생성 결함 재발 방지 — 종류 select가 영문 원문(RELEASE 등)을 노출했다.
+  it("종류 select 옵션이 한글 라벨로 렌더된다", () => {
+    render(
+      <FeatureFlagCreateForm
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+        isSubmitting={false}
+        serverError={null}
+      />
+    );
+
+    const typeSelect = screen.getByLabelText("종류");
+    expect(within(typeSelect).getByText(FEATURE_FLAG_TYPE_LABELS.RELEASE)).toBeInTheDocument();
+    expect(within(typeSelect).getByText(FEATURE_FLAG_TYPE_LABELS.OPERATIONAL)).toBeInTheDocument();
+    expect(within(typeSelect).getByText(FEATURE_FLAG_TYPE_LABELS.EXPERIMENT)).toBeInTheDocument();
+    expect(within(typeSelect).getByText(FEATURE_FLAG_TYPE_LABELS.ENTITLEMENT)).toBeInTheDocument();
   });
 
   it("key 누락 시 인라인 에러가 뜨고 onSubmit이 호출되지 않는다", () => {

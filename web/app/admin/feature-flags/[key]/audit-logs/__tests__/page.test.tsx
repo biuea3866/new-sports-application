@@ -16,6 +16,7 @@ type AuditLogEntry = FeatureFlagAuditLogPageView["logs"][number];
 const ARCHIVED_LOG: AuditLogEntry = {
   changeType: "ARCHIVED",
   actorUserId: 12,
+  actorDisplayName: "김철수",
   before: {
     key: "demo.feature.hello",
     type: "RELEASE",
@@ -36,6 +37,7 @@ const ARCHIVED_LOG: AuditLogEntry = {
 const CREATED_LOG: AuditLogEntry = {
   changeType: "CREATED",
   actorUserId: 12,
+  actorDisplayName: "김철수",
   before: null,
   after: {
     key: "demo.feature.hello",
@@ -81,8 +83,8 @@ describe("FeatureFlagAuditLogsPage", () => {
     const { default: FeatureFlagAuditLogsPage } = await import("../page");
     render(<FeatureFlagAuditLogsPage />);
 
-    expect(screen.getByText("ARCHIVED")).toBeInTheDocument();
-    expect(screen.getByText("#12")).toBeInTheDocument();
+    expect(screen.getByText("아카이브")).toBeInTheDocument();
+    expect(screen.getByText("김철수")).toBeInTheDocument();
     expect(screen.getAllByText("전역 ON").length).toBeGreaterThan(0);
   });
 
@@ -98,7 +100,7 @@ describe("FeatureFlagAuditLogsPage", () => {
     const { default: FeatureFlagAuditLogsPage } = await import("../page");
     render(<FeatureFlagAuditLogsPage />);
 
-    expect(screen.getByText("CREATED")).toBeInTheDocument();
+    expect(screen.getByText("생성")).toBeInTheDocument();
     expect(screen.getByText("이전 값 없음")).toBeInTheDocument();
     expect(screen.getByText("전역 OFF")).toBeInTheDocument();
   });

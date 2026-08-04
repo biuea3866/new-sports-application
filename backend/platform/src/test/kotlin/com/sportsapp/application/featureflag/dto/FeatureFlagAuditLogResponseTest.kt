@@ -27,13 +27,17 @@ class FeatureFlagAuditLogResponseTest : BehaviorSpec({
             before = null,
             after = snapshot(enabled = true),
         )
-        val response = FeatureFlagAuditLogResponse.of(auditLog)
+        val response = FeatureFlagAuditLogResponse.of(auditLog, actorDisplayName = "김철수")
 
         Then("before는 null, after는 스냅샷 값 그대로 매핑된다") {
             response.changeType shouldBe FeatureFlagChangeType.CREATED
             response.actorUserId shouldBe 1L
             response.before.shouldBeNull()
             response.after shouldBe snapshot(enabled = true)
+        }
+
+        Then("actorDisplayName이 그대로 매핑된다") {
+            response.actorDisplayName shouldBe "김철수"
         }
     }
 
@@ -44,11 +48,15 @@ class FeatureFlagAuditLogResponseTest : BehaviorSpec({
             before = snapshot(enabled = true),
             after = snapshot(enabled = false),
         )
-        val response = FeatureFlagAuditLogResponse.of(auditLog)
+        val response = FeatureFlagAuditLogResponse.of(auditLog, actorDisplayName = "닉네임 미설정")
 
         Then("before·after가 각각 수정 전·후 스냅샷으로 매핑된다") {
             response.before shouldBe snapshot(enabled = true)
             response.after shouldBe snapshot(enabled = false)
+        }
+
+        Then("actorDisplayName이 그대로 매핑된다") {
+            response.actorDisplayName shouldBe "닉네임 미설정"
         }
     }
 })

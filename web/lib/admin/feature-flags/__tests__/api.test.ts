@@ -36,6 +36,7 @@ const sampleFlag: FeatureFlagResponse = {
 const sampleAuditLog: FeatureFlagAuditLogResponse = {
   changeType: "CREATED",
   actorUserId: 12,
+  actorDisplayName: "김철수",
   before: null,
   after: {
     key: "demo.feature.hello",

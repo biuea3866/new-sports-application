@@ -5,17 +5,19 @@
  */
 import { z } from "zod";
 
-// ─── 공통 enum ──────────────────────────────────────────────────────────────
+import { FEATURE_FLAG_TYPE_VALUES } from "./featureFlagType";
+import { FEATURE_FLAG_STATUS_VALUES } from "./featureFlagStatus";
+import { FEATURE_FLAG_CHANGE_TYPE_VALUES } from "./featureFlagChangeType";
 
-export const FeatureFlagTypeSchema = z.enum([
-  "RELEASE",
-  "OPERATIONAL",
-  "EXPERIMENT",
-  "ENTITLEMENT",
-]);
+// ─── 공통 enum ──────────────────────────────────────────────────────────────
+//
+// 값 목록은 featureFlagType/featureFlagStatus/featureFlagChangeType(라벨 SSOT)이
+// 원본이다 — 여기서 다시 나열하면 BE에 값이 추가될 때 한쪽만 갱신된다.
+
+export const FeatureFlagTypeSchema = z.enum(FEATURE_FLAG_TYPE_VALUES);
 export type FeatureFlagType = z.infer<typeof FeatureFlagTypeSchema>;
 
-export const FeatureFlagStatusSchema = z.enum(["ACTIVE", "ARCHIVED"]);
+export const FeatureFlagStatusSchema = z.enum(FEATURE_FLAG_STATUS_VALUES);
 export type FeatureFlagStatus = z.infer<typeof FeatureFlagStatusSchema>;
 
 export const StrategyTypeSchema = z.enum([
@@ -26,8 +28,20 @@ export const StrategyTypeSchema = z.enum([
 ]);
 export type StrategyType = z.infer<typeof StrategyTypeSchema>;
 
-export const ChangeTypeSchema = z.enum(["CREATED", "UPDATED", "ARCHIVED", "ACTIVATED"]);
+export const ChangeTypeSchema = z.enum(FEATURE_FLAG_CHANGE_TYPE_VALUES);
 export type ChangeType = z.infer<typeof ChangeTypeSchema>;
+
+// ─── 응답 전용 — 계약 밖 값 내성 ─────────────────────────────────────────────
+//
+// **응답에는 enum을 강제하지 않는다.** 목록·감사 로그는 배열을 통째로 parse하므로 계약 밖
+// 값이 한 건이라도 섞이면 `parse`가 throw하고 화면은 "총 0건"이 된다(재캡쳐 검수 후속 결함
+// #388·02-파트너포털 결제 상태 전량 파싱 실패와 동일 실패 모드). 알려진 값 집합은 union 앞
+// 분기로 문서화하되 모르는 값은 원문 그대로 통과시켜 그 행만 원문으로 남게 하고, 한글 표기는
+// `featureFlagTypeLabel`/`featureFlagStatusLabel`/`featureFlagChangeTypeLabel`이 담당한다.
+// 구조(필드 존재·타입)는 계속 엄하게 본다 — 내성은 이 값들에만 준다.
+const FeatureFlagTypeDisplaySchema = z.union([FeatureFlagTypeSchema, z.string()]);
+const FeatureFlagStatusDisplaySchema = z.union([FeatureFlagStatusSchema, z.string()]);
+const ChangeTypeDisplaySchema = z.union([ChangeTypeSchema, z.string()]);
 
 // ─── strategy (discriminated union) ────────────────────────────────────────
 
@@ -100,8 +114,8 @@ export type UpdateFeatureFlagInput = z.infer<typeof UpdateFeatureFlagInputSchema
 
 export const FeatureFlagSnapshotSchema = z.object({
   key: z.string(),
-  type: FeatureFlagTypeSchema,
-  status: FeatureFlagStatusSchema,
+  type: FeatureFlagTypeDisplaySchema,
+  status: FeatureFlagStatusDisplaySchema,
   description: z.string().nullish(),
   strategy: FeatureFlagStrategySchema,
 });
@@ -110,8 +124,8 @@ export type FeatureFlagSnapshot = z.infer<typeof FeatureFlagSnapshotSchema>;
 export const FeatureFlagResponseSchema = z.object({
   id: z.number(),
   key: z.string(),
-  type: FeatureFlagTypeSchema,
-  status: FeatureFlagStatusSchema,
+  type: FeatureFlagTypeDisplaySchema,
+  status: FeatureFlagStatusDisplaySchema,
   description: z.string().nullish(),
   strategy: FeatureFlagStrategySchema,
   createdAt: z.string(),
@@ -120,8 +134,10 @@ export const FeatureFlagResponseSchema = z.object({
 export type FeatureFlagResponse = z.infer<typeof FeatureFlagResponseSchema>;
 
 export const FeatureFlagAuditLogResponseSchema = z.object({
-  changeType: ChangeTypeSchema,
+  changeType: ChangeTypeDisplaySchema,
   actorUserId: z.number(),
+  // 변경자 표시 이름(닉네임) — 내부 PK(actorUserId)를 화면에 노출하지 않기 위해 BE가 채워 보낸다.
+  actorDisplayName: z.string(),
   // BE `FeatureFlagAuditLogResponse.before`는 `FeatureFlagSnapshot?`이고,
   // 직렬화는 NON_NULL(`McpObjectMapperConfig`)이라 CREATED 로그는 `before` 키 자체가 생략된다.
   // `.nullable()`은 null만 허용해 undefined를 거부하므로 화면 전체가 검증 실패했다 → `.nullish()`.
