@@ -30,6 +30,16 @@ private val SUPPORTED_ENQUEUE_CHANNELS = setOf(
 )
 
 @Service
+// TooManyFunctions 억제 근거: 12개 중 8개가 notification 도메인의 서로 다른 행위
+// (send·enqueueOrSkip·dispatchById·listMyNotifications·listMyNotificationViews·markRead·
+// sendWithTemplate·countUnread)이고, 나머지 4개는 그 행위들이 쓰는 private 헬퍼다.
+// 헬퍼만 옮겨 개수를 줄이는 것은 공개 표면을 그대로 둔 채 카운트를 우회하는 것이라 하지 않았다.
+//
+// 다만 `listMyNotificationViews`·`toView`·`resolveRendered`(표시용 렌더 조합)는 "알림을 보내고
+// 상태를 전이한다"는 이 서비스의 책임과 성격이 다르다 — 별도 조립자로 분리하는 것이 옳은 방향이고,
+// 그 리팩토링은 생성자 시그니처가 바뀌어 호출부(테스트 6곳)를 함께 고쳐야 하므로 red 정리 범위와
+// 분리해 후속으로 등록했다(후속 리스크 등록부 R-25). 분리 시 이 억제를 제거한다.
+@Suppress("TooManyFunctions")
 class NotificationDomainService(
     private val notificationRepository: NotificationRepository,
     private val notificationCustomRepository: NotificationCustomRepository,
