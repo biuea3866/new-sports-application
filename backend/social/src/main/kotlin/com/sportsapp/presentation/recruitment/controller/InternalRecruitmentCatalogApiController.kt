@@ -1,7 +1,7 @@
 package com.sportsapp.presentation.recruitment.controller
 
-import com.sportsapp.application.recruitment.dto.InternalRecruitmentCatalogItemResponse
 import com.sportsapp.application.recruitment.dto.InternalRecruitmentCatalogCriteria
+import com.sportsapp.application.recruitment.dto.InternalRecruitmentCatalogItemResponse
 import com.sportsapp.application.recruitment.usecase.SearchRecruitmentsForCatalogUseCase
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
