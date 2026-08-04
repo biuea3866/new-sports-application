@@ -9,6 +9,24 @@ import {
   formatCatalogPrice,
 } from '../catalog-format';
 
+describe('formatCatalogPrice — 무료(0원) 표기', () => {
+  // 통합 카탈로그에 무료 모집이 `0원` 으로 찍혔다. 같은 값을 `31-모집-목록` 은 `무료` 로
+  // 표시하므로 화면마다 표기가 갈렸다 — 0을 실제 금액처럼 보여주는 것이 이번 갤러리 결함의
+  // 원죄(19-결제-수단-선택 이 금액 없이 `0원`)와 같은 계열이라 기준을 하나로 맞춘다.
+  it('0이면 "무료"로 표기한다', () => {
+    expect(formatCatalogPrice(0)).toBe('무료');
+  });
+
+  it('0이 아닌 금액은 천 단위 구분자와 원 단위로 표기한다', () => {
+    expect(formatCatalogPrice(45000)).toBe('45,000원');
+  });
+
+  it('가격이 없으면(null·undefined) 안내 문구를 유지한다 — 무료와 구분한다', () => {
+    expect(formatCatalogPrice(null)).not.toBe('무료');
+    expect(formatCatalogPrice(undefined)).not.toBe('무료');
+  });
+});
+
 describe('formatCatalogPrice', () => {
   it('price가 있으면 천 단위 구분자와 함께 원 단위로 표기한다', () => {
     expect(formatCatalogPrice(32000)).toBe('32,000원');
@@ -18,8 +36,11 @@ describe('formatCatalogPrice', () => {
     expect(formatCatalogPrice(null)).toBe('가격 상세 확인');
   });
 
-  it('price=0이면 0원을 반환한다', () => {
-    expect(formatCatalogPrice(0)).toBe('0원');
+  // 과거 이 테스트는 `0원`을 단언해 결함을 고정하고 있었다 — 통합 카탈로그에 무료 모집이
+  // `0원`으로 찍혀 실제 금액처럼 읽혔고, 같은 값을 모집 목록은 `무료`로 표시해 표기가 갈렸다.
+  it('price=0이면 무료를 반환한다 (0원으로 찍지 않는다)', () => {
+    expect(formatCatalogPrice(0)).toBe('무료');
+    expect(formatCatalogPrice(0)).not.toBe('0원');
   });
 
   // 서버가 price 필드 자체를 생략해 보내면 undefined가 들어온다 — 화면이 죽지 않아야 한다.
