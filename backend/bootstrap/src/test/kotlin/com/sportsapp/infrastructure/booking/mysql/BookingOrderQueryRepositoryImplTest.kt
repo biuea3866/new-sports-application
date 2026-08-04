@@ -7,7 +7,9 @@ import com.sportsapp.domain.booking.entity.Slot
 import com.sportsapp.domain.booking.repository.BookingOrderQueryRepository
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.comparables.shouldBeEqualComparingTo
 import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import org.springframework.beans.factory.annotation.Autowired
@@ -134,7 +136,10 @@ class BookingOrderQueryRepositoryImplTest(
                 Then("amount가 그대로 반환된다") {
                     results shouldHaveSize 1
                     results[0].bookingId shouldBe booking.id
-                    results[0].amount shouldBe BigDecimal("30000")
+                    // DECIMAL(_,2) 컬럼이라 DB 왕복 후 스케일이 2로 채워져 돌아온다(30000 → 30000.00).
+                    // BigDecimal.equals 는 스케일까지 비교하므로 shouldBe 로는 통과할 수 없다 —
+                    // 금액 동치는 스케일 무관 수치 비교로 단언한다.
+                    results[0].amount.shouldNotBeNull() shouldBeEqualComparingTo BigDecimal("30000")
                 }
             }
         }

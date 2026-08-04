@@ -31,21 +31,35 @@ data class EventDetailResponse(
     val seats: List<SeatInfo>,
 ) {
     companion object {
-        fun of(event: Event, seatsWithAvailability: List<Pair<Seat, Boolean>>): EventDetailResponse {
-            val sectionAvailabilities = seatsWithAvailability
-                .map { (seat, _) -> seat }
-                .groupBy { it.section }
-                .map { (section, sectionSeats) ->
-                    SectionAvailability(
-                        section = section,
-                        totalSeats = sectionSeats.size,
-                        minPrice = sectionSeats.minOf { it.price },
-                        maxPrice = sectionSeats.maxOf { it.price },
-                    )
-                }
-                .sortedBy { it.section }
+        fun of(event: Event, seatsWithAvailability: List<Pair<Seat, Boolean>>): EventDetailResponse =
+            EventDetailResponse(
+                id = event.id,
+                title = event.title,
+                venue = event.venue,
+                startsAt = event.startsAt,
+                status = event.status.name,
+                sections = sectionAvailabilitiesOf(seatsWithAvailability),
+                seats = seatInfosOf(seatsWithAvailability),
+            )
 
-            val seatInfos = seatsWithAvailability.map { (seat, available) ->
+        /** 구역별 좌석 수·최저가·최고가 요약 — 구역명 오름차순으로 정렬해 화면 순서를 고정한다. */
+        private fun sectionAvailabilitiesOf(
+            seatsWithAvailability: List<Pair<Seat, Boolean>>,
+        ): List<SectionAvailability> = seatsWithAvailability
+            .map { (seat, _) -> seat }
+            .groupBy { it.section }
+            .map { (section, sectionSeats) ->
+                SectionAvailability(
+                    section = section,
+                    totalSeats = sectionSeats.size,
+                    minPrice = sectionSeats.minOf { it.price },
+                    maxPrice = sectionSeats.maxOf { it.price },
+                )
+            }
+            .sortedBy { it.section }
+
+        private fun seatInfosOf(seatsWithAvailability: List<Pair<Seat, Boolean>>): List<SeatInfo> =
+            seatsWithAvailability.map { (seat, available) ->
                 SeatInfo(
                     id = seat.id,
                     section = seat.section,
@@ -55,16 +69,5 @@ data class EventDetailResponse(
                     available = available,
                 )
             }
-
-            return EventDetailResponse(
-                id = event.id,
-                title = event.title,
-                venue = event.venue,
-                startsAt = event.startsAt,
-                status = event.status.name,
-                sections = sectionAvailabilities,
-                seats = seatInfos,
-            )
-        }
     }
 }

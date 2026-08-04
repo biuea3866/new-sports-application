@@ -19,6 +19,11 @@ import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Repository
 
 @Repository
+// TooManyFunctions 억제 근거: 11개 중 9개가 GoodsOrderCustomRepository 계약이 요구하는 쿼리
+// 메서드이고(나머지 2개는 그 쿼리들이 공유하는 private 헬퍼), 함수 수 = 쿼리 카탈로그 크기다.
+// 쪼개면 QueryDSL 구현이 여러 클래스로 흩어져 "이 인터페이스의 구현은 여기 하나"라는 대응이
+// 깨진다 — GlobalExceptionHandler(예외 디스패치 테이블)와 같은 사유의 억제다.
+@Suppress("TooManyFunctions")
 class GoodsOrderCustomRepositoryImpl(
     private val queryFactory: JPAQueryFactory,
 ) : GoodsOrderCustomRepository {
