@@ -1,7 +1,7 @@
 package com.sportsapp.application.facility.usecase
 
 import com.sportsapp.application.facility.dto.InternalProgramCatalogItemResponse
-import com.sportsapp.application.facility.dto.InternalProgramCatalogQuery
+import com.sportsapp.application.facility.dto.InternalProgramCatalogCriteria
 import com.sportsapp.domain.facility.service.ProgramDomainService
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Service
@@ -22,8 +22,8 @@ class SearchProgramCatalogUseCase(
     private val programDomainService: ProgramDomainService,
 ) {
     @Transactional(readOnly = true)
-    fun execute(query: InternalProgramCatalogQuery): List<InternalProgramCatalogItemResponse> {
-        val programs = programDomainService.searchForCatalog(query.keyword, query.toPageable()).content
+    fun execute(criteria: InternalProgramCatalogCriteria): List<InternalProgramCatalogItemResponse> {
+        val programs = programDomainService.searchForCatalog(criteria.keyword, criteria.toPageable()).content
         val facilityNameByFacilityId = programDomainService.findFacilityNamesBy(programs.map { it.facilityId })
         return programs.map { InternalProgramCatalogItemResponse.of(it, facilityNameByFacilityId[it.facilityId]) }
     }

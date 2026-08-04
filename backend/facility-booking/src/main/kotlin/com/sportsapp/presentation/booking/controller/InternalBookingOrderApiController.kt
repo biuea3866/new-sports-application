@@ -27,7 +27,9 @@ class InternalBookingOrderApiController(
         @RequestHeader(INTERNAL_AUTH_SUBJECT_HEADER) subject: String,
     ): ResponseEntity<List<InternalBookingOrderHistoryItemResponse>> {
         val userId = subject.toLongOrNull()
-            ?: throw IllegalArgumentException("Invalid $INTERNAL_AUTH_SUBJECT_HEADER: $subject")
+            // GlobalExceptionHandler 가 message 를 응답 detail 로 그대로 내보내므로, 입력값·헤더 이름을
+            // 담지 않는다 (내부 전용 경로라도 받은 값을 되돌려줄 이유가 없다).
+            ?: throw IllegalArgumentException("Invalid internal identity header")
         return ResponseEntity.ok(findBookingOrderHistoryUseCase.execute(userId))
     }
 }

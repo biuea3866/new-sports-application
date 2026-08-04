@@ -1,6 +1,6 @@
 package com.sportsapp.application.facility.usecase
 
-import com.sportsapp.application.facility.dto.InternalProgramCatalogQuery
+import com.sportsapp.application.facility.dto.InternalProgramCatalogCriteria
 import com.sportsapp.domain.common.JpaAuditingBase
 import com.sportsapp.domain.facility.entity.Program
 import com.sportsapp.domain.facility.repository.FacilityRepository
@@ -53,7 +53,7 @@ class SearchProgramCatalogUseCaseTest : BehaviorSpec({
         val useCase = SearchProgramCatalogUseCase(programDomainService)
 
         When("execute를 호출하면") {
-            val result = useCase.execute(InternalProgramCatalogQuery(keyword = "PT", page = 0, size = 20))
+            val result = useCase.execute(InternalProgramCatalogCriteria(keyword = "PT", page = 0, size = 20))
 
             Then("계약 필드(sourceId·title·price·createdAt)만 담은 응답을 반환한다") {
                 result.map { it.sourceId } shouldBe listOf(1L, 2L)
@@ -75,7 +75,7 @@ class SearchProgramCatalogUseCaseTest : BehaviorSpec({
         val useCase = SearchProgramCatalogUseCase(programDomainService)
 
         When("execute를 호출하면") {
-            val result = useCase.execute(InternalProgramCatalogQuery(keyword = null, page = 0, size = 20))
+            val result = useCase.execute(InternalProgramCatalogCriteria(keyword = null, page = 0, size = 20))
 
             Then("시설명을 함께 공급해 통합 카탈로그에서 두 항목을 구분할 수 있게 한다") {
                 result.map { it.locationName } shouldBe listOf("강남 스포츠센터", "판교 스포츠센터")
@@ -95,7 +95,7 @@ class SearchProgramCatalogUseCaseTest : BehaviorSpec({
         val useCase = SearchProgramCatalogUseCase(programDomainService)
 
         When("execute를 호출하면") {
-            val result = useCase.execute(InternalProgramCatalogQuery(keyword = null, page = 0, size = 20))
+            val result = useCase.execute(InternalProgramCatalogCriteria(keyword = null, page = 0, size = 20))
 
             Then("시설명을 null 로 공급한다 (빈 문자열·유형명 반복 금지)") {
                 result.single().locationName shouldBe null
@@ -110,7 +110,7 @@ class SearchProgramCatalogUseCaseTest : BehaviorSpec({
         val useCase = SearchProgramCatalogUseCase(programDomainService)
 
         When("execute를 호출하면") {
-            val result = useCase.execute(InternalProgramCatalogQuery(keyword = null, page = 0, size = 20))
+            val result = useCase.execute(InternalProgramCatalogCriteria(keyword = null, page = 0, size = 20))
 
             Then("빈 목록을 반환한다") {
                 result shouldBe emptyList()
@@ -119,7 +119,11 @@ class SearchProgramCatalogUseCaseTest : BehaviorSpec({
     }
 
     Given("이 UseCase의 의존 구성을") {
-        Then("MongoDB 소유 저장소(FacilityRepository)를 의존하지 않는다") {
+        // 이름 주의 — 이 UseCase 는 시설명 조회를 위해 ProgramDomainService.findFacilityNamesBy 를
+        // 호출하고, 그 구현은 실제로 MongoDB(`facilities`)를 읽는다(로컬 어댑터와 동일 경로).
+        // 여기서 고정하는 것은 "Mongo 미접근"이 아니라 **저장소를 직접 주입받지 않는다**(접근은
+        // DomainService 경유)는 레이어 규칙이다.
+        Then("저장소(FacilityRepository)를 직접 주입받지 않는다 — 시설명 조회는 DomainService 경유다") {
             val constructorParameterTypes = SearchProgramCatalogUseCase::class.java.declaredConstructors
                 .single()
                 .parameterTypes

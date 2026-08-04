@@ -1,7 +1,7 @@
 package com.sportsapp.presentation.facility.controller
 
 import com.sportsapp.application.facility.dto.InternalProgramCatalogItemResponse
-import com.sportsapp.application.facility.dto.InternalProgramCatalogQuery
+import com.sportsapp.application.facility.dto.InternalProgramCatalogCriteria
 import com.sportsapp.application.facility.usecase.SearchProgramCatalogUseCase
 import org.springframework.context.annotation.Profile
 import org.springframework.http.ResponseEntity
@@ -25,10 +25,10 @@ class InternalProgramCatalogApiController(
     @GetMapping
     fun searchPrograms(
         @RequestParam(required = false) keyword: String?,
-        @RequestParam(defaultValue = "0") page: Int,
-        @RequestParam(defaultValue = "20") size: Int,
+        @RequestParam(defaultValue = InternalProgramCatalogCriteria.DEFAULT_PAGE_PARAM) page: Int,
+        @RequestParam(defaultValue = InternalProgramCatalogCriteria.DEFAULT_SIZE_PARAM) size: Int,
     ): ResponseEntity<List<InternalProgramCatalogItemResponse>> {
-        val query = InternalProgramCatalogQuery(keyword = keyword, page = page, size = size)
-        return ResponseEntity.ok(searchProgramCatalogUseCase.execute(query))
+        val criteria = InternalProgramCatalogCriteria(keyword = keyword, page = page, size = size)
+        return ResponseEntity.ok(searchProgramCatalogUseCase.execute(criteria))
     }
 }
