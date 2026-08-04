@@ -26,6 +26,8 @@ function buildItem(overrides: Partial<CatalogItem> = {}): CatalogItem {
     status: 'ON_SALE',
     detailPath: '/products/123',
     createdAt: '2026-07-06T00:00:00+09:00',
+    locationName: null,
+    scheduledAt: null,
     ...overrides,
   };
 }
@@ -54,7 +56,12 @@ describe('CatalogItemCard', () => {
   });
 
   it('PRODUCT 항목이면 sellerType 배지를 렌더한다', () => {
-    render(<CatalogItemCard item={buildItem({ itemType: 'PRODUCT', sellerType: 'B2B' })} onPress={jest.fn()} />);
+    render(
+      <CatalogItemCard
+        item={buildItem({ itemType: 'PRODUCT', sellerType: 'B2B' })}
+        onPress={jest.fn()}
+      />
+    );
 
     expect(screen.getByText('브랜드')).toBeTruthy();
   });
@@ -103,5 +110,65 @@ describe('CatalogItemCard', () => {
     expect(screen.getByTestId('catalog-item-card-PRODUCT-123')).toHaveStyle({
       backgroundColor: darkTokens.surface,
     });
+  });
+
+  // 회귀 방지: 11-통합-카탈로그에서 시설 4곳이 같은 이름의 프로그램을 등록해 "주말 정기 레슨"
+  // 카드가 3회 반복돼 보이는 결함 — locationName으로 어느 시설의 프로그램인지 구분한다.
+  it('locationName이 있으면 구분 정보 줄을 렌더한다(PROGRAM: 시설명)', () => {
+    render(
+      <CatalogItemCard
+        item={buildItem({
+          itemType: 'PROGRAM',
+          locationName: '루틴 피트니스 강남점',
+          scheduledAt: null,
+        })}
+        onPress={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('루틴 피트니스 강남점')).toBeTruthy();
+  });
+
+  it('scheduledAt이 있으면 절대 일시로 포맷해 구분 정보 줄을 렌더한다(RECRUITMENT: 모임 활동 일시)', () => {
+    render(
+      <CatalogItemCard
+        item={buildItem({
+          itemType: 'RECRUITMENT',
+          locationName: null,
+          scheduledAt: '2026-08-10T19:00:00+09:00',
+        })}
+        onPress={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('8월 10일 19:00')).toBeTruthy();
+  });
+
+  it('locationName·scheduledAt이 모두 있으면 한 줄에 이어붙여 렌더한다(TICKET: 경기장·시작 일시)', () => {
+    render(
+      <CatalogItemCard
+        item={buildItem({
+          itemType: 'TICKET',
+          price: null,
+          sellerType: null,
+          locationName: '잠실종합운동장',
+          scheduledAt: '2026-08-10T19:00:00+09:00',
+        })}
+        onPress={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('잠실종합운동장 · 8월 10일 19:00')).toBeTruthy();
+  });
+
+  it('locationName·scheduledAt이 모두 null이면 구분 정보 줄을 렌더하지 않는다(PRODUCT·LIMITED_DROP)', () => {
+    render(
+      <CatalogItemCard
+        item={buildItem({ locationName: null, scheduledAt: null })}
+        onPress={jest.fn()}
+      />
+    );
+
+    expect(screen.queryByTestId('catalog-item-card-distinguisher')).toBeNull();
   });
 });

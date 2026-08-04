@@ -53,8 +53,16 @@ class LocalCatalogSearchAdapter(
         return page.content.map { it.toCatalogItem() }
     }
 
-    override fun searchPrograms(keyword: String?, pageable: Pageable): List<CatalogItem> =
-        programDomainService.searchForCatalog(keyword, pageable).content.map { it.toCatalogItem() }
+    /**
+     * 시설 4곳이 각자 같은 이름의 프로그램(예: "주말 정기 레슨")을 등록할 수 있어, PROGRAM 항목은
+     * facilityId 별 시설명을 locationName으로 채워야 화면에서 서로 구분된다. facilityId를 한 번에
+     * 모아 [ProgramDomainService.findFacilityNamesBy]로 배치 조회한다(N+1 방지).
+     */
+    override fun searchPrograms(keyword: String?, pageable: Pageable): List<CatalogItem> {
+        val programs = programDomainService.searchForCatalog(keyword, pageable).content
+        val facilityNameByFacilityId = programDomainService.findFacilityNamesBy(programs.map { it.facilityId })
+        return programs.map { it.toCatalogItem(facilityNameByFacilityId[it.facilityId]) }
+    }
 
     override fun searchRecruitments(keyword: String?, pageable: Pageable): List<CatalogItem> =
         recruitmentDomainService.searchOpenRecruitments(keyword, pageable).content.map { it.toCatalogItem() }
@@ -95,10 +103,17 @@ private fun ProductWithStock.toCatalogItem(): CatalogItem {
         status = status,
         detailPath = detailPath,
         createdAt = product.createdAt,
+        // goods(PRODUCT·LIMITED_DROP)는 구분할 장소·일정 개념이 없다 — null(구분 정보 없음 그대로).
+        locationName = null,
+        scheduledAt = null,
     )
 }
 
-private fun Program.toCatalogItem(): CatalogItem = CatalogItem(
+/**
+ * [facilityName]은 [ProgramDomainService.findFacilityNamesBy] 배치 조회 결과 — 시설이 삭제돼
+ * 이름을 찾지 못하면 null 그대로 노출한다(빈 문자열·유형명 반복 금지).
+ */
+private fun Program.toCatalogItem(facilityName: String?): CatalogItem = CatalogItem(
     itemType = CatalogItemType.PROGRAM,
     sourceId = id,
     title = name,
@@ -107,6 +122,9 @@ private fun Program.toCatalogItem(): CatalogItem = CatalogItem(
     status = "ACTIVE",
     detailPath = "/programs/$id",
     createdAt = createdAt,
+    // 시설별로 같은 이름의 프로그램이 등록될 수 있어 시설명으로 구분한다.
+    locationName = facilityName,
+    scheduledAt = null,
 )
 
 private fun Recruitment.toCatalogItem(): CatalogItem = CatalogItem(
@@ -118,6 +136,9 @@ private fun Recruitment.toCatalogItem(): CatalogItem = CatalogItem(
     status = status.name,
     detailPath = "/recruitments/$id",
     createdAt = createdAt,
+    locationName = null,
+    // 모임 활동 일시로 같은 제목의 모집글을 구분한다.
+    scheduledAt = activityAt,
 )
 
 private fun EventWithMinSeatPrice.toCatalogItem(): CatalogItem = CatalogItem(
@@ -130,4 +151,7 @@ private fun EventWithMinSeatPrice.toCatalogItem(): CatalogItem = CatalogItem(
     status = event.status.name,
     detailPath = "/events/${event.id}",
     createdAt = event.createdAt,
+    // 경기장명·시작 일시로 같은 제목의 경기를 구분한다.
+    locationName = event.venue,
+    scheduledAt = event.startsAt,
 )

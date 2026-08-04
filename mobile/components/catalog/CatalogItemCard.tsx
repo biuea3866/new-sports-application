@@ -11,7 +11,11 @@ import { View, StyleSheet } from 'react-native';
 import type { CatalogItem } from '../../api/catalog-types';
 import { Card, ThemedText } from '../ui';
 import { useTheme } from '../../theme/useTheme';
-import { CATALOG_ITEM_TYPE_LABEL, formatCatalogPrice } from '../../lib/catalog-format';
+import {
+  CATALOG_ITEM_TYPE_LABEL,
+  formatCatalogDistinguisher,
+  formatCatalogPrice,
+} from '../../lib/catalog-format';
 import { formatRelativeTime } from '../../lib/post-format';
 import { SellerTypeBadge } from './SellerTypeBadge';
 
@@ -26,6 +30,7 @@ export function CatalogItemCard({ item, onPress }: CatalogItemCardProps) {
   const priceText = formatCatalogPrice(item.price);
   const relativeTime = formatRelativeTime(item.createdAt);
   const showSellerTypeBadge = item.itemType === 'PRODUCT';
+  const distinguisher = formatCatalogDistinguisher(item.locationName, item.scheduledAt);
 
   return (
     <Card
@@ -45,6 +50,16 @@ export function CatalogItemCard({ item, onPress }: CatalogItemCardProps) {
       <ThemedText variant="primary" style={styles.title} numberOfLines={1}>
         {item.title}
       </ThemedText>
+      {distinguisher != null ? (
+        <ThemedText
+          testID="catalog-item-card-distinguisher"
+          variant="secondary"
+          style={styles.distinguisher}
+          numberOfLines={1}
+        >
+          {distinguisher}
+        </ThemedText>
+      ) : null}
       <View style={styles.metaRow}>
         <ThemedText variant="secondary" style={styles.meta}>
           {priceText}
@@ -80,6 +95,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginTop: 8,
+  },
+  distinguisher: {
+    fontSize: 13,
+    marginTop: 2,
   },
   metaRow: {
     flexDirection: 'row',

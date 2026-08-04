@@ -80,6 +80,11 @@ class LocalCatalogSearchAdapterTest : BehaviorSpec({
                 items.single().status shouldBe "ACTIVE"
                 verify(exactly = 1) { goodsDomainService.search(null, "러닝화", null, null, GoodsSellerType.B2C, pageable) }
             }
+
+            Then("PRODUCT는 구분할 장소·일정 정보가 없어 locationName·scheduledAt이 null이다") {
+                items.single().locationName shouldBe null
+                items.single().scheduledAt shouldBe null
+            }
         }
     }
 
@@ -115,6 +120,10 @@ class LocalCatalogSearchAdapterTest : BehaviorSpec({
                 item.sourceId shouldBe 777L
                 item.detailPath shouldBe "/limited-drops/777"
                 item.status shouldBe "OPEN"
+            }
+
+            Then("LIMITED_DROP도 구분할 장소 정보가 없어 locationName이 null이다") {
+                items.single().locationName shouldBe null
             }
         }
     }
@@ -154,12 +163,14 @@ class LocalCatalogSearchAdapterTest : BehaviorSpec({
     Given("facility 조회 결과에 프로그램이 포함된 상황") {
         val program = mockk<Program>(relaxed = true)
         every { program.id } returns 3L
+        every { program.facilityId } returns "FAC-01"
         every { program.name } returns "요가 클래스"
         every { program.price } returns BigDecimal("30000")
         every { program.createdAt } returns now
 
         val programDomainService = mockk<ProgramDomainService>()
         every { programDomainService.searchForCatalog("요가", pageable) } returns PageImpl(listOf(program))
+        every { programDomainService.findFacilityNamesBy(listOf("FAC-01")) } returns mapOf("FAC-01" to "루틴 피트니스 강남점")
 
         val adapter = LocalCatalogSearchAdapter(
             goodsDomainService = mockk(),
@@ -178,15 +189,51 @@ class LocalCatalogSearchAdapterTest : BehaviorSpec({
                 item.status shouldBe "ACTIVE"
                 item.detailPath shouldBe "/programs/3"
             }
+
+            Then("locationName에 배치 조회된 시설명이 채워지고 scheduledAt은 null이다(같은 이름 프로그램을 시설별로 구분)") {
+                val item = items.single()
+                item.locationName shouldBe "루틴 피트니스 강남점"
+                item.scheduledAt shouldBe null
+            }
+        }
+    }
+
+    Given("facility 조회 결과 중 일부 프로그램의 시설이 삭제되어 시설명을 찾을 수 없는 상황") {
+        val program = mockk<Program>(relaxed = true)
+        every { program.id } returns 33L
+        every { program.facilityId } returns "FAC-DELETED"
+        every { program.name } returns "필라테스 클래스"
+        every { program.price } returns BigDecimal("40000")
+        every { program.createdAt } returns now
+
+        val programDomainService = mockk<ProgramDomainService>()
+        every { programDomainService.searchForCatalog(null, pageable) } returns PageImpl(listOf(program))
+        every { programDomainService.findFacilityNamesBy(listOf("FAC-DELETED")) } returns emptyMap()
+
+        val adapter = LocalCatalogSearchAdapter(
+            goodsDomainService = mockk(),
+            programDomainService = programDomainService,
+            recruitmentDomainService = mockk(),
+            ticketingDomainService = mockk(),
+        )
+
+        When("searchPrograms를 호출하면") {
+            val items = adapter.searchPrograms(null, pageable)
+
+            Then("locationName이 빈 문자열이나 유형명 반복이 아니라 null로 채워진다") {
+                items.single().locationName shouldBe null
+            }
         }
     }
 
     Given("recruitment 조회 결과에 모집글이 포함된 상황") {
+        val activityAt = now.plusDays(3)
         val recruitment = mockk<Recruitment>(relaxed = true)
         every { recruitment.id } returns 4L
         every { recruitment.title } returns "주말 등산 모집"
         every { recruitment.feeAmount } returns BigDecimal("10000")
         every { recruitment.status } returns RecruitmentStatus.OPEN
+        every { recruitment.activityAt } returns activityAt
         every { recruitment.createdAt } returns now
 
         val recruitmentDomainService = mockk<RecruitmentDomainService>()
@@ -208,13 +255,22 @@ class LocalCatalogSearchAdapterTest : BehaviorSpec({
                 item.sourceId shouldBe 4L
                 item.status shouldBe "OPEN"
             }
+
+            Then("scheduledAt에 모임 활동 일시가 채워지고 locationName은 null이다(같은 제목 모집을 일정으로 구분)") {
+                val item = items.single()
+                item.scheduledAt shouldBe activityAt
+                item.locationName shouldBe null
+            }
         }
     }
 
     Given("ticketing 조회 결과에 좌석가가 다른 경기가 포함된 상황") {
+        val startsAt = now.plusDays(10)
         val event = mockk<Event>(relaxed = true)
         every { event.id } returns 5L
         every { event.title } returns "농구 결승전"
+        every { event.venue } returns "잠실종합운동장"
+        every { event.startsAt } returns startsAt
         every { event.status } returns EventStatus.OPEN
         every { event.createdAt } returns now
 
@@ -237,6 +293,12 @@ class LocalCatalogSearchAdapterTest : BehaviorSpec({
                 item.itemType shouldBe CatalogItemType.TICKET
                 item.sourceId shouldBe 5L
                 item.price shouldBe BigDecimal("44000")
+            }
+
+            Then("locationName에 경기장명, scheduledAt에 경기 시작 일시가 채워진다") {
+                val item = items.single()
+                item.locationName shouldBe "잠실종합운동장"
+                item.scheduledAt shouldBe startsAt
             }
         }
     }

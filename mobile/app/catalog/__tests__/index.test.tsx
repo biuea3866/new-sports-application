@@ -37,6 +37,8 @@ function buildItem(overrides: Partial<CatalogItem> = {}): CatalogItem {
     status: 'ON_SALE',
     detailPath: '/products/123',
     createdAt: '2026-07-06T00:00:00+09:00',
+    locationName: null,
+    scheduledAt: null,
     ...overrides,
   };
 }

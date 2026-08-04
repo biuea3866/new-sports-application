@@ -36,6 +36,8 @@ const mockResponse: CatalogSearchResponse = {
       status: 'ACTIVE',
       detailPath: '/products/1',
       createdAt: '2026-07-01T00:00:00Z',
+      locationName: null,
+      scheduledAt: null,
     },
   ],
   page: 0,
@@ -101,10 +103,9 @@ describe('useCatalogSearch', () => {
     getCatalogMock.mockResolvedValue(mockResponseWithPartialFailure);
     const { wrapper, queryClient } = createWrapper();
 
-    const { result, unmount } = renderHook(
-      () => useCatalogSearch({ page: 0, size: 20 }),
-      { wrapper }
-    );
+    const { result, unmount } = renderHook(() => useCatalogSearch({ page: 0, size: 20 }), {
+      wrapper,
+    });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
@@ -118,10 +119,9 @@ describe('useCatalogSearch', () => {
     getCatalogMock.mockRejectedValue(new Error('Network Error'));
     const { wrapper, queryClient } = createWrapper();
 
-    const { result, unmount } = renderHook(
-      () => useCatalogSearch({ page: 0, size: 20 }),
-      { wrapper }
-    );
+    const { result, unmount } = renderHook(() => useCatalogSearch({ page: 0, size: 20 }), {
+      wrapper,
+    });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
 

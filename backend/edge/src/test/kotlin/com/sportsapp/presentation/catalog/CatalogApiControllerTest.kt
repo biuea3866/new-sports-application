@@ -33,6 +33,8 @@ class CatalogApiControllerTest : BehaviorSpec({
             status = "ACTIVE",
             detailPath = "/products/1",
             createdAt = ZonedDateTime.now(),
+            locationName = null,
+            scheduledAt = null,
         )
         every { searchCatalogUseCase.execute(any()) } returns CatalogSearchResponse(
             items = listOf(item),
@@ -87,6 +89,73 @@ class CatalogApiControllerTest : BehaviorSpec({
                         ),
                     )
                 }
+            }
+        }
+    }
+
+    Given("locationName·scheduledAt이 채워진 PROGRAM 항목을 조회하는 상황") {
+        val searchCatalogUseCase = mockk<SearchCatalogUseCase>()
+        val scheduledAt = ZonedDateTime.parse("2026-08-10T19:00:00+09:00")
+        val item = CatalogItem(
+            itemType = CatalogItemType.PROGRAM,
+            sourceId = 3L,
+            title = "주말 정기 레슨",
+            price = BigDecimal("45000"),
+            sellerType = null,
+            status = "ACTIVE",
+            detailPath = "/programs/3",
+            createdAt = ZonedDateTime.now(),
+            locationName = "루틴 피트니스 강남점",
+            scheduledAt = scheduledAt,
+        )
+        every { searchCatalogUseCase.execute(any()) } returns CatalogSearchResponse(
+            items = listOf(item),
+            page = 0,
+            size = 20,
+            failedDomains = emptyList(),
+        )
+        val mockMvc = buildMockMvc(searchCatalogUseCase)
+
+        When("GET /api/catalog를 호출하면") {
+            val result = mockMvc.perform(get("/api/catalog"))
+
+            Then("응답 JSON에 locationName·scheduledAt 필드가 그대로 실린다") {
+                result.andExpect(status().isOk)
+                    .andExpect(jsonPath("$.items[0].locationName").value("루틴 피트니스 강남점"))
+                    .andExpect(jsonPath("$.items[0].scheduledAt").exists())
+            }
+        }
+    }
+
+    Given("locationName·scheduledAt이 없는(null) 항목을 조회하는 상황") {
+        val searchCatalogUseCase = mockk<SearchCatalogUseCase>()
+        val item = CatalogItem(
+            itemType = CatalogItemType.PRODUCT,
+            sourceId = 7L,
+            title = "요가매트",
+            price = BigDecimal("32000"),
+            sellerType = SellerType.B2C,
+            status = "ACTIVE",
+            detailPath = "/products/7",
+            createdAt = ZonedDateTime.now(),
+            locationName = null,
+            scheduledAt = null,
+        )
+        every { searchCatalogUseCase.execute(any()) } returns CatalogSearchResponse(
+            items = listOf(item),
+            page = 0,
+            size = 20,
+            failedDomains = emptyList(),
+        )
+        val mockMvc = buildMockMvc(searchCatalogUseCase)
+
+        When("GET /api/catalog를 호출하면") {
+            val result = mockMvc.perform(get("/api/catalog"))
+
+            Then("locationName·scheduledAt 필드가 null로 노출된다(빈 문자열이 아니다)") {
+                result.andExpect(status().isOk)
+                    .andExpect(jsonPath("$.items[0].locationName").doesNotExist())
+                    .andExpect(jsonPath("$.items[0].scheduledAt").doesNotExist())
             }
         }
     }

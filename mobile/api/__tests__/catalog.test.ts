@@ -36,6 +36,8 @@ const mockResponse: CatalogSearchResponse = {
       status: 'ACTIVE',
       detailPath: '/products/1',
       createdAt: '2026-07-01T00:00:00Z',
+      locationName: null,
+      scheduledAt: null,
     },
   ],
   page: 0,

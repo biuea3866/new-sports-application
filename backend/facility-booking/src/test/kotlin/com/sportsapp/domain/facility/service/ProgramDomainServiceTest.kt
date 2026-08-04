@@ -203,4 +203,43 @@ class ProgramDomainServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("catalog PROGRAM 항목에 채울 시설명이 필요한 경우 (facilityId 2건, 1건 중복)") {
+        every { facilityRepository.findAllByIds(listOf("FAC-01", "FAC-02")) } returns listOf(
+            facility(id = "FAC-01"),
+            facility(id = "FAC-02"),
+        )
+
+        When("findFacilityNamesBy 를 중복 포함 facilityId 목록으로 호출하면") {
+            val result = programDomainService.findFacilityNamesBy(listOf("FAC-01", "FAC-02", "FAC-01"))
+
+            Then("facilityId 별 시설명 맵을 반환하고 중복은 한 번만 조회한다") {
+                result shouldBe mapOf("FAC-01" to "시설 FAC-01", "FAC-02" to "시설 FAC-02")
+                verify(exactly = 1) { facilityRepository.findAllByIds(listOf("FAC-01", "FAC-02")) }
+            }
+        }
+    }
+
+    Given("facilityId 목록이 비어있는 경우") {
+        When("findFacilityNamesBy 를 호출하면") {
+            val result = programDomainService.findFacilityNamesBy(emptyList())
+
+            Then("빈 맵을 반환하고 저장소를 조회하지 않는다") {
+                result shouldBe emptyMap()
+                verify(exactly = 0) { facilityRepository.findAllByIds(emptyList()) }
+            }
+        }
+    }
+
+    Given("일부 facilityId가 삭제되어 조회 결과에 없는 경우") {
+        every { facilityRepository.findAllByIds(listOf("FAC-01", "FAC-DELETED")) } returns listOf(facility(id = "FAC-01"))
+
+        When("findFacilityNamesBy 를 호출하면") {
+            val result = programDomainService.findFacilityNamesBy(listOf("FAC-01", "FAC-DELETED"))
+
+            Then("존재하는 시설명만 맵에 담기고 삭제된 facilityId는 빠진다") {
+                result shouldBe mapOf("FAC-01" to "시설 FAC-01")
+            }
+        }
+    }
 })
