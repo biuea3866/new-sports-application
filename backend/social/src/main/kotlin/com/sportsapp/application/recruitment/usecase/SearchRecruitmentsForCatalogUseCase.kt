@@ -1,8 +1,8 @@
 package com.sportsapp.application.recruitment.usecase
 
 import com.sportsapp.application.recruitment.dto.InternalRecruitmentCatalogItemResponse
+import com.sportsapp.application.recruitment.dto.InternalRecruitmentCatalogCriteria
 import com.sportsapp.domain.recruitment.service.RecruitmentDomainService
-import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -17,9 +17,7 @@ class SearchRecruitmentsForCatalogUseCase(
     private val recruitmentDomainService: RecruitmentDomainService,
 ) {
     @Transactional(readOnly = true)
-    fun execute(keyword: String?, page: Int, size: Int): List<InternalRecruitmentCatalogItemResponse> {
-        val pageable = PageRequest.of(page, size)
-        return recruitmentDomainService.searchOpenRecruitments(keyword, pageable).content
+    fun execute(criteria: InternalRecruitmentCatalogCriteria): List<InternalRecruitmentCatalogItemResponse> =
+        recruitmentDomainService.searchOpenRecruitments(criteria.keyword, criteria.toPageable()).content
             .map(InternalRecruitmentCatalogItemResponse::of)
-    }
 }

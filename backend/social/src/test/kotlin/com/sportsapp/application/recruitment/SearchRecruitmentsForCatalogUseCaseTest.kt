@@ -1,5 +1,6 @@
 package com.sportsapp.application.recruitment
 
+import com.sportsapp.application.recruitment.dto.InternalRecruitmentCatalogCriteria
 import com.sportsapp.application.recruitment.usecase.SearchRecruitmentsForCatalogUseCase
 import com.sportsapp.domain.recruitment.entity.Recruitment
 import com.sportsapp.domain.recruitment.entity.RecruitmentStatus
@@ -52,7 +53,7 @@ class SearchRecruitmentsForCatalogUseCaseTest : BehaviorSpec({
         every { recruitmentDomainService.searchOpenRecruitments("축구", pageable) } returns page
 
         When("execute(keyword=\"축구\", page=0, size=20)를 호출하면") {
-            val result = useCase.execute(keyword = "축구", page = 0, size = 20)
+            val result = useCase.execute(InternalRecruitmentCatalogCriteria(keyword = "축구", page = 0, size = 20))
 
             Then("계약 필드만 담은 응답을 반환한다") {
                 result.size shouldBe 1
@@ -80,7 +81,7 @@ class SearchRecruitmentsForCatalogUseCaseTest : BehaviorSpec({
         every { recruitmentDomainService.searchOpenRecruitments(null, pageable) } returns PageImpl(emptyList(), pageable, 0L)
 
         When("execute(keyword=null, page=0, size=20)를 호출하면") {
-            val result = useCase.execute(keyword = null, page = 0, size = 20)
+            val result = useCase.execute(InternalRecruitmentCatalogCriteria(keyword = null, page = 0, size = 20))
 
             Then("빈 목록을 정상 반환한다") {
                 result.shouldBeEmpty()

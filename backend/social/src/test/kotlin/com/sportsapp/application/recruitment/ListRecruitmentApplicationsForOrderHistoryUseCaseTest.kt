@@ -73,6 +73,28 @@ class ListRecruitmentApplicationsForOrderHistoryUseCaseTest : BehaviorSpec({
         }
     }
 
+    Given("참조 모집이 소실돼 금액을 확정할 수 없는 신청") {
+        val recruitmentDomainService = mockk<RecruitmentDomainService>()
+        val useCase = ListRecruitmentApplicationsForOrderHistoryUseCase(recruitmentDomainService)
+        val application = ApplicationWithRecruitmentTitle(
+            applicationId = 13L,
+            status = ApplicationStatus.CONFIRMED,
+            recruitmentTitle = "삭제된 모임",
+            paymentId = null,
+            createdAt = createdAt,
+            feeAmount = null,
+        )
+        every { recruitmentDomainService.listApplicationsWithTitleBy(9L) } returns listOf(application)
+
+        When("execute(applicantUserId=9)를 호출하면") {
+            val result = useCase.execute(9L)
+
+            Then("금액을 null 로 공급한다 — 무료 확정값 0 과 구분되어야 한다 (0 으로 방어하지 않는다)") {
+                result[0].amount shouldBe null
+            }
+        }
+    }
+
     Given("신청 이력이 없는 사용자") {
         val recruitmentDomainService = mockk<RecruitmentDomainService>()
         val useCase = ListRecruitmentApplicationsForOrderHistoryUseCase(recruitmentDomainService)

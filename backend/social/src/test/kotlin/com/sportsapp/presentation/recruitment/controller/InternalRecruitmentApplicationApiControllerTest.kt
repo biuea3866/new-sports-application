@@ -54,6 +54,15 @@ class InternalRecruitmentApplicationApiControllerTest : BehaviorSpec({
                     .andExpect(jsonPath("$[0].sourceId").value(11))
                     .andExpect(jsonPath("$[0].paymentId").value(701))
             }
+
+            // 계약 필드가 조용히 누락된 표면이라(소비자 계약 확장을 늦게 반영) JSON 레벨에서 고정한다 —
+            // DTO 에서 필드를 지우면 UseCase 테스트가 아니라 여기서 먼저 깨져야 한다.
+            Then("소비자(edge OrderHistoryItem)가 요구하는 계약 필드가 응답 JSON 에 모두 실린다") {
+                result.andExpect(jsonPath("$[0].title").value("주말 축구 모임"))
+                    .andExpect(jsonPath("$[0].status").value("CONFIRMED"))
+                    .andExpect(jsonPath("$[0].amount").value(15000))
+                    .andExpect(jsonPath("$[0].createdAt").exists())
+            }
         }
     }
 
@@ -87,7 +96,10 @@ class InternalRecruitmentApplicationApiControllerTest : BehaviorSpec({
         }
     }
 
-    Given("다른 사용자의 신청 이력은 결과에 포함되지 않는다") {
+    // 이 Given 이 고정하는 것은 "신원 헤더의 id 만 조회 인자로 쓰인다"까지다 — 다른 사용자 데이터가
+    // 실제로 배제되는지는 리포지토리 where 절과 `ApplicationCustomRepositoryImplTest`(실 DB, 사용자
+    // 혼재 → 요청자만 반환)가 보장한다. 여기서 배제를 단언하는 것처럼 이름 붙이지 않는다.
+    Given("신원 헤더의 사용자 id 만 조회 인자로 쓰이는지") {
         val listRecruitmentApplicationsForOrderHistoryUseCase = mockk<ListRecruitmentApplicationsForOrderHistoryUseCase>()
         every { listRecruitmentApplicationsForOrderHistoryUseCase.execute(9L) } returns listOf(applicationHistory(11L))
         val mockMvc = buildMockMvc(listRecruitmentApplicationsForOrderHistoryUseCase)

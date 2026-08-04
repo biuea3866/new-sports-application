@@ -1,15 +1,13 @@
 package com.sportsapp.presentation.recruitment.controller
 
 import com.sportsapp.application.recruitment.dto.InternalRecruitmentCatalogItemResponse
+import com.sportsapp.application.recruitment.dto.InternalRecruitmentCatalogCriteria
 import com.sportsapp.application.recruitment.usecase.SearchRecruitmentsForCatalogUseCase
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
-
-private const val DEFAULT_PAGE = "0"
-private const val DEFAULT_SIZE = "20"
 
 /**
  * catalog 통합검색(BE-07)이 fan-out 하는 recruitment 원격 공급 엔드포인트 (S2-05, edge
@@ -27,8 +25,12 @@ class InternalRecruitmentCatalogApiController(
     @GetMapping
     fun search(
         @RequestParam(required = false) keyword: String?,
-        @RequestParam(defaultValue = DEFAULT_PAGE) page: Int,
-        @RequestParam(defaultValue = DEFAULT_SIZE) size: Int,
+        @RequestParam(defaultValue = InternalRecruitmentCatalogCriteria.DEFAULT_PAGE_PARAM) page: Int,
+        @RequestParam(defaultValue = InternalRecruitmentCatalogCriteria.DEFAULT_SIZE_PARAM) size: Int,
     ): ResponseEntity<List<InternalRecruitmentCatalogItemResponse>> =
-        ResponseEntity.ok(searchRecruitmentsForCatalogUseCase.execute(keyword, page, size))
+        ResponseEntity.ok(
+            searchRecruitmentsForCatalogUseCase.execute(
+                InternalRecruitmentCatalogCriteria(keyword = keyword, page = page, size = size),
+            ),
+        )
 }

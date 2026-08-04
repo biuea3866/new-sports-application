@@ -1,5 +1,6 @@
 package com.sportsapp.presentation.recruitment.controller
 
+import com.sportsapp.application.recruitment.dto.InternalRecruitmentCatalogCriteria
 import com.sportsapp.application.recruitment.dto.InternalRecruitmentCatalogItemResponse
 import com.sportsapp.application.recruitment.usecase.SearchRecruitmentsForCatalogUseCase
 import com.sportsapp.domain.recruitment.entity.RecruitmentStatus
@@ -36,7 +37,11 @@ class InternalRecruitmentCatalogApiControllerTest : BehaviorSpec({
 
     Given("신원 헤더 없이 오픈 모집 목록을 조회하면") {
         val searchRecruitmentsForCatalogUseCase = mockk<SearchRecruitmentsForCatalogUseCase>()
-        every { searchRecruitmentsForCatalogUseCase.execute(null, 0, 20) } returns listOf(catalogItem(1L))
+        every {
+            searchRecruitmentsForCatalogUseCase.execute(
+                InternalRecruitmentCatalogCriteria(keyword = null, page = 0, size = 20),
+            )
+        } returns listOf(catalogItem(1L))
         val mockMvc = buildMockMvc(searchRecruitmentsForCatalogUseCase)
 
         When("GET /internal/catalog/recruitments 요청 시 (신원 헤더 없음)") {
@@ -52,12 +57,22 @@ class InternalRecruitmentCatalogApiControllerTest : BehaviorSpec({
                     .andExpect(jsonPath("$[0].description").doesNotExist())
                     .andExpect(jsonPath("$[0].capacity").doesNotExist())
             }
+
+            // 계약 필드가 조용히 누락된 표면이라 JSON 레벨에서 고정한다 (위 application 컨트롤러와 동일 사유).
+            Then("소비자(edge CatalogItem)가 요구하는 구분 정보·생성 시각이 응답 JSON 에 실린다") {
+                result.andExpect(jsonPath("$[0].scheduledAt").exists())
+                    .andExpect(jsonPath("$[0].createdAt").exists())
+            }
         }
     }
 
     Given("keyword로 검색하면") {
         val searchRecruitmentsForCatalogUseCase = mockk<SearchRecruitmentsForCatalogUseCase>()
-        every { searchRecruitmentsForCatalogUseCase.execute("축구", 0, 20) } returns listOf(catalogItem(2L))
+        every {
+            searchRecruitmentsForCatalogUseCase.execute(
+                InternalRecruitmentCatalogCriteria(keyword = "축구", page = 0, size = 20),
+            )
+        } returns listOf(catalogItem(2L))
         val mockMvc = buildMockMvc(searchRecruitmentsForCatalogUseCase)
 
         When("GET /internal/catalog/recruitments?keyword=축구 요청 시") {
@@ -72,7 +87,11 @@ class InternalRecruitmentCatalogApiControllerTest : BehaviorSpec({
 
     Given("검색 결과가 0건일 때") {
         val searchRecruitmentsForCatalogUseCase = mockk<SearchRecruitmentsForCatalogUseCase>()
-        every { searchRecruitmentsForCatalogUseCase.execute(null, 0, 20) } returns emptyList()
+        every {
+            searchRecruitmentsForCatalogUseCase.execute(
+                InternalRecruitmentCatalogCriteria(keyword = null, page = 0, size = 20),
+            )
+        } returns emptyList()
         val mockMvc = buildMockMvc(searchRecruitmentsForCatalogUseCase)
 
         When("GET /internal/catalog/recruitments 요청 시") {
@@ -87,7 +106,11 @@ class InternalRecruitmentCatalogApiControllerTest : BehaviorSpec({
 
     Given("page·size 쿼리 파라미터로 조회하면") {
         val searchRecruitmentsForCatalogUseCase = mockk<SearchRecruitmentsForCatalogUseCase>()
-        every { searchRecruitmentsForCatalogUseCase.execute(null, 2, 5) } returns listOf(catalogItem(3L))
+        every {
+            searchRecruitmentsForCatalogUseCase.execute(
+                InternalRecruitmentCatalogCriteria(keyword = null, page = 2, size = 5),
+            )
+        } returns listOf(catalogItem(3L))
         val mockMvc = buildMockMvc(searchRecruitmentsForCatalogUseCase)
 
         When("GET /internal/catalog/recruitments?page=2&size=5 요청 시") {
