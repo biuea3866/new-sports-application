@@ -9,10 +9,18 @@
  * - "search"라는 모호한 탭 이름 대신 실제 기능(내 주변 시설 검색)을 드러내는
  *   "facilities" 파일명·"시설" 라벨을 쓴다.
  *
- * - 활성/비활성 탭 색은 하드코딩 대신 `useTheme()` accent·textTertiary 토큰을 사용한다
+ * - 활성/비활성 탭 색은 하드코딩 대신 `useTheme()` accent·textSecondary 토큰을 사용한다
  *   (라이트/다크 모두 대응).
  * - 아이콘은 `@expo/vector-icons`의 Ionicons — 웹 번들(react-native-web)에서도
  *   폰트 아이콘으로 렌더된다.
+ *
+ * - 탭바 배경판·상단 헤어라인은 RN 기본값(순백, 밝은 회색 헤어라인)이 그대로 남아있으면
+ *   다크 모드에서 페이지 배경보다 밝은 흰 띠로 보인다 — `tabBarStyle`에 시맨틱
+ *   토큰(surfaceElevated·border)을 명시해 라이트/다크 모두 배경과 일관되게 한다.
+ * - 비활성 라벨은 원래 `textTertiary`였으나, 탭바 배경을 `surfaceElevated`로 바꾸면서
+ *   그 위 대비가 AA 본문 기준(4.5:1) 아래로 떨어졌다(라이트 3.04:1·다크 3.25:1 — textTertiary는
+ *   애초에 두 모드 모두 미달). `textSecondary`로 올려 라이트 7.11:1·다크 7.48:1로 통과시켰다
+ *   (계산·회귀 가드는 `__tests__/_layout.test.tsx` "탭바 대비(WCAG)" describe 참조).
  */
 import type { ComponentProps } from 'react';
 import { Tabs } from 'expo-router';
@@ -60,7 +68,11 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: tokens.accent,
-        tabBarInactiveTintColor: tokens.textTertiary,
+        tabBarInactiveTintColor: tokens.textSecondary,
+        tabBarStyle: {
+          backgroundColor: tokens.surfaceElevated,
+          borderTopColor: tokens.border,
+        },
       }}
     >
       <Tabs.Screen

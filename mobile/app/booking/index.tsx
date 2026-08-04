@@ -13,6 +13,7 @@ import {
 import { useMyBookings, useCancelBooking } from '../../lib/useMyBookings';
 import {
   BOOKING_STATUS_LABEL,
+  formatBookingCreatedDate,
   isBookingCancellable,
   resolveBookingTitle,
 } from '../../lib/booking-format';
@@ -44,7 +45,7 @@ function BookingItem({
         상태: {BOOKING_STATUS_LABEL[booking.status]}
       </Text>
       <Text style={styles.bookingDate} accessibilityRole="text">
-        예약일: {new Date(booking.createdAt).toLocaleDateString('ko-KR')}
+        예약일: {formatBookingCreatedDate(booking.createdAt)}
       </Text>
 
       {canCancel && (

@@ -124,4 +124,14 @@ describe('BookingListScreen', () => {
 
     expect(screen.getByLabelText('예약 목록 화면')).toBeTruthy();
   });
+
+  it('예약일이 월·일 모두 0패딩된 두 자리로 표시된다 (제목의 날짜 표기와 동일한 자릿수)', () => {
+    // 1~9일/월처럼 한 자리 값이 나올 수 있는 날짜로 0패딩 여부를 명확히 검증한다.
+    mockBookings([buildBooking({ createdAt: '2026-01-05T02:00:00Z' })]);
+
+    render(<BookingListScreen />);
+
+    expect(screen.getByText('예약일: 2026. 01. 05.')).toBeTruthy();
+    expect(screen.queryByText('예약일: 2026. 1. 5.')).toBeNull();
+  });
 });
