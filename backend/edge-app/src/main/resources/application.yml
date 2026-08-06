@@ -1,0 +1,100 @@
+# [S2-08] edge 독립 실행체 설정.
+#
+# bootstrap/application.yml 에서 **edge 가 실제로 읽는 키만** 옮겨 적는다.
+# DataSource·JPA·Flyway·Kafka·Mongo·mail 키는 옮기지 않는다 — 해당 의존을 아예 선언하지 않아
+# 오토컨픽이 뜨지 않기 때문이다. `application-edge.yml`(W1-03)이 autoconfigure exclude 로 하던
+# 일을 **의존 부재**로 대체하며, 그 프로파일 파일의 의도를 이 기본 프로파일이 흡수한다.
+spring:
+  application:
+    # [W1-09] 서비스별 식별자. 메트릭 `application` 태그와 추적 resource.service.name 의 원천이다.
+    name: ${OTEL_SERVICE_NAME:sports-edge}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+server:
+  port: ${SERVER_PORT:8081}
+
+# [S2-08 ⑤] 상류 서비스 주소. 기본값이 전부 모놀리스인 것이 핵심이다 — commerce·facility-booking·
+# social 이 각자 추출될 때 해당 한 줄만 신규 컨테이너 호스트로 바꾸면 그 경로만 넘어간다.
+edge:
+  upstream:
+    commerce:
+      base-url: ${EDGE_UPSTREAM_COMMERCE_BASE_URL:http://backend:8080}
+    facility-booking:
+      base-url: ${EDGE_UPSTREAM_FACILITY_BOOKING_BASE_URL:http://backend:8080}
+    social:
+      base-url: ${EDGE_UPSTREAM_SOCIAL_BASE_URL:http://backend:8080}
+    # 모놀리스의 호출자 인증(S2-07)이 대조하는 공유 시크릿. **모놀리스의 INTERNAL_CALL_TOKEN 과
+    # 같은 값**을 주입한다(배선은 S2-14). 비어 있으면 헤더를 붙이지 않는다.
+    call-token: ${INTERNAL_CALL_TOKEN:}
+
+load-shedding:
+  max-concurrent-requests: ${LOAD_SHEDDING_MAX_CONCURRENT_REQUESTS:200}
+  enabled: ${LOAD_SHEDDING_ENABLED:true}
+
+virtual-queue:
+  max-capacity: ${VIRTUAL_QUEUE_MAX_CAPACITY:100000}
+  sliding-ttl-seconds: ${VIRTUAL_QUEUE_SLIDING_TTL_SECONDS:1800}
+  admission:
+    batch-size: ${VIRTUAL_QUEUE_BATCH_SIZE:100}
+    tick-seconds: ${VIRTUAL_QUEUE_TICK_SECONDS:2}
+  heartbeat:
+    stale-seconds: ${VIRTUAL_QUEUE_HEARTBEAT_STALE_SECONDS:60}
+    max-evict-per-tick: ${VIRTUAL_QUEUE_MAX_EVICT_PER_TICK:500}
+  token:
+    ttl-seconds: ${VIRTUAL_QUEUE_TOKEN_TTL_SECONDS:300}
+    # HmacEntryTokenGateway 가 미설정 시 **부팅 실패**로 검증한다(약한 기본값 방지).
+    # 모놀리스와 같은 값을 주입해야 발급·검증이 교차 성립한다.
+    secret: ${VIRTUAL_QUEUE_TOKEN_SECRET:}
+
+storage:
+  image:
+    endpoint: ${STORAGE_ENDPOINT:http://localhost:9000}
+    region: ${STORAGE_REGION:us-east-1}
+    access-key: ${STORAGE_ACCESS_KEY:minioadmin}
+    secret-key: ${STORAGE_SECRET_KEY:minioadmin}
+    bucket: ${STORAGE_BUCKET:sports-app}
+    upload-expiry-seconds: ${STORAGE_UPLOAD_EXPIRY_SECONDS:900}
+    download-expiry-seconds: ${STORAGE_DOWNLOAD_EXPIRY_SECONDS:3600}
+    max-bytes: ${STORAGE_MAX_BYTES:10485760}
+    allowed-content-types:
+      - image/jpeg
+      - image/png
+      - image/webp
+
+app:
+  env: ${APP_ENV:local}
+  jwt:
+    # edge 는 토큰을 **검증만** 한다 — 발급하지 않으므로 대칭키(secret)·private-key 를 두지 않는다(§6-3).
+    # 검증 체인 자체는 S2-11 이 만든다.
+    algorithm: ${APP_JWT_ALGORITHM:HS256}
+    public-key: ${APP_JWT_PUBLIC_KEY:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      env: ${APP_ENV:local}
+    distribution:
+      percentiles-histogram:
+        http:
+          server:
+            requests: true
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${MANAGEMENT_OTLP_TRACING_ENDPOINT:http://localhost:4318/v1/traces}
+  opentelemetry:
+    resource-attributes:
+      deployment.environment: ${APP_ENV:local}
