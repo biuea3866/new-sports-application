@@ -1,0 +1,49 @@
+{
+  "description": "POST /images/presigned-upload — edge 이미지 업로드 어댑터 (S2-13 이관 대상). 서명·만료 값은 매 호출 달라져 비교기가 정규화한다.",
+  "requests": [
+    {
+      "id": "presigned-png",
+      "method": "POST",
+      "path": "/images/presigned-upload",
+      "auth": "user",
+      "body": { "filename": "shadow-probe.png", "contentType": "image/png", "domain": "product" }
+    },
+    {
+      "id": "presigned-jpeg",
+      "method": "POST",
+      "path": "/images/presigned-upload",
+      "auth": "user",
+      "body": { "filename": "shadow-probe.jpg", "contentType": "image/jpeg", "domain": "product" }
+    },
+    {
+      "id": "presigned-webp",
+      "method": "POST",
+      "path": "/images/presigned-upload",
+      "auth": "user",
+      "body": { "filename": "shadow-probe.webp", "contentType": "image/webp", "domain": "product" }
+    },
+    {
+      "id": "presigned-disallowed-content-type",
+      "method": "POST",
+      "path": "/images/presigned-upload",
+      "auth": "user",
+      "body": { "filename": "shadow-probe.exe", "contentType": "application/x-msdownload", "domain": "product" },
+      "note": "미허용 content-type — 4xx 오류 계약"
+    },
+    {
+      "id": "presigned-missing-field",
+      "method": "POST",
+      "path": "/images/presigned-upload",
+      "auth": "user",
+      "body": { "filename": "shadow-probe.png" },
+      "note": "필수 필드 누락 — 4xx 오류 계약 (역직렬화 실패 경로)"
+    },
+    {
+      "id": "presigned-unauthenticated",
+      "method": "POST",
+      "path": "/images/presigned-upload",
+      "body": { "filename": "shadow-probe.png", "contentType": "image/png", "domain": "product" },
+      "note": "토큰 없이 호출 — 401 오류 계약"
+    }
+  ]
+}

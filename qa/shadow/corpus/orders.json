@@ -1,0 +1,26 @@
+{
+  "description": "GET /api/orders — edge 통합 주문내역 파사드 (C7). 로그인 사용자 기준 조회라 JWT 가 필요하다.",
+  "requests": [
+    { "id": "orders-no-filter", "method": "GET", "path": "/api/orders", "auth": "user" },
+    { "id": "orders-type-goods", "method": "GET", "path": "/api/orders", "auth": "user", "query": { "orderType": "GOODS" } },
+    { "id": "orders-type-ticketing", "method": "GET", "path": "/api/orders", "auth": "user", "query": { "orderType": "TICKETING" } },
+    { "id": "orders-type-booking", "method": "GET", "path": "/api/orders", "auth": "user", "query": { "orderType": "BOOKING" } },
+    { "id": "orders-type-recruitment", "method": "GET", "path": "/api/orders", "auth": "user", "query": { "orderType": "RECRUITMENT" } },
+    { "id": "orders-status-filter", "method": "GET", "path": "/api/orders", "auth": "user", "query": { "status": "PAID" } },
+    { "id": "orders-page-0", "method": "GET", "path": "/api/orders", "auth": "user", "query": { "page": "0", "size": "20" } },
+    { "id": "orders-page-1", "method": "GET", "path": "/api/orders", "auth": "user", "query": { "page": "1", "size": "20" } },
+    {
+      "id": "orders-empty-user",
+      "method": "GET",
+      "path": "/api/orders",
+      "auth": "emptyUser",
+      "note": "주문 0건 사용자 — 빈 목록 계약"
+    },
+    {
+      "id": "orders-unauthenticated",
+      "method": "GET",
+      "path": "/api/orders",
+      "note": "토큰 없이 호출 — 401 오류 계약이 양쪽 동일한지 본다"
+    }
+  ]
+}
