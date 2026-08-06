@@ -1,0 +1,49 @@
+{
+  "description": "/virtual-queues/{type}/{targetId}/** — edge 가상 대기열 (기본 OFF 플래그). type slug 는 limited-drop · ticketing-event.",
+  "note": "입장·이탈은 상태를 바꾼다. 순서(입장 → 상태조회 → 이탈)를 지켜 두 대상에 같은 순서로 보낸다 — 코퍼스 배열 순서가 실행 순서다.",
+  "requests": [
+    {
+      "id": "vq-stats-anonymous",
+      "method": "GET",
+      "path": "/virtual-queues/limited-drop/1/stats",
+      "note": "비로그인 통계 조회"
+    },
+    {
+      "id": "vq-enter",
+      "method": "POST",
+      "path": "/virtual-queues/limited-drop/1/entries",
+      "auth": "user"
+    },
+    {
+      "id": "vq-status-me",
+      "method": "GET",
+      "path": "/virtual-queues/limited-drop/1/entries/me",
+      "auth": "user"
+    },
+    {
+      "id": "vq-leave",
+      "method": "DELETE",
+      "path": "/virtual-queues/limited-drop/1/entries/me",
+      "auth": "user"
+    },
+    {
+      "id": "vq-status-after-leave",
+      "method": "GET",
+      "path": "/virtual-queues/limited-drop/1/entries/me",
+      "auth": "user",
+      "note": "이탈 후 상태 — 미존재 대상 4xx 계약"
+    },
+    {
+      "id": "vq-unknown-slug",
+      "method": "GET",
+      "path": "/virtual-queues/not-a-slug/1/stats",
+      "note": "미존재 type slug — 4xx 오류 계약"
+    },
+    {
+      "id": "vq-status-unauthenticated",
+      "method": "GET",
+      "path": "/virtual-queues/limited-drop/1/entries/me",
+      "note": "토큰 없이 호출 — 401 오류 계약"
+    }
+  ]
+}

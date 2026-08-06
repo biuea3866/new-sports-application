@@ -1,0 +1,24 @@
+{
+  "description": "GET /api/catalog — edge catalog 통합검색 파사드 (C6). 비로그인 공개 조회라 인증이 필요 없다.",
+  "requests": [
+    { "id": "catalog-no-filter", "method": "GET", "path": "/api/catalog" },
+    { "id": "catalog-type-product", "method": "GET", "path": "/api/catalog", "query": { "itemType": "PRODUCT" } },
+    { "id": "catalog-type-limited-drop", "method": "GET", "path": "/api/catalog", "query": { "itemType": "LIMITED_DROP" } },
+    { "id": "catalog-type-ticket", "method": "GET", "path": "/api/catalog", "query": { "itemType": "TICKET" } },
+    { "id": "catalog-type-program", "method": "GET", "path": "/api/catalog", "query": { "itemType": "PROGRAM" } },
+    { "id": "catalog-type-recruitment", "method": "GET", "path": "/api/catalog", "query": { "itemType": "RECRUITMENT" } },
+    { "id": "catalog-keyword", "method": "GET", "path": "/api/catalog", "query": { "keyword": "축구" } },
+    { "id": "catalog-keyword-nohit", "method": "GET", "path": "/api/catalog", "query": { "keyword": "존재하지않는키워드zzz" } },
+    { "id": "catalog-seller-b2c", "method": "GET", "path": "/api/catalog", "query": { "sellerType": "B2C" } },
+    { "id": "catalog-page-0", "method": "GET", "path": "/api/catalog", "query": { "page": "0", "size": "20" } },
+    { "id": "catalog-page-1", "method": "GET", "path": "/api/catalog", "query": { "page": "1", "size": "20" } },
+    {
+      "id": "catalog-size-over-cap",
+      "method": "GET",
+      "path": "/api/catalog",
+      "query": { "size": "500" },
+      "note": "파사드가 min(size,100) 으로 자른다 — 공급자 절삭이 아니라 소비자 절삭임을 응답으로 확인한다 (R-28·S2-03)."
+    },
+    { "id": "catalog-invalid-item-type", "method": "GET", "path": "/api/catalog", "query": { "itemType": "NOT_A_TYPE" }, "note": "4xx 오류 계약" }
+  ]
+}

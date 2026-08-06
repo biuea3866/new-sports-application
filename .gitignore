@@ -81,6 +81,10 @@ qa/e2e/test-results/
 qa/load/results/*
 !qa/load/results/.gitkeep
 
+# 섀도 비교 리포트 (S2-06) — 실행 산출물이라 커밋하지 않는다. 완료 판정 아티팩트는 별도 첨부한다.
+qa/shadow/results/*
+!qa/shadow/results/.gitkeep
+
 # ===== Misc =====
 *.tsbuildinfo
 .npm/
