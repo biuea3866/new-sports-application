@@ -28,6 +28,18 @@ class InternalIdentityHeaderRequest(
         )
     } ?: emptyMap()
 
+    /**
+     * 폐기를 되돌린 원본 요청을 돌려준다 — **호출자 인증을 통과한 내부 호출 전용**이다 (S2-07).
+     *
+     * edge 가 별 프로세스가 되면 신원은 edge 가 검증해 헤더로 넘긴다. 그 값까지 폐기하면 하위
+     * 서비스가 사용자를 알 수 없다. 그래서 되살릴 방법이 필요한데, 되돌리기 지점을 여기 하나로
+     * 모아 **"누가 폐기를 우회할 수 있는가"를 이 클래스만 읽으면 알 수 있게** 한다.
+     *
+     * 호출자 인증(`InternalCallAuthenticationFilter`) 이전에는 절대 호출하지 않는다 — 호출하면
+     * 스푸핑 방어 ②가 그대로 무력화된다.
+     */
+    fun trustOriginalIdentity(): HttpServletRequest = request as HttpServletRequest
+
     override fun getHeader(name: String): String? {
         if (!InternalIdentityHeaders.isInternal(name)) return super.getHeader(name)
         return injectedHeaders.entries
