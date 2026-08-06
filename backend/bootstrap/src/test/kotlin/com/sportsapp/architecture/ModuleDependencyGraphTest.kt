@@ -56,10 +56,24 @@ class ModuleDependencyGraphTest : DescribeSpec({
             "bootstrap" to setOf(
                 "common", "payment", "commerce", "facility-booking", "platform", "social", "edge",
             ),
+            // [S2-08] edge 를 조립하는 두 번째 컴포지션 루트. 의존은 edge + common 뿐이다 —
+            // 여기에 commerce·facility-booking·social 이 들어오면 S2-01 의 파사드 의존 역전이
+            // 무의미해지고(원격 어댑터가 아니라 컴파일 의존으로 되돌아간다) edge 를 물리적으로
+            // 뗄 수 없다.
+            "edge-app" to setOf("common", "edge"),
         ).forEach { (module, expected) ->
             it("$module 의 main 프로젝트 의존은 정확히 ${expected.sorted()} 이다") {
                 mainProjectDependencies(module) shouldBe expected
             }
+        }
+    }
+
+    describe("edge-app 의 단방향 격리 (S2-08)") {
+        it("bootstrap 은 edge-app 을 의존하지 않는다 — 중첩 @SpringBootApplication 스캔 충돌 방지") {
+            // bootstrap 이 edge-app 을 의존하면 SportsApplication 의 컴포넌트 스캔이 EdgeApplication 을
+            // @Configuration 으로 주워 담아 모놀리스 컨텍스트가 오염된다. 롤백 가능성(include 한 줄
+            // 제거로 모놀리스 무영향)도 이 비의존이 전제다.
+            mainProjectDependencies("bootstrap") shouldNotContain "edge-app"
         }
     }
 

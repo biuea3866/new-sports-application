@@ -31,3 +31,6 @@ include(":platform")
 include(":social")
 include(":edge")
 include(":bootstrap")
+// [S2-08] edge 를 조립하는 두 번째 컴포지션 루트(독립 실행체). bootstrap 은 이 모듈을
+// 의존하지 않는다 — 롤백은 이 include 한 줄 제거로 끝나고 모놀리스는 무영향이다.
+include(":edge-app")
