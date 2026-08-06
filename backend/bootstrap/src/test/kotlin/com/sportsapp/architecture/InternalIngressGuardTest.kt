@@ -1,7 +1,13 @@
 package com.sportsapp.architecture
 
+import com.sportsapp.domain.common.security.InternalCallHeaders
 import com.sportsapp.infrastructure.security.InternalIdentityHeaders
+import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.collections.shouldNotBeEmpty
+import io.kotest.matchers.ints.shouldBeGreaterThan
+import io.kotest.matchers.ints.shouldBeLessThan
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.string.shouldContain
 import java.io.File
@@ -43,5 +49,95 @@ class InternalIngressGuardTest : DescribeSpec({
             val guardBlock = config.substringAfter("location ^~ /internal/").substringBefore("}")
             guardBlock shouldContain "return 404"
         }
+
+        it("호출자 인증 헤더도 외부 유입분을 빈 값으로 덮는다 (S2-07)") {
+            // 외부가 이 헤더를 실어 보내면 호출자 인증을 통과할 수 있다 — 값 자체는 몰라도
+            // 앞으로 nginx 뒤에 붙을 경로가 늘면 표면이 커진다. 신원 헤더와 같은 등급으로 막는다.
+            config shouldContain """proxy_set_header ${InternalCallHeaders.CALL_TOKEN} "";"""
+        }
     }
-})
+
+    /**
+     * 헤더 이름 3자 일치 (S2-07 ④).
+     *
+     * 공급자 모듈(commerce·facility-booking·social)은 edge 를 의존하지 않아 [InternalIdentityHeaders]
+     * 상수를 공유할 수 없다. 그래서 각자 리터럴을 들고 있고, 한 곳만 바뀌면 **컴파일도 테스트도
+     * 통과하면서 런타임에만** 신원이 사라진다. 그 드리프트를 여기서 잡는다.
+     */
+    describe("내부 신원 헤더 이름 일치") {
+        val root = requireNotNull(repositoryRoot)
+
+        /** 공급자 컨트롤러가 들고 있는 헤더 리터럴을 소스에서 수집한다. */
+        val providerLiterals = sequenceOf("commerce", "facility-booking", "social")
+            .map { File(root, "backend/$it/src/main/kotlin") }
+            .filter { it.isDirectory }
+            .flatMap { it.walkTopDown() }
+            .filter { it.isFile && it.extension == "kt" }
+            .flatMap { file ->
+                Regex("""["'](X-Internal-[A-Za-z-]+)["']""").findAll(file.readText())
+                    .map { file.name to it.groupValues[1] }
+            }
+            .toList()
+
+        it("공급자 컨트롤러가 내부 헤더 리터럴을 실제로 들고 있다 — 수집이 비면 이 테스트는 무력하다") {
+            // 수집 결과가 0건이면 아래 일치 검증이 공집합 위에서 통과한다(거짓 통과).
+            providerLiterals.shouldNotBeEmpty()
+        }
+
+        it("공급자 컨트롤러의 리터럴이 전부 edge 소유 계약에 존재한다") {
+            val known = InternalIdentityHeaders.ALL + InternalCallHeaders.CALL_TOKEN
+            providerLiterals.forEach { (fileName, literal) ->
+                withClue("$fileName 의 \"$literal\" 이 알려진 내부 헤더 목록에 없다") {
+                    known shouldContain literal
+                }
+            }
+        }
+
+        it("nginx 제거 목록이 edge 소유 계약을 전부 덮는다") {
+            val config = File(root, "infra/nginx/lb.conf").readText()
+            (InternalIdentityHeaders.ALL + InternalCallHeaders.CALL_TOKEN).forEach { headerName ->
+                withClue("$headerName 이 nginx 제거 목록에 없다") {
+                    config shouldContain """proxy_set_header $headerName "";"""
+                }
+            }
+        }
+    }
+
+    /**
+     * 필터 실행 순서 (S2-07).
+     *
+     * 순서가 뒤집히면 방어가 조용히 사라진다 — 호출자 인증이 신원 폐기보다 앞서면 폐기 대상이
+     * 되살아나고, 사용자 인증보다 뒤에 오면 내부 호출이 401 로 막힌다. 등록 순서가 곧 실행
+     * 순서이므로 소스의 등록 순서를 고정한다.
+     */
+    describe("SecurityConfig 필터 등록 순서") {
+        val source = File(requireNotNull(repositoryRoot), SECURITY_CONFIG_PATH).readText()
+        val orderOf = { filterName: String -> source.indexOf(".addFilterBefore($filterName") }
+
+        it("부하 셰딩 → 신원 폐기 → 호출자 인증 → 사용자 인증 순서다") {
+            val loadShedding = orderOf("loadSheddingFilter")
+            val sanitizer = orderOf("internalIdentityHeaderSanitizingFilter")
+            val callAuth = orderOf("internalCallAuthenticationFilter")
+            val jwt = orderOf("jwtAuthenticationFilter")
+
+            withClue("등록 지점을 모두 찾아야 한다: $loadShedding/$sanitizer/$callAuth/$jwt") {
+                listOf(loadShedding, sanitizer, callAuth, jwt).forEach { it shouldBeGreaterThan -1 }
+            }
+            loadShedding shouldBeLessThan sanitizer
+            sanitizer shouldBeLessThan callAuth
+            callAuth shouldBeLessThan jwt
+        }
+
+        it("내부 경로 인가 규칙이 alerts 규칙보다 뒤에 선언된다 — matcher 는 선언 순서가 우선순위다") {
+            val alerts = source.indexOf("""requestMatchers("/internal/alerts/**")""")
+            val internal = source.indexOf("""requestMatchers("/internal/**")""")
+            alerts shouldBeGreaterThan -1
+            internal shouldBeGreaterThan alerts
+        }
+    }
+}) {
+    private companion object {
+        const val SECURITY_CONFIG_PATH =
+            "backend/bootstrap/src/main/kotlin/com/sportsapp/infrastructure/security/SecurityConfig.kt"
+    }
+}

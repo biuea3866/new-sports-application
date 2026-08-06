@@ -229,6 +229,13 @@ virtual-queue:
     # (약한 기본값 방지 — app.jwt.secret과 달리 운영 기본값을 두지 않는다).
     secret: ${VIRTUAL_QUEUE_TOKEN_SECRET:}
 
+# S2-07: 서비스 간 내부 호출 공유 시크릿. edge 가 /internal 하위 공급자 API 를 호출할 때 붙이는
+# X-Internal-Call-Token 값을 검증한다(InternalCallAuthenticationFilter).
+# **빈 값이면 /internal 하위 경로를 전부 404 로 닫는다** — 미주입이 무방비 개방이 되지 않게 하는
+# 안전값이다. /internal/alerts 는 자체 시크릿(alerting.webhook-token)으로 보호되어 제외된다.
+internal:
+  call-token: ${INTERNAL_CALL_TOKEN:}
+
 # BE-10: 지능형 장애 알림 통합 와이어업. alerting.enabled=false(기본값)면 웹훅은 202만 반환하고
 # 파이프라인을 트리거하지 않는다(무중단 배포·즉시 롤백 지점, Release Scenario).
 alerting:

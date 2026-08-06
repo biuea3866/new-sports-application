@@ -35,6 +35,10 @@ services:
       # 가상 대기열 토큰 서명 시크릿 — application.yml의 빈 기본값을 HmacEntryTokenGateway가
       # fail-fast로 막으므로 컨테이너에 전달되지 않으면 backend가 부팅하지 않는다. 값은 .env.<env>로 주입(비커밋).
       VIRTUAL_QUEUE_TOKEN_SECRET: ${VIRTUAL_QUEUE_TOKEN_SECRET:-}
+      # [S2-07] 서비스 간 내부 호출 공유 시크릿. **비어 있으면 /internal 하위 경로를 전부 404 로
+      # 닫는다** — 미주입이 무방비 개방이 되지 않는 방향의 안전값이다(VIRTUAL_QUEUE_TOKEN_SECRET 의
+      # 부팅 차단과 반대 방향). dev·prod 토큰은 반드시 서로 다른 값을 쓴다. 값은 .env.<env>로 주입(비커밋).
+      INTERNAL_CALL_TOKEN: ${INTERNAL_CALL_TOKEN:-}
       # 메일 발송 호스트 — 컨테이너 내부 localhost가 아니라 compose 서비스명 mailhog으로 붙는다(health DOWN 방지).
       MAIL_HOST: ${MAIL_HOST:-mailhog}
       MAIL_PORT: ${MAIL_PORT:-1025}

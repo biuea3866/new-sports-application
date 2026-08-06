@@ -32,6 +32,7 @@ class SecurityConfig(
     private val partnerApiKeyAuthenticationFilter: PartnerApiKeyAuthenticationFilter,
     private val loadSheddingFilter: LoadSheddingFilter,
     private val internalIdentityHeaderSanitizingFilter: InternalIdentityHeaderSanitizingFilter,
+    private val internalCallAuthenticationFilter: InternalCallAuthenticationFilter,
 ) {
     @Autowired(required = false)
     private var mcpTokenAuthenticationFilter: McpTokenAuthenticationFilter? = null
@@ -60,6 +61,11 @@ class SecurityConfig(
             // 유지하므로(loadShedding 을 최전방으로 두는 아래 순서가 그 전제다) 여기 위치가 곧
             // 실행 순서 2번째가 된다 — loadShedding → sanitizer → mcp/partner/jwt 인증.
             .addFilterBefore(internalIdentityHeaderSanitizingFilter, UsernamePasswordAuthenticationFilter::class.java)
+            // S2-07: 호출자 인증은 신원 폐기 **뒤**, 사용자 인증 **앞**이다. 위조 신원 헤더가
+            // 폐기된 다음에 호출자를 인증하고, 통과한 내부 호출에 한해 그 필터가 신원을 되살린다.
+            // 같은 기준 필터 앞에 등록된 필터들은 등록 순서를 유지하므로 여기 위치가 곧 실행 순서
+            // 3번째다 — loadShedding → sanitizer → internalCallAuth → mcp/partner/jwt 인증.
+            .addFilterBefore(internalCallAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
             .also { config ->
                 mcpTokenAuthenticationFilter?.let {
                     config.addFilterBefore(it, UsernamePasswordAuthenticationFilter::class.java)
@@ -94,6 +100,11 @@ class SecurityConfig(
         // BE-10: 규칙 엔진(Grafana)·내부 raise 진입점. 컨트롤러가 grafana=Authorization Bearer,
         // 내부raise=X-Alert-Token으로 공유 시크릿을 자체 검증하므로 Spring Security 레벨에서는 permitAll.
         auth.requestMatchers("/internal/alerts/**").permitAll()
+        // S2-07: 나머지 /internal 하위 경로는 InternalCallAuthenticationFilter 가 공유 시크릿으로
+        // 호출자를 인증한다(미주입이면 전부 404). Spring Security 레벨에서는 permitAll 이어야
+        // 필터가 세운 신원으로 컨트롤러가 동작한다 — authenticated() 로 두면 JWT 가 없는 내부
+        // 호출이 401 이 된다. alerts 규칙보다 **뒤**에 둬 기존 판정 순서를 바꾸지 않는다.
+        auth.requestMatchers("/internal/**").permitAll()
         auth.requestMatchers("/admin/**").hasRole("ADMIN")
         // BE-10: 데모 게이팅(FR-9)은 X-User-Id 헤더 기반 평가라 permitAll (AUTH-04 관례)
         auth.requestMatchers("/feature-demo/**").permitAll()
