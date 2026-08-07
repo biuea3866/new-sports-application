@@ -1,9 +1,12 @@
 package com.sportsapp.edgeapp
 
 import com.sportsapp.SharedTestContainers
+import com.sportsapp.domain.common.FeatureFlagEvaluator
 import com.sportsapp.edgeapp.config.EdgeFacadeAsyncConfig
+import com.sportsapp.edgeapp.featureflag.RedisOnlyFeatureFlagEvaluator
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.string.shouldContain
 import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.beans.factory.annotation.Autowired
@@ -72,6 +75,17 @@ class EdgeApplicationContextLoadTest(
             val response = httpGet(serverPort, "/actuator/health")
             response.statusCode() shouldBe 200
             response.body() shouldContain "\"status\":\"UP\""
+        }
+    }
+
+    describe("자립 구현 배선") {
+        it("FeatureFlagEvaluator 가 Redis 전용 구현으로 주입된다 (S2-12)") {
+            // platform 의 구현은 @PostConstruct 에서 MySQL 을 조회한다 — edge 는 DataSource 가 없어
+            // 그 구현이 섞이면 부팅이 깨진다. 타입 기반 주입이라 컴파일은 통과하고 풀부팅만 드러낸다.
+            val evaluators = applicationContext.getBeanNamesForType(FeatureFlagEvaluator::class.java)
+            evaluators.size shouldBe 1
+            applicationContext.getBean(FeatureFlagEvaluator::class.java)
+                .shouldBeInstanceOf<RedisOnlyFeatureFlagEvaluator>()
         }
     }
 
